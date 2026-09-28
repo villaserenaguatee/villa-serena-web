@@ -1,0 +1,70 @@
+{
+  "common": {
+    "languageName": "Español",
+    "home": "Inicio",
+    "rooms": "Habitaciones",
+    "services": "Servicios",
+    "about": "Nosotros",
+    "contact": "Contacto",
+    "signIn": "Iniciar sesión",
+    "bookNow": "Reservar ahora",
+    "back": "Volver",
+    "continue": "Continuar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "close": "Cerrar",
+    "loading": "Cargando…"
+  },
+  "language": {
+    "switchTo": "Cambiar a inglés",
+    "shortTarget": "EN"
+  },
+  "auth": {
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "signingIn": "Ingresando…",
+    "guestActivationNotice": "Las cuentas de huéspedes se activan después de confirmar una reserva.",
+    "recoverPassword": "Recuperar contraseña",
+    "recoverInstruction": "Ingresa el correo asociado a tu cuenta.",
+    "sendCode": "Enviar código",
+    "codeDelivery": "Te enviaremos un código de 6 dígitos a este correo.",
+    "verificationCode": "Código de verificación",
+    "resendCode": "Reenviar código",
+    "resendWait": "Reenviar código en {seconds}s",
+    "codeResent": "Se ha solicitado un nuevo código para tu correo.",
+    "verifyEmail": "Verifica tu correo",
+    "verificationInstruction": "Ingresa el código de 6 dígitos enviado a {email}.",
+    "yourEmail": "tu correo",
+    "verify": "Verificar",
+    "newPassword": "Nueva contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "savePassword": "Guardar contraseña",
+    "loginError": "No se pudo iniciar sesión",
+    "rules": {
+      "length": "8 caracteres",
+      "uppercase": "Mayúscula",
+      "lowercase": "Minúscula",
+      "number": "Número",
+      "special": "Carácter especial"
+    }
+  },
+  "publicBooking": {
+    "loading": "Cargando la confirmación…",
+    "notFound": "No se encontró la reserva.",
+    "roomReserved": "Tu habitación ha sido reservada correctamente.",
+    "paymentMethod": "Método de pago",
+    "payAtHotel": "Pagar en Recepción",
+    "onlinePayment": "Pago en línea",
+    "paymentStatus": "Estado del pago",
+    "pending": "Pendiente",
+    "paid": "Pagado",
+    "payAtReception": "El pago se realizará en recepción.",
+    "unavailable": "La habitación ya no está disponible para esas fechas.",
+    "invalidGuest": "Completa los datos requeridos del huésped.",
+    "priceChanged": "La tarifa cambió. Regresa a los resultados y vuelve a intentarlo.",
+    "invalidPromo": "El código promocional no es válido o está inactivo.",
+    "paymentUnverified": "El pago en línea requiere una aprobación de la pasarela de pago.",
+    "saveFailed": "No se pudo guardar la reserva. Inténtalo de nuevo."
+  }
+}

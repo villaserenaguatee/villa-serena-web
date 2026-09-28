@@ -1,0 +1,38 @@
+'use client';
+import RecepcionApp from '@/features/recepcion/pages/RecepcionApp';
+import HuespedApp from '@/features/huesped/pages/HuespedApp';
+import RoomServiceApp from '@/features/roomservice/pages/RoomServiceApp';
+import AdminApp from '@/features/admin/pages/AdminApp';
+import MantenimientoApp from '@/features/mantenimiento/pages/MantenimientoApp';
+import PublicLanguageToggle from '@/components/common/PublicLanguageToggle';
+import ScopedI18nProvider from '@/i18n/ScopedI18nProvider';
+import { RoleGuard } from '@/components/common/RoleGuard';
+const noop = () => { };
+export function RecepcionRoleApp() {
+  return <RoleGuard role="recepcion">
+    <RecepcionApp onCambiarModulo={noop} />
+  </RoleGuard>;
+}
+export function HuespedRoleApp() {
+  return <RoleGuard role="huesped">
+    <ScopedI18nProvider>
+      <PublicLanguageToggle />
+      <HuespedApp onCambiarModulo={noop} />
+    </ScopedI18nProvider>
+  </RoleGuard>;
+}
+export function RoomServiceRoleApp() {
+  return <RoleGuard role="room-service">
+    <RoomServiceApp onCambiarModulo={noop} />
+  </RoleGuard>;
+}
+export function AdminRoleApp() {
+  return <RoleGuard role="admin">
+    <AdminApp onCambiarModulo={noop} />
+  </RoleGuard>;
+}
+export function MantenimientoRoleApp() {
+  return <RoleGuard role="mantenimiento">
+    <MantenimientoApp onCambiarModulo={noop} />
+  </RoleGuard>;
+}

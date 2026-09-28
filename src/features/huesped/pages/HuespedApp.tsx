@@ -1,0 +1,1445 @@
+import { UiText, useUiText } from "@/i18n/UiText";
+import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
+import { translateChatMessage } from "@/lib/translation/client";
+import { useEffect, useMemo, useState } from "react";
+import { tarjetaPrincipal } from "@/store/paymentStore";
+import { guardarAccesoPostCheckout, leerAccesoPostCheckout } from "@/store/guestAccountAccess";
+import type { Modulo, SeccionHuesped, Reserva, CheckInWeb, PedidoHuesped, MensajeChat, Domotica, TurnoAmenidad, ReservaAmenidad, CargoHuesped, DatosFiscales, PagoHuespedApp, MetodoPagoHuesped, ReservaHuesped, TipoPedidoHuesped, LineaPedidoHuesped, DocumentoCargado, EstadoHabHotel, DatosContacto, TipoHabitacion, Acompanante, } from "@/lib/pms/types";
+import { HUESPEDES_INICIALES, HUESPED_PORTAL_ID, RESERVA_HUESPED_INICIAL, CHECKIN_INICIAL, PEDIDOS_HUESPED_INICIALES, MENSAJES_CHAT_INICIALES, DOMOTICA_INICIAL, TURNOS_AMENIDAD_INICIALES, RESERVAS_AMENIDAD_INICIALES, CARGOS_HUESPED_INICIALES, DATOS_FISCALES_INICIALES, PUNTOS_FIDELIDAD_INICIALES, CATALOGO_HABITACIONES_PUBLICO, SERVICIOS_CATALOGO, generarId, ahoraISO, nochesEntre, codigoLlaveDigital, siguienteCodigoReservaWeb, siguienteNumeroPedidoHuesped, siguienteFacturaFEL, turnoActual, } from "@/data/pms";
+import { actualizarHuespedCentral, leerHuespedes } from "@/store/guestStore";
+import { leerHabitaciones } from "@/store/roomStore";
+import { MENU_EVENT, leerMenu } from "@/store/menuStore";
+import { leerReservas, RESERVAS_EVENT, upsertReserva } from "@/store/reservationStore";
+import { aplicarTarifasHabitaciones, leerTarifas, TARIFAS_EVENT } from "@/store/tarifasStore";
+import { pedidoActivo, totalCargos, puntosDeMonto, } from "@/features/huesped/pages/huespedUtils";
+import ModuloSwitcher from "@/components/common/ModuloSwitcher";
+import InicioHuesped from "@/features/huesped/pages/InicioHuesped";
+import ReservarEstancia from "@/features/huesped/pages/ReservarEstancia";
+import CheckInWebScreen from "@/features/huesped/pages/CheckInWeb";
+import ServiciosHuesped from "@/features/huesped/pages/ServiciosHuesped";
+import MiHabitacion from "@/features/huesped/pages/MiHabitacion";
+import CuentaHuesped from "@/features/huesped/pages/CuentaHuesped";
+import ChatHuesped from "@/features/huesped/pages/ChatHuesped";
+import ReservasExperiencias from "@/features/huesped/pages/ReservasExperiencias";
+import PerfilHuesped from "@/features/huesped/pages/PerfilHuesped";
+import { guardarReservaDelPortal } from "@/store/portalReceptionSync";
+import { registrarLimpiezaDeSalida } from "@/store/cleaningEvents";
+import { EVENTO_ESTADO_RS, publicarPedidoPortal, actualizarPedidoPortal, leerPedidosPortal, type ActualizacionPedidoRS } from "@/store/roomServiceSync";
+import { actualizarMensajeChat, guardarMensajesChat, leerMensajesChat } from "@/store/chatStore";
+const SECCIONES: {
+  id: SeccionHuesped;
+  label: string;
+  corto: string;
+}[] = [
+    { id: "inicio", label: "Mi estancia", corto: "Estancia" },
+    { id: "checkin", label: "Check-in", corto: "Check-in" },
+    { id: "restaurante", label: "Menú", corto: "Menú" },
+    { id: "servicios", label: "Servicios", corto: "Servicios" },
+    { id: "chat", label: "Chat con recepción", corto: "Chat" },
+    { id: "habitacion", label: "Mi habitación", corto: "Habitación" },
+    { id: "experiencias", label: "Reservas y experiencias", corto: "Reservas" },
+    { id: "cuenta", label: "Cuenta y check-out", corto: "Cuenta" },
+    { id: "reservar", label: "Gestionar estancia", corto: "Estancia" },
+  ];
+function GestionIcon({ tipo }: {
+  tipo: "calendario" | "cama" | "solicitud";
+}) {
+  const common = {
+    width: 36,
+    height: 36,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.5,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const
+  };
+  if (tipo === "calendario")
+    return <svg {...common}>
+      <rect x="3" y="5" width="16" height="15" rx="2" />
+      <path d="M7 3v4M15 3v4M3 9h16M16 14v6M13 17h6" />
+    </svg>;
+  if (tipo === "cama")
+    return <svg {...common}>
+      <path d="M3 18v-8M21 18v-5a3 3 0 0 0-3-3H7a4 4 0 0 0-4 4v1h12M7 10V7h6a3 3 0 0 1 3 3M18 15v6M15 18h6" />
+    </svg>;
+  return <svg {...common}>
+    <path d="M7 3h8l4 4v14H7zM15 3v5h5M10 13h6M10 17h5" />
+  </svg>;
+}
+function ExtensionIcon({ tipo }: {
+  tipo: "huesped" | "habitacion" | "fecha" | "tarifa" | "noche" | "espera" | "audifonos";
+}) {
+  const common = {
+    width: 25,
+    height: 25,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.7,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const
+  };
+  if (tipo === "huesped")
+    return <svg {...common}>
+      <circle cx="12" cy="7" r="3" />
+      <path d="M5.5 21v-2a6.5 6.5 0 0 1 13 0v2z" />
+    </svg>;
+  if (tipo === "habitacion")
+    return <svg {...common}>
+      <path d="M3 18V8M21 18V11a3 3 0 0 0-3-3H8a5 5 0 0 0-5 5v2h18M7 8V5h6a3 3 0 0 1 3 3" />
+    </svg>;
+  if (tipo === "fecha")
+    return <svg {...common}>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M7 3v4M17 3v4M3 10h18M8 14h2M14 14h2M8 18h2" />
+    </svg>;
+  if (tipo === "tarifa")
+    return <svg {...common}>
+      <ellipse cx="9" cy="7" rx="5" ry="3" />
+      <path d="M4 7v4c0 1.7 2.2 3 5 3 1.1 0 2.1-.2 3-.6M4 11v4c0 1.7 2.2 3 5 3M14 10c3 0 5 1.3 5 3s-2 3-5 3-5-1.3-5-3 2-3 5-3zM9 13v4c0 1.7 2.2 3 5 3s5-1.3 5-3v-4" />
+    </svg>;
+  if (tipo === "noche")
+    return <svg {...common}>
+      <path d="M20 16.5A8.5 8.5 0 0 1 8 4a8.5 8.5 0 1 0 12 12.5z" />
+    </svg>;
+  if (tipo === "audifonos")
+    return <svg {...common}>
+      <path d="M4 14v-2a8 8 0 0 1 16 0v2M4 14a2 2 0 0 1 2-2h1v7H6a2 2 0 0 1-2-2zM20 14a2 2 0 0 0-2-2h-1v7h1a2 2 0 0 0 2-2z" />
+    </svg>;
+  return <svg {...common}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </svg>;
+}
+function SeccionIcon({ id, size = 18 }: {
+  id: SeccionHuesped;
+  size?: number;
+}) {
+  const p = {
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.75,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+  switch (id) {
+    case "inicio":
+      return (<svg {...p}>
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        <polyline points="9 22 9 12 15 12 15 22" />
+      </svg>);
+    case "checkin":
+      return (<svg {...p}>
+        <circle cx="7.5" cy="15.5" r="4.5" />
+        <path d="m10.7 12.3 8.8-8.8" />
+        <path d="m17 6 3 3" />
+        <path d="m14 9 3 3" />
+      </svg>);
+    case "restaurante":
+    case "servicios":
+      return (<svg {...p}>
+        <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13 5.4 5M7 13l-2.3 4.3A1 1 0 0 0 6 19h12" />
+        <circle cx="9" cy="21" r="1" />
+        <circle cx="18" cy="21" r="1" />
+      </svg>);
+    case "chat":
+      return (<svg {...p}>
+        <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+      </svg>);
+    case "habitacion":
+      return (<svg {...p}>
+        <path d="M3 7v10" />
+        <path d="M21 10v7" />
+        <path d="M3 13h18" />
+        <path d="M5 13V9.5A1.5 1.5 0 0 1 6.5 8h3A1.5 1.5 0 0 1 11 9.5V13" />
+        <path d="M11 13v-2a2 2 0 0 1 2-2h5a3 3 0 0 1 3 3v1" />
+      </svg>);
+    case "cuenta":
+      return (<svg {...p}>
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <line x1="2" y1="10" x2="22" y2="10" />
+      </svg>);
+    case "reservar":
+    case "experiencias":
+      return (<svg {...p}>
+        <rect x="3" y="4" width="18" height="18" rx="2" />
+        <line x1="16" y1="2" x2="16" y2="6" />
+        <line x1="8" y1="2" x2="8" y2="6" />
+        <line x1="3" y1="10" x2="21" y2="10" />
+      </svg>);
+  }
+}
+interface Props {
+  onCambiarModulo: (m: Modulo) => void;
+}
+export default function HuespedApp({ onCambiarModulo }: Props) {
+  const ui = useUiText();
+  const { en, lang } = usePublicLanguage();
+  const [seccion, setSeccion] = useState<SeccionHuesped>("inicio");
+  const [perfilAbierto, setPerfilAbierto] = useState(false);
+  const [nombrePerfil, setNombrePerfil] = useState("Ana Morales");
+  const [telefonoPerfil, setTelefonoPerfil] = useState("+502 5512 3344");
+  const [correoPerfil, setCorreoPerfil] = useState("ana.morales@correo.com");
+  const [fotoPerfil, setFotoPerfil] = useState<string | null>(null);
+  const [cerrarSesionAbierto, setCerrarSesionAbierto] = useState(false);
+  const [tarifasReserva, setTarifasReserva] = useState(() => leerTarifas());
+  const ofertasReserva = useMemo(() => CATALOGO_HABITACIONES_PUBLICO.map(oferta => ({ ...oferta, precioNoche: tarifasReserva[oferta.tipo] })), [tarifasReserva]);
+  const habitacionesReserva = useMemo(() => aplicarTarifasHabitaciones(leerHabitaciones(), tarifasReserva), [tarifasReserva]);
+  useEffect(() => {
+    const sincronizarTarifas = () => setTarifasReserva(leerTarifas());
+    window.addEventListener(TARIFAS_EVENT, sincronizarTarifas);
+    window.addEventListener('storage', sincronizarTarifas);
+    return () => {
+      window.removeEventListener(TARIFAS_EVENT, sincronizarTarifas);
+      window.removeEventListener('storage', sincronizarTarifas);
+    };
+  },
+    []);
+  const huesped = leerHuespedes().find((h) => h.id === HUESPED_PORTAL_ID) ?? HUESPEDES_INICIALES.find((h) => h.id === HUESPED_PORTAL_ID)!;
+  const [reservasHotel, setReservasHotel] = useState<Reserva[]>(() => leerReservas());
+  const [reserva, setReserva] = useState<Reserva>(() => {
+    const reservas = leerReservas();
+    return reservas.find((r) => r.huespedId === HUESPED_PORTAL_ID && r.estado !== "cancelada") ?? RESERVA_HUESPED_INICIAL;
+  });
+  const [menu, setMenu] = useState(() => leerMenu());
+  useEffect(() => {
+    const sincronizarMenu = () => setMenu(leerMenu());
+    window.addEventListener(MENU_EVENT, sincronizarMenu);
+    window.addEventListener('storage', sincronizarMenu);
+    return () => {
+      window.removeEventListener(MENU_EVENT, sincronizarMenu);
+      window.removeEventListener('storage', sincronizarMenu);
+    };
+  },
+    []);
+  useEffect(() => {
+    const sincronizarReservas = () => {
+      const actuales = leerReservas();
+      setReservasHotel(actuales);
+      const sincronizada = actuales.find(r => r.id === reserva.id || r.codigo === reserva.codigo);
+      if (sincronizada)
+        setReserva(sincronizada);
+    };
+    window.addEventListener(RESERVAS_EVENT, sincronizarReservas);
+    window.addEventListener("storage", sincronizarReservas);
+    return () => {
+      window.removeEventListener(RESERVAS_EVENT, sincronizarReservas);
+      window.removeEventListener("storage", sincronizarReservas);
+    };
+  },
+    [reserva.id, reserva.codigo]);
+  const habitacion = leerHabitaciones().find((h) => h.id === reserva.habitacionId)!;
+  const [estadoHabitacion, setEstadoHabitacion] = useState<EstadoHabHotel>("ocupada");
+  const [checkin, setCheckin] = useState<CheckInWeb>(CHECKIN_INICIAL);
+  const [pedidos, setPedidos] = useState<PedidoHuesped[]>(PEDIDOS_HUESPED_INICIALES);
+  const [avisosRoomService, setAvisosRoomService] = useState<ActualizacionPedidoRS[]>([]);
+  const [mensajes, setMensajes] = useState<MensajeChat[]>(MENSAJES_CHAT_INICIALES);
+  const [escribiendo, setEscribiendo] = useState(false);
+  const [domotica, setDomotica] = useState<Domotica>(DOMOTICA_INICIAL);
+  function actualizarDomotica(cambios: Partial<Domotica>) {
+    if (estanciaCerrada)
+      return;
+    setDomotica((actual) => ({ ...actual, ...cambios }));
+  }
+  function actualizarLuz(id: string,
+    cambios: {
+      encendida?: boolean;
+      intensidad?: number;
+    }) {
+    if (estanciaCerrada)
+      return;
+    setDomotica((actual) => ({
+      ...actual,
+      luces: actual.luces.map((luz) => luz.id === id ? { ...luz, ...cambios } : luz),
+    }));
+  }
+  function conectarWifi() {
+    if (estanciaCerrada)
+      return;
+    setDomotica((actual) => ({ ...actual, wifiConectado: true }));
+    mostrarAviso("Wi-Fi conectado correctamente.");
+  }
+  const [turnos, setTurnos] = useState<TurnoAmenidad[]>(TURNOS_AMENIDAD_INICIALES);
+  const [reservasAmenidad, setReservasAmenidad] = useState<ReservaAmenidad[]>(RESERVAS_AMENIDAD_INICIALES);
+  const [cargos, setCargos] = useState<CargoHuesped[]>(() => {
+    try {
+      const x = JSON.parse(localStorage.getItem(`vs-cargos-estancia-${reserva.codigo}`) || '[]');
+      return Array.isArray(x) ? x : [];
+    }
+    catch {
+      return [];
+    }
+  });
+  const [pagos, setPagos] = useState<PagoHuespedApp[]>(() => {
+    try {
+      const x = JSON.parse(localStorage.getItem(`vs-pagos-estancia-${reserva.codigo}`) || '[]');
+      return Array.isArray(x) ? x : [];
+    }
+    catch {
+      return [];
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(`vs-cargos-estancia-${reserva.codigo}`, JSON.stringify(cargos));
+    }
+    catch { }
+  }, [cargos, reserva.codigo]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(`vs-pagos-estancia-${reserva.codigo}`, JSON.stringify(pagos));
+    }
+    catch { }
+  }, [pagos, reserva.codigo]);
+  const [fiscales, setFiscales] = useState<DatosFiscales>(DATOS_FISCALES_INICIALES);
+  const [facturaEmitida, setFacturaEmitida] = useState<string | null>(null);
+  const [puntos, setPuntos] = useState(PUNTOS_FIDELIDAD_INICIALES);
+  const [reservaWeb, setReservaWeb] = useState<ReservaHuesped | null>(null);
+  const [estanciaCerrada, setEstanciaCerrada] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+  function reservarTurno(turnoId: string,
+    personas: number,
+    detalle?: string) {
+    if (estanciaCerrada)
+      return;
+    const turno = turnos.find((item) => item.id === turnoId);
+    if (!turno) {
+      mostrarAviso("No encontramos el horario seleccionado.");
+      return;
+    }
+    const libres = turno.aforo - turno.ocupados;
+    if (personas < 1 || personas > libres) {
+      mostrarAviso("No hay cupos suficientes para esa reserva.");
+      return;
+    }
+    const reservaNueva: ReservaAmenidad = {
+      id: generarId(),
+      turnoId: turno.id,
+      area: turno.area,
+      fecha: turno.fecha,
+      hora: turno.hora,
+      personas,
+      detalle,
+      creadaEn: ahoraISO(),
+    };
+    setTurnos((actuales) => actuales.map((item) => item.id === turno.id ? { ...item, ocupados: item.ocupados + personas } : item));
+    setReservasAmenidad((actuales) => [reservaNueva, ...actuales]);
+    mostrarAviso(`Reserva confirmada para ${turno.area} a las ${turno.hora}.`);
+  }
+  function cancelarTurno(reservaId: string) {
+    if (estanciaCerrada)
+      return;
+    const reservaCancelada = reservasAmenidad.find((item) => item.id === reservaId);
+    if (!reservaCancelada)
+      return;
+    setReservasAmenidad((actuales) => actuales.filter((item) => item.id !== reservaId));
+    setTurnos((actuales) => actuales.map((item) => item.id === reservaCancelada.turnoId ? { ...item, ocupados: Math.max(0, item.ocupados - reservaCancelada.personas) } : item));
+    mostrarAviso("La reserva fue cancelada.");
+  }
+  function guardarFiscales(datos: DatosFiscales) {
+    setFiscales(datos);
+    mostrarAviso("Datos fiscales guardados correctamente.");
+  }
+  function pagarSaldo(metodo: MetodoPagoHuesped,
+    extra: {
+      ultimos4?: string;
+      puntosUsados?: number;
+      descuentoPuntos?: number;
+      descuentoCodigo?: number;
+      codigoPromocional?: string;
+      montoTarjeta?: number;
+    }) {
+    if (cuenta.saldo <= 0) {
+      mostrarAviso("No tienes saldo pendiente por pagar.");
+      return;
+    }
+    if (metodo === "recepcion") {
+      localStorage.setItem("vs-pago-pendiente-recepcion",
+        JSON.stringify({ reservaId: reserva.id, codigo: reserva.codigo, huespedId: huesped.id, monto: cuenta.saldo, estado: "pendiente", creadoEn: ahoraISO(), origen: "checkout" }));
+      mostrarAviso("Pago en Recepción registrado como pendiente. Recepción debe confirmar el pago antes de finalizar el check-out.");
+      return;
+    }
+    const descuentoAplicado = Math.max(0, (extra.descuentoPuntos ?? 0) + (extra.descuentoCodigo ?? 0));
+    const montoCobrado = Math.max(0, extra.montoTarjeta ?? (cuenta.saldo - descuentoAplicado));
+    const comprobante = siguienteFacturaFEL();
+    const fecha = ahoraISO();
+    const pagoApp: PagoHuespedApp = {
+      id: generarId(),
+      monto: montoCobrado,
+      metodo,
+      fecha,
+      comprobante,
+      ...extra,
+    };
+    const pagoCentral = montoCobrado > 0 ? {
+      id: `portal-${pagoApp.id}`,
+      fecha,
+      monto: montoCobrado,
+      metodo: metodo === "debito" ? "tarjeta" as const : metodo === "tarjeta" ? "tarjeta" as const : "transferencia" as const,
+      comprobante,
+    } : null;
+    const actualizada: Reserva = {
+      ...reserva,
+      descuento: Math.round(((reserva.descuento || 0) + descuentoAplicado) * 100) / 100,
+      pagos: pagoCentral ? [...reserva.pagos, pagoCentral] : reserva.pagos,
+    };
+    setReserva(actualizada);
+    upsertReserva(actualizada);
+    guardarReservaDelPortal(huesped, actualizada);
+    if (extra.puntosUsados)
+      setPuntos((actuales) => Math.max(0, actuales - extra.puntosUsados!));
+    setFacturaEmitida(comprobante);
+    mostrarAviso(`Pago registrado. Comprobante ${comprobante}.`);
+  }
+  function hacerCheckOut() {
+    if (estanciaCerrada)
+      return;
+    const salida = ahoraISO();
+    const actualizada: Reserva = { ...reserva, estado: "finalizada", checkOutEn: salida };
+    setReserva(actualizada);
+    upsertReserva(actualizada);
+    setEstanciaCerrada(true);
+    setEstadoHabitacion("en-limpieza");
+    registrarLimpiezaDeSalida(habitacion.numero);
+    guardarReservaDelPortal(huesped, actualizada);
+    guardarAccesoPostCheckout(huesped.correo, salida);
+    mostrarAviso("Check-out completado correctamente. Tu cuenta permanecerá disponible durante 24 horas para consultar la estancia y gestionar tu reseña.");
+  }
+  useEffect(() => {
+    if (!estanciaCerrada || !reserva.checkOutEn)
+      return;
+    const access = leerAccesoPostCheckout(huesped.correo);
+    const expiresAt = access?.expiresAt ? new Date(access.expiresAt).getTime() : new Date(reserva.checkOutEn).getTime() + 24 * 60 * 60 * 1000;
+    const cerrarSiExpirado = () => {
+      if (Date.now() < expiresAt)
+        return;
+      localStorage.removeItem("vs-auth");
+      localStorage.removeItem("villa-serena-session");
+      window.location.replace("/login");
+    };
+    cerrarSiExpirado();
+    const timer = window.setInterval(cerrarSiExpirado, 30000);
+    return () => window.clearInterval(timer);
+  },
+    [estanciaCerrada, reserva.checkOutEn, huesped.correo]);
+  const [gestionEstancia, setGestionEstancia] = useState<"extender" | "nueva" | null>(null);
+  const [nuevaSalida, setNuevaSalida] = useState("2026-09-23");
+  const [solicitudExtensionEnviada, setSolicitudExtensionEnviada] = useState(false);
+  const [cancelarExtensionAbierto, setCancelarExtensionAbierto] = useState(false);
+  const [motivoCancelacionOpcion, setMotivoCancelacionOpcion] = useState("");
+  const [motivoCancelacionExtension, setMotivoCancelacionExtension] = useState("");
+  const [cancelacionExtensionPendiente, setCancelacionExtensionPendiente] = useState(false);
+  const [metodoExtension, setMetodoExtension] = useState<"guardada" | "nueva" | "recepcion">(tarjetaPrincipal() ? "guardada" : "nueva");
+  const tarjetaExtension = tarjetaPrincipal();
+  useEffect(() => {
+    try {
+      const actual = leerReservas().find(r => r.id === reserva.id) || reserva;
+      guardarReservaDelPortal({ ...huesped, nombre: nombrePerfil, telefono: telefonoPerfil, correo: correoPerfil, foto: fotoPerfil || undefined }, actual);
+    }
+    catch { }
+  },
+    [nombrePerfil, telefonoPerfil, correoPerfil, fotoPerfil]);
+  const llaveActiva = checkin.estado === "aprobado" && Boolean(checkin.codigoLlave) && !estanciaCerrada;
+  useEffect(() => {
+    if (checkin.estado !== "pendiente" || estanciaCerrada)
+      return;
+    const revisar = () => {
+      try {
+        const datos = JSON.parse(localStorage.getItem('vs-portal-recepcion') || 'null');
+        const sincronizada = datos?.reservas?.find((r: Reserva) => r.codigo === reserva.codigo);
+        if (sincronizada?.checkInWeb?.estado === 'rechazado') {
+          setReserva(sincronizada);
+          setCheckin(actual => ({ ...actual, estado: 'rechazado', codigoLlave: undefined, motivoRechazo: sincronizada.checkInWeb.motivoRevision }));
+          mostrarAviso(`Recepción solicitó corregir el check-in: ${sincronizada.checkInWeb.motivoRevision ?? 'Revisa los datos enviados.'}`);
+          return;
+        }
+        if (sincronizada?.checkInWeb?.estado !== 'aprobado')
+          return;
+        setReserva(sincronizada);
+        setCheckin(actual => ({
+          ...actual,
+          estado: 'aprobado',
+          codigoLlave: codigoLlaveDigital(reserva.codigo, habitacion.numero),
+          completadoEn: sincronizada.checkInWeb.revisadoEn ?? actual.completadoEn,
+        }));
+        mostrarAviso('Recepción validó tu check-in. Tu llave digital ya está activa.');
+      }
+      catch { }
+    };
+    revisar();
+    const id = window.setInterval(revisar, 1200);
+    window.addEventListener('vs-portal-recepcion-actualizado', revisar);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener('vs-portal-recepcion-actualizado', revisar);
+    };
+  },
+    [checkin.estado, estanciaCerrada, reserva.codigo, habitacion.numero]);
+  useEffect(() => {
+    const cargar = () => {
+      try {
+        const guardados = leerMensajesChat([]);
+        setMensajes(guardados.filter((m: MensajeChat) => !m.huespedId || m.huespedId === huesped.id));
+      }
+      catch { }
+    };
+    cargar();
+    const evento = () => cargar();
+    window.addEventListener("vs-chat-actualizado", evento);
+    window.addEventListener("storage", evento);
+    const id = window.setInterval(cargar, 1200);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("vs-chat-actualizado", evento);
+      window.removeEventListener("storage", evento);
+    };
+  },
+    []);
+  async function enviarMensaje(texto: string) {
+    const valor = texto.trim();
+    if (!valor)
+      return;
+    const idiomaOriginal = en ? "en" : "es";
+    const mensaje: MensajeChat = {
+      id: generarId(),
+      autor: "huesped",
+      huespedId: huesped.id,
+      texto: valor,
+      ...(en ? { textoEn: valor } : { textoEs: valor }),
+      idiomaOriginal,
+      hora: ahoraISO(),
+    };
+    try {
+      const traducido = await translateChatMessage(valor, undefined, en ? "es" : "en");
+      if (en)
+        mensaje.textoEs = traducido;
+      else
+        mensaje.textoEn = traducido;
+    }
+    catch {
+    }
+    setMensajes((actuales) => {
+      const globales = leerMensajesChat([]).filter(m => m.huespedId !== huesped.id);
+      const siguientes = [...actuales, mensaje];
+      guardarMensajesChat([...globales, ...siguientes]);
+      return siguientes;
+    });
+  }
+  async function editarMensaje(id: string,
+    texto: string) {
+    const valor = texto.trim();
+    if (!valor)
+      return;
+    const idiomaOriginal = en ? "en" : "es";
+    let textoEs: string | undefined = en ? undefined : valor;
+    let textoEn: string | undefined = en ? valor : undefined;
+    try {
+      const traducido = await translateChatMessage(valor, undefined, en ? "es" : "en");
+      if (en)
+        textoEs = traducido;
+      else
+        textoEn = traducido;
+    }
+    catch { }
+    const globales = leerMensajesChat([]);
+    const actualizados = actualizarMensajeChat(globales, id, m => ({ ...m, texto: valor, textoEs, textoEn, idiomaOriginal, editado: true, editadoEn: ahoraISO(), eliminadoParaTodos: false }));
+    setMensajes(actualizados.filter(m => !m.huespedId || m.huespedId === huesped.id));
+  }
+  function eliminarMensaje(id: string,
+    paraTodos: boolean) {
+    const globales = leerMensajesChat([]);
+    const actualizados = actualizarMensajeChat(globales, id, m => paraTodos ? { ...m, eliminadoParaTodos: true, editado: false } : { ...m, eliminadoPara: Array.from(new Set([...(m.eliminadoPara ?? []), "huesped"])) });
+    setMensajes(actualizados.filter(m => !m.huespedId || m.huespedId === huesped.id));
+  }
+  function crearPedido(datos: {
+    tipo: TipoPedidoHuesped;
+    lineas: LineaPedidoHuesped[];
+    nota: string;
+    alergias: string;
+    lugarEntrega?: string;
+    codigoCupon?: string;
+    descuentoPct?: number;
+  }): number {
+    if (datos.lineas.length === 0)
+      return 0;
+    const numero = siguienteNumeroPedidoHuesped();
+    const creadoEn = ahoraISO();
+    const pedido: PedidoHuesped = {
+      id: generarId(),
+      numero,
+      tipo: datos.tipo,
+      lineas: datos.lineas,
+      nota: datos.nota,
+      alergias: datos.alergias,
+      lugarEntrega: datos.lugarEntrega,
+      codigoCupon: datos.codigoCupon,
+      descuentoPct: datos.descuentoPct,
+      estado: "recibido",
+      creadoEn,
+      historial: [{ estado: "recibido", fechaHora: creadoEn }],
+    };
+    setPedidos((actuales) => [pedido, ...actuales]);
+    const descuentoFactor = Math.max(0, 1 - (datos.descuentoPct ?? 0) / 100);
+    const nuevosCargos: CargoHuesped[] = datos.lineas.filter(l => l.precioUnitario > 0).map(l => ({
+      id: `pedido-${pedido.id}-${l.refId}`,
+      concepto: `${datos.tipo === "restaurante" ? "Menú" : "Servicio"} · ${l.nombre}`,
+      categoria: datos.tipo === "restaurante" ? "Restaurante" : "Servicios",
+      cantidad: l.cantidad,
+      precioUnitario: Math.round(l.precioUnitario * descuentoFactor * 100) / 100,
+      fecha: creadoEn
+    }));
+    setCargos(actuales => [...actuales, ...nuevosCargos.filter(n => !actuales.some(a => a.id === n.id))]);
+    if (datos.tipo === "restaurante") {
+      publicarPedidoPortal(pedido, {
+        habitacion: habitacion.numero,
+        piso: habitacion.piso,
+        huesped: nombrePerfil,
+        turno: turnoActual(),
+      });
+    }
+    return numero;
+  }
+  function cancelarPedido(id: string,
+    motivo = "Cancelado por el huésped") {
+    const ahora = ahoraISO();
+    setPedidos((actuales) => actuales.map((pedido) => pedido.id === id ? {
+      ...pedido,
+      estado: "cancelado",
+      motivoCancelacion: motivo,
+      historial: [...pedido.historial, { estado: "cancelado", fechaHora: ahora }],
+    } : pedido));
+    actualizarPedidoPortal(id, "cancelado", motivo);
+    setCargos(actuales => actuales.filter(c => !c.id.startsWith(`pedido-${id}-`)));
+  }
+  const cuenta = useMemo(() => {
+    const noches = nochesEntre(reserva.fechaEntrada, reserva.fechaSalida);
+    const precioNoche = habitacion?.precioNoche ?? tarifasReserva[reserva.tipoHabitacion];
+    const alojamiento = noches * precioNoche;
+    const extras = totalCargos(cargos) + reserva.servicios.reduce((s, x) => s + x.cantidad * x.precioUnitario, 0);
+    const descuento = reserva.descuento || 0;
+    const total = Math.max(0, alojamiento + extras - descuento);
+    const anticipo = reserva.pagos.reduce((s, p) => s + p.monto, 0);
+    const abonado = pagos.reduce((s, p) => s + p.monto, 0);
+    const pagado = anticipo + abonado;
+    const saldo = Math.max(0, Math.round((total - pagado) * 100) / 100);
+    return {
+      noches,
+      precioNoche,
+      alojamiento,
+      extras,
+      descuento,
+      total,
+      anticipo,
+      abonado,
+      pagado,
+      saldo,
+    };
+  },
+    [reserva, habitacion, cargos, pagos]);
+  const nochesAdicionales = Math.max(0, nochesEntre(reserva.fechaSalida, nuevaSalida));
+  const estimacionExtension = nochesAdicionales * cuenta.precioNoche;
+  const fechaLarga = (fecha: string) => new Date(`${fecha}T12:00:00`).toLocaleDateString("es-GT", { day: "numeric", month: "long", year: "numeric" });
+  const pedidosActivos = pedidos.filter(pedidoActivo);
+  function mostrarAviso(texto: string) {
+    setAviso(texto);
+    window.setTimeout(() => setAviso((a) => (a === texto ? null : a)), 4000);
+  }
+  function guardarSolicitudExtension(estado: "extension-pendiente" | "cancelacion-pendiente",
+    motivo = "") {
+    localStorage.setItem("vs-solicitud-extension",
+      JSON.stringify({
+        id: reserva.codigo,
+        huesped: nombrePerfil,
+        habitacion: habitacion.numero,
+        salidaActual: reserva.fechaSalida,
+        nuevaSalida,
+        noches: nochesAdicionales,
+        estimacion: estimacionExtension,
+        motivo,
+        estado,
+        creadaEn: ahoraISO(),
+      }));
+  }
+  useEffect(() => {
+    const revisar = () => {
+      try {
+        const solicitud = JSON.parse(localStorage.getItem("vs-solicitud-extension") || "null");
+        if (solicitud?.id === reserva.codigo && solicitud.estado === "cancelacion-aceptada") {
+          setSolicitudExtensionEnviada(false);
+          setCancelacionExtensionPendiente(false);
+          setMotivoCancelacionOpcion("");
+          setMotivoCancelacionExtension("");
+        }
+      }
+      catch { }
+    };
+    revisar();
+    const id = window.setInterval(revisar, 1500);
+    return () => window.clearInterval(id);
+  },
+    [reserva.codigo]);
+  useEffect(() => {
+    try {
+      const guardados = JSON.parse(localStorage.getItem("vs-pedidos-huesped") || "[]");
+      if (Array.isArray(guardados))
+        setPedidos(guardados);
+    }
+    catch { }
+  },
+    []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("vs-pedidos-huesped", JSON.stringify(pedidos));
+    }
+    catch { }
+  }, [pedidos]);
+  useEffect(() => {
+    const aplicarEstado = (a: ActualizacionPedidoRS) => {
+      const estado = a.estado === "nuevo" ? "recibido" : a.estado;
+      setPedidos(actuales => actuales.map(p => {
+        if (p.id !== a.id)
+          return p;
+        if (p.estado === estado && !a.motivo)
+          return p;
+        return {
+          ...p,
+          estado,
+          motivoCancelacion: a.motivo ?? p.motivoCancelacion,
+          entregadoEn: estado === "entregado" ? a.fechaHora : p.entregadoEn,
+          historial: p.historial.some(h => h.estado === estado && h.fechaHora === a.fechaHora)
+            ? p.historial
+            : [...p.historial, { estado, fechaHora: a.fechaHora, motivo: a.motivo }],
+        };
+      }));
+      setAvisosRoomService(actuales => [a, ...actuales.filter(x => x.id !== a.id)].slice(0, 10));
+    };
+    const sincronizar = () => {
+      for (const remoto of leerPedidosPortal()) {
+        aplicarEstado({
+          id: remoto.id,
+          numero: remoto.numero,
+          estado: remoto.estado,
+          motivo: remoto.motivoCancelacion,
+          fechaHora: remoto.historial.at(-1)?.fechaHora ?? remoto.creadoEn
+        });
+      }
+    };
+    const evento = (e: Event) => aplicarEstado((e as CustomEvent<ActualizacionPedidoRS>).detail);
+    sincronizar();
+    window.addEventListener(EVENTO_ESTADO_RS, evento);
+    window.addEventListener("storage", sincronizar);
+    return () => {
+      window.removeEventListener(EVENTO_ESTADO_RS, evento);
+      window.removeEventListener("storage", sincronizar);
+    };
+  },
+    []);
+  function confirmarReservaWeb(datos: {
+    tipo: TipoHabitacion;
+    fechaEntrada: string;
+    fechaSalida: string;
+    personas: number;
+    adultos: number;
+    ninos: number;
+    contacto: DatosContacto;
+    tipoDocumento: string;
+    nacionalidad: string;
+    horaLlegada: string;
+    metodoPago: "tarjeta" | "hotel";
+    paraOtraPersona: boolean;
+    ultimos4: string;
+  }) {
+    const oferta = ofertasReserva.find((o) => o.tipo === datos.tipo)!;
+    const noches = nochesEntre(datos.fechaEntrada, datos.fechaSalida);
+    const nueva: ReservaHuesped = {
+      codigo: siguienteCodigoReservaWeb(),
+      tipo: datos.tipo,
+      fechaEntrada: datos.fechaEntrada,
+      fechaSalida: datos.fechaSalida,
+      personas: datos.personas,
+      noches,
+      precioNoche: oferta.precioNoche,
+      total: noches * oferta.precioNoche,
+      contacto: datos.contacto,
+      ultimos4: datos.ultimos4,
+      creadaEn: ahoraISO(),
+    };
+    setReservaWeb(nueva);
+    const huespedPortal = datos.paraOtraPersona ? {
+      id: `portal-${nueva.codigo}`,
+      nombre: nueva.contacto.nombre,
+      tipoDocumento: (datos.tipoDocumento === 'Pasaporte' ? 'Pasaporte' : 'DPI') as 'DPI' | 'Pasaporte',
+      documento: nueva.contacto.documento || 'Por registrar',
+      telefono: nueva.contacto.telefono,
+      correo: nueva.contacto.correo,
+      nacionalidad: datos.nacionalidad || 'Por confirmar',
+      creadoEn: nueva.creadaEn,
+    } : huesped;
+    guardarReservaDelPortal(huespedPortal,
+      {
+        id: `portal-${nueva.codigo}`,
+        codigo: nueva.codigo,
+        huespedId: huespedPortal.id,
+        habitacionId: null,
+        tipoHabitacion: nueva.tipo,
+        fechaEntrada: nueva.fechaEntrada,
+        fechaSalida: nueva.fechaSalida,
+        personas: nueva.personas,
+        adultos: datos.adultos,
+        ninos: datos.ninos,
+        estado: 'pendiente',
+        acompanantes: [],
+        servicios: [],
+        pagos: datos.metodoPago === 'hotel' ? [] : [{ id: `pago-${nueva.codigo}`, fecha: nueva.creadaEn, monto: nueva.total, metodo: 'tarjeta', comprobante: `WEB-${nueva.codigo}` }],
+        descuento: 0,
+        creadoEn: nueva.creadaEn,
+      });
+    mostrarAviso(`Reserva ${nueva.codigo} confirmada y asociada a ${datos.contacto.correo}.`);
+  }
+  function guardarOcupantes(datos: {
+    adultos: number;
+    ninos: number;
+    acompanantes: Acompanante[];
+  }) {
+    const actualizada: Reserva = {
+      ...reserva,
+      adultos: datos.adultos,
+      ninos: datos.ninos,
+      personas: datos.adultos + datos.ninos,
+      acompanantes: datos.acompanantes,
+    };
+    setReserva(actualizada);
+    guardarReservaDelPortal(huesped, actualizada);
+  }
+  function completarCheckIn(datos: {
+    documento: DocumentoCargado;
+    documentos: DocumentoCargado[];
+    peticiones: string[];
+    notaPeticiones: string;
+  }) {
+    const enviadoEn = ahoraISO();
+    setCheckin({
+      estado: "pendiente",
+      documento: datos.documento,
+      documentos: datos.documentos,
+      terminosAceptados: true,
+      peticiones: datos.peticiones,
+      notaPeticiones: datos.notaPeticiones,
+      completadoEn: enviadoEn,
+      codigoLlave: undefined,
+    });
+    const actualizada: Reserva = {
+      ...reserva,
+      estado: 'confirmada',
+      checkInWeb: {
+        estado: 'pendiente',
+        documento: datos.documento,
+        documentos: datos.documentos,
+        terminosAceptados: true,
+        peticiones: datos.peticiones,
+        notaPeticiones: datos.notaPeticiones,
+        enviadoEn,
+      },
+    };
+    setReserva(actualizada);
+    guardarReservaDelPortal(huesped, actualizada);
+    mostrarAviso("Check-in enviado. Recepción revisará la información antes de activar tu llave digital.");
+  }
+  const contenido = (() => {
+    switch (seccion) {
+      case "inicio":
+        return (<InicioHuesped
+          huesped={huesped}
+          reserva={reserva}
+          habitacion={habitacion}
+          estadoHabitacion={estadoHabitacion}
+          checkin={checkin}
+          pedidos={pedidos}
+          reservasAmenidad={reservasAmenidad}
+          domotica={domotica}
+          cuenta={cuenta}
+          puntos={puntos}
+          llaveActiva={llaveActiva}
+          estanciaCerrada={estanciaCerrada}
+          onIr={setSeccion} />);
+      case "reservar":
+        if (!gestionEstancia)
+          return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0] p-4 sm:p-6">
+            <div className="mx-auto max-w-6xl">
+              <p className="text-xs font-semibold uppercase tracking-[.28em] text-[#B38B2C]">Tu estancia, a tu ritmo</p>
+              <h1 className="mt-2 text-3xl font-semibold text-[#18345C] sm:text-4xl">
+                <UiText text="Gestionar estancia" />
+              </h1>
+              <p className="mt-2 text-base text-[#6B7280]">
+                <UiText text="Elige qué deseas hacer con tu alojamiento." />
+              </p>
+              <div className="mt-6 grid gap-4 md:grid-cols-2">
+                <article className="flex flex-col rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm sm:p-6">
+                  <span className="grid h-12 w-12 place-items-center rounded-full border border-[#D3AE55] text-[#A77E20]">
+                    <GestionIcon tipo="calendario" />
+                  </span>
+                  <h2 className="mt-4 text-xl font-semibold text-[#18345C]">
+                    <UiText text="Extender mi estancia" />
+                  </h2>
+                  <p className="mt-2 text-base text-[#6B7280]">
+                    Conserva tu habitación actual y solicita noches adicionales.
+                  </p>
+                  <div className="mt-4 flex items-center gap-3 rounded-lg bg-[#F8F6F0] p-3">
+                    <img
+                      src="https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=500&q=85"
+                      alt={`Habitación ${habitacion.numero}`}
+                      className="h-16 w-24 rounded-md object-cover" />
+                    <p className="text-sm text-[#52677F]"><b className="block text-[#18345C]">Habitación {habitacion.numero} · {reserva.tipoHabitacion}</b>Salida {reserva.fechaSalida}</p>
+                  </div>
+                  <button
+                    onClick={() => setGestionEstancia("extender")}
+                    className="mt-5 inline-flex w-fit items-center gap-3 self-end rounded-lg bg-[#B08A31] px-4 py-2.5 text-sm font-semibold text-white">Solicitar extensión <span>→</span></button>
+                </article>
+                <article className="flex flex-col rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm sm:p-6">
+                  <span className="grid h-12 w-12 place-items-center rounded-full border border-[#D3AE55] text-[#A77E20]">
+                    <GestionIcon tipo="cama" />
+                  </span>
+                  <h2 className="mt-4 text-xl font-semibold text-[#18345C]">
+                    <UiText text="Reservar otra habitación" />
+                  </h2>
+                  <p className="mt-2 text-base text-[#6B7280]">
+                    <UiText text="Haz una reserva para ti o para otra persona." />
+                  </p>
+                  <div className="my-4 h-px bg-[#E5E0D8]" />
+                  <p className="text-[#52677F]">Consulta fechas, disponibilidad y tarifas.</p>
+                  <button
+                    onClick={() => setGestionEstancia("nueva")}
+                    className="mt-5 inline-flex w-fit items-center gap-3 self-end rounded-lg bg-[#B08A31] px-4 py-2.5 text-sm font-semibold text-white">Nueva reserva <span>→</span></button>
+                </article>
+              </div>
+              <section className="mt-4 flex items-center gap-4 rounded-xl border border-[#E5E0D8] bg-white p-4 shadow-sm">
+                <span className="text-[#A77E20]">
+                  <GestionIcon tipo="solicitud" />
+                </span>
+                <div>
+                  <h2 className="text-lg font-semibold text-[#18345C]">Mis solicitudes</h2>
+                  <p className="mt-1 text-[#6B7280]">No tienes solicitudes pendientes.</p>
+                </div>
+              </section>
+            </div>
+          </div>);
+        if (gestionEstancia === "extender")
+          return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0] p-5 sm:p-8">
+            <div className="mx-auto max-w-6xl">
+              <button onClick={() => setGestionEstancia(null)} className="text-sm font-semibold text-[#9B7420]">← Volver a Gestionar estancia</button>
+              <h1 className="mt-5 text-4xl font-semibold text-[#18345C]">Extender mi estancia</h1>
+              <p className="mt-1 text-[#60738B]">Solicita noches adicionales conservando tu habitación actual.</p>
+
+              <section className="mt-6 rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm sm:p-7">
+                <div className="grid gap-5 border-b border-[#ECE7DE] pb-6 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    ["huesped", "Huésped", nombrePerfil],
+                    ["habitacion", "Habitación", `${habitacion.numero} · ${reserva.tipoHabitacion}`],
+                    ["fecha", "Estancia actual", `${fechaLarga(reserva.fechaEntrada)} — ${fechaLarga(reserva.fechaSalida)}`],
+                    ["tarifa", "Tarifa por noche", `Q ${cuenta.precioNoche.toLocaleString()}`],
+                  ].map(([icono, etiqueta, valor]) => <div key={etiqueta} className="flex items-center gap-3 lg:border-r lg:last:border-0">
+                    <span className="text-[#18345C]">
+                      <ExtensionIcon tipo={icono as "huesped" | "habitacion" | "fecha" | "tarifa"} />
+                    </span>
+                    <div>
+                      <small className="block text-xs text-[#91A0B0]">
+                        {etiqueta}
+                      </small>
+                      <b className="text-[#18345C]">
+                        {valor}
+                      </b>
+                    </div>
+                  </div>)}
+                </div>
+                <label className="mt-6 block text-sm font-semibold text-[#18345C]">Nueva fecha de salida
+                  <input
+                    type="date"
+                    min={reserva.fechaSalida}
+                    value={nuevaSalida}
+                    disabled={solicitudExtensionEnviada}
+                    onChange={(e) => setNuevaSalida(e.target.value)}
+                    className="mt-2 block w-full rounded-lg border border-[#18345C] bg-white p-3 disabled:bg-[#F2F2F0]" />
+                </label>
+                <div className="mt-5 grid items-center gap-4 rounded-lg border border-[#E5E0D8] bg-[#FBFAF7] p-5 sm:grid-cols-[1fr_1.35fr]">
+                  <div className="flex items-center gap-4">
+                    <span className="grid h-12 w-12 place-items-center rounded-full bg-white text-[#B08A31]">
+                      <ExtensionIcon tipo="noche" />
+                    </span>
+                    <b className="text-lg text-[#18345C]">
+                      {nochesAdicionales}
+                      {nochesAdicionales === 1 ? 'noche adicional' : 'noches adicionales'}
+                    </b>
+                  </div>
+                  <div className="sm:border-l sm:pl-8">
+                    <small className="text-[#71839B]">Estimación</small>
+                    <strong className="block text-3xl text-[#18345C]">Q {estimacionExtension.toLocaleString()}</strong>
+                    <p className="text-xs text-[#71839B]">Recepción confirmará la disponibilidad y el importe antes de realizar cualquier cobro.</p>
+                  </div>
+                </div>
+                <div className="mt-5 rounded-xl border border-[#E5E0D8] bg-white p-4">
+                  <p className="text-sm font-semibold text-[#18345C]">
+                    {en ? "Payment method for the extension" : "Método de pago para la extensión"}
+                  </p>
+                  <p className="mt-1 text-xs text-[#71839B]">
+                    {en ? "No charge will be made until Reception confirms availability and the amount." : "No se realizará ningún cobro hasta que Recepción confirme disponibilidad e importe."}
+                  </p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                    {tarjetaExtension && <label className={`cursor-pointer rounded-lg border p-3 text-sm ${metodoExtension === 'guardada' ? 'border-[#18345C] bg-[#F3F7FC]' : 'border-[#E5E0D8]'}`}>
+                      <input type="radio" className="mr-2 accent-[#18345C]" checked={metodoExtension === 'guardada'} onChange={() => setMetodoExtension('guardada')} />
+                      <b>
+                        {en ? "Use saved card" : "Usar tarjeta guardada"}
+                      </b>
+                      <small className="mt-1 block text-[#71839B]">{tarjetaExtension.marca} · •••• {tarjetaExtension.ultimos4}</small>
+                    </label>}
+                    <label className={`cursor-pointer rounded-lg border p-3 text-sm ${metodoExtension === 'nueva' ? 'border-[#18345C] bg-[#F3F7FC]' : 'border-[#E5E0D8]'}`}>
+                      <input type="radio" className="mr-2 accent-[#18345C]" checked={metodoExtension === 'nueva'} onChange={() => setMetodoExtension('nueva')} />
+                      <b>
+                        {en ? "Add a new card" : "Agregar nueva tarjeta"}
+                      </b>
+                      <small className="mt-1 block text-[#71839B]">
+                        {en ? "Card details will be requested after approval." : "Se solicitarán los datos después de la aprobación."}
+                      </small>
+                    </label>
+                    <label className={`cursor-pointer rounded-lg border p-3 text-sm ${metodoExtension === 'recepcion' ? 'border-[#18345C] bg-[#F3F7FC]' : 'border-[#E5E0D8]'}`}>
+                      <input type="radio" className="mr-2 accent-[#18345C]" checked={metodoExtension === 'recepcion'} onChange={() => setMetodoExtension('recepcion')} />
+                      <b>
+                        {en ? "Pay at Reception" : "Pagar en Recepción"}
+                      </b>
+                      <small className="mt-1 block text-[#71839B]">
+                        {en ? "It will remain pending until Reception confirms the payment." : "Quedará como pago pendiente hasta que Recepción lo confirme."}
+                      </small>
+                    </label>
+                  </div>
+                </div>
+                <button
+                  disabled={nochesAdicionales < 1 || solicitudExtensionEnviada}
+                  onClick={() => {
+                    localStorage.setItem("vs-extension-metodo-pago",
+                      JSON.stringify({
+                        reservaId: reserva.id,
+                        metodo: metodoExtension,
+                        ultimos4: metodoExtension === 'guardada' ? tarjetaExtension?.ultimos4 : undefined,
+                        estado: metodoExtension === 'recepcion' ? 'pago-pendiente' : 'pendiente-aprobacion',
+                        montoEstimado: estimacionExtension
+                      }));
+                    setSolicitudExtensionEnviada(true);
+                    setCancelacionExtensionPendiente(false);
+                    guardarSolicitudExtension("extension-pendiente");
+                    mostrarAviso(metodoExtension === 'recepcion' ? "Solicitud enviada. El pago quedará pendiente en Recepción cuando se apruebe la extensión." : "Solicitud de extensión enviada a recepción.");
+                  }}
+                  className="mt-4 rounded-lg bg-[#18345C] px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9AA9BB]">
+                  {en ? "Request extension" : "Solicitar extensión"}
+                </button>
+              </section>
+
+              {solicitudExtensionEnviada && <section className="mt-5 flex flex-col gap-5 rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-4">
+                  <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#B58C31] text-white">
+                    <ExtensionIcon tipo="espera" />
+                  </span>
+                  <div>
+                    <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${cancelacionExtensionPendiente ? 'bg-[#FEECEC] text-[#A52A2A]' : 'bg-[#FFF3D5] text-[#8A6200]'}`}>
+                      {cancelacionExtensionPendiente ? 'Cancelación en revisión' : 'Pendiente de aprobación'}
+                    </span>
+                    <p className="mt-2 font-semibold text-[#18345C]">
+                      {cancelacionExtensionPendiente ? 'Enviamos a recepción tu solicitud de cancelación.' : `Solicitud enviada para extender la estancia hasta el ${fechaLarga(nuevaSalida)}.`}
+                    </p>
+                    <p className="text-sm text-[#71839B]">
+                      {cancelacionExtensionPendiente ? 'Recepción revisará el motivo y confirmará la cancelación.' : 'Te notificaremos por este medio tan pronto como tengamos una respuesta.'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={() => setCancelarExtensionAbierto(true)}
+                    disabled={cancelacionExtensionPendiente}
+                    className="rounded-lg border border-[#18345C] px-5 py-2.5 font-semibold text-[#18345C] disabled:opacity-50">Cancelar solicitud</button>
+                  <button
+                    onClick={() => {
+                      void enviarMensaje("Tengo problemas con mi solicitud de cancelación.");
+                      setSeccion("chat");
+                    }}
+                    className="flex items-center gap-2 rounded-lg border border-[#B58C31] px-5 py-2.5 font-semibold text-[#8A6819]"><ExtensionIcon tipo="audifonos" /> Contactar a recepción</button>
+                </div>
+              </section>}
+            </div>
+
+            {cancelarExtensionAbierto && <div className="fixed inset-0 z-[100] grid place-items-center bg-[#071D34]/45 p-4" onMouseDown={() => setCancelarExtensionAbierto(false)}>
+              <section className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl" onMouseDown={e => e.stopPropagation()}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-2xl font-semibold text-[#18345C]">¿Deseas cancelar la solicitud?</h2>
+                    <p className="mt-1 text-[#71839B]">Indica el motivo de la cancelación.</p>
+                  </div>
+                  <button onClick={() => setCancelarExtensionAbierto(false)} className="text-2xl text-[#52677F]">×</button>
+                </div>
+                <div className="mt-5 space-y-3">
+                  {["Ya no necesito noches adicionales", "Cambiaron mis planes", "El precio no se ajusta a mi presupuesto", "Prefiero reservar otra habitación", "Otro motivo"].map(opcion => <label key={opcion} className="flex cursor-pointer items-center gap-3 text-[#314860]">
+                    <input
+                      type="radio"
+                      name="motivo-extension"
+                      value={opcion}
+                      checked={motivoCancelacionOpcion === opcion}
+                      onChange={() => setMotivoCancelacionOpcion(opcion)}
+                      className="h-4 w-4 accent-[#18345C]" />
+                    {opcion}
+                  </label>)}
+                </div>
+                {motivoCancelacionOpcion === "Otro motivo" && <textarea
+                  autoFocus
+                  value={motivoCancelacionExtension}
+                  onChange={e => setMotivoCancelacionExtension(e.target.value)}
+                  rows={3}
+                  placeholder="Escribe el motivo aquí..."
+                  className="mt-4 w-full resize-none rounded-lg border border-[#CCD3DB] p-3 outline-none focus:border-[#18345C]" />}
+                <div className="mt-5 flex gap-3 rounded-lg bg-[#F8F6F0] p-3 text-sm text-[#52677F]">
+                  <span className="font-bold text-[#18345C]">ⓘ</span>
+                  <p>¿Tienes algún problema con tu solicitud? <button
+                    onClick={() => {
+                      void enviarMensaje("Tengo problemas con mi solicitud de cancelación.");
+                      setCancelarExtensionAbierto(false);
+                      setSeccion("chat");
+                    }}
+                    className="font-semibold text-[#18345C] underline">Contacta a recepción</button> antes de cancelarla.</p>
+                </div>
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <button onClick={() => setCancelarExtensionAbierto(false)} className="rounded-lg border border-[#18345C] py-3 font-semibold text-[#18345C]">Volver</button>
+                  <button
+                    disabled={!motivoCancelacionOpcion || (motivoCancelacionOpcion === "Otro motivo" && !motivoCancelacionExtension.trim())}
+                    onClick={() => {
+                      const motivo = motivoCancelacionOpcion === "Otro motivo" ? motivoCancelacionExtension.trim() : motivoCancelacionOpcion;
+                      setCancelacionExtensionPendiente(true);
+                      guardarSolicitudExtension("cancelacion-pendiente", motivo);
+                      setCancelarExtensionAbierto(false);
+                      mostrarAviso(`Solicitud de cancelación enviada a recepción. Motivo: ${motivo}`);
+                    }}
+                    className="rounded-lg border border-red-500 py-3 font-semibold text-red-600 disabled:opacity-40">Confirmar cancelación</button>
+                </div>
+              </section>
+            </div>}
+          </div>);
+        return (<div className="flex-1 flex flex-col overflow-hidden">
+          <ReservarEstancia
+            ofertas={ofertasReserva}
+            habitaciones={habitacionesReserva}
+            reservas={reservasHotel}
+            huesped={huesped}
+            reservaWeb={reservaWeb}
+            onConfirmar={confirmarReservaWeb}
+            onNuevaBusqueda={() => setReservaWeb(null)}
+            onVolver={() => setGestionEstancia(null)}
+            onVerReservacion={() => {
+              setGestionEstancia(null);
+              setSeccion("inicio");
+            }} />
+        </div>);
+      case "checkin":
+        return (<CheckInWebScreen
+          huesped={huesped}
+          reserva={reserva}
+          habitacion={habitacion}
+          checkin={checkin}
+          estanciaCerrada={estanciaCerrada}
+          onCompletar={completarCheckIn}
+          onGuardarOcupantes={guardarOcupantes}
+          onIrHabitacion={() => setSeccion("habitacion")}
+          onContactarRecepcion={() => {
+            void enviarMensaje("Deseo corregir los datos personales de mi check-in. ¿Podrían ayudarme con la verificación?");
+            setSeccion("chat");
+          }} />);
+      case "restaurante":
+        return (<ServiciosHuesped
+          menu={menu}
+          servicios={SERVICIOS_CATALOGO}
+          pedidos={pedidos}
+          mensajes={mensajes}
+          escribiendo={escribiendo}
+          habitacion={habitacion}
+          estanciaCerrada={estanciaCerrada}
+          onCrearPedido={crearPedido}
+          onCancelarPedido={cancelarPedido}
+          onEnviarMensaje={enviarMensaje}
+          onIrCuenta={() => setSeccion("cuenta")}
+          modo="restaurante" />);
+      case "servicios":
+        return (<ServiciosHuesped
+          menu={menu}
+          servicios={SERVICIOS_CATALOGO}
+          pedidos={pedidos}
+          mensajes={mensajes}
+          escribiendo={escribiendo}
+          habitacion={habitacion}
+          estanciaCerrada={estanciaCerrada}
+          onCrearPedido={crearPedido}
+          onCancelarPedido={cancelarPedido}
+          onEnviarMensaje={enviarMensaje}
+          onIrCuenta={() => setSeccion("cuenta")}
+          modo="servicios" />);
+      case "chat":
+        return <ChatHuesped nombreHuesped={nombrePerfil} mensajes={mensajes} onEnviar={enviarMensaje} onEditar={editarMensaje} onEliminar={eliminarMensaje} />;
+      case "experiencias":
+        return (<ReservasExperiencias
+          turnos={turnos}
+          reservas={reservasAmenidad}
+          onReservar={reservarTurno}
+          onCancelar={cancelarTurno}
+          onCargoConfirmado={(id,
+            nombre,
+            monto) => setCargos(actuales => actuales.some(c => c.id === id) ? actuales : [...actuales, { id, concepto: `Experiencia · ${nombre}`, categoria: "Spa y experiencias", cantidad: 1, precioUnitario: monto, fecha: ahoraISO() }])} />);
+      case "habitacion":
+        return (<MiHabitacion
+          habitacion={habitacion}
+          domotica={domotica}
+          turnos={turnos}
+          reservasAmenidad={reservasAmenidad}
+          llaveActiva={llaveActiva}
+          codigoLlave={checkin.codigoLlave}
+          estanciaCerrada={estanciaCerrada}
+          onActualizarDomotica={actualizarDomotica}
+          onActualizarLuz={actualizarLuz}
+          onConectarWifi={conectarWifi}
+          onReservarTurno={reservarTurno}
+          onCancelarTurno={cancelarTurno}
+          onIrCheckin={() => setSeccion("checkin")} />);
+      case "cuenta":
+        return (<CuentaHuesped
+          huesped={huesped}
+          reserva={reserva}
+          habitacion={habitacion}
+          estadoHabitacion={estadoHabitacion}
+          cargos={cargos}
+          cuenta={cuenta}
+          pagos={pagos}
+          fiscales={fiscales}
+          facturaEmitida={facturaEmitida}
+          puntos={puntos}
+          estanciaCerrada={estanciaCerrada}
+          onGuardarFiscales={guardarFiscales}
+          onPagar={pagarSaldo}
+          onCheckOut={hacerCheckOut} />);
+    }
+  })();
+  const badgeDe = (id: SeccionHuesped) => {
+    if (id === "servicios")
+      return pedidosActivos.length;
+    if (id === "checkin")
+      return checkin.estado === "disponible" && !estanciaCerrada ? 1 : 0;
+    if (id === "cuenta")
+      return cuenta.saldo > 0 && estanciaCerrada ? 1 : 0;
+    return 0;
+  };
+  return (<div className="min-h-screen w-full flex flex-col overflow-hidden" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
+    <style>
+      {`
+        @import url('https://fonts.googleapis.com/css2?family=Afacad:wght@400;500;600;700&display=swap');
+      `}
+    </style>
+
+    <div className="flex-1 flex overflow-hidden">
+
+      <nav className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-[245px] h-[100dvh]" style={{ backgroundColor: "#102747" }}>
+        <div className="px-5 pt-6 pb-5 border-b shrink-0 text-center" style={{ borderColor: "#1d3a5f" }}>
+          <img src="/villa-serena-logo.png" alt="Villa Serena Hotel" className="mx-auto w-28 h-auto object-contain mb-2" />
+          <p className="text-white text-xl font-bold leading-tight" style={{ letterSpacing: "0.02em" }}>
+            <UiText text="Villa Serena" />
+          </p>
+          <p className="text-xs mt-1" style={{ color: "#AEBCC1", letterSpacing: "0.06em" }}>
+            <UiText text="Portal del huésped" />
+          </p>
+        </div>
+
+        <div className="vs-scroll-clean flex-1 py-3 overflow-y-auto">
+          {SECCIONES.map((s) => {
+            const active = seccion === s.id;
+            const badge = badgeDe(s.id);
+            return (<button
+              key={s.id}
+              onClick={() => setSeccion(s.id)}
+              className="w-full flex items-center gap-3 px-5 py-3 text-left transition-colors relative"
+              style={{
+                color: active ? "#FFFFFF" : "#AEBCC1",
+                backgroundColor: active ? "#18345C" : "transparent",
+              }}>
+              {active && (<span className="absolute left-0 top-0 h-full w-0.5" style={{ backgroundColor: "#D8B94E" }} />)}
+              <span style={{ color: active ? "#D8B94E" : "#AEBCC1" }}>
+                <SeccionIcon id={s.id} />
+              </span>
+              <span className="text-sm font-medium flex-1">
+                {ui(s.label)}
+              </span>
+              {badge > 0 && (<span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" style={{ backgroundColor: "#D8B94E", color: "#102747" }}>
+                {badge}
+              </span>)}
+            </button>);
+          })}
+        </div>
+
+        <ModuloSwitcher actual="huesped" onCambiar={onCambiarModulo} />
+
+        <div className="mt-auto px-4 py-3 border-t shrink-0 bg-[#102747]" style={{ borderColor: "#1d3a5f" }}>
+          <button
+            type="button"
+            onClick={() => setPerfilAbierto(true)}
+            className="flex w-full items-center gap-3 rounded-lg p-1.5 text-left transition-colors hover:bg-[#18345C]"
+            aria-label={ui("Abrir perfil")}>
+            {fotoPerfil ? (<img src={fotoPerfil} alt={ui("Foto de perfil")} className="w-9 h-9 rounded-full object-cover shrink-0" />) : (<div
+              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
+              style={{ backgroundColor: "#D8B94E", color: "#102747" }}>
+              <UiText text="AM" />
+            </div>)}
+            <div className="min-w-0">
+              <p className="text-white text-xs font-semibold truncate">
+                {nombrePerfil}
+              </p>
+              <p className="text-[10px] truncate" style={{ color: "#AEBCC1" }}>
+                {ui(estanciaCerrada
+                  ? "Estancia finalizada"
+                  : `Habitación ${habitacion.numero}`)}
+              </p>
+              <span className="mt-0.5 block text-[10px] font-semibold text-[#D8B94E]">
+                <UiText text="Perfil" />
+              </span>
+            </div>
+          </button>
+
+        </div>
+      </nav>
+
+      <div className="flex-1 lg:ml-[245px] flex flex-col overflow-hidden">
+        <div className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: "#102747" }}>
+          <p className="lg:hidden text-white text-lg font-bold">
+            <UiText text="Villa Serena" />
+          </p>
+          <span className="lg:hidden text-[#AEBCC1] text-xs">
+            <UiText text="·" />
+          </span>
+          <p className="text-[#AEBCC1] text-xs font-medium truncate flex-1">
+            {ui(SECCIONES.find((s) => s.id === seccion)?.label ?? "")}
+          </p>
+          <div className="lg:hidden flex gap-1.5">
+            <ModuloSwitcher actual="huesped" onCambiar={onCambiarModulo} variant="inline" />
+          </div>
+        </div>
+
+        <div className="flex-1 flex overflow-hidden relative">
+          {contenido}
+        </div>
+
+        <div className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: "#102747", borderColor: "#1d3a5f" }}>
+          {SECCIONES.map((s) => {
+            const active = seccion === s.id;
+            const badge = badgeDe(s.id);
+            return (<button
+              key={s.id}
+              onClick={() => setSeccion(s.id)}
+              className="flex-1 min-w-[64px] flex flex-col items-center justify-center py-2 gap-0.5 relative transition-colors"
+              style={{ color: active ? "#D8B94E" : "#AEBCC1" }}>
+              {active && (<span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5" style={{ backgroundColor: "#D8B94E" }} />)}
+              <span className="relative">
+                <SeccionIcon id={s.id} size={20} />
+                {badge > 0 && (<span
+                  className="absolute -top-1 -right-2 text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: "#D8B94E", color: "#102747" }}>
+                  {badge}
+                </span>)}
+              </span>
+              <span className="text-[9px] font-medium leading-tight truncate max-w-full px-0.5">
+                {s.corto}
+              </span>
+            </button>);
+          })}
+        </div>
+      </div>
+    </div>
+
+    {perfilAbierto && (<PerfilHuesped
+      documento={`${huesped.tipoDocumento} ${huesped.documento}`}
+      nombre={nombrePerfil}
+      telefono={telefonoPerfil}
+      correo={correoPerfil}
+      foto={fotoPerfil}
+      idioma={lang}
+      onVolver={() => setPerfilAbierto(false)}
+      onFoto={setFotoPerfil}
+      onTelefono={(v) => {
+        setTelefonoPerfil(v);
+        actualizarHuespedCentral(huesped.id, { telefono: v });
+      }}
+      onCorreo={(v) => {
+        setCorreoPerfil(v);
+        actualizarHuespedCentral(huesped.id, { correo: v });
+      }}
+      onIdioma={() => { }}
+      onAviso={mostrarAviso}
+      onSolicitarCorreccion={(d) => {
+        if (!d)
+          return;
+        try {
+          const k = "vs-correcciones-huesped";
+          const prev = JSON.parse(localStorage.getItem(k) || "[]");
+          localStorage.setItem(k,
+            JSON.stringify([
+              {
+                id: generarId(),
+                huesped: nombrePerfil,
+                habitacion: reserva.codigo || "",
+                ...d,
+                estado: "pendiente",
+                fecha: new Date().toISOString(),
+              },
+              ...prev,
+            ]));
+          window.dispatchEvent(new Event("vs-correcciones-huesped-updated"));
+        }
+        catch { }
+      }} />)}
+
+    {cerrarSesionAbierto && (<div className="fixed inset-0 z-[90] bg-black/40 grid place-items-center p-4" role="dialog" aria-modal="true">
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+        <h2 className="text-xl font-semibold text-[#18345C]">
+          <UiText text="¿Deseas cerrar sesión?" />
+        </h2>
+        <p className="text-[#6B7280] mt-2">
+          <UiText text="Tendrás que ingresar nuevamente para acceder al portal del huésped." />
+        </p>
+        <div className="grid grid-cols-2 gap-3 mt-6">
+          <button onClick={() => setCerrarSesionAbierto(false)} className="border border-[#E5E0D8] rounded-lg py-3 font-semibold text-[#18345C]">
+            <UiText text="Cancelar" />
+          </button>
+          <button
+            onClick={() => {
+              localStorage.removeItem("vs-auth");
+              localStorage.removeItem("villa-serena-session");
+              window.location.replace("/");
+            }}
+            className="bg-[#18345C] text-white rounded-lg py-3 font-semibold">
+            <UiText text="Cerrar sesión" />
+          </button>
+        </div>
+      </div>
+    </div>)}
+
+    {aviso && (<div className="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-md">
+      <div className="bg-[#102747] text-white text-[14px] font-medium px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+        <span style={{ color: "#D8B94E" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </span>
+        <span className="flex-1">
+          {ui(aviso)}
+        </span>
+        <button onClick={() => setAviso(null)} aria-label={ui("Cerrar aviso")} className="text-[#AEBCC1] hover:text-white shrink-0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+    </div>)}
+  </div>);
+}

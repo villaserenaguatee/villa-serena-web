@@ -1,0 +1,70 @@
+{
+  "common": {
+    "languageName": "English",
+    "home": "Home",
+    "rooms": "Rooms",
+    "services": "Services",
+    "about": "About us",
+    "contact": "Contact",
+    "signIn": "Sign in",
+    "bookNow": "Book now",
+    "back": "Back",
+    "continue": "Continue",
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close",
+    "loading": "Loading…"
+  },
+  "language": {
+    "switchTo": "Cambiar a español",
+    "shortTarget": "ES"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot your password?",
+    "signingIn": "Signing in…",
+    "guestActivationNotice": "Guest accounts are activated after confirming a booking.",
+    "recoverPassword": "Recover password",
+    "recoverInstruction": "Enter the email address associated with your account.",
+    "sendCode": "Send code",
+    "codeDelivery": "We will send a 6-digit code to this email.",
+    "verificationCode": "Verification code",
+    "resendCode": "Resend code",
+    "resendWait": "Resend code in {seconds}s",
+    "codeResent": "A new code has been requested for your email.",
+    "verifyEmail": "Verify your email",
+    "verificationInstruction": "Enter the 6-digit code sent to {email}.",
+    "yourEmail": "your email",
+    "verify": "Verify",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "savePassword": "Save password",
+    "loginError": "Could not sign in",
+    "rules": {
+      "length": "8 characters",
+      "uppercase": "Uppercase letter",
+      "lowercase": "Lowercase letter",
+      "number": "Number",
+      "special": "Special character"
+    }
+  },
+  "publicBooking": {
+    "loading": "Loading confirmation…",
+    "notFound": "The reservation was not found.",
+    "roomReserved": "Your room has been reserved successfully.",
+    "paymentMethod": "Payment method",
+    "payAtHotel": "Pay at Reception",
+    "onlinePayment": "Online payment",
+    "paymentStatus": "Payment status",
+    "pending": "Pending",
+    "paid": "Paid",
+    "payAtReception": "Payment will be made at reception.",
+    "unavailable": "The room is no longer available for those dates.",
+    "invalidGuest": "Complete the required guest details.",
+    "priceChanged": "The rate changed. Return to the results and try again.",
+    "invalidPromo": "The promo code is invalid or inactive.",
+    "paymentUnverified": "Online payment requires approval from a payment gateway.",
+    "saveFailed": "The reservation could not be saved. Please try again."
+  }
+}
