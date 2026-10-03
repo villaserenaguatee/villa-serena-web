@@ -1,3 +1,4 @@
+import { checkInRealizado, checkInWebPendiente } from '@/store/reservationStore';
 import { fechaHotel } from "@/lib/hotel";
 import { useMemo } from 'react';
 import type { Reserva, Huesped, HabitacionHotel, SeccionRecepcion } from '@/lib/pms/types';
@@ -23,7 +24,7 @@ export default function DiaRecepcion({ reservas, huespedes, habitaciones, onAbri
     return m;
   }, [huespedes]);
   const llegadas = reservas
-    .filter(r => (r.fechaEntrada === hoy && (r.estado === 'confirmada' || r.estado === 'pendiente')) || r.checkInEn?.slice(0, 10) === hoy || r.checkInWeb?.estado === 'pendiente' || r.checkInWeb?.estado === 'rechazado')
+    .filter(r => !checkInRealizado(r) && (r.estado === 'confirmada' || r.estado === 'pendiente') && (r.fechaEntrada === hoy || checkInWebPendiente(r) || r.checkInWeb?.estado === 'rechazado'))
     .sort((a, b) => a.codigo.localeCompare(b.codigo));
   const salidas = reservas
     .filter(r => (r.fechaSalida === hoy && r.estado === 'en-curso') || r.checkOutEn?.slice(0, 10) === hoy)
@@ -45,7 +46,7 @@ export default function DiaRecepcion({ reservas, huespedes, habitaciones, onAbri
       </div>
     </div>
 
-    <div className="px-4 sm:px-8 py-6 space-y-7">
+    <div className="px-4 sm:px-8 py-3 space-y-3">
       <Bloque
         titulo="Entradas programadas (check-in)"
         vacio="No hay llegadas para hoy."
@@ -62,24 +63,24 @@ export default function DiaRecepcion({ reservas, huespedes, habitaciones, onAbri
         onAbrirReserva={onAbrirReserva} />
 
       <section>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2">
           <h2 className="text-[20px] font-semibold text-[#18345C]">Reservas pendientes de confirmar</h2>
           <button onClick={() => onIr('reservas')} className="text-[13px] font-semibold text-[#18345C] hover:underline">
             Ver reservas ›
           </button>
         </div>
-        {pendientes.length === 0 ? (<p className="text-[13px] text-[#AEBCC1]">Todo confirmado.</p>) : (<div className="space-y-2">
+        {pendientes.length === 0 ? (<p className="text-[13px] text-[#AEBCC1]">Todo confirmado.</p>) : (<div className="space-y-1.5">
           {pendientes.map(r => {
             const h = huespedDe.get(r.huespedId);
             return (<button
               key={r.id}
               onClick={() => onAbrirReserva(r.id)}
-              className="w-full text-left bg-white border border-[#E5E0D8] rounded-xl px-4 py-3 flex items-center gap-3 hover:border-[#18345C] transition-colors">
+              className="w-full text-left bg-white border border-[#E5E0D8] rounded-xl px-3 py-1.5 flex flex-wrap md:flex-nowrap items-center gap-3 hover:border-[#18345C] transition-colors">
               <img
                 src={imagenReserva(r, habitaciones.find(x => x.id === r.habitacionId))}
                 alt={`Habitación ${r.tipoHabitacion}`}
                 className="h-14 w-20 shrink-0 rounded-lg object-cover" />
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-[160px] break-words">
                 <p className="text-[14px] font-semibold text-[#18345C]">
                   {h?.nombre ?? 'Huésped'}
                 </p>
@@ -119,12 +120,12 @@ function Bloque({ titulo, vacio, items, huespedDe, habitaciones, onAbrirReserva,
   onAbrirReserva: (id: string) => void;
 }) {
   return (<section>
-    <h2 className="text-[20px] font-semibold text-[#18345C] mb-3">
+    <h2 className="text-[20px] font-semibold text-[#18345C] mb-2">
       {titulo}
     </h2>
     {items.length === 0 ? (<p className="text-[13px] text-[#AEBCC1]">
       {vacio}
-    </p>) : (<div className="space-y-2">
+    </p>) : (<div className="space-y-1.5">
       {items.map(r => {
         const h = huespedDe.get(r.huespedId);
         const hab = habitaciones.find(x => x.id === r.habitacionId);
@@ -132,13 +133,13 @@ function Bloque({ titulo, vacio, items, huespedDe, habitaciones, onAbrirReserva,
           key={r.id}
           onClick={() => onAbrirReserva(r.id)}
           className="w-full text-left bg-white border border-[#E5E0D8] rounded-xl px-4 py-3 flex items-center gap-3 hover:border-[#18345C] transition-colors">
-          <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg">
+          <div className="relative h-16 w-[72px] shrink-0 overflow-hidden rounded-lg">
             <img src={imagenReserva(r, hab)} alt={hab ? `Habitación ${hab.numero}` : `Categoría ${r.tipoHabitacion}`} className="h-full w-full object-cover" />
             <span className="absolute bottom-1 left-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-bold text-[#18345C]">
               {hab?.numero ?? '—'}
             </span>
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-[160px] break-words">
             <p className="text-[14px] font-semibold text-[#18345C]">
               {h?.nombre ?? 'Huésped'}
             </p>
@@ -146,9 +147,9 @@ function Bloque({ titulo, vacio, items, huespedDe, habitaciones, onAbrirReserva,
               {r.codigo} · {r.personas} pers. · {r.tipoHabitacion}
             </p>
           </div>
-          {r.checkInWeb?.estado === 'pendiente'
+          {checkInWebPendiente(r)
             ? <Chip cls="bg-[#FFF3D5] text-[#8A6200] border-[#F0C95A]">CHECK-IN WEB POR VALIDAR</Chip>
-            : r.checkInWeb?.estado === 'rechazado'
+            : !checkInRealizado(r) && r.checkInWeb?.estado === 'rechazado'
               ? <Chip cls="bg-[#FEE2E2] text-[#991B1B] border-[#FCA5A5]">CORRECCIÓN SOLICITADA</Chip>
               : r.checkOutEn?.slice(0, 10) === fechaHotel()
                 ? <Chip cls="bg-[#F3F4F6] text-[#374151] border-[#D1D5DB]">CHECK-OUT WEB REALIZADO</Chip>
@@ -157,6 +158,7 @@ function Bloque({ titulo, vacio, items, huespedDe, habitaciones, onAbrirReserva,
                   : <Chip cls={RESERVA_META[r.estado].chip}>
                     {RESERVA_META[r.estado].label}
                   </Chip>}
+          <span className="ml-auto shrink-0 text-xs font-semibold text-[#18345C]">Ver detalle ›</span>
         </button>);
       })}
     </div>)}

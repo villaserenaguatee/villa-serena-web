@@ -1,10 +1,11 @@
 import { UiText, useUiText } from "@/i18n/UiText";
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { OfertaHabitacion, HabitacionHotel, Reserva, Huesped, ReservaHuesped, TipoHabitacion, DatosContacto, } from "@/lib/pms/types";
 import { tarjetaPrincipal } from '@/store/paymentStore';
 import { fechaHoyISO, fechaRelativaISO, formatoFecha, nochesEntre, } from "@/data/pms";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
-import { dinero, Chip, Campo, INPUT_CLS, Cabecera, Tarjeta, Aviso, BotonPrimario, BotonSecundario, habitacionesDisponibles, correoValido, telefonoValido, formatoTarjeta, ultimos4, CalendarIcon, UserIcon, SearchIcon, CheckIcon, MailIcon, CardIcon, BedIcon, } from "@/features/huesped/pages/huespedUtils";
+import { dinero, Chip, Campo, INPUT_CLS, Cabecera, Tarjeta, Aviso, BotonPrimario, BotonSecundario, habitacionesDisponibles, correoValido, telefonoValido, formatoTarjeta, CalendarIcon, UserIcon, SearchIcon, CheckIcon, MailIcon, CardIcon, BedIcon, } from "@/features/huesped/pages/huespedUtils";
 type Paso = "buscar" | "datos" | "revisar" | "pago" | "listo";
 const PASOS: {
   id: Paso;
@@ -22,27 +23,13 @@ interface Props {
   reservas: Reserva[];
   huesped: Huesped;
   reservaWeb: ReservaHuesped | null;
-  onConfirmar: (datos: {
-    tipo: TipoHabitacion;
-    fechaEntrada: string;
-    fechaSalida: string;
-    personas: number;
-    adultos: number;
-    ninos: number;
-    contacto: DatosContacto;
-    tipoDocumento: string;
-    nacionalidad: string;
-    horaLlegada: string;
-    metodoPago: "tarjeta" | "hotel";
-    paraOtraPersona: boolean;
-    ultimos4: string;
-  }) => void;
   onNuevaBusqueda: () => void;
   onVolver?: () => void;
   onVerReservacion?: () => void;
 }
-export default function ReservarEstancia({ ofertas, habitaciones, reservas, huesped, reservaWeb, onConfirmar, onNuevaBusqueda, onVolver, onVerReservacion, }: Props) {
+export default function ReservarEstancia({ ofertas, habitaciones, reservas, huesped, reservaWeb, onNuevaBusqueda, onVolver, onVerReservacion, }: Props) {
   const ui = useUiText();
+  const tBooking = useTranslations("publicBooking");
   const { en } = usePublicLanguage();
   const [paso, setPaso] = useState<Paso>(reservaWeb ? "listo" : "buscar");
   const [entrada, setEntrada] = useState(fechaRelativaISO(7));
@@ -77,11 +64,10 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
   const [vence, setVence] = useState("");
   const [cvv, setCvv] = useState("");
   const [erroresPago, setErroresPago] = useState<Record<string, string>>({});
-  const [procesando, setProcesando] = useState(false);
-  const [metodoPago, setMetodoPago] = useState<"tarjeta" | "hotel">("tarjeta");
-  const [usarTarjetaGuardada, setUsarTarjetaGuardada] = useState(true);
+  const [errorPago, setErrorPago] = useState("");
+  const [usarTarjetaGuardada, setUsarTarjetaGuardada] = useState(() => !!tarjetaPrincipal(huesped.id));
   const [aceptaCondiciones, setAceptaCondiciones] = useState(false);
-  const guardada = tarjetaPrincipal();
+  const guardada = tarjetaPrincipal(huesped.id);
   const noches = nochesEntre(entrada, salida);
   const disponiblesPorTipo = useMemo(() => {
     const libres = habitacionesDisponibles(entrada, salida, habitaciones, reservas, { personas });
@@ -155,11 +141,11 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
   }
   function validarPago(): boolean {
     const e: Record<string, string> = {};
-    if (metodoPago === "tarjeta" && !usarTarjetaGuardada && tarjeta.replace(/\D/g, "").length !== 16)
+    if (!usarTarjetaGuardada && tarjeta.replace(/\D/g, "").length !== 16)
       e.tarjeta = "Escribe los 16 dígitos de la tarjeta.";
-    if (metodoPago === "tarjeta" && !usarTarjetaGuardada && !titular.trim())
+    if (!usarTarjetaGuardada && !titular.trim())
       e.titular = "Escribe el nombre tal como aparece en la tarjeta.";
-    if (metodoPago === "tarjeta" && !usarTarjetaGuardada) {
+    if (!usarTarjetaGuardada) {
       const coincidencia = /^(\d{2})\/(\d{2})$/.exec(vence);
       if (!coincidencia) {
         e.vence = "Usa el formato MM/AA.";
@@ -175,7 +161,7 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
           e.vence = "La tarjeta está vencida. Revisa la fecha.";
       }
     }
-    if (metodoPago === "tarjeta" && !usarTarjetaGuardada && !/^\d{3,4}$/.test(cvv))
+    if (!usarTarjetaGuardada && !/^\d{3,4}$/.test(cvv))
       e.cvv = "El código de seguridad tiene 3 o 4 dígitos.";
     if (!aceptaCondiciones)
       e.condiciones = "Debes aceptar los términos y condiciones de la estancia.";
@@ -183,29 +169,11 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
     return Object.keys(e).length === 0;
   }
   function pagar() {
+    setErrorPago("");
     if (!validarPago() || !tipoElegido)
       return;
-    setProcesando(true);
-    window.setTimeout(() => {
-      onConfirmar({
-        tipo: tipoElegido,
-        fechaEntrada: entrada,
-        fechaSalida: salida,
-        personas,
-        adultos,
-        ninos,
-        tipoDocumento,
-        nacionalidad,
-        horaLlegada: sinHoraLlegada ? "" : horaLlegada,
-        metodoPago,
-        paraOtraPersona,
-        contacto: { ...contacto, nombre: `${contacto.nombre} ${apellidos}`.trim(), telefono: `${codigoPais} ${contacto.telefono}`.trim() },
-        ultimos4: metodoPago === "hotel" ? "hotel" : usarTarjetaGuardada ? (tarjetaPrincipal()?.ultimos4 ?? "") : ultimos4(tarjeta),
-      });
-      setProcesando(false);
-      setPaso("listo");
-    },
-      900);
+    // No persistir la reserva ni avanzar sin aprobación real del proveedor.
+    setErrorPago(tBooking("paymentUnavailable"));
   }
   function empezarDeNuevo() {
     onNuevaBusqueda();
@@ -217,8 +185,8 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
     setVence("");
     setCvv("");
     setErroresPago({});
-    setMetodoPago("tarjeta");
-    setUsarTarjetaGuardada(true);
+    setErrorPago("");
+    setUsarTarjetaGuardada(!!tarjetaPrincipal(huesped.id));
     setAceptaCondiciones(false);
   }
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
@@ -453,6 +421,7 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
               </Aviso>
             </div>
 
+            {errorPago && <p role="alert" className="mt-2 text-sm text-[#991B1B]">{errorPago}</p>}
             <div className="flex gap-2 mt-5">
               <BotonSecundario onClick={() => setPaso("buscar")} ancho>
                 <UiText text="Volver" />
@@ -514,12 +483,11 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
         <div className="space-y-5">
           <Tarjeta titulo="Selecciona el método de pago">
             <p className="mb-4 text-sm text-[#71839B]">Elige cómo deseas pagar tu reserva.</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-4 font-semibold ${metodoPago === 'tarjeta' ? 'border-[#18345C] bg-[#F3F7FC] text-[#18345C]' : 'border-[#E5E0D8]'}`}><input type="radio" name="metodo-pago" checked={metodoPago === 'tarjeta'} onChange={() => setMetodoPago('tarjeta')} className="accent-[#18345C]" />Tarjeta de crédito o débito</label>
-              <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-4 font-semibold ${metodoPago === 'hotel' ? 'border-[#18345C] bg-[#F3F7FC] text-[#18345C]' : 'border-[#E5E0D8]'}`}><input type="radio" name="metodo-pago" checked={metodoPago === 'hotel'} onChange={() => setMetodoPago('hotel')} className="accent-[#18345C]" />Pagar en Recepción</label>
+            <div className="flex items-center rounded-lg border border-[#18345C] bg-[#F3F7FC] p-4 font-semibold text-[#18345C]">
+              Tarjeta de crédito o débito
             </div>
 
-            {metodoPago === 'tarjeta' && <div className="mt-5">
+            <div className="mt-5">
               <div className="mx-auto flex aspect-[1.586/1] w-full max-w-[380px] flex-col justify-between rounded-[22px] bg-gradient-to-br from-[#102F56] to-[#28537E] p-5 text-white shadow-lg">
                 <div className="flex items-start justify-between">
                   <b className="text-lg">Villa Serena</b>
@@ -541,7 +509,7 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
               </div>
               <div className="mt-4 space-y-3 rounded-xl border border-[#E5E0D8] p-4">
                 <label className="flex cursor-pointer gap-3">
-                  <input type="radio" name="tarjeta-reserva" checked={usarTarjetaGuardada} onChange={() => setUsarTarjetaGuardada(true)} className="accent-[#18345C]" />
+                  <input type="radio" name="tarjeta-reserva" disabled={!guardada} checked={usarTarjetaGuardada && !!guardada} onChange={() => setUsarTarjetaGuardada(true)} className="accent-[#18345C]" />
                   <span>
                     <b className="block text-[#18345C]">Usar tarjeta guardada</b>
                     <small className="text-[#52677F]">
@@ -556,13 +524,13 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
                   onChange={() => setUsarTarjetaGuardada(false)}
                   className="accent-[#18345C]" />Agregar otra tarjeta</label>
               </div>
-            </div>}
+            </div>
 
-            {metodoPago === 'tarjeta' && !usarTarjetaGuardada && <section className="mt-5 rounded-xl border border-[#E5E0D8] p-5">
+            {!usarTarjetaGuardada && <section className="mt-5 rounded-xl border border-[#E5E0D8] p-5">
               <div className="mb-4 flex items-start justify-between">
                 <div>
-                  <h3 className="font-semibold text-[#18345C]">Pago en línea seguro</h3>
-                  <p className="text-xs text-[#71839B]">Los detalles de pago se procesarán al confirmar la reserva.</p>
+                  <h3 className="font-semibold text-[#18345C]">Formulario de tarjeta</h3>
+                  <p className="text-xs text-[#71839B]">El pago con tarjeta no está disponible en este momento.</p>
                 </div>
                 <b className="text-[#18345C]">●● &nbsp; VISA</b>
               </div>
@@ -624,18 +592,16 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
               </div>
             </section>}
 
-            {metodoPago === 'tarjeta' && <div className="mt-4">
+            <div className="mt-4">
               <Aviso tono="info">
                 <span className="flex items-start gap-2">
                   <CardIcon />
                   <span>
-                    <UiText text="                         El cobro se procesa a través de una pasarela certificada. Villa Serena no almacena el                         número completo de tu tarjeta.                       " />
+                    <UiText text="El pago con tarjeta no está disponible en este momento." />
                   </span>
                 </span>
               </Aviso>
-            </div>}
-
-            {metodoPago === 'hotel' && <div className="mt-5 rounded-xl border border-[#E7D49B] bg-[#FFF9E8] p-4 text-sm text-[#675224]"><b className="block text-[#18345C]">Pago pendiente en Recepción</b>No se realizará ningún cargo ahora. La reserva quedará con pago pendiente hasta que Recepción registre el pago.</div>}
+            </div>
 
             <label className="mt-5 flex cursor-pointer items-start gap-3 text-sm text-[#314860]">
               <input type="checkbox" checked={aceptaCondiciones} onChange={e => setAceptaCondiciones(e.target.checked)} className="mt-1 accent-[#18345C]" />
@@ -649,8 +615,8 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
               <BotonSecundario onClick={() => setPaso("revisar")} ancho>
                 <UiText text="Volver" />
               </BotonSecundario>
-              <BotonPrimario ancho onClick={pagar} disabled={procesando}>
-                {procesando ? "Procesando…" : metodoPago === 'hotel' ? "Continuar" : "Pagar"}
+              <BotonPrimario ancho onClick={pagar}>
+                <UiText text="Pagar" />
               </BotonPrimario>
             </div>
           </Tarjeta>
@@ -690,11 +656,11 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
                   <DatoConfirmacion label="Entrada" valor={formatoFecha(reservaWeb.fechaEntrada)} />
                   <DatoConfirmacion label="Salida" valor={formatoFecha(reservaWeb.fechaSalida)} />
                   <DatoConfirmacion label="Ocupación" valor={`${reservaWeb.personas} ${reservaWeb.personas === 1 ? 'huésped' : 'huéspedes'}`} />
-                  <DatoConfirmacion label={reservaWeb.ultimos4 === "hotel" ? "Total a pagar" : "Total pagado"} valor={dinero(reservaWeb.total)} />
+                  <DatoConfirmacion label={/^\d{4}$/.test(reservaWeb.ultimos4) ? "Total pagado" : "Total de la reserva"} valor={dinero(reservaWeb.total)} />
                   <div className="col-span-2">
                     <DatoConfirmacion
                       label="Método de pago"
-                      valor={reservaWeb.ultimos4 === "hotel" ? "Pago en el hotel" : `Tarjeta de crédito •••• ${reservaWeb.ultimos4}`} />
+                      valor={/^\d{4}$/.test(reservaWeb.ultimos4) ? `Tarjeta de crédito •••• ${reservaWeb.ultimos4}` : "Pago sin confirmar"} />
                   </div>
                 </div>
               </section>

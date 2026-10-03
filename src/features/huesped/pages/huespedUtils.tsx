@@ -97,7 +97,6 @@ export const METODO_PAGO_LABEL: Record<MetodoPagoHuesped, string> = {
   tarjeta: "Tarjeta de crédito",
   debito: "Tarjeta de débito",
   puntos: "Puntos de fidelidad",
-  recepcion: "Pagar en Recepción",
 };
 export function puntosDeMonto(monto: number): number {
   return Math.ceil(monto * PUNTOS_POR_MONEDA);

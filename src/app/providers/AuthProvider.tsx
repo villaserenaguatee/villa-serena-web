@@ -1,7 +1,8 @@
 'use client';
 import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { loginLocal } from '@/lib/auth/local-auth';
-import { leerEmpleados, EMPLEADOS_EVENT } from '@/store/employeeStore';
+import { loginLocal, reconstruirSesion } from '@/lib/auth/local-auth';
+import { EMPLEADOS_EVENT } from '@/store/employeeStore';
+import { HUESPEDES_EVENT } from '@/store/guestStore';
 import type { SessionUser } from '@/lib/auth/types';
 interface AuthContextValue {
   user: SessionUser | null;
@@ -17,55 +18,43 @@ export function AuthProvider({ children }: {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        const session = JSON.parse(raw) as SessionUser;
-        if (session.role !== 'huesped') {
-          const empleado = leerEmpleados().find(e => e.id === session.id || e.correo.toLowerCase() === session.email.toLowerCase());
-          if (!empleado || !empleado.activo) {
-            localStorage.removeItem(KEY);
-            setUser(null);
-          }
-          else
-            setUser(session);
+    const sync = () => {
+      try {
+        const raw = localStorage.getItem(KEY);
+        if (!raw) { setUser(null); return; }
+        const next = reconstruirSesion(JSON.parse(raw));
+        if (!next) {
+          localStorage.removeItem(KEY);
+          setUser(null);
+          return;
         }
-        else
-          setUser(session);
-      }
-    }
-    finally {
-      setLoading(false);
-    }
-  },
-    []);
-  useEffect(() => {
-    const syncEmpleado = () => {
-      const current = user;
-      if (!current || current.role === 'huesped')
-        return;
-      const empleado = leerEmpleados().find(e => e.id === current.id || e.correo.toLowerCase() === current.email.toLowerCase());
-      if (!empleado || !empleado.activo) {
-        localStorage.removeItem(KEY);
-        setUser(null);
-        return;
-      }
-      if (current.name !== empleado.nombre || current.email !== empleado.correo) {
-        const next = { ...current, id: empleado.id, name: empleado.nombre, email: empleado.correo };
-        localStorage.setItem(KEY, JSON.stringify(next));
+        const canonical = JSON.stringify(next);
+        if (canonical !== raw) localStorage.setItem(KEY, canonical);
         setUser(next);
       }
+      catch {
+        localStorage.removeItem(KEY);
+        setUser(null);
+      }
+      finally { setLoading(false); }
     };
-    window.addEventListener(EMPLEADOS_EVENT, syncEmpleado);
-    window.addEventListener('storage', syncEmpleado);
+    const storage = (event: StorageEvent) => {
+      if (event.key === null || event.key === KEY || event.key === 'vs-empleados' || event.key === 'vs-huespedes')
+        sync();
+    };
+    sync();
+    window.addEventListener('storage', storage);
+    window.addEventListener(EMPLEADOS_EVENT, sync);
+    window.addEventListener(HUESPEDES_EVENT, sync);
     return () => {
-      window.removeEventListener(EMPLEADOS_EVENT, syncEmpleado);
-      window.removeEventListener('storage', syncEmpleado);
+      window.removeEventListener('storage', storage);
+      window.removeEventListener(EMPLEADOS_EVENT, sync);
+      window.removeEventListener(HUESPEDES_EVENT, sync);
     };
-  },
-    [user]);
+  }, []);
   const login = useCallback(async (email: string, password: string) => {
-    const next = await loginLocal(email, password);
+    const next = reconstruirSesion(await loginLocal(email, password));
+    if (!next) throw new Error("Invalid local session");
     localStorage.setItem(KEY, JSON.stringify(next));
     setUser(next);
     return next;

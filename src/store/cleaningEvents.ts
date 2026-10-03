@@ -10,16 +10,18 @@ export function leerTareasLimpiezaSalida(): Solicitud[] {
     return [];
   }
 }
-export function registrarLimpiezaDeSalida(habitacionNumero: string) {
+export function registrarLimpiezaDeSalida(habitacionNumero: string, reservaId?: string) {
   if (typeof window === 'undefined')
     return;
   const existentes = leerTareasLimpiezaSalida();
+  const tareaId = reservaId ? `salida-reserva-${reservaId}` : undefined;
+  if (tareaId && existentes.some(s => s.id === tareaId)) return;
   const activa = existentes.some(s => s.habitacionNumero === habitacionNumero && s.estado !== 'finalizada');
   if (activa)
     return;
   const ahora = new Date();
   const tarea: Solicitud = {
-    id: `salida-${habitacionNumero}-${ahora.getTime()}`,
+    id: tareaId ?? `salida-${habitacionNumero}-${ahora.getTime()}`,
     habitacionNumero,
     tipo: 'limpieza',
     descripcion: 'Habitación liberada · limpieza de salida',

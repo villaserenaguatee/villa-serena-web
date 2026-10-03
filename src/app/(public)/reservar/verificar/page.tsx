@@ -1,84 +1,21 @@
 "use client";
-import { UiText, useUiText } from "@/i18n/UiText";
-import { ClipboardEvent, KeyboardEvent, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
-export default function Verificar() {
-  const ui = useUiText();
-  const r = useRouter(), sp = useSearchParams();
-  const [code, setCode] = useState(["", "", "", "", "", ""]);
-  const refs = useRef<Array<HTMLInputElement | null>>([]);
-  const email = sp.get("correo") || "";
-  const masked = email
-    ? email[0] + "***@" + (email.split("@")[1] || "gmail.com")
-    : "m***@gmail.com";
-  function change(i: number,
-    value: string) {
-    const digit = value.replace(/\D/g, "").slice(-1);
-    const n = [...code];
-    n[i] = digit;
-    setCode(n);
-    if (digit && i < 5)
-      refs.current[i + 1]?.focus();
-  }
-  function key(i: number, e: KeyboardEvent) {
-    if (e.key === "Backspace" && !code[i] && i > 0)
-      refs.current[i - 1]?.focus();
-  }
-  function paste(e: ClipboardEvent) {
-    const digits = e.clipboardData
-      .getData("text")
-      .replace(/\D/g, "")
-      .slice(0, 6);
-    if (digits.length < 2)
-      return;
-    e.preventDefault();
-    const n = Array(6).fill("");
-    digits.split("").forEach((d, i) => (n[i] = d));
-    setCode(n);
-    refs.current[Math.min(digits.length, 6) - 1]?.focus();
-  }
-  return (<main className="reserve-public reserve-center">
-    <button className="icon-back reserve-icon-back" onClick={() => r.back()} aria-label={ui("Volver")} title={ui("Volver")}>
-      <ArrowLeft size={20} />
-    </button>
-    <VillaSerenaLogo />
-    <section className="reserve-form-card">
-      <span className="reserve-kicker">
-        <UiText text="SEGURIDAD" />
-      </span>
-      <h1>
-        <UiText text="Verifica tu correo" />
-      </h1>
-      <p>
-        <UiText text="Enviamos un código de verificación a:" />
-        <br />
-        <b>
-          {masked}
-        </b>
-      </p>
-      <div className="otp-row">
-        {code.map((v,
-          i) => (<input
-            key={i}
-            ref={(el) => {
-              refs.current[i] = el;
-            }}
-            maxLength={1}
-            inputMode="numeric"
-            value={v}
-            onChange={(e) => change(i, e.target.value)}
-            onKeyDown={(e) => key(i, e)}
-            onPaste={paste} />))}
-      </div>
-      <button
-        className="reserve-primary"
-        disabled={code.some((v) => !v)}
-        onClick={() => r.push("/reservar/pago?" +
-          new URLSearchParams(Object.fromEntries(sp.entries())))}>
-        <UiText text="Verificar" />
-      </button>
-    </section>
-  </main>);
+import EmailVerificationFlow from "@/components/common/EmailVerificationFlow";
+import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
+import { useCurrentGuest } from "@/features/huesped/hooks/useCurrentGuest";
+export default function VerifyEmailPage() {
+  const { en } = usePublicLanguage(), router = useRouter(), guest = useCurrentGuest();
+  const [publicEmail, setPublicEmail] = useState("");
+  const [editar, setEditar] = useState(false), [draft, setDraft] = useState(""), [error, setError] = useState("");
+  useEffect(() => { setPublicEmail(new URLSearchParams(window.location.search).get("correo") || ""); }, []);
+  const correo = guest?.correo || publicEmail;
+  function volver() { router.push(guest ? "/huesped" : "/reservar/datos" + window.location.search); }
+  return <main className="login-overlay-page"><div className="login-overlay-bg" /><section className="floating-login-card max-h-[90dvh] overflow-y-auto">
+    <VillaSerenaLogo href="/" /><h1 className="mb-4 text-2xl font-semibold text-[#17365D]">{en ? "Verify your email" : "Verifica tu correo"}</h1>
+    {editar ? <form onSubmit={e => { e.preventDefault(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.trim())) { setError(en ? "Enter a valid email." : "Introduce un correo válido."); return; } try { if (guest) { volver(); return; } else { setPublicEmail(draft.trim()); const params = new URLSearchParams(window.location.search); params.set("correo", draft.trim()); window.history.replaceState(null, "", "?" + params); } setEditar(false); setError(""); } catch { setError(en ? "Could not save." : "No se pudo guardar."); } }}>
+      <label>{en ? "Email" : "Correo electrónico"}<input type="email" value={draft} onChange={e => setDraft(e.target.value)} /></label>{error && <p role="alert">{error}</p>}<button type="submit" className="login-submit">{en ? "Save changes" : "Guardar cambios"}</button><button type="button" onClick={() => setEditar(false)}>{en ? "Cancel" : "Cancelar"}</button>
+    </form> : <EmailVerificationFlow key={correo} correo={correo} verificado={guest?.correoVerificacion?.correo === correo && guest.correoVerificacion.estado === "verificado"} onCambiar={() => { if (guest) { volver(); return; } setDraft(correo); setEditar(true); }} onVolver={volver} />}
+  </section></main>;
 }

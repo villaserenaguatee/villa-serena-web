@@ -1,13 +1,13 @@
 "use client";
 import { UiText, useUiText } from "@/i18n/UiText";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, LockKeyhole, X } from "lucide-react";
+import VillaSerenaCard from "@/components/common/VillaSerenaCard";
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { money, usePublicRooms } from "@/data/publicRooms";
-import { agregarTarjeta } from "@/store/paymentStore";
 import { leerPromociones } from "@/store/promotionStore";
 import { fechaHotel } from "@/lib/hotel";
 import { confirmarReservaPublica, PublicBookingError } from "@/lib/publicBooking";
@@ -15,12 +15,9 @@ export default function Pago() {
   const publicRooms = usePublicRooms();
   const ui = useUiText();
   const bookingText = useTranslations("publicBooking");
-  const savingRef = useRef(false);
-  const [saving, setSaving] = useState(false);
-  const [bookingError, setBookingError] = useState("");
   const { en } = usePublicLanguage();
   const r = useRouter(), sp = useSearchParams();
-  const [method, setMethod] = useState<"card" | "hotel">("card"),
+  const [saving, setSaving] = useState(false),
     [accepted, setAccepted] = useState(false),
     [card, setCard] = useState(""),
     [holder, setHolder] = useState(""),
@@ -30,7 +27,7 @@ export default function Pago() {
     [promo, setPromo] = useState(""),
     [promoPct, setPromoPct] = useState(0),
     [promoMsg, setPromoMsg] = useState(""),
-    [guardarTarjeta, setGuardarTarjeta] = useState(false);
+    [paymentError, setPaymentError] = useState("");
   const room = publicRooms.find((x) => x.name === (sp.get("habitacion") || ""));
   const total = Number(sp.get("total") || room?.price || 0);
   const promoTotal = Math.max(0, total * (1 - promoPct / 100));
@@ -42,37 +39,30 @@ export default function Pago() {
   },
     [sp]);
   const canPay = accepted &&
-    (method === "hotel" ||
-      (card.replace(/\s/g, "").length === 16 &&
-        holder.trim().length > 2 &&
-        /^\d{2}\/\d{2}$/.test(expiry) &&
-        cvv.length >= 3));
+    card.replace(/\s/g, "").length === 16 &&
+    holder.trim().length > 2 &&
+    /^\d{2}\/\d{2}$/.test(expiry) &&
+    cvv.length >= 3;
   async function finish() {
-    if (!canPay || savingRef.current)
+    if (!canPay || saving)
       return;
-    savingRef.current = true;
     setSaving(true);
-    setBookingError("");
+    setPaymentError("");
     try {
-      if (method === "card") {
-        if (guardarTarjeta) {
-          const limpio = card.replace(/\s/g, '');
-          agregarTarjeta({ marca: limpio.startsWith('4') ? 'Visa' : 'Tarjeta', ultimos4: limpio.slice(-4), titular: holder, vencimiento: expiry, principal: true });
-        }
-        r.push("/reservar/confirmacion?" + new URLSearchParams(Object.fromEntries(sp.entries())));
-        return;
-      }
-      const reservation = await confirmarReservaPublica(new URLSearchParams(sp.toString()), method, promo.trim());
-      const query = new URLSearchParams(sp.toString());
-      query.set("reserva", reservation.codigo);
-      query.set("reservaId", reservation.id);
-      r.push("/reservar/confirmacion?" + query);
+      const reservation = await confirmarReservaPublica(
+        new URLSearchParams(sp.toString()),
+        promoPct > 0 ? promo.trim() : "",
+      );
+      r.push(`/reservar/confirmacion?${new URLSearchParams({ reservaId: reservation.id })}`);
     }
     catch (error) {
-      setBookingError(error instanceof PublicBookingError ? error.code : "saveFailed");
+      setPaymentError(
+        error instanceof PublicBookingError
+          ? bookingText(error.code)
+          : bookingText("saveFailed"),
+      );
     }
     finally {
-      savingRef.current = false;
       setSaving(false);
     }
   }
@@ -148,7 +138,7 @@ export default function Pago() {
         </div>
         <div className="promo-public">
           <label htmlFor="booking-promo-code">
-            {en ? "Promo code" : "Código promocional"}
+            {en ? "Discount code" : "Código de descuento"}
           </label>
           <div className="promo-public-controls">
             <input
@@ -159,8 +149,7 @@ export default function Pago() {
                 setPromo(e.target.value.toUpperCase());
                 setPromoPct(0);
                 setPromoMsg("");
-              }}
-              placeholder={en ? "Promo code" : "Código promocional"} />
+              }} />
             <button
               type="button"
               onClick={() => {
@@ -210,22 +199,17 @@ export default function Pago() {
         </p>
         <div className="payment-methods">
           <label>
-            <input type="radio" checked={method === "card"} onChange={() => setMethod("card")} />
-            <UiText text=" Tarjeta de crédito o débito" />
-          </label>
-          <label>
-            <input type="radio" checked={method === "hotel"} onChange={() => setMethod("hotel")} />
-            <UiText text=" Pagar en Recepción" />
+            <UiText text="Tarjeta de crédito o débito" />
           </label>
         </div>
-        {method === "card" && (<>
+        <>
           <div className="online-payment-head">
             <div>
               <b>
-                <UiText text="Pago en línea seguro" />
+                <UiText text="Formulario de tarjeta" />
               </b>
               <span>
-                <UiText text="Los detalles de pago se procesarán al confirmar la reserva." />
+                <UiText text="Los datos de la tarjeta requieren confirmación del proveedor de pagos." />
               </span>
             </div>
             <div className="card-brands">
@@ -269,45 +253,15 @@ export default function Pago() {
               </div>
             </div>
             <div className="visual-card-wrap">
-              <div className="visual-card">
-                <div className="visual-card-top">
-                  <b>
-                    <UiText text="VILLA SERENA" />
-                  </b>
-                  <span>
-                    <UiText text="HOTEL" />
-                  </span>
-                </div>
-                <div className="visual-chip" />
-                <strong>
-                  {card || "•••• •••• •••• ••••"}
-                </strong>
-                <div className="visual-card-bottom">
-                  <span>
-                    <small>
-                      <UiText text="TITULAR" />
-                    </small>
-                    {holder || ui("NOMBRE DEL TITULAR")}
-                  </span>
-                  <span>
-                    <small>
-                      <UiText text="VÁLIDA HASTA" />
-                    </small>
-                    {expiry || "MM/AA"}
-                  </span>
-                </div>
-              </div>
+              <VillaSerenaCard numero={card} titular={holder} vencimiento={expiry} />
               <span className="reservation-secure">
                 <LockKeyhole />
-                <UiText text=" Reserva segura" />
+                <UiText text=" Formulario de tarjeta" />
               </span>
             </div>
           </div>
-          <label className="terms-check">
-            <input type="checkbox" checked={guardarTarjeta} onChange={e => setGuardarTarjeta(e.target.checked)} />
-            <UiText text="Guardar esta tarjeta para futuras reservas" />
-          </label>
-        </>)}
+
+        </>
         <label className="terms-check">
           <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
           <span>
@@ -324,8 +278,8 @@ export default function Pago() {
             <UiText text="." />
           </span>
         </label>
-        {bookingError && <p className="password-error" role="alert">
-          {bookingText(bookingError)}
+        {paymentError && <p className="password-error" role="alert">
+          {paymentError}
         </p>}
         <button className="reserve-primary" disabled={!canPay || saving} onClick={finish}>
           <UiText text="Confirmar reserva" />

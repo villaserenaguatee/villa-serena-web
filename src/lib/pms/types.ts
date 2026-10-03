@@ -94,6 +94,10 @@ export interface CambioEstado {
 }
 export interface Pedido {
   id: string;
+  reservaId?: string;
+  huespedId?: string;
+  habitacionId?: string;
+  codigoReserva?: string;
   numero: number;
   habitacionNumero: string;
   piso: number;
@@ -133,6 +137,7 @@ export interface HabitacionHotel {
 }
 export type TipoDocumento = 'DPI' | 'Pasaporte';
 export interface Huesped {
+  correoVerificacion?: { correo: string; estado: 'pendiente' | 'verificado' };
   id: string;
   nombre: string;
   foto?: string;
@@ -152,6 +157,7 @@ export interface Acompanante {
 }
 export type MetodoPago = 'efectivo' | 'tarjeta' | 'transferencia';
 export interface Pago {
+  destino?: 'alojamiento' | 'consumos';
   id: string;
   fecha: string;
   monto: number;
@@ -170,7 +176,6 @@ export interface Reserva {
   id: string;
   origenReserva?: 'publica';
   solicitudPublicaId?: string;
-  modalidadPago?: 'hotel' | 'en-linea';
   precioNoche?: number;
   habitacionPublica?: string;
   codigo: string;
@@ -566,7 +571,7 @@ export interface CargoHuesped {
   precioUnitario: number;
   fecha: string;
 }
-export type MetodoPagoHuesped = 'tarjeta' | 'debito' | 'puntos' | 'recepcion';
+export type MetodoPagoHuesped = 'tarjeta' | 'debito' | 'puntos';
 export interface DatosFiscales {
   nombre: string;
   nit: string;

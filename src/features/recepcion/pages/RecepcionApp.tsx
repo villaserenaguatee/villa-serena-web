@@ -1,3 +1,4 @@
+import { asignarHabitacionReserva } from '@/store/reservationAssignment';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import type { Modulo, SeccionRecepcion, Huesped, Reserva, HabitacionHotel, SolicitudHuesped, EstadoHabHotel, EstadoSolicitudHuesped, MetodoPago, Pago, Acompanante, ServicioAdicional, TipoHabitacion, ObjetoOlvidado, Incidencia, } from '@/lib/pms/types';
@@ -18,12 +19,11 @@ import ReportesRecepcion from '@/features/recepcion/pages/ReportesRecepcion';
 import IncidenciasArea from '@/components/common/IncidenciasArea';
 import StaffProfileModal from '@/components/common/StaffProfileModal';
 import { leerEmpleados } from '@/store/employeeStore';
-import { guardarHuespedes, leerHuespedes } from '@/store/guestStore';
-import { guardarReservas, leerReservas, RESERVAS_EVENT } from '@/store/reservationStore';
+import { guardarHuespedes, leerHuespedes, upsertHuesped, HUESPEDES_EVENT } from '@/store/guestStore';
+import { guardarReservas, leerReservas, RESERVAS_EVENT, upsertReserva } from '@/store/reservationStore';
 import { guardarHabitaciones, leerHabitaciones, HABITACIONES_EVENT } from '@/store/roomStore';
 import { EVENTO_INCIDENCIAS_MANTENIMIENTO, leerIncidenciasMantenimiento, reportarIncidenciaMantenimiento } from '@/store/maintenanceEvents';
-import { registrarLimpiezaDeSalida } from '@/store/cleaningEvents';
-import { guardarReservaDelPortal, leerPortalRecepcion } from '@/store/portalReceptionSync';
+import { completarCheckInReserva, completarCheckOutReserva } from '@/store/reservationStore';
 import { actualizarObjetoOlvidado, CLAVE_OBJETOS_OLVIDADOS, guardarObjetosOlvidados, leerObjetosOlvidados } from '@/store/lostFoundEvents';
 const SECCIONES: {
   id: SeccionRecepcion;
@@ -113,6 +113,23 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
   const { user } = useAuth();
   const [huespedes, setHuespedes] = useState<Huesped[]>(() => leerHuespedes());
   useEffect(() => guardarHuespedes(huespedes), [huespedes]);
+  useEffect(() => {
+    const sync = () => setHuespedes(actuales => {
+      const next = leerHuespedes();
+      return JSON.stringify(actuales) === JSON.stringify(next) ? actuales : next;
+    });
+    window.addEventListener(HUESPEDES_EVENT, sync);
+    const storage = (event: StorageEvent) => {
+      if (event.key === 'vs-huespedes')
+        sync();
+    };
+    window.addEventListener('storage', storage);
+    return () => {
+      window.removeEventListener(HUESPEDES_EVENT, sync);
+      window.removeEventListener('storage', storage);
+    };
+  },
+    []);
   const [reservas, setReservas] = useState<Reserva[]>(() => leerReservas());
   useEffect(() => guardarReservas(reservas), [reservas]);
   const [habitaciones, setHabitaciones] = useState<HabitacionHotel[]>(() => aplicarTarifasHabitaciones(leerHabitaciones()));
@@ -178,63 +195,6 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
     return () => {
       window.removeEventListener('storage', storage);
       window.removeEventListener('vs-objetos-actualizados', sincronizar);
-    };
-  },
-    []);
-  useEffect(() => {
-    const sincronizar = () => {
-      const portal = leerPortalRecepcion();
-      setHuespedes(actuales => {
-        const combinados = [...actuales];
-        let cambio = false;
-        for (const remoto of portal.huespedes) {
-          const i = combinados.findIndex(h => h.id === remoto.id);
-          if (i < 0) {
-            combinados.unshift(remoto);
-            cambio = true;
-          }
-          else {
-            const unido = { ...combinados[i], ...remoto };
-            if (JSON.stringify(unido) !== JSON.stringify(combinados[i])) {
-              combinados[i] = unido;
-              cambio = true;
-            }
-          }
-        }
-        return cambio ? combinados : actuales;
-      });
-      setReservas(actuales => {
-        const combinadas = [...actuales];
-        for (const remota of portal.reservas) {
-          const i = combinadas.findIndex(r => r.id === remota.id || r.codigo === remota.codigo);
-          if (i < 0)
-            combinadas.unshift(remota);
-          else if (remota.checkInWeb || remota.origenCheckOut || remota.actividadPortal)
-            combinadas[i] = { ...combinadas[i], ...remota };
-        }
-        return combinadas.map(r => {
-          try {
-            const guardado = JSON.parse(localStorage.getItem(`vs-ocupantes-${r.codigo}`) || 'null');
-            return guardado ? { ...r, adultos: guardado.adultos, ninos: guardado.ninos, personas: guardado.adultos + guardado.ninos, acompanantes: guardado.acompanantes } : r;
-          }
-          catch {
-            return r;
-          }
-        });
-      });
-    };
-    sincronizar();
-    const alCambiar = (e: StorageEvent) => {
-      if (e.key?.startsWith('vs-ocupantes-') || e.key === 'vs-portal-recepcion')
-        sincronizar();
-    };
-    window.addEventListener('storage', alCambiar);
-    window.addEventListener('vs-portal-recepcion-actualizado', sincronizar);
-    const id = window.setInterval(sincronizar, 1500);
-    return () => {
-      window.removeEventListener('storage', alCambiar);
-      window.removeEventListener('vs-portal-recepcion-actualizado', sincronizar);
-      window.clearInterval(id);
     };
   },
     []);
@@ -340,8 +300,14 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
   }
   function actualizarHuesped(id: string, cambios: Partial<Huesped>) { setHuespedes(prev => prev.map(h => h.id === id ? { ...h, ...cambios } : h)); }
   function crearHuesped(datos: Omit<Huesped, 'id' | 'creadoEn'>): Huesped {
-    const nuevo: Huesped = { ...datos, id: generarId(), creadoEn: ahoraISO() };
-    setHuespedes(prev => [nuevo, ...prev]);
+    const existente = leerHuespedes().find(h =>
+      Boolean(datos.documento) &&
+      h.tipoDocumento === datos.tipoDocumento && h.documento === datos.documento,
+    );
+    if (existente)
+      return existente;
+    const nuevo = upsertHuesped({ ...datos, id: generarId(), creadoEn: ahoraISO() });
+    setHuespedes(leerHuespedes());
     return nuevo;
   }
   function crearReserva(d: {
@@ -372,7 +338,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       estado: d.habitacionId ? 'confirmada' : 'pendiente',
       acompanantes: [],
       servicios: [],
-      pagos: d.metodoPago && total > 0 ? [{ id: generarId(), fecha: ahoraISO(), monto: total, metodo: d.metodoPago, comprobante: siguienteComprobante() }] : [],
+      pagos: d.metodoPago && total > 0 ? [{ destino: 'alojamiento', id: generarId(), fecha: ahoraISO(), monto: total, metodo: d.metodoPago, comprobante: siguienteComprobante() }] : [],
       descuento: d.descuento || 0,
       creadoEn: ahoraISO(),
     };
@@ -383,14 +349,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
   }
   function asignarHabitacion(reservaId: string,
     habitacionId: string) {
-    const r = reservas.find(x => x.id === reservaId);
-    const prev = r?.habitacionId ?? null;
-    setReservas(rs => rs.map(x => x.id === reservaId
-      ? { ...x, habitacionId, estado: x.estado === 'pendiente' ? 'confirmada' : x.estado }
-      : x));
-    if (prev && prev !== habitacionId)
-      libera(prev);
-    reservaHabitacionSiLibre(habitacionId);
+    asignarHabitacionReserva(reservaId, habitacionId);
   }
   function modificarReserva(reservaId: string,
     c: {
@@ -401,72 +360,37 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       ninos: number;
       habitacionId: string | null;
     }) {
-    const r = reservas.find(x => x.id === reservaId);
-    const prev = r?.habitacionId ?? null;
-    setReservas(rs => rs.map(x => {
-      if (x.id !== reservaId)
-        return x;
-      let estado = x.estado;
-      if (c.habitacionId && estado === 'pendiente')
-        estado = 'confirmada';
-      if (!c.habitacionId && estado === 'confirmada')
-        estado = 'pendiente';
-      return {
-        ...x,
-        fechaEntrada: c.fechaEntrada,
-        fechaSalida: c.fechaSalida,
-        personas: c.personas,
-        adultos: c.adultos,
-        ninos: c.ninos,
-        habitacionId: c.habitacionId,
-        estado,
-      };
-    }));
+    const r = leerReservas().find(x => x.id === reservaId);
+    if (!r || r.estado === 'finalizada' || r.estado === 'cancelada') return;
+    const prev = r.habitacionId ?? null;
+    let estado = r.estado;
+    if (c.habitacionId && estado === 'pendiente') estado = 'confirmada';
+    if (!c.habitacionId && estado === 'confirmada') estado = 'pendiente';
+    upsertReserva({ ...r, ...c, estado });
+    setReservas(leerReservas());
     if (prev && prev !== c.habitacionId)
       libera(prev);
     if (c.habitacionId)
       reservaHabitacionSiLibre(c.habitacionId);
   }
   function checkIn(reservaId: string) {
-    const r = reservas.find(x => x.id === reservaId);
-    if (!r || !r.habitacionId)
-      return;
-    const checkInEn = ahoraISO();
-    setReservas(rs => rs.map(x => (x.id === reservaId ? { ...x, estado: 'en-curso', checkInEn, origenCheckIn: 'recepcion' } : x)));
-    ocupa(r.habitacionId, 'ocupada');
+    completarCheckInReserva(reservaId, 'recepcion');
   }
   function validarCheckInWeb(reservaId: string) {
-    const r = reservas.find(x => x.id === reservaId);
-    const h = r ? huespedes.find(x => x.id === r.huespedId) : null;
-    if (!r || !h || !r.habitacionId || !r.checkInWeb)
-      return;
-    const revisadoEn = ahoraISO();
-    const aprobada: Reserva = { ...r, estado: 'en-curso', checkInEn: revisadoEn, origenCheckIn: 'portal', checkInWeb: { ...r.checkInWeb, estado: 'aprobado', revisadoEn } };
-    guardarReservaDelPortal(h, aprobada);
-    setReservas(rs => rs.map(x => x.id === reservaId ? aprobada : x));
-    ocupa(r.habitacionId, 'ocupada');
+    completarCheckInReserva(reservaId, 'portal');
   }
   function rechazarCheckInWeb(reservaId: string,
     motivo: string) {
-    const r = reservas.find(x => x.id === reservaId);
+    const r = leerReservas().find(x => x.id === reservaId);
     const h = r ? huespedes.find(x => x.id === r.huespedId) : null;
-    if (!r || !h || !r.checkInWeb)
+    if (!r || !h || r.estado !== 'confirmada' || r.checkInWeb?.estado !== 'pendiente')
       return;
     const rechazada: Reserva = { ...r, estado: 'confirmada', checkInWeb: { ...r.checkInWeb, estado: 'rechazado', revisadoEn: ahoraISO(), motivoRevision: motivo } };
+    upsertReserva(rechazada);
     setReservas(rs => rs.map(x => x.id === reservaId ? rechazada : x));
-    guardarReservaDelPortal(h, rechazada);
   }
   function checkOut(reservaId: string) {
-    const r = reservas.find(x => x.id === reservaId);
-    if (!r)
-      return;
-    setReservas(rs => rs.map(x => (x.id === reservaId ? { ...x, estado: 'finalizada', checkOutEn: ahoraISO() } : x)));
-    if (r.habitacionId) {
-      ocupa(r.habitacionId, 'en-limpieza');
-      const habitacion = habitaciones.find(h => h.id === r.habitacionId);
-      if (habitacion)
-        registrarLimpiezaDeSalida(habitacion.numero);
-    }
+    completarCheckOutReserva(reservaId, 'recepcion');
   }
   function cancelarReserva(reservaId: string,
     motivo: string) {
@@ -506,6 +430,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       metodo: MetodoPago;
     }): Pago {
     const pago: Pago = {
+      destino: 'consumos',
       id: generarId(),
       fecha: ahoraISO(),
       monto: datos.monto,
@@ -513,11 +438,6 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       comprobante: siguienteComprobante(),
     };
     setReservas(rs => rs.map(x => (x.id === reservaId ? { ...x, pagos: [...x.pagos, pago] } : x)));
-    const actual = reservas.find(x => x.id === reservaId);
-    const huesped = actual ? huespedes.find(x => x.id === actual.huespedId) : undefined;
-    if (actual && huesped && actual.origenReserva === 'publica') {
-      guardarReservaDelPortal(huesped, { ...actual, pagos: [...actual.pagos, pago] });
-    }
     return pago;
   }
   function aplicarDescuento(reservaId: string, monto: number) {
@@ -587,7 +507,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       case 'reportes':
         return <ReportesRecepcion habitaciones={habitaciones} reservas={reservas} huespedes={huespedes} />;
       case 'chat':
-        return <ChatRecepcion huespedes={huespedes} reservas={reservas} />;
+        return <ChatRecepcion huespedes={huespedes} reservas={reservas} habitaciones={habitaciones} />;
       case 'objetos':
         return <ObjetosRecepcion objetos={objetos} habitaciones={habitaciones} reservas={reservas} huespedes={huespedes} onActualizar={cambiarObjeto} />;
     }

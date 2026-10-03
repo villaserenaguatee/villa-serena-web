@@ -1,17 +1,18 @@
+import { calcularCuentaEstancia } from "@/lib/pms/cuentaEstancia";
+import { useAuth } from "@/hooks/useAuth";
 import { UiText, useUiText } from "@/i18n/UiText";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { translateChatMessage } from "@/lib/translation/client";
 import { useEffect, useMemo, useState } from "react";
-import { tarjetaPrincipal } from "@/store/paymentStore";
 import { guardarAccesoPostCheckout, leerAccesoPostCheckout } from "@/store/guestAccountAccess";
-import type { Modulo, SeccionHuesped, Reserva, CheckInWeb, PedidoHuesped, MensajeChat, Domotica, TurnoAmenidad, ReservaAmenidad, CargoHuesped, DatosFiscales, PagoHuespedApp, MetodoPagoHuesped, ReservaHuesped, TipoPedidoHuesped, LineaPedidoHuesped, DocumentoCargado, EstadoHabHotel, DatosContacto, TipoHabitacion, Acompanante, } from "@/lib/pms/types";
-import { HUESPEDES_INICIALES, HUESPED_PORTAL_ID, RESERVA_HUESPED_INICIAL, CHECKIN_INICIAL, PEDIDOS_HUESPED_INICIALES, MENSAJES_CHAT_INICIALES, DOMOTICA_INICIAL, TURNOS_AMENIDAD_INICIALES, RESERVAS_AMENIDAD_INICIALES, CARGOS_HUESPED_INICIALES, DATOS_FISCALES_INICIALES, PUNTOS_FIDELIDAD_INICIALES, CATALOGO_HABITACIONES_PUBLICO, SERVICIOS_CATALOGO, generarId, ahoraISO, nochesEntre, codigoLlaveDigital, siguienteCodigoReservaWeb, siguienteNumeroPedidoHuesped, siguienteFacturaFEL, turnoActual, } from "@/data/pms";
-import { actualizarHuespedCentral, leerHuespedes } from "@/store/guestStore";
-import { leerHabitaciones } from "@/store/roomStore";
+import type { Modulo, SeccionHuesped, Huesped, Reserva, CheckInWeb, PedidoHuesped, MensajeChat, Domotica, TurnoAmenidad, ReservaAmenidad, CargoHuesped, DatosFiscales, PagoHuespedApp, MetodoPagoHuesped, ReservaHuesped, TipoPedidoHuesped, LineaPedidoHuesped, DocumentoCargado, EstadoHabHotel, Acompanante, } from "@/lib/pms/types";
+import { PEDIDOS_HUESPED_INICIALES, DOMOTICA_INICIAL, TURNOS_AMENIDAD_INICIALES, RESERVAS_AMENIDAD_INICIALES, DATOS_FISCALES_INICIALES, PUNTOS_FIDELIDAD_INICIALES, CATALOGO_HABITACIONES_PUBLICO, SERVICIOS_CATALOGO, generarId, ahoraISO, nochesEntre, codigoLlaveDigital, siguienteNumeroPedidoHuesped, siguienteFacturaFEL, turnoActual, } from "@/data/pms";
+import { actualizarHuespedCentral } from "@/store/guestStore";
+import { leerHabitaciones, HABITACIONES_EVENT } from "@/store/roomStore";
 import { MENU_EVENT, leerMenu } from "@/store/menuStore";
 import { leerReservas, RESERVAS_EVENT, upsertReserva } from "@/store/reservationStore";
 import { aplicarTarifasHabitaciones, leerTarifas, TARIFAS_EVENT } from "@/store/tarifasStore";
-import { pedidoActivo, totalCargos, puntosDeMonto, } from "@/features/huesped/pages/huespedUtils";
+import { Aviso, pedidoActivo, totalCargos, puntosDeMonto, } from "@/features/huesped/pages/huespedUtils";
 import ModuloSwitcher from "@/components/common/ModuloSwitcher";
 import InicioHuesped from "@/features/huesped/pages/InicioHuesped";
 import ReservarEstancia from "@/features/huesped/pages/ReservarEstancia";
@@ -22,10 +23,10 @@ import CuentaHuesped from "@/features/huesped/pages/CuentaHuesped";
 import ChatHuesped from "@/features/huesped/pages/ChatHuesped";
 import ReservasExperiencias from "@/features/huesped/pages/ReservasExperiencias";
 import PerfilHuesped from "@/features/huesped/pages/PerfilHuesped";
-import { guardarReservaDelPortal } from "@/store/portalReceptionSync";
-import { registrarLimpiezaDeSalida } from "@/store/cleaningEvents";
-import { EVENTO_ESTADO_RS, publicarPedidoPortal, actualizarPedidoPortal, leerPedidosPortal, type ActualizacionPedidoRS } from "@/store/roomServiceSync";
+import { completarCheckOutReserva } from "@/store/reservationStore";
+import { EVENTO_ESTADO_RS, EVENTO_PEDIDO_RS, PEDIDOS_RS_KEY, filtrarCargosLegacyRestaurante, pedidosRestauranteHuesped, publicarPedidoPortal, actualizarPedidoPortal, leerPedidosPortal, type ActualizacionPedidoRS } from "@/store/roomServiceSync";
 import { actualizarMensajeChat, guardarMensajesChat, leerMensajesChat } from "@/store/chatStore";
+import { useCurrentGuest } from "@/features/huesped/hooks/useCurrentGuest";
 const SECCIONES: {
   id: SeccionHuesped;
   label: string;
@@ -41,6 +42,9 @@ const SECCIONES: {
     { id: "cuenta", label: "Cuenta y check-out", corto: "Cuenta" },
     { id: "reservar", label: "Gestionar estancia", corto: "Estancia" },
   ];
+export function seccionesPortal(estado: Reserva['estado']) {
+  return SECCIONES.filter(s => estado !== 'finalizada' || !['checkin', 'restaurante', 'servicios'].includes(s.id));
+}
 function GestionIcon({ tipo }: {
   tipo: "calendario" | "cama" | "solicitud";
 }) {
@@ -176,16 +180,71 @@ function SeccionIcon({ id, size = 18 }: {
 interface Props {
   onCambiarModulo: (m: Modulo) => void;
 }
-export default function HuespedApp({ onCambiarModulo }: Props) {
+interface PortalProps extends Props {
+  huesped: Huesped;
+  reservaInicial: Reserva;
+}
+export function seleccionarEstanciaHuesped(reservas: Reserva[], huespedId: string): Reserva | undefined {
+  const prioridad: Record<Reserva['estado'], number> = { 'en-curso': 0, confirmada: 1, pendiente: 2, finalizada: 3, cancelada: 4 };
+  return reservas.filter(r => r.huespedId === huespedId && r.estado !== 'cancelada').sort((a, b) => {
+    const estado = prioridad[a.estado] - prioridad[b.estado];
+    if (estado) return estado;
+    const fechas = a.estado === 'finalizada' ? b.fechaSalida.localeCompare(a.fechaSalida) : a.fechaEntrada.localeCompare(b.fechaEntrada);
+    return fechas || a.codigo.localeCompare(b.codigo) || a.id.localeCompare(b.id);
+  }).at(0);
+}
+
+export default function HuespedApp(props: Props) {
+  const huesped = useCurrentGuest();
+  const [estancias, setEstancias] = useState(() => leerReservas());
+  useEffect(() => {
+    const sync = () => setEstancias(leerReservas());
+    window.addEventListener(RESERVAS_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => { window.removeEventListener(RESERVAS_EVENT, sync); window.removeEventListener("storage", sync); };
+  }, []);
+  if (!huesped) {
+    return <div className="flex min-h-screen items-center justify-center bg-[#F8F6F0] p-6 text-center">
+      <div className="max-w-md rounded-xl bg-white p-8 shadow-sm">
+        <h1 className="text-xl font-semibold text-[#18345C]">No se pudo validar tu cuenta de huésped</h1>
+        <p className="mt-3 text-sm text-[#6B7280]">Esta sesión no tiene un huésped asociado. Vuelve a iniciar sesión o contacta a Recepción.</p>
+        <a href="/login" className="mt-5 inline-block font-semibold text-[#18345C]">Ir al inicio de sesión</a>
+      </div>
+    </div>;
+  }
+  const reservaInicial = seleccionarEstanciaHuesped(estancias, huesped.id);
+  if (!reservaInicial) {
+    return <div className="flex min-h-screen items-center justify-center bg-[#F8F6F0] p-6 text-center">
+      <div className="max-w-md rounded-xl bg-white p-8 shadow-sm">
+        <h1 className="text-xl font-semibold text-[#18345C]">No encontramos una estancia asociada a tu cuenta</h1>
+        <p className="mt-3 text-sm text-[#6B7280]">No se mostrarán datos de otras cuentas. Contacta a Recepción para recibir ayuda.</p>
+      </div>
+    </div>;
+  }
+  return <HuespedPortal key={`${huesped.id}:${reservaInicial.id}`} {...props} huesped={huesped} reservaInicial={reservaInicial} />;
+}
+
+function HuespedPortal({ onCambiarModulo, huesped, reservaInicial }: PortalProps) {
   const ui = useUiText();
+  const { logout } = useAuth();
   const { en, lang } = usePublicLanguage();
   const [seccion, setSeccion] = useState<SeccionHuesped>("inicio");
+  const [abrirResena, setAbrirResena] = useState(false);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("seccion") === "habitacion") setSeccion("habitacion");
+  }, []);
   const [perfilAbierto, setPerfilAbierto] = useState(false);
-  const [nombrePerfil, setNombrePerfil] = useState("Ana Morales");
-  const [telefonoPerfil, setTelefonoPerfil] = useState("+502 5512 3344");
-  const [correoPerfil, setCorreoPerfil] = useState("ana.morales@correo.com");
-  const [fotoPerfil, setFotoPerfil] = useState<string | null>(null);
+  const [nombrePerfil, setNombrePerfil] = useState(huesped.nombre);
+  const [telefonoPerfil, setTelefonoPerfil] = useState(huesped.telefono);
+  const [correoPerfil, setCorreoPerfil] = useState(huesped.correo);
+  const [fotoPerfil, setFotoPerfil] = useState<string | null>(huesped.foto ?? null);
   const [cerrarSesionAbierto, setCerrarSesionAbierto] = useState(false);
+  useEffect(() => {
+    setNombrePerfil(huesped.nombre);
+    setTelefonoPerfil(huesped.telefono);
+    setCorreoPerfil(huesped.correo);
+    setFotoPerfil(huesped.foto ?? null);
+  }, [huesped.id, huesped.nombre, huesped.telefono, huesped.correo, huesped.foto]);
   const [tarifasReserva, setTarifasReserva] = useState(() => leerTarifas());
   const ofertasReserva = useMemo(() => CATALOGO_HABITACIONES_PUBLICO.map(oferta => ({ ...oferta, precioNoche: tarifasReserva[oferta.tipo] })), [tarifasReserva]);
   const habitacionesReserva = useMemo(() => aplicarTarifasHabitaciones(leerHabitaciones(), tarifasReserva), [tarifasReserva]);
@@ -199,12 +258,9 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
     };
   },
     []);
-  const huesped = leerHuespedes().find((h) => h.id === HUESPED_PORTAL_ID) ?? HUESPEDES_INICIALES.find((h) => h.id === HUESPED_PORTAL_ID)!;
   const [reservasHotel, setReservasHotel] = useState<Reserva[]>(() => leerReservas());
-  const [reserva, setReserva] = useState<Reserva>(() => {
-    const reservas = leerReservas();
-    return reservas.find((r) => r.huespedId === HUESPED_PORTAL_ID && r.estado !== "cancelada") ?? RESERVA_HUESPED_INICIAL;
-  });
+  const [reserva, setReserva] = useState<Reserva>(reservaInicial);
+  const pedidosKey = `vs-pedidos-huesped-${reserva.codigo}`;
   const [menu, setMenu] = useState(() => leerMenu());
   useEffect(() => {
     const sincronizarMenu = () => setMenu(leerMenu());
@@ -220,10 +276,11 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
     const sincronizarReservas = () => {
       const actuales = leerReservas();
       setReservasHotel(actuales);
-      const sincronizada = actuales.find(r => r.id === reserva.id || r.codigo === reserva.codigo);
+      const sincronizada = actuales.find(r => r.id === reserva.id && r.huespedId === huesped.id);
       if (sincronizada)
         setReserva(sincronizada);
     };
+    sincronizarReservas();
     window.addEventListener(RESERVAS_EVENT, sincronizarReservas);
     window.addEventListener("storage", sincronizarReservas);
     return () => {
@@ -231,17 +288,47 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
       window.removeEventListener("storage", sincronizarReservas);
     };
   },
-    [reserva.id, reserva.codigo]);
-  const habitacion = leerHabitaciones().find((h) => h.id === reserva.habitacionId)!;
-  const [estadoHabitacion, setEstadoHabitacion] = useState<EstadoHabHotel>("ocupada");
-  const [checkin, setCheckin] = useState<CheckInWeb>(CHECKIN_INICIAL);
-  const [pedidos, setPedidos] = useState<PedidoHuesped[]>(PEDIDOS_HUESPED_INICIALES);
+    [reserva.id, reserva.codigo, huesped.id]);
+  const [habitacionesPortal, setHabitacionesPortal] = useState(() => leerHabitaciones());
+  useEffect(() => {
+    const sync = () => setHabitacionesPortal(leerHabitaciones());
+    sync();
+    window.addEventListener(HABITACIONES_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(HABITACIONES_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
+  const habitacion = habitacionesPortal.find((h) => h.id === reserva.habitacionId);
+  const estadoHabitacion: EstadoHabHotel = habitacion?.estado ?? 'reservada';
+  const web = reserva.checkInWeb;
+  const checkin: CheckInWeb = {
+    estado: reserva.checkInEn || reserva.estado === 'en-curso' ? 'aprobado' : web?.estado ?? 'disponible',
+    documento: web?.documento ?? null, documentos: web?.documentos,
+    terminosAceptados: web?.terminosAceptados ?? false,
+    peticiones: web?.peticiones ?? [], notaPeticiones: web?.notaPeticiones ?? '',
+    completadoEn: reserva.checkInEn ?? web?.revisadoEn ?? web?.enviadoEn,
+    motivoRechazo: web?.motivoRevision,
+    codigoLlave: reserva.estado === 'en-curso' && habitacion ? codigoLlaveDigital(reserva.codigo, (habitacion?.numero ?? (en ? 'Unassigned' : 'Sin asignar'))) : undefined,
+  };
+  const [pedidos, setPedidos] = useState<PedidoHuesped[]>(() => {
+    if (typeof window === "undefined")
+      return PEDIDOS_HUESPED_INICIALES.filter(p => p.tipo !== 'restaurante');
+    try {
+      const guardados = JSON.parse(localStorage.getItem(pedidosKey) || "[]");
+      return [...(Array.isArray(guardados) ? guardados : PEDIDOS_HUESPED_INICIALES).filter((p: PedidoHuesped) => p.tipo !== 'restaurante'), ...pedidosRestauranteHuesped(reserva.id, huesped.id)];
+    }
+    catch {
+      return PEDIDOS_HUESPED_INICIALES;
+    }
+  });
   const [avisosRoomService, setAvisosRoomService] = useState<ActualizacionPedidoRS[]>([]);
-  const [mensajes, setMensajes] = useState<MensajeChat[]>(MENSAJES_CHAT_INICIALES);
+  const [mensajes, setMensajes] = useState<MensajeChat[]>([]);
   const [escribiendo, setEscribiendo] = useState(false);
   const [domotica, setDomotica] = useState<Domotica>(DOMOTICA_INICIAL);
   function actualizarDomotica(cambios: Partial<Domotica>) {
-    if (estanciaCerrada)
+    if (!estanciaActiva())
       return;
     setDomotica((actual) => ({ ...actual, ...cambios }));
   }
@@ -250,7 +337,7 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
       encendida?: boolean;
       intensidad?: number;
     }) {
-    if (estanciaCerrada)
+    if (!estanciaActiva())
       return;
     setDomotica((actual) => ({
       ...actual,
@@ -258,53 +345,42 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
     }));
   }
   function conectarWifi() {
-    if (estanciaCerrada)
+    if (!estanciaActiva())
       return;
     setDomotica((actual) => ({ ...actual, wifiConectado: true }));
     mostrarAviso("Wi-Fi conectado correctamente.");
   }
   const [turnos, setTurnos] = useState<TurnoAmenidad[]>(TURNOS_AMENIDAD_INICIALES);
   const [reservasAmenidad, setReservasAmenidad] = useState<ReservaAmenidad[]>(RESERVAS_AMENIDAD_INICIALES);
-  const [cargos, setCargos] = useState<CargoHuesped[]>(() => {
+  const [cargosLegacy, setCargos] = useState<CargoHuesped[]>(() => {
     try {
       const x = JSON.parse(localStorage.getItem(`vs-cargos-estancia-${reserva.codigo}`) || '[]');
-      return Array.isArray(x) ? x : [];
+      return Array.isArray(x) ? filtrarCargosLegacyRestaurante(x, reserva.id, huesped.id) : [];
     }
     catch {
       return [];
     }
   });
-  const [pagos, setPagos] = useState<PagoHuespedApp[]>(() => {
-    try {
-      const x = JSON.parse(localStorage.getItem(`vs-pagos-estancia-${reserva.codigo}`) || '[]');
-      return Array.isArray(x) ? x : [];
-    }
-    catch {
-      return [];
-    }
-  });
+  // Re-evaluate after migration or canonical order updates, before totals and persistence.
+  const cargos = useMemo(() => filtrarCargosLegacyRestaurante(cargosLegacy, reserva.id, huesped.id),
+    [cargosLegacy, reserva.id, huesped.id, pedidos]);
   useEffect(() => {
     try {
       localStorage.setItem(`vs-cargos-estancia-${reserva.codigo}`, JSON.stringify(cargos));
     }
     catch { }
   }, [cargos, reserva.codigo]);
-  useEffect(() => {
-    try {
-      localStorage.setItem(`vs-pagos-estancia-${reserva.codigo}`, JSON.stringify(pagos));
-    }
-    catch { }
-  }, [pagos, reserva.codigo]);
   const [fiscales, setFiscales] = useState<DatosFiscales>(DATOS_FISCALES_INICIALES);
   const [facturaEmitida, setFacturaEmitida] = useState<string | null>(null);
   const [puntos, setPuntos] = useState(PUNTOS_FIDELIDAD_INICIALES);
   const [reservaWeb, setReservaWeb] = useState<ReservaHuesped | null>(null);
-  const [estanciaCerrada, setEstanciaCerrada] = useState(false);
+  const estanciaCerrada = reserva.estado === 'finalizada' || reserva.estado === 'cancelada';
+  const estanciaActiva = () => leerReservas().some(r => r.id === reserva.id && r.huespedId === huesped.id && r.estado === 'en-curso');
   const [aviso, setAviso] = useState<string | null>(null);
   function reservarTurno(turnoId: string,
     personas: number,
     detalle?: string) {
-    if (estanciaCerrada)
+    if (!estanciaActiva())
       return;
     const turno = turnos.find((item) => item.id === turnoId);
     if (!turno) {
@@ -331,7 +407,7 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
     mostrarAviso(`Reserva confirmada para ${turno.area} a las ${turno.hora}.`);
   }
   function cancelarTurno(reservaId: string) {
-    if (estanciaCerrada)
+    if (!estanciaActiva())
       return;
     const reservaCancelada = reservasAmenidad.find((item) => item.id === reservaId);
     if (!reservaCancelada)
@@ -344,6 +420,8 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
     setFiscales(datos);
     mostrarAviso("Datos fiscales guardados correctamente.");
   }
+  // Frontera futura: invocar para tarjeta solo después de una aprobación real del proveedor.
+  // Los formularios actuales sin procesador no llaman a esta función para tarjeta.
   function pagarSaldo(metodo: MetodoPagoHuesped,
     extra: {
       ultimos4?: string;
@@ -355,12 +433,6 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
     }) {
     if (cuenta.saldo <= 0) {
       mostrarAviso("No tienes saldo pendiente por pagar.");
-      return;
-    }
-    if (metodo === "recepcion") {
-      localStorage.setItem("vs-pago-pendiente-recepcion",
-        JSON.stringify({ reservaId: reserva.id, codigo: reserva.codigo, huespedId: huesped.id, monto: cuenta.saldo, estado: "pendiente", creadoEn: ahoraISO(), origen: "checkout" }));
-      mostrarAviso("Pago en Recepción registrado como pendiente. Recepción debe confirmar el pago antes de finalizar el check-out.");
       return;
     }
     const descuentoAplicado = Math.max(0, (extra.descuentoPuntos ?? 0) + (extra.descuentoCodigo ?? 0));
@@ -377,6 +449,7 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
     };
     const pagoCentral = montoCobrado > 0 ? {
       id: `portal-${pagoApp.id}`,
+      destino: "consumos" as const,
       fecha,
       monto: montoCobrado,
       metodo: metodo === "debito" ? "tarjeta" as const : metodo === "tarjeta" ? "tarjeta" as const : "transferencia" as const,
@@ -389,29 +462,23 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
     };
     setReserva(actualizada);
     upsertReserva(actualizada);
-    guardarReservaDelPortal(huesped, actualizada);
     if (extra.puntosUsados)
       setPuntos((actuales) => Math.max(0, actuales - extra.puntosUsados!));
     setFacturaEmitida(comprobante);
     mostrarAviso(`Pago registrado. Comprobante ${comprobante}.`);
   }
   function hacerCheckOut() {
-    if (estanciaCerrada)
+    if (!estanciaActiva())
       return;
-    const salida = ahoraISO();
-    const actualizada: Reserva = { ...reserva, estado: "finalizada", checkOutEn: salida };
+    const actualizada = completarCheckOutReserva(reserva.id, 'portal');
+    if (!actualizada) return;
     setReserva(actualizada);
-    upsertReserva(actualizada);
-    setEstanciaCerrada(true);
-    setEstadoHabitacion("en-limpieza");
-    registrarLimpiezaDeSalida(habitacion.numero);
-    guardarReservaDelPortal(huesped, actualizada);
-    guardarAccesoPostCheckout(huesped.correo, salida);
     mostrarAviso("Check-out completado correctamente. Tu cuenta permanecerá disponible durante 24 horas para consultar la estancia y gestionar tu reseña.");
   }
   useEffect(() => {
     if (!estanciaCerrada || !reserva.checkOutEn)
       return;
+    guardarAccesoPostCheckout(huesped.correo, reserva.checkOutEn);
     const access = leerAccesoPostCheckout(huesped.correo);
     const expiresAt = access?.expiresAt ? new Date(access.expiresAt).getTime() : new Date(reserva.checkOutEn).getTime() + 24 * 60 * 60 * 1000;
     const cerrarSiExpirado = () => {
@@ -433,57 +500,21 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
   const [motivoCancelacionOpcion, setMotivoCancelacionOpcion] = useState("");
   const [motivoCancelacionExtension, setMotivoCancelacionExtension] = useState("");
   const [cancelacionExtensionPendiente, setCancelacionExtensionPendiente] = useState(false);
-  const [metodoExtension, setMetodoExtension] = useState<"guardada" | "nueva" | "recepcion">(tarjetaPrincipal() ? "guardada" : "nueva");
-  const tarjetaExtension = tarjetaPrincipal();
   useEffect(() => {
-    try {
-      const actual = leerReservas().find(r => r.id === reserva.id) || reserva;
-      guardarReservaDelPortal({ ...huesped, nombre: nombrePerfil, telefono: telefonoPerfil, correo: correoPerfil, foto: fotoPerfil || undefined }, actual);
-    }
-    catch { }
+    actualizarHuespedCentral(huesped.id, {
+      nombre: nombrePerfil,
+      telefono: telefonoPerfil,
+      correo: correoPerfil,
+      foto: fotoPerfil || undefined,
+    });
   },
-    [nombrePerfil, telefonoPerfil, correoPerfil, fotoPerfil]);
+    [huesped.id, nombrePerfil, telefonoPerfil, correoPerfil, fotoPerfil]);
   const llaveActiva = checkin.estado === "aprobado" && Boolean(checkin.codigoLlave) && !estanciaCerrada;
-  useEffect(() => {
-    if (checkin.estado !== "pendiente" || estanciaCerrada)
-      return;
-    const revisar = () => {
-      try {
-        const datos = JSON.parse(localStorage.getItem('vs-portal-recepcion') || 'null');
-        const sincronizada = datos?.reservas?.find((r: Reserva) => r.codigo === reserva.codigo);
-        if (sincronizada?.checkInWeb?.estado === 'rechazado') {
-          setReserva(sincronizada);
-          setCheckin(actual => ({ ...actual, estado: 'rechazado', codigoLlave: undefined, motivoRechazo: sincronizada.checkInWeb.motivoRevision }));
-          mostrarAviso(`Recepción solicitó corregir el check-in: ${sincronizada.checkInWeb.motivoRevision ?? 'Revisa los datos enviados.'}`);
-          return;
-        }
-        if (sincronizada?.checkInWeb?.estado !== 'aprobado')
-          return;
-        setReserva(sincronizada);
-        setCheckin(actual => ({
-          ...actual,
-          estado: 'aprobado',
-          codigoLlave: codigoLlaveDigital(reserva.codigo, habitacion.numero),
-          completadoEn: sincronizada.checkInWeb.revisadoEn ?? actual.completadoEn,
-        }));
-        mostrarAviso('Recepción validó tu check-in. Tu llave digital ya está activa.');
-      }
-      catch { }
-    };
-    revisar();
-    const id = window.setInterval(revisar, 1200);
-    window.addEventListener('vs-portal-recepcion-actualizado', revisar);
-    return () => {
-      window.clearInterval(id);
-      window.removeEventListener('vs-portal-recepcion-actualizado', revisar);
-    };
-  },
-    [checkin.estado, estanciaCerrada, reserva.codigo, habitacion.numero]);
   useEffect(() => {
     const cargar = () => {
       try {
         const guardados = leerMensajesChat([]);
-        setMensajes(guardados.filter((m: MensajeChat) => !m.huespedId || m.huespedId === huesped.id));
+        setMensajes(guardados.filter((m: MensajeChat) => m.huespedId === huesped.id));
       }
       catch { }
     };
@@ -523,10 +554,10 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
     catch {
     }
     setMensajes((actuales) => {
-      const globales = leerMensajesChat([]).filter(m => m.huespedId !== huesped.id);
-      const siguientes = [...actuales, mensaje];
-      guardarMensajesChat([...globales, ...siguientes]);
-      return siguientes;
+      const globales = leerMensajesChat([]);
+      const siguientes = [...globales, mensaje];
+      guardarMensajesChat(siguientes);
+      return siguientes.filter(m => m.huespedId === huesped.id);
     });
   }
   async function editarMensaje(id: string,
@@ -547,13 +578,13 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
     catch { }
     const globales = leerMensajesChat([]);
     const actualizados = actualizarMensajeChat(globales, id, m => ({ ...m, texto: valor, textoEs, textoEn, idiomaOriginal, editado: true, editadoEn: ahoraISO(), eliminadoParaTodos: false }));
-    setMensajes(actualizados.filter(m => !m.huespedId || m.huespedId === huesped.id));
+    setMensajes(actualizados.filter(m => m.huespedId === huesped.id));
   }
   function eliminarMensaje(id: string,
     paraTodos: boolean) {
     const globales = leerMensajesChat([]);
     const actualizados = actualizarMensajeChat(globales, id, m => paraTodos ? { ...m, eliminadoParaTodos: true, editado: false } : { ...m, eliminadoPara: Array.from(new Set([...(m.eliminadoPara ?? []), "huesped"])) });
-    setMensajes(actualizados.filter(m => !m.huespedId || m.huespedId === huesped.id));
+    setMensajes(actualizados.filter(m => m.huespedId === huesped.id));
   }
   function crearPedido(datos: {
     tipo: TipoPedidoHuesped;
@@ -564,7 +595,7 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
     codigoCupon?: string;
     descuentoPct?: number;
   }): number {
-    if (datos.lineas.length === 0)
+    if (!habitacion || !estanciaActiva() || datos.lineas.length === 0)
       return 0;
     const numero = siguienteNumeroPedidoHuesped();
     const creadoEn = ahoraISO();
@@ -582,29 +613,36 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
       creadoEn,
       historial: [{ estado: "recibido", fechaHora: creadoEn }],
     };
+    if (datos.tipo === 'restaurante') {
+      const guardado = publicarPedidoPortal(pedido, {
+        reserva, habitacion: (habitacion?.numero ?? (en ? 'Unassigned' : 'Sin asignar')), piso: habitacion.piso,
+        huesped: nombrePerfil, turno: turnoActual(),
+      });
+      if (!guardado) return 0;
+      setPedidos(actuales => [...actuales.filter(p => p.tipo !== 'restaurante'), ...pedidosRestauranteHuesped(reserva.id, huesped.id)]);
+      return numero;
+    }
     setPedidos((actuales) => [pedido, ...actuales]);
     const descuentoFactor = Math.max(0, 1 - (datos.descuentoPct ?? 0) / 100);
     const nuevosCargos: CargoHuesped[] = datos.lineas.filter(l => l.precioUnitario > 0).map(l => ({
       id: `pedido-${pedido.id}-${l.refId}`,
       concepto: `${datos.tipo === "restaurante" ? "Menú" : "Servicio"} · ${l.nombre}`,
-      categoria: datos.tipo === "restaurante" ? "Restaurante" : "Servicios",
+      categoria: "Servicios",
       cantidad: l.cantidad,
       precioUnitario: Math.round(l.precioUnitario * descuentoFactor * 100) / 100,
       fecha: creadoEn
     }));
     setCargos(actuales => [...actuales, ...nuevosCargos.filter(n => !actuales.some(a => a.id === n.id))]);
-    if (datos.tipo === "restaurante") {
-      publicarPedidoPortal(pedido, {
-        habitacion: habitacion.numero,
-        piso: habitacion.piso,
-        huesped: nombrePerfil,
-        turno: turnoActual(),
-      });
-    }
     return numero;
   }
   function cancelarPedido(id: string,
     motivo = "Cancelado por el huésped") {
+    if (pedidos.some(p => p.id === id && p.tipo === 'restaurante')) {
+      const aceptado = actualizarPedidoPortal(id, 'cancelado', motivo);
+      setPedidos(actuales => [...actuales.filter(p => p.tipo !== 'restaurante'), ...pedidosRestauranteHuesped(reserva.id, huesped.id)]);
+      if (!aceptado) mostrarAviso('El pedido ya no permite cancelación.');
+      return;
+    }
     const ahora = ahoraISO();
     setPedidos((actuales) => actuales.map((pedido) => pedido.id === id ? {
       ...pedido,
@@ -612,34 +650,12 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
       motivoCancelacion: motivo,
       historial: [...pedido.historial, { estado: "cancelado", fechaHora: ahora }],
     } : pedido));
-    actualizarPedidoPortal(id, "cancelado", motivo);
     setCargos(actuales => actuales.filter(c => !c.id.startsWith(`pedido-${id}-`)));
   }
   const cuenta = useMemo(() => {
-    const noches = nochesEntre(reserva.fechaEntrada, reserva.fechaSalida);
-    const precioNoche = habitacion?.precioNoche ?? tarifasReserva[reserva.tipoHabitacion];
-    const alojamiento = noches * precioNoche;
-    const extras = totalCargos(cargos) + reserva.servicios.reduce((s, x) => s + x.cantidad * x.precioUnitario, 0);
-    const descuento = reserva.descuento || 0;
-    const total = Math.max(0, alojamiento + extras - descuento);
-    const anticipo = reserva.pagos.reduce((s, p) => s + p.monto, 0);
-    const abonado = pagos.reduce((s, p) => s + p.monto, 0);
-    const pagado = anticipo + abonado;
-    const saldo = Math.max(0, Math.round((total - pagado) * 100) / 100);
-    return {
-      noches,
-      precioNoche,
-      alojamiento,
-      extras,
-      descuento,
-      total,
-      anticipo,
-      abonado,
-      pagado,
-      saldo,
-    };
+    return calcularCuentaEstancia(reserva, habitacion ?? null, totalCargos(cargos));
   },
-    [reserva, habitacion, cargos, pagos]);
+    [reserva, habitacion, cargos, tarifasReserva]);
   const nochesAdicionales = Math.max(0, nochesEntre(reserva.fechaSalida, nuevaSalida));
   const estimacionExtension = nochesAdicionales * cuenta.precioNoche;
   const fechaLarga = (fecha: string) => new Date(`${fecha}T12:00:00`).toLocaleDateString("es-GT", { day: "numeric", month: "long", year: "numeric" });
@@ -650,11 +666,12 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
   }
   function guardarSolicitudExtension(estado: "extension-pendiente" | "cancelacion-pendiente",
     motivo = "") {
+    if (!habitacion || !estanciaActiva()) return;
     localStorage.setItem("vs-solicitud-extension",
       JSON.stringify({
         id: reserva.codigo,
         huesped: nombrePerfil,
-        habitacion: habitacion.numero,
+        habitacion: (habitacion?.numero ?? (en ? 'Unassigned' : 'Sin asignar')),
         salidaActual: reserva.fechaSalida,
         nuevaSalida,
         noches: nochesAdicionales,
@@ -683,137 +700,68 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
   },
     [reserva.codigo]);
   useEffect(() => {
+    // Move only legacy restaurant orders; other service requests remain in their key.
     try {
-      const guardados = JSON.parse(localStorage.getItem("vs-pedidos-huesped") || "[]");
-      if (Array.isArray(guardados))
-        setPedidos(guardados);
-    }
-    catch { }
-  },
-    []);
-  useEffect(() => {
-    try {
-      localStorage.setItem("vs-pedidos-huesped", JSON.stringify(pedidos));
-    }
-    catch { }
-  }, [pedidos]);
-  useEffect(() => {
-    const aplicarEstado = (a: ActualizacionPedidoRS) => {
-      const estado = a.estado === "nuevo" ? "recibido" : a.estado;
-      setPedidos(actuales => actuales.map(p => {
-        if (p.id !== a.id)
-          return p;
-        if (p.estado === estado && !a.motivo)
-          return p;
-        return {
-          ...p,
-          estado,
-          motivoCancelacion: a.motivo ?? p.motivoCancelacion,
-          entregadoEn: estado === "entregado" ? a.fechaHora : p.entregadoEn,
-          historial: p.historial.some(h => h.estado === estado && h.fechaHora === a.fechaHora)
-            ? p.historial
-            : [...p.historial, { estado, fechaHora: a.fechaHora, motivo: a.motivo }],
-        };
-      }));
-      setAvisosRoomService(actuales => [a, ...actuales.filter(x => x.id !== a.id)].slice(0, 10));
-    };
-    const sincronizar = () => {
-      for (const remoto of leerPedidosPortal()) {
-        aplicarEstado({
-          id: remoto.id,
-          numero: remoto.numero,
-          estado: remoto.estado,
-          motivo: remoto.motivoCancelacion,
-          fechaHora: remoto.historial.at(-1)?.fechaHora ?? remoto.creadoEn
+      const legacy: PedidoHuesped[] = JSON.parse(localStorage.getItem(pedidosKey) || '[]');
+      if (Array.isArray(legacy)) {
+        const restantes = legacy.filter(p => {
+          if (p.tipo !== 'restaurante' || !habitacion) return true;
+          const existente = leerPedidosPortal().find(x => x.id === p.id);
+          if (existente?.reservaId) return existente.reservaId !== reserva.id || existente.huespedId !== huesped.id;
+          return !publicarPedidoPortal(existente ? {
+            ...p, estado: existente.estado === 'nuevo' ? 'recibido' : existente.estado,
+            entregadoEn: existente.entregadoEn, motivoCancelacion: existente.motivoCancelacion,
+            historial: existente.historial.map(h => ({ ...h, estado: h.estado === 'nuevo' ? 'recibido' : h.estado })),
+          } : p, { reserva, habitacion: (habitacion?.numero ?? (en ? 'Unassigned' : 'Sin asignar')), piso: habitacion.piso, huesped: nombrePerfil, turno: turnoActual() });
         });
+        localStorage.setItem(pedidosKey, JSON.stringify(restantes));
       }
+    } catch { }
+    const sincronizar = () => setPedidos(actuales => [
+      ...actuales.filter(p => p.tipo !== 'restaurante'),
+      ...pedidosRestauranteHuesped(reserva.id, huesped.id),
+    ]);
+    const evento = (e: Event) => {
+      sincronizar();
+      const a = (e as CustomEvent<ActualizacionPedidoRS>).detail;
+      if (pedidosRestauranteHuesped(reserva.id, huesped.id).some(p => p.id === a.id))
+        setAvisosRoomService(actuales => [a, ...actuales.filter(x => x.id !== a.id)].slice(0, 10));
     };
-    const evento = (e: Event) => aplicarEstado((e as CustomEvent<ActualizacionPedidoRS>).detail);
+    const storage = (e: StorageEvent) => { if (e.key === PEDIDOS_RS_KEY || e.key === null) sincronizar(); };
     sincronizar();
     window.addEventListener(EVENTO_ESTADO_RS, evento);
-    window.addEventListener("storage", sincronizar);
+    window.addEventListener(EVENTO_PEDIDO_RS, sincronizar);
+    window.addEventListener('storage', storage);
     return () => {
       window.removeEventListener(EVENTO_ESTADO_RS, evento);
-      window.removeEventListener("storage", sincronizar);
+      window.removeEventListener(EVENTO_PEDIDO_RS, sincronizar);
+      window.removeEventListener('storage', storage);
     };
-  },
-    []);
-  function confirmarReservaWeb(datos: {
-    tipo: TipoHabitacion;
-    fechaEntrada: string;
-    fechaSalida: string;
-    personas: number;
-    adultos: number;
-    ninos: number;
-    contacto: DatosContacto;
-    tipoDocumento: string;
-    nacionalidad: string;
-    horaLlegada: string;
-    metodoPago: "tarjeta" | "hotel";
-    paraOtraPersona: boolean;
-    ultimos4: string;
-  }) {
-    const oferta = ofertasReserva.find((o) => o.tipo === datos.tipo)!;
-    const noches = nochesEntre(datos.fechaEntrada, datos.fechaSalida);
-    const nueva: ReservaHuesped = {
-      codigo: siguienteCodigoReservaWeb(),
-      tipo: datos.tipo,
-      fechaEntrada: datos.fechaEntrada,
-      fechaSalida: datos.fechaSalida,
-      personas: datos.personas,
-      noches,
-      precioNoche: oferta.precioNoche,
-      total: noches * oferta.precioNoche,
-      contacto: datos.contacto,
-      ultimos4: datos.ultimos4,
-      creadaEn: ahoraISO(),
-    };
-    setReservaWeb(nueva);
-    const huespedPortal = datos.paraOtraPersona ? {
-      id: `portal-${nueva.codigo}`,
-      nombre: nueva.contacto.nombre,
-      tipoDocumento: (datos.tipoDocumento === 'Pasaporte' ? 'Pasaporte' : 'DPI') as 'DPI' | 'Pasaporte',
-      documento: nueva.contacto.documento || 'Por registrar',
-      telefono: nueva.contacto.telefono,
-      correo: nueva.contacto.correo,
-      nacionalidad: datos.nacionalidad || 'Por confirmar',
-      creadoEn: nueva.creadaEn,
-    } : huesped;
-    guardarReservaDelPortal(huespedPortal,
-      {
-        id: `portal-${nueva.codigo}`,
-        codigo: nueva.codigo,
-        huespedId: huespedPortal.id,
-        habitacionId: null,
-        tipoHabitacion: nueva.tipo,
-        fechaEntrada: nueva.fechaEntrada,
-        fechaSalida: nueva.fechaSalida,
-        personas: nueva.personas,
-        adultos: datos.adultos,
-        ninos: datos.ninos,
-        estado: 'pendiente',
-        acompanantes: [],
-        servicios: [],
-        pagos: datos.metodoPago === 'hotel' ? [] : [{ id: `pago-${nueva.codigo}`, fecha: nueva.creadaEn, monto: nueva.total, metodo: 'tarjeta', comprobante: `WEB-${nueva.codigo}` }],
-        descuento: 0,
-        creadoEn: nueva.creadaEn,
-      });
-    mostrarAviso(`Reserva ${nueva.codigo} confirmada y asociada a ${datos.contacto.correo}.`);
-  }
+  }, [reserva.id, reserva.codigo, huesped.id]);
+  useEffect(() => {
+    try {
+      const guardados: PedidoHuesped[] = JSON.parse(localStorage.getItem(pedidosKey) || '[]');
+      const pendientes = Array.isArray(guardados) ? guardados.filter(p => p.tipo === 'restaurante') : [];
+      localStorage.setItem(pedidosKey, JSON.stringify([...pendientes, ...pedidos.filter(p => p.tipo !== 'restaurante')]));
+    }
+    catch { }
+  }, [pedidos, pedidosKey]);
   function guardarOcupantes(datos: {
     adultos: number;
     ninos: number;
     acompanantes: Acompanante[];
   }) {
+    const canonica = leerReservas().find(r => r.id === reserva.id && r.huespedId === huesped.id);
+    if (!canonica || canonica.estado === 'finalizada' || canonica.estado === 'cancelada') return;
     const actualizada: Reserva = {
-      ...reserva,
+      ...canonica,
       adultos: datos.adultos,
       ninos: datos.ninos,
       personas: datos.adultos + datos.ninos,
       acompanantes: datos.acompanantes,
     };
     setReserva(actualizada);
-    guardarReservaDelPortal(huesped, actualizada);
+    upsertReserva(actualizada);
   }
   function completarCheckIn(datos: {
     documento: DocumentoCargado;
@@ -821,19 +769,11 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
     peticiones: string[];
     notaPeticiones: string;
   }) {
+    const canonica = leerReservas().find(r => r.id === reserva.id && r.huespedId === huesped.id);
+    if (!canonica || canonica.estado !== 'confirmada' || canonica.checkInEn || canonica.checkInWeb?.estado === 'pendiente' || canonica.checkInWeb?.estado === 'aprobado') return;
     const enviadoEn = ahoraISO();
-    setCheckin({
-      estado: "pendiente",
-      documento: datos.documento,
-      documentos: datos.documentos,
-      terminosAceptados: true,
-      peticiones: datos.peticiones,
-      notaPeticiones: datos.notaPeticiones,
-      completadoEn: enviadoEn,
-      codigoLlave: undefined,
-    });
     const actualizada: Reserva = {
-      ...reserva,
+      ...canonica,
       estado: 'confirmada',
       checkInWeb: {
         estado: 'pendiente',
@@ -846,13 +786,49 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
       },
     };
     setReserva(actualizada);
-    guardarReservaDelPortal(huesped, actualizada);
+    upsertReserva(actualizada);
     mostrarAviso("Check-in enviado. Recepción revisará la información antes de activar tu llave digital.");
   }
+  const renderCuenta = () => {
+    return (<CuentaHuesped
+          abrirResena={abrirResena}
+          onResenaAbierta={() => setAbrirResena(false)}
+          huesped={huesped}
+          reserva={reserva}
+          habitacion={habitacion}
+          estadoHabitacion={estadoHabitacion}
+          cargos={cargos}
+          cuenta={cuenta}
+          fiscales={fiscales}
+          facturaEmitida={facturaEmitida}
+          puntos={puntos}
+          estanciaCerrada={estanciaCerrada}
+          onGuardarFiscales={guardarFiscales}
+          onPagar={pagarSaldo}
+          onCheckOut={hacerCheckOut} />);
+  };
   const contenido = (() => {
+    if (reserva.estado === 'finalizada' && ['inicio', 'checkin', 'restaurante', 'servicios'].includes(seccion)) return renderCuenta();
+    const dependeHabitacion = ['restaurante', 'servicios', 'habitacion', 'checkin'].includes(seccion);
+    const requiereEstanciaActiva = ['restaurante', 'servicios'].includes(seccion);
+    if (dependeHabitacion && (!habitacion || (requiereEstanciaActiva && reserva.estado !== 'en-curso'))) {
+      const titulo = SECCIONES.find(s => s.id === seccion)?.label ?? seccion;
+      return <div className="p-6 space-y-4">
+        <h1 className="text-2xl font-semibold text-[#18345C]">{ui(titulo)}</h1>
+        <p className="text-sm text-[#52677F]">{reserva.codigo} · {en ? 'Reservation status' : 'Estado de la reserva'}: {ui(reserva.estado)}</p>
+        <Aviso>{!habitacion
+          ? (en ? 'Reception must assign a room to this reservation first.' : 'Recepción debe asignar primero una habitación a esta reserva.')
+          : (en ? 'This section is available during an active stay, after check-in.' : 'Esta sección está disponible durante una estancia activa, después del check-in.')}</Aviso>
+        <div className="flex flex-wrap gap-3">
+          {habitacion && reserva.estado === 'confirmada' && <button onClick={() => setSeccion('checkin')} className="rounded-lg bg-[#18345C] px-4 py-2 text-white">{en ? 'Go to check-in' : 'Ir a check-in'}</button>}
+          <button onClick={() => setSeccion('chat')} className="rounded-lg border border-[#18345C] px-4 py-2 text-[#18345C]">{en ? 'Contact Reception' : 'Contactar a Recepción'}</button>
+          <button onClick={() => setSeccion('cuenta')} className="rounded-lg border border-[#18345C] px-4 py-2 text-[#18345C]">{en ? 'View account' : 'Ver cuenta'}</button>
+        </div>
+      </div>;
+    }
     switch (seccion) {
       case "inicio":
-        return (<InicioHuesped
+        return habitacion ? (<InicioHuesped
           huesped={huesped}
           reserva={reserva}
           habitacion={habitacion}
@@ -865,7 +841,7 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
           puntos={puntos}
           llaveActiva={llaveActiva}
           estanciaCerrada={estanciaCerrada}
-          onIr={setSeccion} />);
+          onIr={setSeccion} />) : <div className="p-6 space-y-3"><h1 className="text-xl font-semibold">{huesped.nombre}</h1><p>{reserva.codigo} · {reserva.fechaEntrada} → {reserva.fechaSalida}</p><p className="text-sm text-[#52677F]">{en ? "Reservation status" : "Estado de la reserva"}: {ui(reserva.estado)}</p><Aviso>{en ? 'Room assignment pending. You can consult your account or contact Reception in the chat.' : 'Habitación pendiente de asignación. Puedes consultar tu cuenta o contactar a Recepción por chat.'}</Aviso></div>;
       case "reservar":
         if (!gestionEstancia)
           return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0] p-4 sm:p-6">
@@ -891,12 +867,12 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
                   <div className="mt-4 flex items-center gap-3 rounded-lg bg-[#F8F6F0] p-3">
                     <img
                       src="https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=500&q=85"
-                      alt={`Habitación ${habitacion.numero}`}
+                      alt={`Habitación ${(habitacion?.numero ?? (en ? 'Unassigned' : 'Sin asignar'))}`}
                       className="h-16 w-24 rounded-md object-cover" />
-                    <p className="text-sm text-[#52677F]"><b className="block text-[#18345C]">Habitación {habitacion.numero} · {reserva.tipoHabitacion}</b>Salida {reserva.fechaSalida}</p>
+                    <p className="text-sm text-[#52677F]"><b className="block text-[#18345C]">Habitación {(habitacion?.numero ?? (en ? 'Unassigned' : 'Sin asignar'))} · {reserva.tipoHabitacion}</b>Salida {reserva.fechaSalida}</p>
                   </div>
                   <button
-                    onClick={() => setGestionEstancia("extender")}
+                    disabled={!habitacion || !estanciaActiva()} onClick={() => setGestionEstancia("extender")}
                     className="mt-5 inline-flex w-fit items-center gap-3 self-end rounded-lg bg-[#B08A31] px-4 py-2.5 text-sm font-semibold text-white">Solicitar extensión <span>→</span></button>
                 </article>
                 <article className="flex flex-col rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm sm:p-6">
@@ -938,7 +914,7 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
                 <div className="grid gap-5 border-b border-[#ECE7DE] pb-6 sm:grid-cols-2 lg:grid-cols-4">
                   {[
                     ["huesped", "Huésped", nombrePerfil],
-                    ["habitacion", "Habitación", `${habitacion.numero} · ${reserva.tipoHabitacion}`],
+                    ["habitacion", "Habitación", `${(habitacion?.numero ?? (en ? 'Unassigned' : 'Sin asignar'))} · ${reserva.tipoHabitacion}`],
                     ["fecha", "Estancia actual", `${fechaLarga(reserva.fechaEntrada)} — ${fechaLarga(reserva.fechaSalida)}`],
                     ["tarifa", "Tarifa por noche", `Q ${cuenta.precioNoche.toLocaleString()}`],
                   ].map(([icono, etiqueta, valor]) => <div key={etiqueta} className="flex items-center gap-3 lg:border-r lg:last:border-0">
@@ -980,56 +956,13 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
                     <p className="text-xs text-[#71839B]">Recepción confirmará la disponibilidad y el importe antes de realizar cualquier cobro.</p>
                   </div>
                 </div>
-                <div className="mt-5 rounded-xl border border-[#E5E0D8] bg-white p-4">
-                  <p className="text-sm font-semibold text-[#18345C]">
-                    {en ? "Payment method for the extension" : "Método de pago para la extensión"}
-                  </p>
-                  <p className="mt-1 text-xs text-[#71839B]">
-                    {en ? "No charge will be made until Reception confirms availability and the amount." : "No se realizará ningún cobro hasta que Recepción confirme disponibilidad e importe."}
-                  </p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                    {tarjetaExtension && <label className={`cursor-pointer rounded-lg border p-3 text-sm ${metodoExtension === 'guardada' ? 'border-[#18345C] bg-[#F3F7FC]' : 'border-[#E5E0D8]'}`}>
-                      <input type="radio" className="mr-2 accent-[#18345C]" checked={metodoExtension === 'guardada'} onChange={() => setMetodoExtension('guardada')} />
-                      <b>
-                        {en ? "Use saved card" : "Usar tarjeta guardada"}
-                      </b>
-                      <small className="mt-1 block text-[#71839B]">{tarjetaExtension.marca} · •••• {tarjetaExtension.ultimos4}</small>
-                    </label>}
-                    <label className={`cursor-pointer rounded-lg border p-3 text-sm ${metodoExtension === 'nueva' ? 'border-[#18345C] bg-[#F3F7FC]' : 'border-[#E5E0D8]'}`}>
-                      <input type="radio" className="mr-2 accent-[#18345C]" checked={metodoExtension === 'nueva'} onChange={() => setMetodoExtension('nueva')} />
-                      <b>
-                        {en ? "Add a new card" : "Agregar nueva tarjeta"}
-                      </b>
-                      <small className="mt-1 block text-[#71839B]">
-                        {en ? "Card details will be requested after approval." : "Se solicitarán los datos después de la aprobación."}
-                      </small>
-                    </label>
-                    <label className={`cursor-pointer rounded-lg border p-3 text-sm ${metodoExtension === 'recepcion' ? 'border-[#18345C] bg-[#F3F7FC]' : 'border-[#E5E0D8]'}`}>
-                      <input type="radio" className="mr-2 accent-[#18345C]" checked={metodoExtension === 'recepcion'} onChange={() => setMetodoExtension('recepcion')} />
-                      <b>
-                        {en ? "Pay at Reception" : "Pagar en Recepción"}
-                      </b>
-                      <small className="mt-1 block text-[#71839B]">
-                        {en ? "It will remain pending until Reception confirms the payment." : "Quedará como pago pendiente hasta que Recepción lo confirme."}
-                      </small>
-                    </label>
-                  </div>
-                </div>
                 <button
                   disabled={nochesAdicionales < 1 || solicitudExtensionEnviada}
                   onClick={() => {
-                    localStorage.setItem("vs-extension-metodo-pago",
-                      JSON.stringify({
-                        reservaId: reserva.id,
-                        metodo: metodoExtension,
-                        ultimos4: metodoExtension === 'guardada' ? tarjetaExtension?.ultimos4 : undefined,
-                        estado: metodoExtension === 'recepcion' ? 'pago-pendiente' : 'pendiente-aprobacion',
-                        montoEstimado: estimacionExtension
-                      }));
                     setSolicitudExtensionEnviada(true);
                     setCancelacionExtensionPendiente(false);
                     guardarSolicitudExtension("extension-pendiente");
-                    mostrarAviso(metodoExtension === 'recepcion' ? "Solicitud enviada. El pago quedará pendiente en Recepción cuando se apruebe la extensión." : "Solicitud de extensión enviada a recepción.");
+                    mostrarAviso("Solicitud de extensión enviada a recepción.");
                   }}
                   className="mt-4 rounded-lg bg-[#18345C] px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9AA9BB]">
                   {en ? "Request extension" : "Solicitar extensión"}
@@ -1129,7 +1062,6 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
             reservas={reservasHotel}
             huesped={huesped}
             reservaWeb={reservaWeb}
-            onConfirmar={confirmarReservaWeb}
             onNuevaBusqueda={() => setReservaWeb(null)}
             onVolver={() => setGestionEstancia(null)}
             onVerReservacion={() => {
@@ -1138,6 +1070,7 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
             }} />
         </div>);
       case "checkin":
+        if (!habitacion) return null;
         return (<CheckInWebScreen
           huesped={huesped}
           reserva={reserva}
@@ -1152,6 +1085,7 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
             setSeccion("chat");
           }} />);
       case "restaurante":
+        if (!habitacion) return null;
         return (<ServiciosHuesped
           menu={menu}
           servicios={SERVICIOS_CATALOGO}
@@ -1159,6 +1093,8 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
           mensajes={mensajes}
           escribiendo={escribiendo}
           habitacion={habitacion}
+          reserva={reserva}
+          huespedId={huesped.id}
           estanciaCerrada={estanciaCerrada}
           onCrearPedido={crearPedido}
           onCancelarPedido={cancelarPedido}
@@ -1166,6 +1102,7 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
           onIrCuenta={() => setSeccion("cuenta")}
           modo="restaurante" />);
       case "servicios":
+        if (!habitacion) return null;
         return (<ServiciosHuesped
           menu={menu}
           servicios={SERVICIOS_CATALOGO}
@@ -1173,6 +1110,8 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
           mensajes={mensajes}
           escribiendo={escribiendo}
           habitacion={habitacion}
+          reserva={reserva}
+          huespedId={huesped.id}
           estanciaCerrada={estanciaCerrada}
           onCrearPedido={crearPedido}
           onCancelarPedido={cancelarPedido}
@@ -1180,18 +1119,25 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
           onIrCuenta={() => setSeccion("cuenta")}
           modo="servicios" />);
       case "chat":
-        return <ChatHuesped nombreHuesped={nombrePerfil} mensajes={mensajes} onEnviar={enviarMensaje} onEditar={editarMensaje} onEliminar={eliminarMensaje} />;
+        return <ChatHuesped key={huesped.id} nombreHuesped={huesped.nombre} mensajes={mensajes} onEnviar={enviarMensaje} onEditar={editarMensaje} onEliminar={eliminarMensaje} />;
       case "experiencias":
         return (<ReservasExperiencias
+          reserva={reserva}
+          huespedId={huesped.id}
           turnos={turnos}
           reservas={reservasAmenidad}
           onReservar={reservarTurno}
           onCancelar={cancelarTurno}
           onCargoConfirmado={(id,
             nombre,
-            monto) => setCargos(actuales => actuales.some(c => c.id === id) ? actuales : [...actuales, { id, concepto: `Experiencia · ${nombre}`, categoria: "Spa y experiencias", cantidad: 1, precioUnitario: monto, fecha: ahoraISO() }])} />);
+            monto) => { if (!estanciaActiva()) return; setCargos(actuales => actuales.some(c => c.id === id) ? actuales : [...actuales, { id, concepto: `Experiencia · ${nombre}`, categoria: "Spa y experiencias", cantidad: 1, precioUnitario: monto, fecha: ahoraISO() }]); }} />);
       case "habitacion":
+        if (!habitacion) return null;
         return (<MiHabitacion
+          reserva={reserva}
+          onCompartirExperiencia={() => { setAbrirResena(true); setSeccion("cuenta"); }}
+          onReservarEstancia={() => { setGestionEstancia("nueva"); setSeccion("reservar"); }}
+          onVerCuentaFinal={() => { setAbrirResena(false); setSeccion("cuenta"); }}
           habitacion={habitacion}
           domotica={domotica}
           turnos={turnos}
@@ -1206,21 +1152,7 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
           onCancelarTurno={cancelarTurno}
           onIrCheckin={() => setSeccion("checkin")} />);
       case "cuenta":
-        return (<CuentaHuesped
-          huesped={huesped}
-          reserva={reserva}
-          habitacion={habitacion}
-          estadoHabitacion={estadoHabitacion}
-          cargos={cargos}
-          cuenta={cuenta}
-          pagos={pagos}
-          fiscales={fiscales}
-          facturaEmitida={facturaEmitida}
-          puntos={puntos}
-          estanciaCerrada={estanciaCerrada}
-          onGuardarFiscales={guardarFiscales}
-          onPagar={pagarSaldo}
-          onCheckOut={hacerCheckOut} />);
+        return renderCuenta();
     }
   })();
   const badgeDe = (id: SeccionHuesped) => {
@@ -1253,7 +1185,7 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
         </div>
 
         <div className="vs-scroll-clean flex-1 py-3 overflow-y-auto">
-          {SECCIONES.map((s) => {
+          {seccionesPortal(reserva.estado).map((s) => {
             const active = seccion === s.id;
             const badge = badgeDe(s.id);
             return (<button
@@ -1298,7 +1230,7 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
               <p className="text-[10px] truncate" style={{ color: "#AEBCC1" }}>
                 {ui(estanciaCerrada
                   ? "Estancia finalizada"
-                  : `Habitación ${habitacion.numero}`)}
+                  : `Habitación ${(habitacion?.numero ?? (en ? 'Unassigned' : 'Sin asignar'))}`)}
               </p>
               <span className="mt-0.5 block text-[10px] font-semibold text-[#D8B94E]">
                 <UiText text="Perfil" />
@@ -1330,7 +1262,7 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
         </div>
 
         <div className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: "#102747", borderColor: "#1d3a5f" }}>
-          {SECCIONES.map((s) => {
+          {seccionesPortal(reserva.estado).map((s) => {
             const active = seccion === s.id;
             const badge = badgeDe(s.id);
             return (<button
@@ -1357,6 +1289,8 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
     </div>
 
     {perfilAbierto && (<PerfilHuesped
+      huespedId={huesped.id}
+      onCerrarSesion={() => { setPerfilAbierto(false); setCerrarSesionAbierto(true); }}
       documento={`${huesped.tipoDocumento} ${huesped.documento}`}
       nombre={nombrePerfil}
       telefono={telefonoPerfil}
@@ -1369,11 +1303,12 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
         setTelefonoPerfil(v);
         actualizarHuespedCentral(huesped.id, { telefono: v });
       }}
-      onCorreo={(v) => {
-        setCorreoPerfil(v);
-        actualizarHuespedCentral(huesped.id, { correo: v });
+      onIdioma={(idioma) => {
+        if (idioma !== "ES" && idioma !== "EN") return;
+        localStorage.setItem("villa-serena-lang", idioma);
+        document.documentElement.lang = idioma === "EN" ? "en" : "es";
+        window.dispatchEvent(new CustomEvent("villa-serena-language", { detail: idioma }));
       }}
-      onIdioma={() => { }}
       onAviso={mostrarAviso}
       onSolicitarCorreccion={(d) => {
         if (!d)
@@ -1412,8 +1347,7 @@ export default function HuespedApp({ onCambiarModulo }: Props) {
           </button>
           <button
             onClick={() => {
-              localStorage.removeItem("vs-auth");
-              localStorage.removeItem("villa-serena-session");
+              logout();
               window.location.replace("/");
             }}
             className="bg-[#18345C] text-white rounded-lg py-3 font-semibold">

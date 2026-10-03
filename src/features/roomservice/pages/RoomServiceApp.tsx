@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Modulo, Pedido, ItemMenu, LineaPedido, NotificacionRS, SeccionRS, EstadoPedido, } from '@/lib/pms/types';
 import { generarId, ahoraISO, formatoHoraISO, turnoActual, siguienteNumeroPedido, pisoDeHabitacion, } from '@/data/pms';
-import { SIGUIENTE_ESTADO, esTerminal, BellIcon, BedIcon, ClockIcon } from '@/features/roomservice/pages/rsUtils';
+import { SIGUIENTE_ESTADO, BellIcon, BedIcon, ClockIcon } from '@/features/roomservice/pages/rsUtils';
 import ModuloSwitcher from '@/components/common/ModuloSwitcher';
 import StaffProfileModal from '@/components/common/StaffProfileModal';
 import { EMPLEADOS_EVENT, leerEmpleados } from '@/store/employeeStore';
@@ -12,7 +12,7 @@ import NuevoPedidoModal from '@/features/roomservice/pages/NuevoPedidoModal';
 import MenuCatalogo from '@/features/roomservice/pages/MenuCatalogo';
 import HistorialPedidos from '@/features/roomservice/pages/HistorialPedidos';
 import Cargos from '@/features/roomservice/pages/Cargos';
-import { EVENTO_PEDIDO_RS, actualizarPedidoPortal, guardarPedidoRoomService, leerPedidosPortal } from '@/store/roomServiceSync';
+import { EVENTO_PEDIDO_RS, EVENTO_ESTADO_RS, PEDIDOS_RS_KEY, relacionEstanciaRoomService, actualizarPedidoPortal, guardarPedidoRoomService, leerPedidosPortal } from '@/store/roomServiceSync';
 import { MENU_EVENT, actualizarDisponibilidadMenu, leerMenu } from '@/store/menuStore';
 const SECCIONES: {
   id: SeccionRS;
@@ -100,57 +100,37 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
       const pedido = (event as CustomEvent<Pedido>).detail;
       if (!pedido)
         return;
-      setPedidos(prev => [pedido, ...prev.filter(p => p.id !== pedido.id)]);
+      setPedidos(leerPedidosPortal());
       const notif: NotificacionRS = { id: generarId(), pedidoId: pedido.id, habitacionNumero: pedido.habitacionNumero, hora: pedido.creadoEn, leida: false };
       setNotificaciones(prev => [notif, ...prev]);
       setToasts(prev => [notif, ...prev]);
       window.setTimeout(() => setToasts(prev => prev.filter(t => t.id !== notif.id)), 8000);
     };
+    const sincronizar = () => setPedidos(leerPedidosPortal());
+    const storage = (e: StorageEvent) => { if (e.key === PEDIDOS_RS_KEY || e.key === null) sincronizar(); };
     window.addEventListener(EVENTO_PEDIDO_RS, recibir);
-    return () => window.removeEventListener(EVENTO_PEDIDO_RS, recibir);
+    window.addEventListener(EVENTO_ESTADO_RS, sincronizar);
+    window.addEventListener('storage', storage);
+    sincronizar();
+    return () => {
+      window.removeEventListener(EVENTO_PEDIDO_RS, recibir);
+      window.removeEventListener(EVENTO_ESTADO_RS, sincronizar);
+      window.removeEventListener('storage', storage);
+    };
   },
     []);
   const pedidoActual = pedidos.find(p => p.id === pedidoAbierto) ?? null;
   const noLeidas = notificaciones.filter(n => !n.leida).length;
   const nuevosTurno = pedidos.filter(p => p.turno === turno && p.estado === 'nuevo').length;
   function avanzarEstado(id: string) {
-    const actual = pedidos.find(p => p.id === id);
+    const actual = leerPedidosPortal().find(p => p.id === id);
     const proximo = actual ? SIGUIENTE_ESTADO[actual.estado] : undefined;
-    if (actual && proximo)
-      actualizarPedidoPortal(id, proximo);
-    setPedidos(prev => prev.map(p => {
-      if (p.id !== id)
-        return p;
-      const siguiente = SIGUIENTE_ESTADO[p.estado];
-      if (!siguiente)
-        return p;
-      const ahora = ahoraISO();
-      return {
-        ...p,
-        estado: siguiente,
-        entregadoEn: siguiente === 'entregado' ? ahora : p.entregadoEn,
-        historial: [...p.historial, { estado: siguiente, fechaHora: ahora }],
-      };
-    }));
+    if (proximo) actualizarPedidoPortal(id, proximo);
+    setPedidos(leerPedidosPortal());
   }
-  function cancelarPedido(id: string,
-    motivo: string) {
-    const actual = pedidos.find(p => p.id === id);
-    if (actual)
-      actualizarPedidoPortal(id, 'cancelado', motivo);
-    setPedidos(prev => prev.map(p => {
-      if (p.id !== id)
-        return p;
-      if (esTerminal(p.estado))
-        return p;
-      const ahora = ahoraISO();
-      return {
-        ...p,
-        estado: 'cancelado' as EstadoPedido,
-        motivoCancelacion: motivo,
-        historial: [...p.historial, { estado: 'cancelado', fechaHora: ahora, motivo }],
-      };
-    }));
+  function cancelarPedido(id: string, motivo: string) {
+    actualizarPedidoPortal(id, 'cancelado', motivo);
+    setPedidos(leerPedidosPortal());
   }
   function crearPedidoTelefonico(datos: {
     habitacionNumero: string;
@@ -161,6 +141,7 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
   }) {
     const ahora = ahoraISO();
     const nuevo: Pedido = {
+      ...relacionEstanciaRoomService(datos.habitacionNumero),
       id: generarId(),
       numero: siguienteNumeroPedido(),
       habitacionNumero: datos.habitacionNumero,
@@ -175,8 +156,8 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
       creadoEn: ahora,
       historial: [{ estado: 'nuevo', fechaHora: ahora }],
     };
-    guardarPedidoRoomService(nuevo);
-    setPedidos(prev => [nuevo, ...prev.filter(p => p.id !== nuevo.id)]);
+    if (!guardarPedidoRoomService(nuevo)) return;
+    setPedidos(leerPedidosPortal());
     setMostrarNuevo(false);
     setSeccion('pedidos');
   }

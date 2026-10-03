@@ -138,7 +138,7 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
 
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#FBFAF7] px-4 py-3 sm:px-5">
 
-          <div className="flex items-center gap-4">
+          {mensajesVisibles.length > 0 && <div className="flex items-center gap-4">
             <span className="h-px flex-1 bg-[#E5E0D8]" />
 
             <span className="rounded-full border border-[#E5E0D8] bg-white px-5 py-1.5 text-sm text-[#18345C]">
@@ -146,27 +146,27 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
             </span>
 
             <span className="h-px flex-1 bg-[#E5E0D8]" />
+          </div>}
+
+          <div className="flex items-start gap-2">
+            <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#18345C] text-white">
+              <Icono tipo="recepcion" size={19} />
+            </div>
+
+            <div>
+              <div className="rounded-xl rounded-bl-sm bg-[#F1F1F1] px-3 py-2 text-[14px] text-[#18345C]">
+                {en
+                  ? `Hello, ${nombreHuesped}. How can we help you?`
+                  : `Hola, ${nombreHuesped}. ¿En qué podemos ayudarte?`}
+              </div>
+
+              <p className="mt-1 pl-2 text-[11px] text-[#7890B0]">
+                {horaHotel()}
+              </p>
+            </div>
           </div>
 
           {mostrarPreguntas && (<div className="space-y-3">
-
-            <div className="flex items-start gap-2">
-              <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#18345C] text-white">
-                <Icono tipo="recepcion" size={19} />
-              </div>
-
-              <div>
-                <div className="rounded-xl rounded-bl-sm bg-[#F1F1F1] px-3 py-2 text-[14px] text-[#18345C]">
-                  {en
-                    ? `Hello, ${nombreHuesped}. How can we help you?`
-                    : `Hola, ${nombreHuesped}. ¿En qué podemos ayudarte?`}
-                </div>
-
-                <p className="mt-1 pl-2 text-[11px] text-[#7890B0]">
-                  {horaHotel()}
-                </p>
-              </div>
-            </div>
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {(en ? PREGUNTAS_EN : PREGUNTAS_ES).map((pregunta) => (<button
@@ -235,7 +235,7 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
                   </p>
                 </>)}
 
-                {!m.eliminadoParaTodos &&
+                {mio && !m.eliminadoParaTodos &&
                   editandoId !== m.id && (<button
                     type="button"
                     onClick={(e) => {
@@ -252,14 +252,14 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
                   </button>)}
 
                 {menuId === m.id &&
+                  mio &&
                   !m.eliminadoParaTodos && (<div
                     onClick={(e) => e.stopPropagation()}
                     className="absolute right-0 top-6 z-20 w-44 overflow-hidden rounded-xl border border-[#E5E0D8] bg-white text-sm text-[#18345C] shadow-xl">
                     <button
                       type="button"
-                      disabled={!mio}
                       onClick={() => abrirEdicion(m)}
-                      className="block w-full px-4 py-2.5 text-left hover:bg-[#F8F6F0] disabled:cursor-not-allowed disabled:opacity-40">
+                      className="block w-full px-4 py-2.5 text-left hover:bg-[#F8F6F0]">
                       {en ? "Edit" : "Editar"}
                     </button>
 
@@ -323,7 +323,7 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
       </section>
     </div>
 
-    {eliminarId && (<div className="fixed inset-0 z-[130] grid place-items-center bg-[#071D34]/45 p-4">
+    {eliminarId && mensajesVisibles.some(m => m.id === eliminarId && m.autor === "huesped") && (<div className="fixed inset-0 z-[130] grid place-items-center bg-[#071D34]/45 p-4">
       <section className="w-full max-w-[420px] rounded-2xl bg-white p-5 shadow-2xl">
         <h2 className="text-xl font-semibold text-[#18345C]">
           {en

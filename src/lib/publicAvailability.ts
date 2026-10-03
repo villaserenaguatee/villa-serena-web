@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import type { PublicRoom } from '@/data/publicRooms';
 import { leerReservas, RESERVAS_EVENT } from '@/store/reservationStore';
 import { HABITACIONES_EVENT, leerHabitaciones } from '@/store/roomStore';
-import { leerPortalRecepcion } from '@/store/portalReceptionSync';
 import { tipoPublicoATipoHotel } from '@/store/tarifasStore';
 import { habitacionesDisponibles } from '@/features/recepcion/pages/recUtils';
 export function todayISO() {
@@ -23,22 +22,14 @@ export function validGuests(adults: number, children: number) {
   return Number.isInteger(adults) && adults >= 1 && Number.isInteger(children) && children >= 0;
 }
 export function readAvailability() {
-  const reservas = [...leerReservas()];
-  for (const reserva of leerPortalRecepcion().reservas) {
-    const index = reservas.findIndex(r => r.id === reserva.id || r.codigo === reserva.codigo);
-    if (index < 0)
-      reservas.push(reserva);
-    else
-      reservas[index] = reserva;
-  }
-  return { habitaciones: leerHabitaciones(), reservas };
+  return { habitaciones: leerHabitaciones(), reservas: leerReservas() };
 }
 export type PublicAvailability = ReturnType<typeof readAvailability>;
 export function usePublicAvailability() {
   const [inventory, setInventory] = useState<PublicAvailability | null>(null);
   useEffect(() => {
     const refresh = () => setInventory(readAvailability());
-    const events = [HABITACIONES_EVENT, RESERVAS_EVENT, 'vs-portal-recepcion-actualizado', 'storage', 'focus'];
+    const events = [HABITACIONES_EVENT, RESERVAS_EVENT, 'storage', 'focus'];
     refresh();
     events.forEach(event => window.addEventListener(event, refresh));
     return () => events.forEach(event => window.removeEventListener(event, refresh));

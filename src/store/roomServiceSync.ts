@@ -1,7 +1,9 @@
-import type { EstadoPedido, Pedido, PedidoHuesped, TurnoRS } from '@/lib/pms/types';
+import type { CargoHuesped, EstadoPedido, Pedido, PedidoHuesped, Reserva, TurnoRS } from '@/lib/pms/types';
 import { leerReservas, guardarReservas } from '@/store/reservationStore';
 import { leerHabitaciones } from '@/store/roomStore';
-const KEY = 'vs-room-service-pedidos';
+import { leerHuespedes } from '@/store/guestStore';
+export const PEDIDOS_RS_KEY = 'vs-room-service-pedidos';
+const KEY = PEDIDOS_RS_KEY;
 export const EVENTO_PEDIDO_RS = 'vs-room-service-pedido';
 export const EVENTO_ESTADO_RS = 'vs-room-service-estado';
 export type ActualizacionPedidoRS = {
@@ -14,13 +16,9 @@ export type ActualizacionPedidoRS = {
 function sincronizarCargoEstancia(pedido: Pedido) {
   if (pedido.estado !== 'entregado')
     return;
-  const habitacion = leerHabitaciones().find(h => h.numero === pedido.habitacionNumero);
-  if (!habitacion)
-    return;
   const reservas = leerReservas();
-  const reserva = reservas.find(r => r.habitacionId === habitacion.id && r.estado === 'en-curso');
-  if (!reserva)
-    return;
+  const reserva = reservas.find(r => r.id === pedido.reservaId && r.huespedId === pedido.huespedId && r.habitacionId === pedido.habitacionId);
+  if (!reserva) return;
   const servicioId = `room-service-${pedido.id}`;
   if (reserva.servicios.some(s => s.id === servicioId))
     return;
@@ -37,7 +35,8 @@ function sincronizarCargoEstancia(pedido: Pedido) {
 }
 export function leerPedidosPortal(): Pedido[] {
   try {
-    return JSON.parse(localStorage.getItem(KEY) || '[]') as Pedido[];
+    const parsed = JSON.parse(localStorage.getItem(KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
   }
   catch {
     return [];
@@ -47,21 +46,32 @@ function guardar(pedidos: Pedido[]) {
   try {
     localStorage.setItem(KEY, JSON.stringify(pedidos));
   }
-  catch { }
+  catch { return false; }
+  return true;
 }
 export function guardarPedidoRoomService(pedido: Pedido) {
   const actuales = leerPedidosPortal();
-  guardar([pedido, ...actuales.filter(x => x.id !== pedido.id)]);
+  if (!guardar([pedido, ...actuales.filter(x => x.id !== pedido.id)])) return false;
+  sincronizarCargoEstancia(pedido);
   window.dispatchEvent(new CustomEvent(EVENTO_PEDIDO_RS, { detail: pedido }));
+  return true;
 }
 export function publicarPedidoPortal(p: PedidoHuesped,
   meta: {
+    reserva: Reserva;
     habitacion: string;
     piso: number;
     huesped: string;
     turno: TurnoRS;
   }) {
+  if (p.tipo !== 'restaurante') return false;
+  const reserva = leerReservas().find(r => r.id === meta.reserva.id && r.huespedId === meta.reserva.huespedId && r.habitacionId === meta.reserva.habitacionId);
+  if (!reserva?.habitacionId || !leerHuespedes().some(h => h.id === reserva.huespedId)) return false;
   const pedido: Pedido = {
+    reservaId: meta.reserva.id,
+    huespedId: meta.reserva.huespedId,
+    habitacionId: meta.reserva.habitacionId ?? undefined,
+    codigoReserva: meta.reserva.codigo,
     id: p.id,
     numero: p.numero,
     habitacionNumero: meta.habitacion,
@@ -76,11 +86,13 @@ export function publicarPedidoPortal(p: PedidoHuesped,
     lugarEntrega: p.lugarEntrega || `Habitación ${meta.habitacion}`,
     codigoCupon: p.codigoCupon,
     descuentoPct: p.descuentoPct,
-    estado: 'nuevo',
+    estado: p.estado === 'recibido' ? 'nuevo' : p.estado,
     creadoEn: p.creadoEn,
-    historial: [{ estado: 'nuevo', fechaHora: p.creadoEn }]
+    entregadoEn: p.entregadoEn,
+    motivoCancelacion: p.motivoCancelacion,
+    historial: p.historial.map(h => ({ ...h, estado: h.estado === 'recibido' ? 'nuevo' : h.estado }))
   };
-  guardarPedidoRoomService(pedido);
+  return guardarPedidoRoomService(pedido);
 }
 const SIGUIENTE_ESTADO_CENTRAL: Record<EstadoPedido, EstadoPedido | null> = {
   nuevo: 'en-preparacion',
@@ -112,10 +124,37 @@ export function actualizarPedidoPortal(id: string,
     };
     return actualizado;
   });
-  if (!actualizado)
-    return;
-  guardar(pedidos);
+  if (!actualizado || !guardar(pedidos))
+    return false;
   sincronizarCargoEstancia(actualizado);
   const detalle: ActualizacionPedidoRS = { id, numero, estado, motivo, fechaHora };
   window.dispatchEvent(new CustomEvent(EVENTO_ESTADO_RS, { detail: detalle }));
+  return true;
+}
+
+export function relacionEstanciaRoomService(numero: string): Partial<Pedido> {
+  const habitacion = leerHabitaciones().find(h => h.numero === numero);
+  const activas = leerReservas().filter(r => r.habitacionId === habitacion?.id && r.estado === 'en-curso');
+  if (!habitacion || activas.length !== 1) return {};
+  const r = activas[0];
+  if (!leerHuespedes().some(h => h.id === r.huespedId)) return {};
+  return { reservaId: r.id, huespedId: r.huespedId, habitacionId: r.habitacionId ?? undefined, codigoReserva: r.codigo };
+}
+export function pedidosRestauranteHuesped(reservaId: string, huespedId: string): PedidoHuesped[] {
+  return leerPedidosPortal().filter(p => p.reservaId === reservaId && p.huespedId === huespedId).map(p => ({
+    ...p, tipo: 'restaurante', nota: p.notaGeneral, alergias: p.alergias ?? '',
+    lineas: p.lineas.map(l => ({ ...l, refId: l.itemId })),
+    estado: p.estado === 'nuevo' ? 'recibido' : p.estado,
+    historial: p.historial.map(h => ({ ...h, estado: h.estado === 'nuevo' ? 'recibido' : h.estado })),
+  }));
+}
+
+export function filtrarCargosLegacyRestaurante(cargos: CargoHuesped[], reservaId: string, huespedId: string): CargoHuesped[] {
+  const prefijos = leerPedidosPortal()
+    .filter(p => p.reservaId === reservaId && p.huespedId === huespedId)
+    .map(p => `pedido-${p.id}-`);
+  return cargos.filter(c =>
+    c.categoria !== 'Restaurante' && c.categoria !== 'Room service' &&
+    !c.id.startsWith('room-service-') && !prefijos.some(prefijo => c.id.startsWith(prefijo))
+  );
 }

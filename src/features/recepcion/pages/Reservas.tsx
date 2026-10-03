@@ -42,8 +42,8 @@ export default function Reservas({ reservas, huespedes, habitaciones, onAbrir, o
   },
     [reservas, huespedDe, habitaciones, q, estado, fecha, buscarPor]);
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-    <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
-      <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+    <div className="px-4 sm:px-6 py-3 bg-white border-b border-[#E5E0D8]">
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
         <div>
           <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Reservas</h1>
           <p className="text-[15px] text-[#AEBCC1] mt-1">
@@ -109,10 +109,10 @@ export default function Reservas({ reservas, huespedes, habitaciones, onAbrir, o
       </div>
     </div>
 
-    <div className="px-4 sm:px-6 py-5">
+    <div className="px-4 sm:px-6 py-3">
       {filtradas.length === 0 ? (<div className="bg-white border border-[#E5E0D8] rounded-xl p-6 text-center">
         <p className="text-[15px] text-[#AEBCC1]">No hay reservas que coincidan con la búsqueda.</p>
-      </div>) : (<div className="space-y-3">
+      </div>) : (<div className="space-y-1.5">
         {filtradas.map(r => {
           const h = huespedDe.get(r.huespedId);
           const hab = habitaciones.find(x => x.id === r.habitacionId);
@@ -121,32 +121,32 @@ export default function Reservas({ reservas, huespedes, habitaciones, onAbrir, o
           return (<button
             key={r.id}
             onClick={() => onAbrir(r.id)}
-            className="w-full overflow-hidden text-left bg-white border border-[#E5E0D8] rounded-xl flex flex-col sm:flex-row items-stretch hover:border-[#18345C] transition-colors">
-            <img src={visual} alt={hab ? `Habitación ${hab.numero}` : `Categoría ${r.tipoHabitacion}`} className="h-36 w-full object-cover sm:h-auto sm:w-44" />
-            <div className="flex flex-1 min-w-0 items-center gap-4 p-4">
-              <div className="w-11 h-11 rounded-lg bg-[#F8F6F0] flex flex-col items-center justify-center shrink-0 text-[#18345C]">
+            className="w-full overflow-hidden text-left bg-white border border-[#E5E0D8] rounded-xl p-2 flex items-center gap-2 sm:gap-3 hover:border-[#18345C] transition-colors">
+            <img src={visual} alt={hab ? `Habitación ${hab.numero}` : `Categoría ${r.tipoHabitacion}`} className="h-[70px] w-[90px] shrink-0 rounded-lg object-cover" />
+            <div className="flex flex-1 min-w-0 items-center gap-2">
+              <div className="w-9 h-9 rounded-lg bg-[#F8F6F0] flex flex-col items-center justify-center shrink-0 text-[#18345C]">
                 <BedIcon size={16} />
                 <span className="text-[11px] font-bold mt-0.5">
                   {hab?.numero ?? '—'}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-[16px] font-semibold text-[#18345C]">
+                <div className="flex items-center gap-x-2 gap-y-0.5 flex-wrap">
+                  <p className="text-[15px] font-semibold text-[#18345C]">
                     {h?.nombre ?? 'Huésped'}
                   </p>
                   <Chip cls={meta.chip}>
                     {meta.label}
                   </Chip>
                 </div>
-                <p className="text-[13px] text-[#6B7280] mt-1">
+                <p className="text-[13px] text-[#6B7280] mt-0.5 break-words">
                   {r.codigo} · Habitación {hab?.numero ?? 'sin asignar'} · {h?.tipoDocumento} •••• {h?.documento.slice(-4)}
                 </p>
-                <p className="text-[13px] text-[#AEBCC1] mt-1 flex items-center gap-1.5 flex-wrap">
+                <p className="text-[13px] text-[#AEBCC1] mt-0.5 flex items-center gap-1.5 flex-wrap">
                   <CalendarIcon size={12} />
                   {formatoFecha(r.fechaEntrada)} → {formatoFecha(r.fechaSalida)} · {r.personas} pers. · {r.tipoHabitacion}
                 </p>
-                {r.estado === 'cancelada' && <p className="mt-2 rounded-md bg-[#FEF2F2] px-2.5 py-1.5 text-xs text-[#991B1B]">
+                {r.estado === 'cancelada' && <p className="mt-1 rounded-md bg-[#FEF2F2] px-2.5 py-1.5 text-xs text-[#991B1B]">
                   <b>Motivo:</b>
                   {r.motivoCancelacion || 'No se registró un motivo.'}
                 </p>}

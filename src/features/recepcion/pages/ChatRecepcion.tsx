@@ -1,23 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Users } from 'lucide-react';
-import type { Huesped, MensajeChat, Reserva } from '@/lib/pms/types';
-import { ahoraISO, generarId, HUESPED_PORTAL_ID } from '@/data/pms';
+import type { HabitacionHotel, Huesped, MensajeChat, Reserva } from '@/lib/pms/types';
+import { ahoraISO, generarId } from '@/data/pms';
 import { leerMensajesChat, guardarMensajesChat, actualizarMensajeChat } from '@/store/chatStore';
 import { translateChatMessage } from '@/lib/translation/client';
 type Filtro = 'todos' | 'no-leidos' | 'favoritos' | 'archivados';
 const hora = (iso: string) => new Date(iso).toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
 const iniciales = (n: string) => n.split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase();
-export default function ChatRecepcion({ huespedes, reservas }: {
+export default function ChatRecepcion({ huespedes, reservas, habitaciones }: {
   huespedes: Huesped[];
   reservas: Reserva[];
+  habitaciones: HabitacionHotel[];
 }) {
   const [mensajes, setMensajes] = useState<MensajeChat[]>([]);
-  const [seleccionado, setSeleccionado] = useState(huespedes[0]?.id || '');
+  const [seleccionado, setSeleccionado] = useState('');
   const [buscar, setBuscar] = useState('');
   const [filtro, setFiltro] = useState<Filtro>('todos');
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [archivados, setArchivados] = useState<string[]>([]);
-  const [mostrarTodos, setMostrarTodos] = useState(false);
+  const [mostrarTodos, setMostrarTodos] = useState(true);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const [texto, setTexto] = useState('');
   const [menuId, setMenuId] = useState<string | null>(null);
@@ -27,36 +28,24 @@ export default function ChatRecepcion({ huespedes, reservas }: {
   const [aviso, setAviso] = useState('');
   useEffect(() => {
     const sync = () => setMensajes(leerMensajesChat([]));
+    sync();
     window.addEventListener('vs-chat-actualizado', sync);
-    return () => window.removeEventListener('vs-chat-actualizado', sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener('vs-chat-actualizado', sync);
+      window.removeEventListener('storage', sync);
+    };
   }, []);
-  const actual = huespedes.find(h => h.id === seleccionado) || huespedes[0];
-  const conversaciones = useMemo(() => {
-    const candidatos = huespedes
-      .filter((h) => {
-        const reserva = reservas.find((r) => r.huespedId === h.id);
-        return reserva?.codigo !== 'RES-1202';
-      })
-      .map((h) => {
-        const r = reservas.find((x) => x.huespedId === h.id &&
-          (x.estado === 'en-curso' || x.estado === 'confirmada')) ||
-          reservas.find((x) => x.huespedId === h.id);
-        return { h, r };
-      });
-    const unicos = new Map<string, (typeof candidatos)[number]>();
-    for (const c of candidatos) {
-      const k = c.h.nombre.trim().toLocaleLowerCase('es');
-      const previo = unicos.get(k);
-      const puntaje = (x: (typeof candidatos)[number]) => (x.r?.estado === 'en-curso' ? 4 : x.r?.estado === 'confirmada' ? 3 : x.r ? 2 : 0) + (x.r?.habitacionId ? 1 : 0);
-      if (!previo || puntaje(c) > puntaje(previo))
-        unicos.set(k, c);
-    }
-    return [...unicos.values()];
-  },
-    [huespedes, reservas]);
+  const conversaciones = useMemo(() => huespedes.flatMap(h => {
+    const r = reservas.find(r => r.huespedId === h.id && r.estado === 'en-curso') ??
+      reservas.find(r => r.huespedId === h.id && r.estado === 'confirmada');
+    return r ? [{ h, r, habitacion: habitaciones.find(hab => hab.id === r.habitacionId) }] : [];
+  }), [huespedes, reservas, habitaciones]);
+  const conversacionActual = conversaciones.find(c => c.h.id === seleccionado);
+  const actual = conversacionActual?.h;
   const listaBase = conversaciones.filter(c => !buscar.trim() || c.h.nombre.toLowerCase().includes(buscar.toLowerCase())).filter(c => filtro === 'favoritos' ? favoritos.includes(c.h.id) : filtro === 'archivados' ? archivados.includes(c.h.id) : filtro === 'no-leidos' ? mensajes.some(m => m.huespedId === c.h.id && m.autor === 'huesped' && !m.leidoPor?.includes('recepcion') && !m.eliminadoParaTodos) : !archivados.includes(c.h.id));
-  const lista = mostrarTodos || buscar.trim() ? listaBase : listaBase.slice(0, 3);
-  const mensajesVisibles = mensajes.filter(m => (m.huespedId === actual?.id || (!m.huespedId && actual?.id === HUESPED_PORTAL_ID)) && !m.eliminadoPara?.includes('recepcion'));
+  const lista = mostrarTodos || buscar.trim() ? listaBase : listaBase.filter(c => mensajes.some(m => m.huespedId === c.h.id));
+  const mensajesVisibles = mensajes.filter(m => Boolean(actual) && m.huespedId === actual?.id && !m.eliminadoPara?.includes('recepcion'));
   useEffect(() => {
     const el = chatScrollRef.current;
     if (el)
@@ -73,7 +62,7 @@ export default function ChatRecepcion({ huespedes, reservas }: {
     catch {
       setAviso('La traducción no está disponible; se conservará únicamente el mensaje original.');
     }
-    const next = [...mensajes, m];
+    const next = [...leerMensajesChat([]), m];
     guardarMensajesChat(next);
     setMensajes(next);
     setTexto('');
@@ -89,7 +78,7 @@ export default function ChatRecepcion({ huespedes, reservas }: {
     catch {
       setAviso('No fue posible actualizar la traducción; se conservará únicamente el original.');
     }
-    const next = actualizarMensajeChat(mensajes, id, m => ({ ...m, texto: valor, textoEs: valor, textoEn, idiomaOriginal: 'es', editado: true, editadoEn: ahoraISO() }));
+    const next = actualizarMensajeChat(leerMensajesChat([]), id, m => ({ ...m, texto: valor, textoEs: valor, textoEn, idiomaOriginal: 'es', editado: true, editadoEn: ahoraISO() }));
     setMensajes(next);
     setEditandoId(null);
     setEditandoTexto('');
@@ -97,12 +86,13 @@ export default function ChatRecepcion({ huespedes, reservas }: {
   }
   function eliminar(id: string,
     todos: boolean) {
-      const next = actualizarMensajeChat(mensajes, id, m => todos ? { ...m, eliminadoParaTodos: true } : { ...m, eliminadoPara: [...(m.eliminadoPara || []), 'recepcion'] });
+    const mensaje = leerMensajesChat([]).find(m => m.id === id);
+    if (!mensaje || mensaje.autor === 'recepcion')
+      return;
+    const next = actualizarMensajeChat(mensajes, id, m => todos ? { ...m, eliminadoParaTodos: true } : { ...m, eliminadoPara: [...(m.eliminadoPara || []), 'recepcion'] });
     setMensajes(next);
     setEliminarId(null);
   }
-  if (!actual)
-    return <div className="flex-1 grid place-items-center bg-[#F8F6F0] text-[#71839B]">No hay huéspedes disponibles.</div>;
   return <div
     className="flex h-[calc(100vh-32px)] min-h-0 flex-1 flex-col overflow-hidden bg-[#F8F6F0]"
     style={{ fontFamily: '"Afacad","Segoe UI",Arial,sans-serif' }}>
@@ -145,13 +135,13 @@ export default function ChatRecepcion({ huespedes, reservas }: {
               <b className="block truncate text-[15px] text-[#18345C]">
                 {c.h.nombre}
               </b>
-              <p className="truncate text-xs text-[#8A6819]">Hab. {c.r?.habitacionId?.replace('hh-', '') || 'Sin asignar'} · {c.r?.codigo || 'Sin reserva'}</p>
+              <p className="truncate text-xs text-[#8A6819]">Hab. {c.habitacion?.numero || 'Sin asignar'} · {c.r?.codigo || 'Sin reserva'}</p>
             </div>
           </button>)}
         </div>
       </aside>
       <main className="flex min-h-[420px] min-w-0 flex-1 flex-col md:min-h-0">
-        <header className="flex shrink-0 min-h-[66px] items-center justify-between border-b border-[#E5E0D8] px-4">
+        {actual && <header className="flex shrink-0 min-h-[66px] items-center justify-between border-b border-[#E5E0D8] px-4">
           <div className="flex min-w-0 items-center gap-3">
             <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-[#DDEAF7] font-semibold text-[#18345C]">
               {actual.foto ? <img src={actual.foto} alt="" className="h-full w-full object-cover" /> : iniciales(actual.nombre)}
@@ -160,11 +150,10 @@ export default function ChatRecepcion({ huespedes, reservas }: {
               <h2 className="font-semibold text-[#18345C]">
                 {actual.nombre}
               </h2>
-              <p className="text-xs text-[#718096]">Habitación {actual && (reservas.find(r => r.huespedId === actual.id)?.habitacionId?.replace('hh-', '') || 'Sin asignar')}</p>
-              <p className="text-xs text-[#188247]">En línea</p>
+              <p className="text-xs text-[#718096]">Habitación {conversacionActual?.habitacion?.numero || 'Sin asignar'}</p>
             </div>
           </div>
-        </header>
+        </header>}
         <div ref={chatScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#F8F6F0] p-4">
           <div className="mx-auto max-w-3xl space-y-3">
             {mensajesVisibles.length ? mensajesVisibles.map(m => {
@@ -201,10 +190,10 @@ export default function ChatRecepcion({ huespedes, reservas }: {
                         setMenuId(null);
                       }}
                       className="block w-full px-4 py-2.5 text-left hover:bg-[#F8F6F0] disabled:opacity-40">Editar</button>
-                    <button onClick={() => {
+                    {!rec && <button onClick={() => {
                       setEliminarId(m.id);
                       setMenuId(null);
-                    }} className="block w-full px-4 py-2.5 text-left text-red-600 hover:bg-red-50">Eliminar</button>
+                    }} className="block w-full px-4 py-2.5 text-left text-red-600 hover:bg-red-50">Eliminar</button>}
                   </div>}
                 </div>
               </div>;
@@ -228,9 +217,10 @@ export default function ChatRecepcion({ huespedes, reservas }: {
                 if (e.key === 'Enter')
                   enviar();
               }}
+              disabled={!actual}
               placeholder="Escribe un mensaje"
               className="min-w-0 flex-1 rounded-full bg-[#F4F3EF] px-4 py-3 outline-none focus:ring-1 focus:ring-[#18345C]" />
-            <button onClick={enviar} disabled={!texto.trim()} className="rounded-full bg-[#18345C] p-3 text-white disabled:opacity-40">➤</button>
+            <button onClick={enviar} disabled={!actual || !texto.trim()} className="rounded-full bg-[#18345C] p-3 text-white disabled:opacity-40">➤</button>
           </div>
         </footer>
       </main>
