@@ -47,24 +47,23 @@
       "lowercase": "Minúscula",
       "number": "Número",
       "special": "Carácter especial"
-    }
+    },
+    "recoveryUnavailable": "La recuperación de contraseña no está disponible en este momento.",
+    "activationUnavailable": "La activación de cuentas no está disponible en este momento.",
+    "verificationUnavailable": "La verificación de correo no está disponible en este momento.",
+    "passwordChangeUnavailable": "El cambio de contraseña no está disponible en este momento.",
+    "backToLogin": "Volver al inicio de sesión"
   },
   "publicBooking": {
     "loading": "Cargando la confirmación…",
     "notFound": "No se encontró la reserva.",
     "roomReserved": "Tu habitación ha sido reservada correctamente.",
-    "paymentMethod": "Método de pago",
-    "payAtHotel": "Pagar en Recepción",
-    "onlinePayment": "Pago en línea",
-    "paymentStatus": "Estado del pago",
-    "pending": "Pendiente",
-    "paid": "Pagado",
-    "payAtReception": "El pago se realizará en recepción.",
     "unavailable": "La habitación ya no está disponible para esas fechas.",
     "invalidGuest": "Completa los datos requeridos del huésped.",
     "priceChanged": "La tarifa cambió. Regresa a los resultados y vuelve a intentarlo.",
-    "invalidPromo": "El código promocional no es válido o está inactivo.",
-    "paymentUnverified": "El pago en línea requiere una aprobación de la pasarela de pago.",
-    "saveFailed": "No se pudo guardar la reserva. Inténtalo de nuevo."
+    "invalidPromo": "El código de descuento no es válido o está inactivo.",
+    "saveFailed": "No se pudo guardar la reserva. Inténtalo de nuevo.",
+    "paymentUnverified": "No se pudo confirmar el pago. No se creó la reserva.",
+    "paymentUnavailable": "El pago con tarjeta no está disponible en este momento."
   }
 }

@@ -1,3 +1,4 @@
+import { checkInRealizado, checkInWebPendiente } from '@/store/reservationStore';
 import { HOTEL } from "@/lib/hotel";
 import { useMemo, useState } from 'react';
 import type { Reserva, Huesped, HabitacionHotel, Acompanante, ServicioAdicional, MetodoPago, Pago, TipoHabitacion, SolicitudHuesped, } from '@/lib/pms/types';
@@ -59,9 +60,9 @@ export default function DetalleReserva(props: Props) {
   return (<div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4">
     <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
 
-    <div className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-4xl max-h-[88vh] flex flex-col">
+    <div className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-5xl max-h-[88vh] flex flex-col">
 
-      <div className="flex items-start justify-between gap-3 px-5 sm:px-6 py-4 border-b border-[#E5E0D8] shrink-0">
+      <div className="flex items-start justify-between gap-2 px-4 sm:px-5 py-1.5 border-b border-[#E5E0D8] shrink-0">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-[24px] font-semibold text-[#18345C] leading-none">
@@ -80,7 +81,7 @@ export default function DetalleReserva(props: Props) {
         </button>
       </div>
 
-      <div className="flex gap-1 px-3 sm:px-4 pt-3 border-b border-[#E5E0D8] shrink-0 overflow-x-auto">
+      <div className="flex gap-1 px-3 sm:px-4 pt-1 border-b border-[#E5E0D8] shrink-0 overflow-x-auto">
         {([
           ['resumen', 'Resumen'],
           ['actividad', 'Actividad'],
@@ -101,7 +102,7 @@ export default function DetalleReserva(props: Props) {
         </button>))}
       </div>
 
-      <div className="px-5 sm:px-6 py-5 overflow-y-auto flex-1">
+      <div className="px-4 sm:px-5 py-2 overflow-y-auto flex-1">
         {tab === 'resumen' && <TabResumen {...props} habitacion={habitacion} />}
         {tab === 'actividad' && <TabActividad {...props} />}
         {tab === 'cuenta' && (<TabCuenta {...props} habitacion={habitacion} onVerComprobante={setComprobante} onPagoRegistrado={setComprobante} />)}
@@ -110,7 +111,7 @@ export default function DetalleReserva(props: Props) {
         {tab === 'cambios' && <TabCambios {...props} />}
       </div>
 
-      {cerrada && (<div className="px-5 sm:px-6 py-2.5 bg-[#F8F6F0] border-t border-[#E5E0D8] text-[12px] text-[#6B7280] shrink-0">
+      {cerrada && (<div className="px-5 sm:px-6 py-2 bg-[#F8F6F0] border-t border-[#E5E0D8] text-[12px] text-[#6B7280] shrink-0">
         {reserva.estado === 'cancelada'
           ? `Reserva cancelada: ${reserva.motivoCancelacion ?? '—'}`
           : `Estancia finalizada · check-out ${formatoFechaHora(reserva.checkOutEn ?? '')}`}
@@ -143,7 +144,7 @@ function TabActividad({ reserva, huesped, reservas, solicitudes }: Props) {
           id: `web-${r.id}`,
           fecha: r.checkInWeb.enviadoEn,
           titulo: 'Check-in web enviado',
-          detalle: `${r.codigo} · ${r.checkInWeb.estado === 'aprobado' ? 'Validado por Recepción' : r.checkInWeb.estado === 'rechazado' ? 'Rechazado para corrección' : 'Pendiente de validación'}`,
+          detalle: `${r.codigo} · ${(checkInRealizado(r) || r.checkInWeb.estado === 'aprobado') ? 'Validado por Recepción' : r.checkInWeb.estado === 'rechazado' ? 'Rechazado para corrección' : 'Pendiente de validación'}`,
           tipo: 'Check-in'
         });
       if (r.checkInEn)
@@ -198,16 +199,16 @@ function TabActividad({ reserva, huesped, reservas, solicitudes }: Props) {
     'Check-in': 'bg-[#DBEAFE] text-[#1E40AF]',
     'Check-out': 'bg-[#F1F5F9] text-[#475569]'
   };
-  return <div className="space-y-5">
-    <div className="rounded-xl border border-[#BFD4EA] bg-[#F5FAFF] p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+  return <div className="space-y-2">
+    <div className="rounded-xl border border-[#BFD4EA] bg-[#F5FAFF] p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-sm text-[#71839B]">Historial completo de</p>
           <h3 className="text-xl font-semibold text-[#18345C]">
             {huesped.nombre}
           </h3>
         </div>
-        <div className="flex gap-5 text-center">
+        <div className="flex gap-2 text-center">
           <div>
             <b className="block text-xl text-[#18345C]">
               {reservas.filter(r => r.huespedId === huesped.id).length}
@@ -225,9 +226,9 @@ function TabActividad({ reserva, huesped, reservas, solicitudes }: Props) {
     </div>
     <div className="relative ml-3 border-l-2 border-[#E5E0D8] pl-6">
       {movimientos.map((m,
-        i) => <div key={m.id} className="relative pb-5 last:pb-0">
+        i) => <div key={m.id} className="relative pb-3 last:pb-0">
           <span className={`absolute -left-[33px] top-1 grid h-4 w-4 place-items-center rounded-full border-4 border-white ${i === 0 ? 'bg-[#D8B94E]' : 'bg-[#9AA9BB]'}`} />
-          <div className={`rounded-xl border p-4 ${m.id === `res-${reserva.id}` ? 'border-[#9BC5F2] bg-[#F8FBFF]' : 'border-[#E5E0D8] bg-white'}`}>
+          <div className={`rounded-xl border p-3 ${m.id === `res-${reserva.id}` ? 'border-[#9BC5F2] bg-[#F8FBFF]' : 'border-[#E5E0D8] bg-white'}`}>
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -263,7 +264,7 @@ function TabResumen({ reserva, huesped, habitacion, habitaciones, reservas, onAs
   const [facturaCheckout, setFacturaCheckout] = useState(false);
   const cerrada = reserva.estado === 'finalizada' || reserva.estado === 'cancelada';
   const disponiblesParaAsignar = habitacionesDisponibles(reserva.fechaEntrada, reserva.fechaSalida, habitaciones, reservas, { personas: reserva.personas, ignorarReservaId: reserva.id });
-  const puedeCheckIn = (reserva.estado === 'confirmada' || reserva.estado === 'pendiente') && !!reserva.habitacionId && reserva.checkInWeb?.estado !== 'pendiente';
+  const puedeCheckIn = !checkInRealizado(reserva) && (reserva.estado === 'confirmada' || reserva.estado === 'pendiente') && !!reserva.habitacionId && reserva.checkInWeb?.estado !== 'pendiente';
   const puedeCheckOut = reserva.estado === 'en-curso';
   const cuentaCheckout = calcularCuenta(reserva, habitacion);
   function confirmarCancelacion() {
@@ -273,111 +274,131 @@ function TabResumen({ reserva, huesped, habitacion, habitaciones, reservas, onAs
     }
     onCancelar(reserva.id, motivo.trim());
   }
-  return (<div className="space-y-5">
-    <div className={`rounded-xl border p-4 ${reserva.estado === 'cancelada' ? 'border-[#FCA5A5] bg-[#FEF2F2]' : reserva.estado === 'finalizada' ? 'border-[#D1D5DB] bg-[#F8FAFC]' : 'border-[#BFD4EA] bg-[#F5FAFF]'}`}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+  return (<div className="space-y-1">
+    <div className={`rounded-xl border px-3 py-1 ${reserva.estado === 'cancelada' ? 'border-[#FCA5A5] bg-[#FEF2F2]' : reserva.estado === 'finalizada' ? 'border-[#D1D5DB] bg-[#F8FAFC]' : 'border-[#BFD4EA] bg-[#F5FAFF]'}`}>
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 leading-snug">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-[#71839B]">Estado de la estancia</p>
-          <p className="mt-1 text-xl font-bold text-[#18345C]">
+          <p className="mt-0.5 text-[15px] font-semibold text-[#18345C]">
             {metaEstadoDetalle(reserva.estado)}
           </p>
         </div>
+      <p className="min-w-0 flex-1 text-sm text-[#52677F]">
+        {descripcionEstado(reserva)}
+      </p>
+
         <Chip cls={RESERVA_META[reserva.estado].chip}>
           {RESERVA_META[reserva.estado].label}
         </Chip>
       </div>
-      <p className="mt-2 text-sm text-[#52677F]">
-        {descripcionEstado(reserva)}
-      </p>
-      {reserva.estado === 'cancelada' && <p className="mt-3 rounded-lg bg-white px-3 py-2 text-sm text-[#991B1B]">
+     {reserva.estado === 'cancelada' && <p className="mt-2 rounded-lg bg-white px-3 py-2 text-sm text-[#991B1B]">
         <b>Motivo de cancelación:</b>
         {reserva.motivoCancelacion || 'No se registró un motivo.'}
       </p>}
     </div>
 
-    <Seccion titulo="Huésped titular">
-      <div className="grid gap-3 rounded-xl border border-[#E5E0D8] bg-[#FCFBF8] p-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="min-w-0 rounded-xl border border-[#E5E0D8] bg-[#FCFBF8] px-3 py-1 leading-tight [&>div>p]:mb-0.5 [&_div>p]:leading-tight">
+      <Seccion titulo="Huésped titular">
+        <div className="grid max-w-[760px] grid-cols-1 gap-x-4 gap-y-0.5 sm:grid-cols-2 lg:grid-cols-3 [&>div]:min-w-0">
         <Dato k="Nombre" v={huesped.nombre} />
         <Dato k="Documento" v={`${huesped.tipoDocumento} •••• ${huesped.documento.slice(-4)}`} />
         <Dato k="Teléfono" v={huesped.telefono.replace(/\d(?=.*\d{2})/g, '•')} />
         <Dato k="Correo" v={huesped.correo.replace(/^(.{2}).*(@.*)$/, '$1••••••$2')} />
         <Dato k="Nacionalidad" v={huesped.nacionalidad} />
-      </div>
-    </Seccion>
-
-    <Seccion titulo="Reserva">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        </div>
+      </Seccion>
+      <div className="mt-1 border-t border-[#E5E0D8] pt-1">
+        <Seccion titulo="Estancia / Reserva">
+          <div className="grid max-w-[760px] grid-cols-1 gap-x-4 gap-y-0.5 sm:grid-cols-2 lg:grid-cols-3 [&>div]:min-w-0">
         <Dato k="Entrada" v={formatoFecha(reserva.fechaEntrada)} />
         <Dato k="Salida" v={formatoFecha(reserva.fechaSalida)} />
         <Dato k="Noches" v={String(nochesEntre(reserva.fechaEntrada, reserva.fechaSalida))} />
-        <div className="col-span-2 rounded-xl border border-[#E5E0D8] p-3 lg:col-span-1">
-          <p className="text-[11px] text-[#AEBCC1]">Huéspedes</p>
-          <div className="mt-1 flex gap-5">
-            <span><b className="text-[#18345C]">
-              {reserva.adultos ?? reserva.personas}
-            </b> adultos</span>
-            <span><b className="text-[#18345C]">
-              {reserva.ninos ?? 0}
-            </b> niños</span>
-          </div>
-        </div>
+        <Dato k="Huéspedes" v={`${reserva.adultos ?? reserva.personas} adultos · ${reserva.ninos ?? 0} niños`} />
         <Dato k="Categoría" v={reserva.tipoHabitacion} />
         <Dato k="Creada" v={formatoFecha(reserva.creadoEn)} />
         {reserva.checkInEn && <Dato k="Check-in" v={formatoFechaHora(reserva.checkInEn)} />}
         {reserva.checkOutEn && <Dato k="Check-out" v={formatoFechaHora(reserva.checkOutEn)} />}
+          </div>
+        </Seccion>
       </div>
+    </div>
+
+    <Seccion titulo="Habitación asignada">
+      {habitacion ? ((() => {
+        const visual = visualHabitacion(habitacion);
+        return <div className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-[#F8F6F0] sm:flex">
+          <img src={visual.image} alt={`Habitación ${habitacion.numero}`} className="h-24 w-full shrink-0 object-cover sm:h-28 sm:w-36" />
+          <div className="flex-1 p-3">
+            <p className="text-[12px] font-semibold uppercase tracking-[.16em] text-[#B38719]">Piso {habitacion.piso}</p>
+            <p className="text-[17px] font-bold text-[#18345C]">Habitación {habitacion.numero}</p>
+            <p className="text-[14px] text-[#18345C] mt-1">
+              {visual.name}
+            </p>
+            <p className="mt-2 text-[13px] text-[#52677F]">{visual.beds} · hasta {habitacion.capacidad} huéspedes · {visual.size} m²</p>
+            <p className="mt-2 text-[18px] font-bold text-[#18345C]">
+              {dinero(habitacion.precioNoche)}
+              <span className="text-xs font-normal text-[#71839B]">por noche</span>
+            </p>
+          </div>
+        </div>;
+      })()) : (<p className="text-[13px] text-[#9A3412] bg-[#FFF7ED] border border-[#FDBA74] rounded-lg px-3 py-1">
+        Sin habitación asignada. Asigna una para poder hacer el check-in.
+      </p>)}
+
+      {!cerrada && (<div className="mt-1">
+        <SelectorHabitacion
+          habitaciones={disponiblesParaAsignar}
+          seleccionadaId={reserva.habitacionId ?? ''}
+          onSeleccionar={id => onAsignarHabitacion(reserva.id, id)}
+          titulo={habitacion ? 'Cambiar habitación' : 'Asignar habitación disponible'} />
+        {disponiblesParaAsignar.length === 0 && (<p className="text-[12px] text-[#991B1B] mt-1">
+          No hay habitaciones libres para estas fechas y capacidad.
+        </p>)}
+      </div>)}
     </Seccion>
 
-    {reserva.modalidadPago === 'hotel' && (<Seccion titulo="Pago">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Dato k="Método de pago" v="Pagar en Recepción" />
-        <Dato k="Estado del pago" v={calcularCuenta(reserva, habitacion).saldo > 0 ? 'Pendiente' : 'Pagado'} />
-        <Dato k="Saldo pendiente" v={dinero(Math.max(0, calcularCuenta(reserva, habitacion).saldo))} />
-      </div>
-    </Seccion>)}
-
     {reserva.checkInWeb && (<Seccion titulo="Check-in enviado desde el portal">
-      <div className="rounded-xl border border-[#9BC5F2] bg-[#F5FAFF] p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="rounded-xl border border-[#9BC5F2] bg-[#F5FAFF] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="font-semibold text-[#18345C]">Evidencias para validación</p>
             <p className="text-xs text-[#71839B]">Enviado {formatoFechaHora(reserva.checkInWeb.enviadoEn)}</p>
           </div>
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${reserva.checkInWeb.estado === 'aprobado' ? 'bg-[#DCFCE7] text-[#166534]' : 'bg-[#FFF3D5] text-[#8A6200]'}`}>
-            {reserva.checkInWeb.estado === 'aprobado' ? 'Validado' : 'Pendiente de validar'}
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${(checkInRealizado(reserva) || reserva.checkInWeb.estado === 'aprobado') ? 'bg-[#DCFCE7] text-[#166534]' : 'bg-[#FFF3D5] text-[#8A6200]'}`}>
+            {(checkInRealizado(reserva) || reserva.checkInWeb.estado === 'aprobado') ? 'Validado' : reserva.checkInWeb.estado === 'rechazado' ? 'Corrección solicitada' : 'Pendiente de validar'}
           </span>
         </div>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border border-[#DCE3EA] bg-white p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#71839B]">Documento de identidad</p>
-            {reserva.checkInWeb.documento.previewUrl && reserva.checkInWeb.documento.formato !== 'PDF' ? <img src={reserva.checkInWeb.documento.previewUrl} alt="Documento del huésped" className="h-44 w-full rounded-md object-contain bg-[#F8F6F0]" /> : <div className="grid h-32 place-items-center rounded-md bg-[#F8F6F0] font-semibold text-[#18345C]">
+        <div className="mt-2 grid gap-2 md:grid-cols-2">
+          <div className="grid grid-cols-[80px_minmax(0,1fr)] items-center gap-x-2 rounded-lg border border-[#DCE3EA] bg-white p-2">
+            <p className="col-start-2 text-xs font-semibold uppercase tracking-wider text-[#71839B]">Documento de identidad</p>
+            {reserva.checkInWeb.documento.previewUrl && reserva.checkInWeb.documento.formato !== 'PDF' ? <img src={reserva.checkInWeb.documento.previewUrl} alt="Documento del huésped" className="col-start-1 row-start-1 row-span-2 h-14 w-20 rounded-md object-contain bg-[#F8F6F0]" /> : <div className="col-start-1 row-start-1 row-span-2 grid h-14 w-20 place-items-center rounded-md bg-[#F8F6F0] font-semibold text-[#18345C]">
               {reserva.checkInWeb.documento.formato}
             </div>}
-            <p className="mt-2 break-all text-xs text-[#52677F]">
+            <p className="col-start-2 break-words text-xs text-[#52677F]">
               {reserva.checkInWeb.documento.nombre}
             </p>
           </div>
-          <div className="rounded-lg border border-[#DCE3EA] bg-white p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#71839B]">Aceptación registrada</p>
-            <div className="grid h-32 place-items-center rounded-md bg-[#F0FAF4] px-5 text-center text-sm font-semibold text-[#166534]">✓ El huésped aceptó los términos y condiciones de la estancia</div>
-            <p className="mt-3 text-xs text-[#52677F]">La fecha y hora del envío quedan registradas en el sistema.</p>
+          <div className="rounded-lg border border-[#DCE3EA] bg-white p-2">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#71839B]">Aceptación registrada</p>
+            <div className="grid place-items-center rounded-md bg-[#F0FAF4] px-3 text-center text-sm font-semibold text-[#166534]">✓ El huésped aceptó los términos y condiciones de la estancia</div>
+            <p className="mt-2 text-xs text-[#52677F]">La fecha y hora del envío quedan registradas en el sistema.</p>
           </div>
         </div>
-        {reserva.checkInWeb.peticiones.length > 0 && <div className="mt-4 rounded-lg bg-white p-3 text-sm text-[#52677F]">
+        {reserva.checkInWeb.peticiones.length > 0 && <div className="mt-2 rounded-lg bg-white p-3 text-sm text-[#52677F]">
           <b className="text-[#18345C]">Peticiones:</b>
           {reserva.checkInWeb.peticiones.join(', ')}
           {reserva.checkInWeb.notaPeticiones ? ` · ${reserva.checkInWeb.notaPeticiones}` : ''}
         </div>}
-        {reserva.checkInWeb.estado === 'pendiente' && !rechazandoCheckIn && <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {checkInWebPendiente(reserva) && !rechazandoCheckIn && <div className="mt-2 grid gap-2 sm:grid-cols-2">
           <button
             disabled={!reserva.habitacionId}
             onClick={() => onValidarCheckInWeb(reserva.id)}
-            className="rounded-lg bg-[#18345C] py-3 font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9AA9BB]">Activar</button>
-          <button onClick={() => setRechazandoCheckIn(true)} className="rounded-lg border border-[#DC2626] py-3 font-semibold text-[#B42318]">Rechazar activación</button>
+            className="rounded-lg bg-[#18345C] py-2 font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9AA9BB]">Activar</button>
+          <button onClick={() => setRechazandoCheckIn(true)} className="rounded-lg border border-[#DC2626] py-2 font-semibold text-[#B42318]">Rechazar activación</button>
         </div>}
-        {reserva.checkInWeb.estado === 'pendiente' && rechazandoCheckIn && <div className="mt-4 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] p-4">
+        {checkInWebPendiente(reserva) && rechazandoCheckIn && <div className="mt-2 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] p-3">
           <p className="font-semibold text-[#991B1B]">Motivo del rechazo</p>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-2 flex flex-wrap gap-2">
             {['El nombre no coincide con el documento',
               'El número de DPI o pasaporte no coincide',
               'La imagen del documento no es legible',
@@ -393,81 +414,47 @@ function TabResumen({ reserva, huesped, habitacion, habitaciones, reservas, onAs
             value={motivoCheckIn}
             onChange={e => setMotivoCheckIn(e.target.value)}
             rows={2}
-            className="mt-3 w-full rounded-lg border border-[#FCA5A5] bg-white p-3 text-sm"
+            className="mt-2 w-full rounded-lg border border-[#FCA5A5] bg-white p-3 text-sm"
             placeholder="Explica qué debe corregir el huésped" />
-          <div className="mt-3 grid grid-cols-2 gap-3">
+          <div className="mt-2 grid grid-cols-2 gap-2">
             <button onClick={() => {
               setRechazandoCheckIn(false);
               setMotivoCheckIn('');
-            }} className="rounded-lg border bg-white py-2.5">Volver</button>
+            }} className="rounded-lg border bg-white py-2">Volver</button>
             <button
               disabled={!motivoCheckIn.trim()}
               onClick={() => {
                 onRechazarCheckInWeb(reserva.id, motivoCheckIn.trim());
                 setRechazandoCheckIn(false);
               }}
-              className="rounded-lg bg-[#B42318] py-2.5 font-semibold text-white disabled:opacity-40">Confirmar rechazo</button>
+              className="rounded-lg bg-[#B42318] py-2 font-semibold text-white disabled:opacity-40">Confirmar rechazo</button>
           </div>
         </div>}
-        {reserva.checkInWeb.estado === 'pendiente' && !reserva.habitacionId && <p className="mt-2 text-xs text-[#9A3412]">Primero asigna una habitación para poder activar la llave.</p>}
+        {checkInWebPendiente(reserva) && !reserva.habitacionId && <p className="mt-2 text-xs text-[#9A3412]">Primero asigna una habitación para poder activar la llave.</p>}
       </div>
     </Seccion>)}
 
-    <Seccion titulo="Habitación asignada">
-      {habitacion ? ((() => {
-        const visual = visualHabitacion(habitacion);
-        return <div className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-[#F8F6F0] sm:flex">
-          <img src={visual.image} alt={`Habitación ${habitacion.numero}`} className="h-44 w-full object-cover sm:w-64" />
-          <div className="flex-1 p-5">
-            <p className="text-[12px] font-semibold uppercase tracking-[.16em] text-[#B38719]">Piso {habitacion.piso}</p>
-            <p className="text-[17px] font-bold text-[#18345C]">Habitación {habitacion.numero}</p>
-            <p className="text-[14px] text-[#18345C] mt-1">
-              {visual.name}
-            </p>
-            <p className="mt-3 text-[13px] text-[#52677F]">{visual.beds} · hasta {habitacion.capacidad} huéspedes · {visual.size} m²</p>
-            <p className="mt-3 text-[18px] font-bold text-[#18345C]">
-              {dinero(habitacion.precioNoche)}
-              <span className="text-xs font-normal text-[#71839B]">por noche</span>
-            </p>
-          </div>
-        </div>;
-      })()) : (<p className="text-[13px] text-[#9A3412] bg-[#FFF7ED] border border-[#FDBA74] rounded-lg px-3 py-2">
-        Sin habitación asignada. Asigna una para poder hacer el check-in.
-      </p>)}
-
-      {!cerrada && (<div className="mt-4">
-        <SelectorHabitacion
-          habitaciones={disponiblesParaAsignar}
-          seleccionadaId={reserva.habitacionId ?? ''}
-          onSeleccionar={id => onAsignarHabitacion(reserva.id, id)}
-          titulo={habitacion ? 'Cambiar habitación' : 'Asignar habitación disponible'} />
-        {disponiblesParaAsignar.length === 0 && (<p className="text-[12px] text-[#991B1B] mt-1">
-          No hay habitaciones libres para estas fechas y capacidad.
-        </p>)}
-      </div>)}
-    </Seccion>
-
-    {!cerrada && !cancelando && (<div className="flex flex-col sm:flex-row gap-3">
+    {!cerrada && !cancelando && (<div className="flex flex-col sm:flex-row gap-2">
       {puedeCheckIn && (<button
         onClick={() => onCheckIn(reserva.id)}
-        className="flex-1 py-3 text-[15px] font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
+        className="flex-1 py-2 text-[15px] font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
         Realizar check-in
       </button>)}
       {puedeCheckOut && (<button
         onClick={() => setFacturaCheckout(true)}
-        className="flex-1 py-3 text-[15px] font-semibold bg-[#166534] text-white rounded-md hover:bg-[#14532D] transition-colors">
+        className="flex-1 py-2 text-[15px] font-semibold bg-[#166534] text-white rounded-md hover:bg-[#14532D] transition-colors">
         Revisar factura y check-out
       </button>)}
       <button
         onClick={() => setCancelando(true)}
-        className="flex-1 sm:flex-none sm:px-5 py-3 text-[15px] font-semibold border border-[#FCA5A5] text-[#991B1B] rounded-md hover:bg-[#FEF2F2] transition-colors">
+        className="flex-1 sm:flex-none sm:px-5 py-2 text-[15px] font-semibold border border-[#FCA5A5] text-[#991B1B] rounded-md hover:bg-[#FEF2F2] transition-colors">
         Cancelar reserva
       </button>
     </div>)}
 
     {!cerrada && !cancelando && !reserva.habitacionId && (reserva.estado === 'confirmada' || reserva.estado === 'pendiente') && (<p className="text-[12px] text-[#9A3412]">Asigna una habitación para habilitar el check-in.</p>)}
 
-    {cancelando && (<div className="border border-[#FCA5A5] bg-[#FEF2F2] rounded-xl px-4 py-4 space-y-3">
+    {cancelando && (<div className="border border-[#FCA5A5] bg-[#FEF2F2] rounded-xl px-4 py-2 space-y-2">
       <p className="text-[15px] font-semibold text-[#991B1B]">Cancelar {reserva.codigo}</p>
       <p className="text-[13px] text-[#7F1D1D]">
         Selecciona un motivo. La habitación quedará liberada y la reserva no podrá reactivarse.
@@ -494,21 +481,21 @@ function TabResumen({ reserva, huesped, habitacion, habitaciones, reservas, onAs
           setErrMotivo(false);
         }}
         placeholder="Detalle del motivo…"
-        className="w-full border border-[#FCA5A5] rounded-md px-3 py-2.5 text-sm text-[#1F2933] resize-none focus:outline-none focus:border-[#991B1B] bg-white" />
+        className="w-full border border-[#FCA5A5] rounded-md px-3 py-2 text-sm text-[#1F2933] resize-none focus:outline-none focus:border-[#991B1B] bg-white" />
       {errMotivo && <p className="text-xs text-[#991B1B]">El motivo es obligatorio.</p>}
-      <div className="flex gap-3">
+      <div className="flex gap-2">
         <button
           onClick={() => {
             setCancelando(false);
             setMotivo('');
             setErrMotivo(false);
           }}
-          className="flex-1 py-2.5 text-sm border border-[#E5E0D8] text-[#6B7280] rounded-md bg-white hover:bg-[#F8F6F0] transition-colors">
+          className="flex-1 py-2 text-sm border border-[#E5E0D8] text-[#6B7280] rounded-md bg-white hover:bg-[#F8F6F0] transition-colors">
           Volver
         </button>
         <button
           onClick={confirmarCancelacion}
-          className="flex-1 py-2.5 text-sm font-semibold bg-[#991B1B] text-white rounded-md hover:bg-[#7F1D1D] transition-colors">
+          className="flex-1 py-2 text-sm font-semibold bg-[#991B1B] text-white rounded-md hover:bg-[#7F1D1D] transition-colors">
           Confirmar cancelación
         </button>
       </div>
@@ -516,15 +503,15 @@ function TabResumen({ reserva, huesped, habitacion, habitaciones, reservas, onAs
 
     {facturaCheckout && <div className="fixed inset-0 z-[70] grid place-items-center bg-[#071D34]/55 p-3" onMouseDown={() => setFacturaCheckout(false)}>
       <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl" onMouseDown={e => e.stopPropagation()}>
-        <div className="flex items-start justify-between border-b px-5 py-4">
+        <div className="flex items-start justify-between border-b px-5 py-2">
           <div>
             <h2 className="text-2xl font-semibold text-[#18345C]">Factura del check-out</h2>
             <p className="text-sm text-[#71839B]">Revisa la cuenta antes de finalizar la estancia.</p>
           </div>
           <button onClick={() => setFacturaCheckout(false)} className="text-2xl text-[#71839B]">×</button>
         </div>
-        <div className="p-5 sm:p-7">
-          <div className="grid gap-5 border-b border-[#D8B94E] pb-5 sm:grid-cols-[150px_1fr_1fr]">
+        <div className="p-3 sm:p-4">
+          <div className="grid gap-2 border-b border-[#D8B94E] pb-3 sm:grid-cols-[150px_1fr_1fr]">
             <div className="flex items-center justify-center sm:border-r">
               <img src="/villa-serena-logo.png" alt="Villa Serena Hotel" className="max-h-24 max-w-[135px] object-contain" />
             </div>
@@ -558,26 +545,26 @@ function TabResumen({ reserva, huesped, habitacion, habitaciones, reservas, onAs
             <FilaCuenta k="Descuento" v={`- ${dinero(cuentaCheckout.descuento)}`} />
             <FilaCuenta k="Total" v={dinero(cuentaCheckout.total)} fuerte />
             <FilaCuenta k="Pagado" v={dinero(cuentaCheckout.pagado)} />
-            <div className={`flex items-center justify-between px-4 py-3 font-bold ${cuentaCheckout.saldo <= 0 ? 'bg-[#EAF6EC] text-[#166534]' : 'bg-[#FFF3D5] text-[#8A6200]'}`}>
+            <div className={`flex items-center justify-between px-4 py-2 font-bold ${cuentaCheckout.saldo <= 0 ? 'bg-[#EAF6EC] text-[#166534]' : 'bg-[#FFF3D5] text-[#8A6200]'}`}>
               <span>Saldo pendiente</span>
               <span className="text-xl">
                 {dinero(Math.max(0, cuentaCheckout.saldo))}
               </span>
             </div>
           </div>
-          {cuentaCheckout.saldo > 0 && <p className="mt-4 rounded-lg border border-[#F6C453] bg-[#FFF9E8] px-4 py-3 text-sm text-[#78450A]">Para finalizar el check-out primero debe registrarse el pago completo en “Cuenta y pagos”.</p>}
+          {cuentaCheckout.saldo > 0 && <p className="mt-2 rounded-lg border border-[#F6C453] bg-[#FFF9E8] px-4 py-2 text-sm text-[#78450A]">Para finalizar el check-out primero debe registrarse el pago completo en “Cuenta y pagos”.</p>}
           <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <button onClick={() => window.print()} className="rounded-lg border border-[#18345C] px-4 py-2.5 text-sm font-semibold text-[#18345C]">Imprimir factura</button>
+            <button onClick={() => window.print()} className="rounded-lg border border-[#18345C] px-4 py-2 text-sm font-semibold text-[#18345C]">Imprimir factura</button>
             <button
               onClick={() => window.alert(`La factura se enviará a ${huesped.correo}.`)}
-              className="rounded-lg border border-[#18345C] px-4 py-2.5 text-sm font-semibold text-[#18345C]">Enviar por correo</button>
+              className="rounded-lg border border-[#18345C] px-4 py-2 text-sm font-semibold text-[#18345C]">Enviar por correo</button>
             <button
               disabled={cuentaCheckout.saldo > 0}
               onClick={() => {
                 onCheckOut(reserva.id);
                 setFacturaCheckout(false);
               }}
-              className="rounded-lg bg-[#18345C] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9AA9BB]">Finalizar check-out</button>
+              className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9AA9BB]">Finalizar check-out</button>
           </div>
         </div>
       </section>
@@ -613,7 +600,7 @@ function TabCuenta({ reserva, habitacion, onRegistrarPago, onAplicarDescuento, o
     setErrPago('');
     onPagoRegistrado(pago);
   }
-  return (<div className="space-y-5">
+  return (<div className="space-y-2">
 
     <div className="border border-[#E5E0D8] rounded-xl overflow-hidden">
       <FilaCuenta
@@ -628,7 +615,7 @@ function TabCuenta({ reserva, habitacion, onRegistrarPago, onAplicarDescuento, o
       <FilaCuenta k="Descuento" v={cuenta.descuento > 0 ? `- ${dinero(cuenta.descuento)}` : dinero(0)} />
       <FilaCuenta k="Total de la cuenta" v={dinero(cuenta.total)} fuerte />
       <FilaCuenta k="Pagado" v={dinero(cuenta.pagado)} />
-      <div className="flex items-center justify-between px-4 py-3 bg-[#18345C]">
+      <div className="flex items-center justify-between px-4 py-2 bg-[#18345C]">
         <span className="text-[13px] font-semibold text-white uppercase tracking-wide">Saldo pendiente</span>
         <span className="text-[20px] font-bold text-white">
           {dinero(Math.max(0, cuenta.saldo))}
@@ -642,14 +629,14 @@ function TabCuenta({ reserva, habitacion, onRegistrarPago, onAplicarDescuento, o
           setPagando(v => !v);
           setMonto(cuenta.saldo > 0 ? String(cuenta.saldo) : '');
         }}
-        className="px-4 py-2.5 text-[14px] font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
+        className="px-4 py-2 text-[14px] font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
         Registrar pago
       </button>
     </div>)}
 
-    {!cerrada && (<div className="rounded-xl border border-[#E5E0D8] bg-[#FCFBF8] p-4">
-      <p className="mb-3 text-[14px] font-semibold text-[#18345C]">Descuento autorizado</p>
-      <div className="flex items-end gap-3">
+    {!cerrada && (<div className="rounded-xl border border-[#E5E0D8] bg-[#FCFBF8] p-3">
+      <p className="mb-2 text-[14px] font-semibold text-[#18345C]">Descuento autorizado</p>
+      <div className="flex items-end gap-2">
         <div className="flex-1">
           <Campo label="Monto de descuento">
             <input type="number" min="0" value={descMonto} onChange={e => setDescMonto(e.target.value)} className={INPUT_CLS} />
@@ -657,16 +644,16 @@ function TabCuenta({ reserva, habitacion, onRegistrarPago, onAplicarDescuento, o
         </div>
         <button
           onClick={() => onAplicarDescuento(reserva.id, Math.max(0, Number(descMonto) || 0))}
-          className="px-4 py-2.5 text-[14px] font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
+          className="px-4 py-2 text-[14px] font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
           Guardar
         </button>
       </div>
       <p className="mt-2 text-xs text-[#71839B]">El descuento queda registrado antes de cobrar el saldo.</p>
     </div>)}
 
-    {pagando && !cerrada && (<div className="border border-[#E5E0D8] rounded-xl p-4 space-y-3">
+    {pagando && !cerrada && (<div className="border border-[#E5E0D8] rounded-xl p-3 space-y-2">
       <p className="text-[14px] font-semibold text-[#18345C]">Registrar pago</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <Campo label="Monto" error={errPago}>
           <input type="number" min="0" value={monto} onChange={e => {
             setMonto(e.target.value);
@@ -680,25 +667,25 @@ function TabCuenta({ reserva, habitacion, onRegistrarPago, onAplicarDescuento, o
           </select>
         </Campo>
       </div>
-      <div className="flex gap-3">
+      <div className="flex gap-2">
         <button
           onClick={() => {
             setPagando(false);
             setErrPago('');
           }}
-          className="flex-1 py-2.5 text-sm border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-[#F8F6F0] transition-colors">
+          className="flex-1 py-2 text-sm border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-[#F8F6F0] transition-colors">
           Cancelar
         </button>
-        <button onClick={registrar} className="flex-1 py-2.5 text-sm font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
+        <button onClick={registrar} className="flex-1 py-2 text-sm font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
           Registrar y generar comprobante
         </button>
       </div>
     </div>)}
 
     <div>
-      <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-2">Pagos registrados</p>
+      <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-1">Pagos registrados</p>
       {reserva.pagos.length === 0 ? (<p className="text-[13px] text-[#AEBCC1]">Aún no hay pagos.</p>) : (<div className="border border-[#E5E0D8] rounded-xl divide-y divide-[#F0EBE3]">
-        {reserva.pagos.map(p => (<div key={p.id} className="flex items-center gap-3 px-4 py-3">
+        {reserva.pagos.map(p => (<div key={p.id} className="flex items-center gap-2 px-4 py-2">
           <div className="flex-1 min-w-0">
             <p className="text-[14px] font-medium text-[#1F2933]">
               {dinero(p.monto)} · {METODO_LABEL[p.metodo]}
@@ -760,11 +747,11 @@ function TabServicios({ reserva, onAgregarServicio, onQuitarServicio }: Props) {
     setCantidad('1');
     setAgregandoServicio(false);
   }
-  return <div className="space-y-5">
+  return <div className="space-y-2">
     {(reserva.actividadPortal?.length ?? 0) > 0 && <section>
       <p className="mb-2 text-[10px] uppercase tracking-widest text-[#AEBCC1]">Actividad realizada por el huésped</p>
       <div className="divide-y divide-[#F0EBE3] rounded-xl border border-[#E5E0D8]">
-        {reserva.actividadPortal!.map(a => <div key={a.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+        {reserva.actividadPortal!.map(a => <div key={a.id} className="flex flex-wrap items-center gap-2 px-4 py-2">
           <div className="min-w-0 flex-1">
             <p className="font-medium text-[#18345C]">{a.tipo === 'pedido' ? 'Pedido' : 'Reservación'} · {a.categoria}</p>
             <p className="text-xs text-[#71839B]">{a.detalle} · {formatoFechaHora(a.fechaHora)}</p>
@@ -779,7 +766,7 @@ function TabServicios({ reserva, onAgregarServicio, onQuitarServicio }: Props) {
       </div>
     </section>}
     {reserva.servicios.length === 0 ? <p className="text-[13px] text-[#AEBCC1]">No hay servicios adicionales cargados.</p> : <div className="border border-[#E5E0D8] rounded-xl divide-y divide-[#F0EBE3]">
-      {reserva.servicios.map(s => <div key={s.id} className="flex items-center gap-3 px-4 py-3">
+      {reserva.servicios.map(s => <div key={s.id} className="flex items-center gap-2 px-4 py-2">
         <div className="flex-1">
           <p className="text-[14px] font-medium">{s.tipo} · {s.descripcion}</p>
           <p className="text-[12px] text-[#AEBCC1]">{s.cantidad} × {dinero(s.precioUnitario)} = {dinero(s.cantidad * s.precioUnitario)}</p>
@@ -791,12 +778,12 @@ function TabServicios({ reserva, onAgregarServicio, onQuitarServicio }: Props) {
       <button onClick={() => setAgregandoServicio(true)} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#102747]">+ Agregar servicio</button>
     </div>}
     {agregandoServicio && <div
-      className="fixed inset-0 z-[70] grid place-items-center bg-[#071D34]/45 p-4"
+      className="fixed inset-0 z-[70] grid place-items-center bg-[#071D34]/45 p-3"
       onMouseDown={e => e.target === e.currentTarget && setAgregandoServicio(false)}>
-      <section className="relative w-full max-w-lg rounded-2xl bg-white p-4 shadow-2xl sm:p-5">
+      <section className="relative w-full max-w-lg rounded-2xl bg-white p-3 shadow-2xl sm:p-5">
         <button aria-label="Cerrar" onClick={() => setAgregandoServicio(false)} className="absolute right-4 top-3 text-2xl text-[#71839B]">×</button>
         <h3 className="pr-8 text-lg font-semibold text-[#18345C]">Agregar servicio</h3>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
           <Campo label="Servicio">
             <select value={tipo} onChange={e => cambiarTipo(e.target.value)} className={INPUT_CLS}>
               {Object.keys(catalogo).map(t => <option key={t}>
@@ -815,7 +802,7 @@ function TabServicios({ reserva, onAgregarServicio, onQuitarServicio }: Props) {
             <input type="number" min="1" value={cantidad} onChange={e => setCantidad(e.target.value)} className={INPUT_CLS} />
           </Campo>
           <div className="flex items-end">
-            <div className="flex min-h-[42px] w-full items-center justify-between rounded-lg bg-[#F8F6F0] px-3 py-2">
+            <div className="flex min-h-0 w-full items-center justify-between rounded-lg bg-[#F8F6F0] px-3 py-2">
               <span className="text-sm text-[#6B7280]">Precio unitario</span>
               <b className="text-[#18345C]">
                 {dinero(elegido?.precio || 0)}
@@ -823,8 +810,8 @@ function TabServicios({ reserva, onAgregarServicio, onQuitarServicio }: Props) {
             </div>
           </div>
         </div>
-        {tipo === 'Restaurante' && opcion === 'Desayuno' && <p className="mt-3 text-xs text-[#6B7280]">Si la categoría reservada incluye desayuno, no se cobrará nuevamente.</p>}
-        <div className="mt-4 flex justify-end gap-2 border-t pt-3">
+        {tipo === 'Restaurante' && opcion === 'Desayuno' && <p className="mt-2 text-xs text-[#6B7280]">Si la categoría reservada incluye desayuno, no se cobrará nuevamente.</p>}
+        <div className="mt-2 flex justify-end gap-2 border-t pt-2">
           <button onClick={() => setAgregandoServicio(false)} className="rounded-lg border border-[#E5E0D8] px-4 py-2 text-sm">Cancelar</button>
           <button onClick={agregar} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">Agregar a la cuenta</button>
         </div>
@@ -853,9 +840,9 @@ function TabHuespedes({ reserva, huesped, onAgregarAcompanante, onQuitarAcompana
     setErr('');
     setRegistrandoHuesped(false);
   }
-  return (<div className="space-y-5">
+  return (<div className="space-y-2">
     <div className="border border-[#E5E0D8] rounded-xl divide-y divide-[#F0EBE3]">
-      <div className="flex items-center gap-3 px-4 py-3">
+      <div className="flex items-center gap-2 px-4 py-2">
         <span className="w-8 h-8 rounded-lg bg-[#EFF6FF] text-[#1E40AF] flex items-center justify-center shrink-0">
           <UserIcon size={15} />
         </span>
@@ -867,7 +854,7 @@ function TabHuespedes({ reserva, huesped, onAgregarAcompanante, onQuitarAcompana
         </div>
       </div>
       {reserva.acompanantes.map((a,
-        i) => (<div key={i} className="flex items-center gap-3 px-4 py-3">
+        i) => (<div key={i} className="flex items-center gap-2 px-4 py-2">
           <span className="w-8 h-8 rounded-lg bg-[#F8F6F0] text-[#6B7280] flex items-center justify-center shrink-0">
             <UserIcon size={15} />
           </span>
@@ -892,12 +879,12 @@ function TabHuespedes({ reserva, huesped, onAgregarAcompanante, onQuitarAcompana
       <button onClick={() => setRegistrandoHuesped(true)} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">+ Registrar huésped adicional</button>
     </div>}
     {registrandoHuesped && <div
-      className="fixed inset-0 z-[70] grid place-items-center bg-[#071D34]/45 p-4"
+      className="fixed inset-0 z-[70] grid place-items-center bg-[#071D34]/45 p-3"
       onMouseDown={e => e.target === e.currentTarget && setRegistrandoHuesped(false)}>
-      <section className="relative w-full max-w-lg rounded-2xl bg-white p-4 shadow-2xl sm:p-5">
+      <section className="relative w-full max-w-lg rounded-2xl bg-white p-3 shadow-2xl sm:p-5">
         <button aria-label="Cerrar" onClick={() => setRegistrandoHuesped(false)} className="absolute right-4 top-3 text-2xl text-[#71839B]">×</button>
         <h3 className="pr-8 text-lg font-semibold text-[#18345C]">Registrar huésped adicional</h3>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Campo label="Nombre completo">
             <input type="text" value={nombre} onChange={e => {
               setNombre(e.target.value);
@@ -930,7 +917,7 @@ function TabHuespedes({ reserva, huesped, onAgregarAcompanante, onQuitarAcompana
         {err && <p className="mt-2 text-xs text-[#991B1B]">
           {err}
         </p>}
-        <div className="mt-4 flex justify-end gap-2 border-t pt-3">
+        <div className="mt-2 flex justify-end gap-2 border-t pt-2">
           <button onClick={() => setRegistrandoHuesped(false)} className="rounded-lg border border-[#E5E0D8] px-4 py-2 text-sm">Cancelar</button>
           <button onClick={agregar} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">Agregar a la reserva</button>
         </div>
@@ -982,12 +969,12 @@ function TabCambios({ reserva, habitaciones, reservas, onModificar }: Props) {
   if (cerrada) {
     return <p className="text-[13px] text-[#AEBCC1]">Esta reserva está cerrada y no puede modificarse.</p>;
   }
-  return (<div className="space-y-4">
+  return (<div className="space-y-2">
     <p className="text-[13px] text-[#6B7280]">
       Al guardar, el sistema verifica de nuevo la disponibilidad para las fechas y la habitación elegidas.
     </p>
 
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       <Campo label="Fecha de entrada">
         <input type="date" value={entrada} onChange={e => {
           setEntrada(e.target.value);
@@ -1001,16 +988,30 @@ function TabCambios({ reserva, habitaciones, reservas, onModificar }: Props) {
         }} className={INPUT_CLS} />
       </Campo>
       <Campo label="Adultos">
-        <input type="number" min="1" value={adultos} onChange={e => {
-          setAdultos(e.target.value);
-          setOk(false);
-        }} className={INPUT_CLS} />
+        <div className="flex items-center gap-3 py-1">
+          <button type="button" aria-label="Reducir adultos" disabled={nAdultos <= 1} onClick={() => {
+            setAdultos(String(Math.max(1, nAdultos - 1)));
+            setOk(false);
+          }} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#D8B94E] text-lg text-[#18345C] disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#18345C]">−</button>
+          <span aria-live="polite" className="min-w-6 text-center text-sm font-semibold text-[#18345C]">{nAdultos}</span>
+          <button type="button" aria-label="Aumentar adultos" onClick={() => {
+            setAdultos(String(nAdultos + 1));
+            setOk(false);
+          }} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#D8B94E] text-lg text-[#18345C] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#18345C]">+</button>
+        </div>
       </Campo>
       <Campo label="Niños">
-        <input type="number" min="0" value={ninos} onChange={e => {
-          setNinos(e.target.value);
-          setOk(false);
-        }} className={INPUT_CLS} />
+        <div className="flex items-center gap-3 py-1">
+          <button type="button" aria-label="Reducir niños" disabled={nNinos <= 0} onClick={() => {
+            setNinos(String(Math.max(0, nNinos - 1)));
+            setOk(false);
+          }} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#D8B94E] text-lg text-[#18345C] disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#18345C]">−</button>
+          <span aria-live="polite" className="min-w-6 text-center text-sm font-semibold text-[#18345C]">{nNinos}</span>
+          <button type="button" aria-label="Aumentar niños" onClick={() => {
+            setNinos(String(nNinos + 1));
+            setOk(false);
+          }} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#D8B94E] text-lg text-[#18345C] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#18345C]">+</button>
+        </div>
       </Campo>
     </div>
 
@@ -1032,7 +1033,7 @@ function TabCambios({ reserva, habitaciones, reservas, onModificar }: Props) {
     </p>}
     {ok && <p className="text-[13px] text-[#166534]">Cambios guardados y disponibilidad verificada.</p>}
 
-    <button onClick={guardar} className="w-full py-3 text-sm font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
+    <button onClick={guardar} className="w-full py-2 text-sm font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
       Guardar cambios
     </button>
   </div>);
@@ -1056,7 +1057,7 @@ function Dato({ k, v }: {
     <p className="text-[11px] text-[#AEBCC1]">
       {k}
     </p>
-    <p className="text-[13px] text-[#1F2933] font-medium">
+    <p className="text-[13px] text-[#1F2933] font-medium break-words">
       {v}
     </p>
   </div>);
@@ -1067,7 +1068,7 @@ function FilaCuenta({ k, v, sub, fuerte }: {
   sub?: boolean;
   fuerte?: boolean;
 }) {
-  return (<div className={`flex items-baseline justify-between gap-3 px-4 py-2.5 border-b border-[#F0EBE3] last:border-0 ${fuerte ? 'bg-[#F8F6F0]' : ''}`}>
+  return (<div className={`flex items-baseline justify-between gap-2 px-4 py-2 border-b border-[#F0EBE3] last:border-0 ${fuerte ? 'bg-[#F8F6F0]' : ''}`}>
     <span className={`${sub ? 'text-[12px] text-[#6B7280] pl-3' : 'text-[13px] text-[#1F2933]'} ${fuerte ? 'font-semibold' : ''}`}>
       {k}
     </span>
@@ -1103,23 +1104,23 @@ function SelectorHabitacion({ habitaciones, seleccionadaId, onSeleccionar, titul
   const pisos = useMemo(() => [...new Set(habitaciones.map(h => h.piso))].sort(), [habitaciones]);
   const categorias = useMemo(() => [...new Set(habitaciones.map(h => h.tipo))], [habitaciones]);
   const filtradas = habitaciones.filter(h => (piso === 'todos' || h.piso === Number(piso)) && (categoria === 'todas' || h.tipo === categoria));
-  return <div className="rounded-xl border border-[#E5E0D8] bg-white p-4">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
+  return <div className="rounded-xl border border-[#E5E0D8] bg-white p-2.5">
+    <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+      <div className="min-w-0 flex-1">
         <p className="font-semibold text-[#18345C]">
           {titulo}
         </p>
         <p className="text-xs text-[#71839B]">Solo se muestran habitaciones disponibles y con capacidad suficiente.</p>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:w-[360px]">
+      <div className="grid grid-cols-2 gap-2 lg:w-[280px] lg:shrink-0">
         <Campo label="Piso">
-          <select value={piso} onChange={e => setPiso(e.target.value)} className={INPUT_CLS}>
+          <select value={piso} onChange={e => setPiso(e.target.value)} className={`${INPUT_CLS} !py-1.5`}>
             <option value="todos">Todos</option>
             {pisos.map(p => <option key={p} value={p}>Piso {p}</option>)}
           </select>
         </Campo>
         <Campo label="Categoría">
-          <select value={categoria} onChange={e => setCategoria(e.target.value)} className={INPUT_CLS}>
+          <select value={categoria} onChange={e => setCategoria(e.target.value)} className={`${INPUT_CLS} !py-1.5`}>
             <option value="todas">Todas</option>
             {categorias.map(c => <option key={c} value={c}>
               {c}
@@ -1131,8 +1132,8 @@ function SelectorHabitacion({ habitaciones, seleccionadaId, onSeleccionar, titul
     {permitirSinAsignar && <button
       type="button"
       onClick={() => onSeleccionar('')}
-      className={`mt-3 rounded-lg border px-4 py-2 text-sm ${!seleccionadaId ? 'border-[#18345C] bg-[#EEF4FB] font-semibold text-[#18345C]' : 'border-[#E5E0D8] text-[#52677F]'}`}>Dejar sin asignar</button>}
-    <div className="mt-4 grid max-h-80 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+      className={`mt-2 rounded-lg border px-4 py-2 text-sm ${!seleccionadaId ? 'border-[#18345C] bg-[#EEF4FB] font-semibold text-[#18345C]' : 'border-[#E5E0D8] text-[#52677F]'}`}>Dejar sin asignar</button>}
+    <div className="mt-1.5 grid grid-cols-1 items-start gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
       {filtradas.map(h => {
         const visual = visualHabitacion(h);
         const activa = h.id === seleccionadaId;
@@ -1140,26 +1141,28 @@ function SelectorHabitacion({ habitaciones, seleccionadaId, onSeleccionar, titul
           type="button"
           key={h.id}
           onClick={() => onSeleccionar(h.id)}
-          className={`overflow-hidden rounded-xl border text-left transition ${activa ? 'border-[#18345C] ring-2 ring-[#18345C]/20' : 'border-[#E5E0D8] hover:border-[#B38719]'}`}>
-          <img src={visual.image} alt={`Habitación ${h.numero}`} className="h-28 w-full object-cover" />
-          <div className="p-3">
+          className={`flex flex-col lg:flex-row lg:items-start overflow-hidden rounded-xl border text-left transition ${activa ? 'border-[#18345C] ring-2 ring-[#18345C]/20' : 'border-[#E5E0D8] hover:border-[#B38719]'}`}>
+          <img src={visual.image} alt={`Habitación ${h.numero}`} className="block h-24 w-full shrink-0 object-cover lg:h-[105px] lg:w-[110px]" />
+          <div className="flex min-w-0 flex-1 flex-col px-2 py-1.5 leading-snug break-words">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-[#B38719]">Piso {h.piso}</p>
                 <p className="font-bold text-[#18345C]">Habitación {h.numero}</p>
               </div>
-              {activa && <span className="rounded-full bg-[#18345C] px-2 py-1 text-[10px] font-semibold text-white">Seleccionada</span>}
             </div>
-            <p className="mt-1 text-sm text-[#52677F]">{h.tipo} · {visual.beds}</p>
-            <p className="mt-2 text-xs text-[#71839B]">Hasta {h.capacidad} huéspedes · {visual.size} m²</p>
-            <p className="mt-2 font-bold text-[#18345C]">
+            <p className="mt-0.5 text-sm text-[#52677F]">{h.tipo} · {visual.beds}</p>
+            <p className="mt-0.5 text-xs text-[#71839B]">Hasta {h.capacidad} huéspedes · {visual.size} m²</p>
+            <div className="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-1">
+              <p className="font-bold text-[#18345C]">
               {dinero(h.precioNoche)}
               <span className="text-xs font-normal">por noche</span>
-            </p>
+              </p>
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${activa ? 'bg-[#18345C] text-white' : 'bg-[#EEF4FB] text-[#18345C]'}`}>{activa ? 'Seleccionada' : 'Seleccionar'}</span>
+            </div>
           </div>
         </button>;
       })}
     </div>
-    {!filtradas.length && <p className="mt-4 rounded-lg bg-[#FFF7ED] p-3 text-sm text-[#9A3412]">No hay habitaciones disponibles con estos filtros.</p>}
+    {!filtradas.length && <p className="mt-2 rounded-lg bg-[#FFF7ED] p-3 text-sm text-[#9A3412]">No hay habitaciones disponibles con estos filtros.</p>}
   </div>;
 }

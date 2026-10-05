@@ -47,24 +47,23 @@
       "lowercase": "Lowercase letter",
       "number": "Number",
       "special": "Special character"
-    }
+    },
+    "recoveryUnavailable": "Password recovery is not available at this time.",
+    "activationUnavailable": "Account activation is not available at this time.",
+    "verificationUnavailable": "Email verification is not available at this time.",
+    "passwordChangeUnavailable": "Password changes are not available at this time.",
+    "backToLogin": "Back to sign in"
   },
   "publicBooking": {
     "loading": "Loading confirmation…",
     "notFound": "The reservation was not found.",
     "roomReserved": "Your room has been reserved successfully.",
-    "paymentMethod": "Payment method",
-    "payAtHotel": "Pay at Reception",
-    "onlinePayment": "Online payment",
-    "paymentStatus": "Payment status",
-    "pending": "Pending",
-    "paid": "Paid",
-    "payAtReception": "Payment will be made at reception.",
     "unavailable": "The room is no longer available for those dates.",
     "invalidGuest": "Complete the required guest details.",
     "priceChanged": "The rate changed. Return to the results and try again.",
-    "invalidPromo": "The promo code is invalid or inactive.",
-    "paymentUnverified": "Online payment requires approval from a payment gateway.",
-    "saveFailed": "The reservation could not be saved. Please try again."
+    "invalidPromo": "The discount code is invalid or inactive.",
+    "saveFailed": "The reservation could not be saved. Please try again.",
+    "paymentUnverified": "The payment could not be confirmed. The reservation was not created.",
+    "paymentUnavailable": "Card payment is not available at this time."
   }
 }

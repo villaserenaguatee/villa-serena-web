@@ -1,10 +1,23 @@
 'use client';
 import { useMemo, useRef, useState } from 'react';
-import { Camera, ChevronRight, Contact, DoorOpen, LockKeyhole, UserRound, BriefcaseBusiness, X, KeyRound } from 'lucide-react';
+import { Camera, ChevronRight, Contact, DoorOpen, LockKeyhole, UserRound, BriefcaseBusiness, X, KeyRound, Eye, EyeOff } from 'lucide-react';
+import type { ClipboardEvent, KeyboardEvent } from 'react';
 import { guardarEmpleados, leerEmpleados } from '@/store/employeeStore';
-import { crearCorreccion, leerNotificacionesEmpleado } from '@/store/correctionStore';
 import { useAuth } from '@/hooks/useAuth';
-type Sec = 'personal' | 'contacto' | 'laboral' | 'seguridad' | 'cambiarClave' | 'foto' | 'salir' | null;
+import { useTranslations } from 'next-intl';
+import { esCuentaDemoArea } from '@/lib/auth/local-auth';
+type Sec = 'personal' | 'contacto' | 'laboral' | 'seguridad' | 'cambiarTelefono' | 'verificarTelefono' | 'cambiarClave' | 'foto' | 'salir' | null;
+type PerfilModalProps = {
+  open: boolean;
+  onClose: () => void;
+  name: string;
+  role: string;
+  email: string;
+  onSolicitarCodigoTelefono?: (telefono: string) => Promise<void>;
+  onVerificarCodigoTelefono?: (telefono: string, codigo: string) => Promise<void>;
+  onActualizarTelefono?: (telefono: string) => Promise<void>;
+  onCambiarClave?: (actual: string, nueva: string) => Promise<void>;
+};
 type Perfil = {
   nombre: string;
   telefono: string;
@@ -12,46 +25,42 @@ type Perfil = {
   foto: string;
 };
 const inputClass = 'w-full rounded-xl border border-[#D9D5CC] bg-white px-3 py-2.5 text-[#18345C] outline-none transition focus:border-[#B58B2A] focus:ring-2 focus:ring-[#D8B94E]/20';
-export default function StaffProfileModal({ open, onClose, name, role, email }: {
-  open: boolean;
-  onClose: () => void;
-  name: string;
-  role: string;
-  email: string;
-}) {
-  const { logout } = useAuth();
+export default function StaffProfileModal({ open, onClose, name, role, email, onSolicitarCodigoTelefono, onVerificarCodigoTelefono, onActualizarTelefono, onCambiarClave }: PerfilModalProps) {
+  const tAuth = useTranslations("auth");
+  const { user, logout } = useAuth();
   const area = useMemo(() => role.split('·')[0].trim().replace('Encargado de mantenimiento', 'Mantenimiento'), [role]);
-  const empleadoCentral = leerEmpleados().find(e => e.correo === email) || leerEmpleados().find(e => e.nombre === name);
+  const empleadoCentral = user && user.role !== 'huesped' && !esCuentaDemoArea(user.id) ? leerEmpleados().find(e => e.id === user?.id && e.activo) : undefined;
   const codigo = empleadoCentral?.codigoEmpleado ?? '—';
-  const key = `vs-perfil-personal-${email.toLowerCase()}`;
+  const key = `vs-perfil-personal-${(empleadoCentral?.correo ?? user?.email ?? '').toLowerCase()}`;
   const base: Perfil = {
-    nombre: empleadoCentral?.nombre ?? name,
+    nombre: empleadoCentral?.nombre ?? user?.name ?? role,
     telefono: empleadoCentral?.telefono ?? '',
-    correo: empleadoCentral?.correo ?? email,
+    correo: empleadoCentral?.correo ?? user?.email ?? '',
     foto: empleadoCentral?.foto ?? ''
   };
   let stored = base;
   try {
-    if (typeof window !== 'undefined')
+    if (empleadoCentral && typeof window !== 'undefined')
       stored = { ...base, ...JSON.parse(localStorage.getItem(key) || '{}') };
   }
   catch { }
   const [perfil, setPerfil] = useState<Perfil>(stored),
     [modal, setModal] = useState<Sec>(null),
     [editNombre, setEditNombre] = useState(stored.nombre),
-    [editTelefono, setEditTelefono] = useState(stored.telefono),
-    [editCorreo, setEditCorreo] = useState(stored.correo),
     [clave, setClave] = useState({ actual: '', nueva: '', confirmar: '' }),
     [mensajeClave, setMensajeClave] = useState(''),
-    [motivo, setMotivo] = useState(''),
-    [confirmacion, setConfirmacion] = useState('');
+    [nuevoTelefono, setNuevoTelefono] = useState(''),
+    [codigoTelefono, setCodigoTelefono] = useState(['', '', '', '', '', '']),
+    [mensajeTelefono, setMensajeTelefono] = useState(''),
+    [solicitudTelefonoOcupada, setSolicitudTelefonoOcupada] = useState(false),
+    [mostrandoClaves, setMostrandoClaves] = useState({ actual: false, nueva: false, confirmar: false });
   const ref = useRef<HTMLInputElement>(null);
-  const esAdmin = area.toLowerCase().includes('administración');
-  const notif = empleadoCentral ? leerNotificacionesEmpleado().find(n => (n.empleadoId && n.empleadoId === empleadoCentral.id) || n.codigo === codigo) : undefined;
+  const codigoTelefonoRefs = useRef<Array<HTMLInputElement | null>>([]);
   if (!open)
     return null;
   const iniciales = perfil.nombre.split(/\s+/).map(x => x[0]).slice(0, 2).join('').toUpperCase();
   function guardar(p: Perfil) {
+    if (!empleadoCentral) return;
     setPerfil(p);
     localStorage.setItem(key, JSON.stringify(p));
     if (empleadoCentral) {
@@ -63,13 +72,15 @@ export default function StaffProfileModal({ open, onClose, name, role, email }: 
     setModal(s);
     if (s === 'personal')
       setEditNombre(perfil.nombre);
-    if (s === 'contacto') {
-      setEditTelefono(perfil.telefono);
-      setEditCorreo(perfil.correo);
-    }
     if (s === 'seguridad') {
       setMensajeClave('');
       setClave({ actual: '', nueva: '', confirmar: '' });
+    }
+    if (s === 'cambiarTelefono') {
+      setNuevoTelefono('');
+      setCodigoTelefono(['', '', '', '', '', '']);
+      setMensajeTelefono('');
+      setSolicitudTelefonoOcupada(false);
     }
   }
   function guardarPersonal() {
@@ -79,40 +90,146 @@ export default function StaffProfileModal({ open, onClose, name, role, email }: 
     guardar({ ...perfil, nombre: n });
     setModal(null);
   }
-  function guardarContacto() {
-    const c = editCorreo.trim();
-    if (!c)
-      return;
-    guardar({ ...perfil, telefono: editTelefono.trim(), correo: c });
-    setModal(null);
-  }
-  function solicitar(dato: string,
-    actual: string,
-    nuevo: string) {
-      if (!empleadoCentral || !nuevo.trim() || nuevo.trim() === actual.trim())
-        return;
-    crearCorreccion({ empleadoId: empleadoCentral.id, empleado: perfil.nombre, area, codigo, dato, actual, nuevo: nuevo.trim(), motivo: motivo.trim() || undefined });
-    setConfirmacion('Tu solicitud de corrección fue enviada a Administración para su revisión.');
-    setMotivo('');
-    window.setTimeout(() => setConfirmacion(''), 4500);
-  }
-  function actualizarClave() {
-    const ok = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(clave.nueva);
+  function validarClave(): boolean {
     if (!clave.actual) {
       setMensajeClave('Ingresa tu contraseña actual.');
-      return;
+      return false;
     }
+    if (!clave.nueva) {
+      setMensajeClave('Ingresa una nueva contraseña.');
+      return false;
+    }
+    if (!clave.confirmar) {
+      setMensajeClave('Confirma la nueva contraseña.');
+      return false;
+    }
+    if (clave.nueva === clave.actual) {
+      setMensajeClave('La nueva contraseña debe ser distinta a la actual.');
+      return false;
+    }
+    const ok = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(clave.nueva);
     if (!ok) {
       setMensajeClave('La nueva contraseña no cumple los requisitos.');
-      return;
+      return false;
     }
     if (clave.nueva !== clave.confirmar) {
       setMensajeClave('La confirmación no coincide con la nueva contraseña.');
+      return false;
+    }
+    return true;
+  }
+  async function actualizarClave() {
+    if (!validarClave())
+      return;
+    if (!onCambiarClave) {
+      setMensajeClave(tAuth('passwordChangeUnavailable'));
       return;
     }
-    localStorage.setItem(`vs-password-updated-${email.toLowerCase()}`, new Date().toISOString());
-    setClave({ actual: '', nueva: '', confirmar: '' });
-    setMensajeClave('Contraseña actualizada correctamente.');
+    try {
+      await onCambiarClave(clave.actual, clave.nueva);
+      setClave({ actual: '', nueva: '', confirmar: '' });
+      setMensajeClave('Contraseña actualizada correctamente.');
+    }
+    catch (error) {
+      setMensajeClave(error instanceof Error ? error.message : 'No se pudo cambiar la contraseña.');
+    }
+  }
+  function telefonoNuevoFormateado() {
+    const digitos = nuevoTelefono.replace(/\D/g, '');
+    return `+502 ${digitos}`;
+  }
+  async function solicitarCodigoTelefono() {
+    if (solicitudTelefonoOcupada)
+      return;
+    const digitos = nuevoTelefono.replace(/\D/g, '');
+    const telefonoActual = perfil.telefono.replace(/\D/g, '').replace(/^502/, '');
+    if (!digitos) {
+      setMensajeTelefono('Ingresa el nuevo número de teléfono.');
+      return;
+    }
+    if (!/^\d{8}$/.test(digitos)) {
+      setMensajeTelefono('Ingresa un número de teléfono válido.');
+      return;
+    }
+    if (digitos === telefonoActual) {
+      setMensajeTelefono('El nuevo teléfono debe ser distinto al actual.');
+      return;
+    }
+    if (!onSolicitarCodigoTelefono) {
+      setMensajeTelefono('No se pudo enviar el código.');
+      return;
+    }
+    setSolicitudTelefonoOcupada(true);
+    try {
+      await onSolicitarCodigoTelefono(telefonoNuevoFormateado());
+      setCodigoTelefono(['', '', '', '', '', '']);
+      setMensajeTelefono('');
+      setModal('verificarTelefono');
+      window.setTimeout(() => codigoTelefonoRefs.current[0]?.focus(), 0);
+    }
+    catch (error) {
+      setMensajeTelefono(error instanceof Error ? error.message : 'No se pudo enviar el código.');
+    }
+    finally {
+      setSolicitudTelefonoOcupada(false);
+    }
+  }
+  function cambiarCodigoTelefono(index: number, value: string) {
+    const digits = value.replace(/\D/g, '');
+    if (!digits) {
+      setCodigoTelefono(actual => actual.map((digit, i) => i === index ? '' : digit));
+      setMensajeTelefono('');
+      return;
+    }
+    const next = [...codigoTelefono];
+    digits.slice(0, 6 - index).split('').forEach((digit, offset) => {
+      next[index + offset] = digit;
+    });
+    setCodigoTelefono(next);
+    setMensajeTelefono('');
+    const siguiente = Math.min(5, index + digits.length);
+    window.setTimeout(() => codigoTelefonoRefs.current[siguiente]?.focus(), 0);
+  }
+  function pegarCodigoTelefono(event: ClipboardEvent<HTMLInputElement>) {
+    const digits = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (digits.length < 2)
+      return;
+    event.preventDefault();
+    setCodigoTelefono([...digits, ...Array(6 - digits.length).fill('')]);
+    setMensajeTelefono('');
+    codigoTelefonoRefs.current[Math.min(digits.length, 6) - 1]?.focus();
+  }
+  function manejarTeclaCodigoTelefono(index: number, event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Backspace' && !codigoTelefono[index] && index > 0)
+      codigoTelefonoRefs.current[index - 1]?.focus();
+  }
+  async function verificarCodigoTelefono() {
+    const telefono = telefonoNuevoFormateado();
+    const codigoIngresado = codigoTelefono.join('');
+    if (!/^\d{6}$/.test(codigoIngresado)) {
+      setMensajeTelefono('Ingresa el código de verificación de 6 dígitos.');
+      return;
+    }
+    if (!onVerificarCodigoTelefono || !onActualizarTelefono) {
+      setMensajeTelefono('No se pudo verificar el código.');
+      return;
+    }
+    try {
+      await onVerificarCodigoTelefono(telefono, codigoIngresado);
+    }
+    catch (error) {
+      setMensajeTelefono(error instanceof Error ? error.message : 'El código ingresado no es válido.');
+      return;
+    }
+    try {
+      await onActualizarTelefono(telefono);
+      guardar({ ...perfil, telefono });
+      setMensajeTelefono('');
+      setModal('contacto');
+    }
+    catch (error) {
+      setMensajeTelefono(error instanceof Error ? error.message : 'No se pudo actualizar el teléfono.');
+    }
   }
   const opciones = [['personal', 'Información personal', perfil.nombre, UserRound],
   ['contacto', 'Datos de contacto', `${perfil.telefono || 'Sin teléfono'} · ${perfil.correo}`, Contact],
@@ -129,15 +246,6 @@ export default function StaffProfileModal({ open, onClose, name, role, email }: 
           <X size={20} />
         </button>
       </div>
-      {notif && <div className="mb-3 rounded-xl border border-[#D8B94E]/40 bg-[#FFF9E8] p-3 text-sm text-[#18345C]">
-        <b>
-          {notif.titulo}
-        </b>
-        <p>
-          {notif.mensaje}
-        </p>
-        {notif.motivo && <p className="mt-1 text-[#71839B]">Motivo: {notif.motivo}</p>}
-      </div>}
       <section className="mb-4 flex items-center gap-4 rounded-2xl border border-[#D9D5CC] bg-white p-5">
         {perfil.foto ? <img src={perfil.foto} className="h-20 w-20 rounded-full object-cover" alt="" /> : <div className="grid h-20 w-20 place-items-center rounded-full bg-[#D8B94E] text-xl font-bold text-[#102747]">
           {iniciales}
@@ -176,50 +284,100 @@ export default function StaffProfileModal({ open, onClose, name, role, email }: 
         className="mt-4 inline-flex items-center gap-2 rounded-xl border border-[#F0C7C3] bg-white px-4 py-3 font-semibold text-[#B42318]"><DoorOpen size={19} />Cerrar sesión</button>
     </aside>
     {modal && <Modal
-      t={modal === 'personal' ? 'Información personal' : modal === 'contacto' ? 'Datos de contacto' : modal === 'laboral' ? 'Información laboral' : modal === 'seguridad' ? 'Seguridad' : modal === 'cambiarClave' ? 'Cambiar contraseña' : modal === 'foto' ? 'Cambiar foto' : 'Cerrar sesión'}
+      t={modal === 'personal' ? 'Información personal' : modal === 'contacto' ? 'Datos de contacto' : modal === 'laboral' ? 'Información laboral' : modal === 'seguridad' ? 'Seguridad' : modal === 'cambiarTelefono' ? 'Cambiar teléfono' : modal === 'verificarTelefono' ? 'Verificar teléfono' : modal === 'cambiarClave' ? 'Cambiar contraseña' : modal === 'foto' ? 'Cambiar foto' : 'Cerrar sesión'}
       close={() => setModal(null)}>
       {modal === 'personal' && <div className="space-y-4">
         <Campo l="Nombre completo">
           <input value={editNombre} onChange={e => setEditNombre(e.target.value)} className={inputClass} />
         </Campo>
-        {!esAdmin && <Campo l="Motivo o comentario (opcional)">
-          <textarea value={motivo} onChange={e => setMotivo(e.target.value)} className={inputClass} />
-        </Campo>}
-        {confirmacion && <p className="rounded-lg bg-[#ECFDF3] p-3 text-sm text-[#067647]">
-          <b>Solicitud enviada</b>
-          <br />
-          {confirmacion}
-        </p>}
         <Acciones
           cancel={() => setModal(null)}
-          ok={() => esAdmin ? guardarPersonal() : solicitar('Nombre completo', perfil.nombre, editNombre)}
-          text={esAdmin ? 'Guardar cambios' : 'Solicitar corrección'} />
+          ok={guardarPersonal}
+          text="Guardar cambios" />
       </div>}
       {modal === 'contacto' && <div className="space-y-4">
-        <Campo l="Teléfono">
-          <input value={editTelefono} onChange={e => setEditTelefono(e.target.value)} className={inputClass} />
-        </Campo>
-        <Campo l="Correo electrónico">
-          <input type="email" value={editCorreo} onChange={e => setEditCorreo(e.target.value)} className={inputClass} />
-        </Campo>
-        {!esAdmin && <Campo l="Motivo o comentario (opcional)">
-          <textarea value={motivo} onChange={e => setMotivo(e.target.value)} className={inputClass} />
-        </Campo>}
-        {confirmacion && <p className="rounded-lg bg-[#ECFDF3] p-3 text-sm text-[#067647]">
-          <b>Solicitud enviada</b>
-          <br />
-          {confirmacion}
-        </p>}
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
-          <button onClick={() => setModal(null)} className="rounded-lg border border-[#D9D5CC] px-4 py-2 text-sm font-semibold text-[#18345C]">Cancelar</button>
-          {esAdmin ? <button onClick={guardarContacto} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">Guardar cambios</button> : <><button
-            onClick={() => solicitar('Teléfono', perfil.telefono, editTelefono)}
-            className="rounded-lg border border-[#18345C] px-4 py-2 text-sm font-semibold text-[#18345C]">Solicitar teléfono</button><button
-              onClick={() => solicitar('Correo electrónico', perfil.correo, editCorreo)}
-              className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">Solicitar correo</button></>}
+        <div className="space-y-2">
+          <Campo l="Teléfono">
+            <div className="flex flex-wrap items-center gap-2">
+              <input type="tel" value={perfil.telefono} readOnly className={`${inputClass} !w-0 min-w-0 flex-1`} />
+              <button
+                type="button"
+                onClick={() => abrir('cambiarTelefono')}
+                className="shrink-0 rounded-lg border border-[#18345C] px-4 py-2.5 text-sm font-semibold text-[#18345C] hover:bg-[#F8F6F0]">
+                Cambiar teléfono
+              </button>
+            </div>
+          </Campo>
+        </div>
+        <div className="space-y-2">
+          <Campo l="Correo electrónico">
+            <input type="email" value={perfil.correo} readOnly className={inputClass} />
+          </Campo>
+        </div>
+        <div className="mt-5 flex justify-end">
+          <button onClick={() => setModal(null)} className="rounded-lg border border-[#D9D5CC] px-4 py-2 text-sm font-semibold text-[#18345C]">Cerrar</button>
         </div>
       </div>}
       {modal === 'laboral' && <><Dato l="Área" v={area} /><Dato l="Código de empleado" v={codigo} /><p className="mt-4 text-xs text-[#71839B]">La información laboral es informativa y corresponde al registro del empleado.</p></>}
+      {modal === 'cambiarTelefono' && <div className="space-y-3">
+        <Campo l="Nuevo número de teléfono">
+          <div className="flex items-center gap-2">
+            <span className="rounded-xl border border-[#D9D5CC] bg-[#F8F6F0] px-3 py-2.5 text-sm text-[#18345C]">+502</span>
+            <input
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel-national"
+              value={nuevoTelefono}
+              onChange={e => {
+                setNuevoTelefono(e.target.value.replace(/\D/g, '').slice(0, 8));
+                setMensajeTelefono('');
+              }}
+              className={inputClass} />
+          </div>
+        </Campo>
+        {mensajeTelefono && <p role="status" className="rounded-lg bg-[#FFF1F0] px-3 py-2 text-sm text-[#B42318]">{mensajeTelefono}</p>}
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <button type="button" onClick={() => setModal('contacto')} className="rounded-lg border border-[#D9D5CC] px-4 py-2 text-sm font-semibold text-[#18345C]">Cancelar</button>
+          <button type="button" onClick={solicitarCodigoTelefono} disabled={solicitudTelefonoOcupada} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">Enviar código</button>
+        </div>
+      </div>}
+      {modal === 'verificarTelefono' && <div className="space-y-3">
+        <p className="text-sm text-[#71839B]">Enviamos un código de verificación a:</p>
+        <p className="font-semibold text-[#18345C]">{telefonoNuevoFormateado()}</p>
+        <Campo l="Código de verificación">
+          <div className="otp-row !my-3">
+            {codigoTelefono.map((digit, index) => <input
+              key={index}
+              ref={element => { codigoTelefonoRefs.current[index] = element; }}
+              type="text"
+              inputMode="numeric"
+              autoComplete={index === 0 ? 'one-time-code' : 'off'}
+              maxLength={1}
+              value={digit}
+              onChange={event => cambiarCodigoTelefono(index, event.target.value)}
+              onKeyDown={event => manejarTeclaCodigoTelefono(index, event)}
+              onPaste={pegarCodigoTelefono} />)}
+          </div>
+        </Campo>
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={solicitarCodigoTelefono}
+            disabled={solicitudTelefonoOcupada}
+            className="text-sm font-semibold text-[#18345C] underline disabled:opacity-50">
+            Reenviar código
+          </button>
+        </div>
+        {mensajeTelefono && <p role="status" className="rounded-lg bg-[#FFF1F0] px-3 py-2 text-sm text-[#B42318]">{mensajeTelefono}</p>}
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <button type="button" onClick={() => {
+            setCodigoTelefono(['', '', '', '', '', '']);
+            setMensajeTelefono('');
+            setModal('cambiarTelefono');
+          }} className="rounded-lg border border-[#D9D5CC] px-4 py-2 text-sm font-semibold text-[#18345C]">Volver</button>
+          <button type="button" onClick={verificarCodigoTelefono} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">Verificar código</button>
+        </div>
+      </div>}
       {modal === 'seguridad' && <div className="space-y-4">
         <div className="flex items-center gap-3 rounded-xl border border-[#E1DDD4] bg-[#FBFAF6] p-4">
           <div className="grid h-10 w-10 place-items-center rounded-full bg-[#F3E7BE] text-[#9A741A]">
@@ -231,19 +389,48 @@ export default function StaffProfileModal({ open, onClose, name, role, email }: 
           </div>
         </div>
         <button onClick={() => {
+          if (!onCambiarClave) {
+            setMensajeClave(tAuth('passwordChangeUnavailable'));
+            return;
+          }
           setMensajeClave('');
           setModal('cambiarClave');
         }} className="rounded-lg bg-[#18345C] px-4 py-2.5 font-semibold text-white">Cambiar contraseña</button>
+        {mensajeClave && <p role="status" className="text-sm text-[#71839B]">{mensajeClave}</p>}
       </div>}
       {modal === 'cambiarClave' && <div className="space-y-3">
         <Campo l="Contraseña actual">
-          <input type="password" value={clave.actual} onChange={e => setClave({ ...clave, actual: e.target.value })} className={inputClass} />
+          <CampoClave
+            value={clave.actual}
+            visible={mostrandoClaves.actual}
+            onChange={actual => {
+              setClave({ ...clave, actual });
+              setMensajeClave('');
+            }}
+            onToggle={() => setMostrandoClaves(actual => ({ ...actual, actual: !actual.actual }))}
+            inputClass={inputClass} />
         </Campo>
         <Campo l="Nueva contraseña">
-          <input type="password" value={clave.nueva} onChange={e => setClave({ ...clave, nueva: e.target.value })} className={inputClass} />
+          <CampoClave
+            value={clave.nueva}
+            visible={mostrandoClaves.nueva}
+            onChange={nueva => {
+              setClave({ ...clave, nueva });
+              setMensajeClave('');
+            }}
+            onToggle={() => setMostrandoClaves(actual => ({ ...actual, nueva: !actual.nueva }))}
+            inputClass={inputClass} />
         </Campo>
         <Campo l="Confirmar nueva contraseña">
-          <input type="password" value={clave.confirmar} onChange={e => setClave({ ...clave, confirmar: e.target.value })} className={inputClass} />
+          <CampoClave
+            value={clave.confirmar}
+            visible={mostrandoClaves.confirmar}
+            onChange={confirmar => {
+              setClave({ ...clave, confirmar });
+              setMensajeClave('');
+            }}
+            onToggle={() => setMostrandoClaves(actual => ({ ...actual, confirmar: !actual.confirmar }))}
+            inputClass={inputClass} />
         </Campo>
         <p className="text-xs text-[#71839B]">Mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.</p>
         {mensajeClave && <p className={`rounded-lg px-3 py-2 text-sm ${mensajeClave.includes('correctamente') ? 'bg-[#ECFDF3] text-[#067647]' : 'bg-[#FFF1F0] text-[#B42318]'}`}>
@@ -325,6 +512,28 @@ function Campo({ l, children }: {
     </span>
     {children}
   </label>;
+}
+function CampoClave({ value, visible, onChange, onToggle, inputClass }: {
+  value: string;
+  visible: boolean;
+  onChange: (value: string) => void;
+  onToggle: () => void;
+  inputClass: string;
+}) {
+  return <div className="relative">
+    <input
+      type={visible ? 'text' : 'password'}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className={`${inputClass} pr-11`} />
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+      className="absolute inset-y-0 right-0 grid w-10 place-items-center text-[#71839B]">
+      {visible ? <EyeOff size={17} /> : <Eye size={17} />}
+    </button>
+  </div>;
 }
 function Acciones({ cancel, ok, text, danger = false }: {
   cancel: () => void;

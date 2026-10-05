@@ -17,6 +17,8 @@ La ruta de acceso es `/login`.
 
 Los empleados activos registrados en Administración se autentican con su correo y `demo123` en la implementación local actual. Un empleado inactivo no puede iniciar sesión.
 
+La sesión demo del huésped incluye un `guestId` explícito vinculado a su registro en `guestStore`. El portal resuelve el perfil y sus reservas por ese ID; si la sesión o el huésped asociado no son válidos, no muestra datos de otra cuenta.
+
 ## Web pública
 
 Funciones principales:
@@ -34,8 +36,12 @@ Funciones principales:
 Conexiones:
 
 - `publicAvailability.ts` consulta habitaciones, reservas y tarifas;
-- `publicBooking.ts` registra huéspedes y reservas;
-- `portalReceptionSync.ts` comunica la reserva pública con Recepción.
+- `publicBooking.ts` valida la solicitud y crea la reserva únicamente después de una aprobación de pago;
+- `reservationStore.ts` conserva las reservas del navegador;
+- `guestStore.ts` conserva los huéspedes del navegador;
+- `roomStore.ts` conserva las habitaciones del hotel.
+
+El flujo público no tiene un BFF ni una pasarela de pago conectados. La función `processCardPayment` en `publicBooking.ts` es el punto de integración pendiente. El checkout no debe crear ni confirmar una reserva a partir de la validación local de los campos de tarjeta; la confirmación requiere una reserva persistida y un pago confirmado. Los datos antiguos de `vs-portal-recepcion` se migran una sola vez a `vs-reservas` y `vs-huespedes`.
 
 ## Recepción
 
@@ -60,7 +66,7 @@ Conexiones:
 - `guestStore.ts`: huéspedes;
 - `roomStore.ts`: habitaciones;
 - `tarifasStore.ts`: tarifas;
-- `portalReceptionSync.ts`: Portal del huésped;
+- `guestStore.ts`: huéspedes compartidos con el Portal del huésped;
 - `cleaningEvents.ts`: tareas posteriores al check-out;
 - `maintenanceEvents.ts`: incidencias de mantenimiento;
 - `lostFoundEvents.ts`: objetos olvidados;

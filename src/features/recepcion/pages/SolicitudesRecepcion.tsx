@@ -1,3 +1,4 @@
+import { confirmarTarifaTransporte as confirmarTarifaCanonica, leerTransportes } from "@/store/transportStore";
 import { useEffect, useMemo, useState } from 'react';
 import type { SolicitudHuesped, Huesped, Reserva, EstadoSolicitudHuesped, PrioridadSolicitud, AreaSolicitud, } from '@/lib/pms/types';
 import { formatoFechaHora } from '@/data/pms';
@@ -54,7 +55,7 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
       try {
         setSolicitudExtension(JSON.parse(localStorage.getItem('vs-solicitud-extension') || 'null'));
         setCorrecciones(JSON.parse(localStorage.getItem('vs-correcciones-huesped') || '[]'));
-        setTransportes(JSON.parse(localStorage.getItem('vs-solicitudes-transporte') || '[]'));
+        setTransportes(leerTransportes());
       }
       catch { }
     };
@@ -67,9 +68,7 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
     const tarifa = Number(tarifasTransporte[id]);
     if (!Number.isFinite(tarifa) || tarifa <= 0)
       return;
-    const actualizados = transportes.map(t => t.id === id ? { ...t, tarifa, estadoTarifa: 'confirmada', confirmadaEn: new Date().toISOString() } : t);
-    setTransportes(actualizados);
-    localStorage.setItem('vs-solicitudes-transporte', JSON.stringify(actualizados));
+    if (confirmarTarifaCanonica(id, tarifa)) setTransportes(leerTransportes());
   }
   function aceptarCancelacionExtension() {
     if (!solicitudExtension)

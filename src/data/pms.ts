@@ -686,7 +686,6 @@ export const ENCARGADO_MANT = "Rodrigo Paz";
 export const TAREAS_PREVENTIVAS_INICIALES: TareaPreventiva[] = [];
 export const REPUESTOS_INICIALES: Repuesto[] = [];
 export const ORDENES_INICIALES: OrdenTrabajo[] = [];
-export const HUESPED_PORTAL_ID = "hu-ana";
 export const RESERVA_HUESPED_INICIAL: Reserva = {
   ...RESERVAS_INICIALES.find((r) => r.id === "re-1")!,
 };
@@ -782,10 +781,12 @@ export const CATALOGO_HABITACIONES_PUBLICO: OfertaHabitacion[] = [
     { es: "Check-out tardío", en: "Late checkout" }],
   },
 ];
-let _correlativoReservaWeb = 1200;
-export function siguienteCodigoReservaWeb(): string {
-  _correlativoReservaWeb += 1;
-  return `RES-${_correlativoReservaWeb}`;
+export function siguienteCodigoReservaWeb(codigosExistentes: string[]): string {
+  const maximo = codigosExistentes.reduce((max, codigo) => {
+    const match = /^RES-(\d+)$/.exec(codigo);
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 1200);
+  return `RES-${maximo + 1}`;
 }
 export const PETICIONES_ESPECIALES = [
   "Cuna para bebé",

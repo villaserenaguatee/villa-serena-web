@@ -3,7 +3,7 @@ import { UiText, useUiText } from "@/i18n/UiText";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { useEffect, useRef, useState } from "react";
 import { leerReservas, guardarReservas } from "@/store/reservationStore";
-import { leerHabitaciones } from "@/store/roomStore";
+import { transportesEstancia, aceptarTransporte, type SolicitudTransporte } from "@/store/transportStore";
 import type { ItemMenu, CategoriaMenu, ServicioCatalogo, CategoriaServicioHuesped, PedidoHuesped, MensajeChat, HabitacionHotel, LineaPedidoHuesped, TipoPedidoHuesped, } from "@/lib/pms/types";
 import { formatoHoraISO, minutosEntre, ALERGIAS_FRECUENTES, TELEFONO_RECEPCION, } from "@/data/pms";
 import { dinero, Chip, Campo, INPUT_CLS, Cabecera, Tarjeta, Aviso, Vacio, BotonFiltro, BotonPrimario, BotonSecundario, ESTADO_PEDIDO_META, PASOS_PEDIDO, pedidoActivo, totalPedido, CartIcon, ChatIcon, ClockIcon, CheckIcon, AlertIcon, PlusIcon, } from "@/features/huesped/pages/huespedUtils";
@@ -234,6 +234,8 @@ interface Props {
   mensajes: MensajeChat[];
   escribiendo: boolean;
   habitacion: HabitacionHotel;
+  reserva: import("@/lib/pms/types").Reserva;
+  huespedId: string;
   estanciaCerrada: boolean;
   onCrearPedido: (datos: {
     tipo: TipoPedidoHuesped;
@@ -249,18 +251,18 @@ interface Props {
   onIrCuenta: () => void;
   modo?: "restaurante" | "servicios";
 }
-export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, escribiendo, habitacion, estanciaCerrada, onCrearPedido, onCancelarPedido, onEnviarMensaje, onIrCuenta, modo = "restaurante", }: Props) {
+export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, escribiendo, habitacion, reserva, huespedId, estanciaCerrada, onCrearPedido, onCancelarPedido, onEnviarMensaje, onIrCuenta, modo = "restaurante", }: Props) {
   const ui = useUiText();
   const [pedidoCancelar, setPedidoCancelar] = useState<string | null>(null);
   const [motivoCancelar, setMotivoCancelar] = useState("");
   const [pestana, setPestana] = useState<Pestana>(modo);
-  const [solicitudesTransporte, setSolicitudesTransporte] = useState<any[]>([]);
+  const [solicitudesTransporte, setSolicitudesTransporte] = useState<SolicitudTransporte[]>([]);
   useEffect(() => {
     if (typeof window === 'undefined')
       return;
     const cargar = () => {
       try {
-        setSolicitudesTransporte(JSON.parse(localStorage.getItem('vs-solicitudes-transporte') || '[]'));
+        setSolicitudesTransporte(transportesEstancia(reserva.id, huespedId));
       }
       catch {
         setSolicitudesTransporte([]);
@@ -394,17 +396,19 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
   function enviarPedidoServicio() {
     if (lineasServicio.length === 0)
       return;
-    onCrearPedido({
+    const numero = onCrearPedido({
       tipo: "servicio",
       lineas: lineasServicio,
       nota: notaServicio.trim(),
       alergias: "",
     });
+    if (!numero) return;
     const transportes = lineasServicio.filter(l => esTransporteConTarifa(l.refId));
     if (transportes.length && typeof window !== 'undefined') {
       const actuales = JSON.parse(localStorage.getItem('vs-solicitudes-transporte') || '[]');
       const nuevos = transportes.map(l => ({
         id: `tr-${Date.now()}-${l.refId}`,
+        reservaId: reserva.id, huespedId, habitacionId: habitacion.id, codigoReserva: reserva.codigo,
         refId: l.refId,
         servicio: l.nombre,
         habitacion: habitacion.numero,
@@ -623,22 +627,8 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
         {modo === 'servicios' && solicitudesTransporte.map(t => {
           const aceptada = t.aceptacionHuesped === 'aceptada';
           const aceptar = () => {
-            const aceptadaEn = new Date().toISOString();
-            const next = solicitudesTransporte.map(x => x.id === t.id ? { ...x, aceptacionHuesped: 'aceptada', aceptadaEn } : x);
-            setSolicitudesTransporte(next);
-            localStorage.setItem('vs-solicitudes-transporte', JSON.stringify(next));
-            const habitacionCentral = leerHabitaciones().find(h => h.numero === t.habitacion);
-            const reservas = leerReservas();
-            const estancia = habitacionCentral ? reservas.find(r => r.habitacionId === habitacionCentral.id && r.estado === 'en-curso') : undefined;
-            if (estancia && Number(t.tarifa) > 0) {
-              const servicioId = `transporte-${t.id}`;
-              if (!estancia.servicios.some(s => s.id === servicioId)) {
-                guardarReservas(reservas.map(r => r.id === estancia.id ? {
-                  ...r,
-                  servicios: [...r.servicios, { id: servicioId, tipo: 'Transporte', descripcion: t.servicio, cantidad: 1, precioUnitario: Number(t.tarifa), fecha: aceptadaEn }]
-                } : r));
-              }
-            }
+            if (aceptarTransporte(t.id, reserva.id, huespedId))
+              setSolicitudesTransporte(transportesEstancia(reserva.id, huespedId));
           };
           return <section key={t.id} className="rounded-xl border border-[#E5E0D8] bg-white p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">

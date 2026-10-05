@@ -1,3 +1,4 @@
+import { calcularCuentaEstancia } from '@/lib/pms/cuentaEstancia';
 import type { ReactNode } from 'react';
 import type { EstadoReserva, EstadoHabHotel, EstadoSolicitudHuesped, PrioridadSolicitud, HabitacionHotel, Reserva, } from '@/lib/pms/types';
 import { MONEDA, nochesEntre } from '@/data/pms';
@@ -119,16 +120,7 @@ export interface ResumenCuenta {
 }
 export function calcularCuenta(reserva: Reserva,
   habitacion: HabitacionHotel | null): ResumenCuenta {
-  const noches = nochesEntre(reserva.fechaEntrada, reserva.fechaSalida);
-  const precioNoche = reserva.precioNoche ?? habitacion?.precioNoche ?? leerTarifas()[reserva.tipoHabitacion];
-  const alojamiento = noches * precioNoche;
-  const servicios = reserva.servicios.reduce((s, x) => s + x.cantidad * x.precioUnitario, 0);
-  const subtotal = alojamiento + servicios;
-  const descuento = reserva.descuento || 0;
-  const total = Math.max(0, subtotal - descuento);
-  const pagado = reserva.pagos.reduce((s, p) => s + p.monto, 0);
-  const saldo = Math.round((total - pagado) * 100) / 100;
-  return { noches, precioNoche, alojamiento, servicios, subtotal, descuento, total, pagado, saldo };
+  return calcularCuentaEstancia(reserva, habitacion);
 }
 export function BedIcon({ size = 16 }: {
   size?: number;

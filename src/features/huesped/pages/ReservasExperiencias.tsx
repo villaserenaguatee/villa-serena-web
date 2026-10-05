@@ -1,5 +1,7 @@
+import { leerReservas } from "@/store/reservationStore";
+import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { useMemo, useState } from "react";
-import type { ReservaAmenidad, TurnoAmenidad, } from "@/lib/pms/types";
+import type { Reserva, ReservaAmenidad, TurnoAmenidad, } from "@/lib/pms/types";
 import { Cabecera } from "@/features/huesped/pages/huespedUtils";
 import { useUiText } from "@/i18n/UiText";
 type Categoria = "Todos" | "Restaurante" | "Spa" | "Piscina" | "Experiencias" | "Transporte";
@@ -228,7 +230,12 @@ const OPCIONES: Opcion[] = [
     precio: "Tarifa del hotel",
   },
 ];
-export default function ReservasExperiencias({ turnos, reservas, onReservar, onCancelar, onCargoConfirmado, }: {
+export function puedeCrearExperiencia(reservaId: string, huespedId: string) {
+  return leerReservas().some(r => r.id === reservaId && r.huespedId === huespedId && r.estado === "en-curso");
+}
+export default function ReservasExperiencias({ reserva, huespedId, turnos, reservas, onReservar, onCancelar, onCargoConfirmado, }: {
+  reserva: Reserva;
+  huespedId: string;
   turnos: TurnoAmenidad[];
   reservas: ReservaAmenidad[];
   onReservar: (id: string, personas: number, detalle?: string) => void;
@@ -236,13 +243,16 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
   onCargoConfirmado?: (id: string, nombre: string, monto: number) => void;
 }) {
   const ui = useUiText();
+  const { en } = usePublicLanguage();
+  const disponible = reserva.estado === "en-curso" && puedeCrearExperiencia(reserva.id, huespedId);
+  const [rechazada, setRechazada] = useState(false);
   const [cat, setCat] = useState<Categoria>("Todos");
   const [activo, setActivo] = useState<Opcion | null>(null);
   const [fecha, setFecha] = useState("");
   const [hora, setHora] = useState("");
   const [personas, setPersonas] = useState(1);
   const [nota, setNota] = useState("");
-  const [mis, setMis] = useState(false);
+  const [mis, setMis] = useState(!disponible);
   const [locales, setLocales] = useState<any[]>([]);
   const lista = OPCIONES.filter((x) => cat === "Todos" || x.categoria === cat);
   const turnosArea = useMemo(() => activo?.area
@@ -252,6 +262,8 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
     .filter((t) => !fecha || t.fecha === fecha)
     .filter((t) => t.aforo - t.ocupados > 0);
   function abrir(o: Opcion) {
+    if (!puedeCrearExperiencia(reserva.id, huespedId)) { setRechazada(true); return; }
+    setRechazada(false);
     setActivo(o);
     setFecha("");
     setHora("");
@@ -262,6 +274,7 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
     setNota("");
   }
   function confirmar() {
+    if (!puedeCrearExperiencia(reserva.id, huespedId)) { setActivo(null); setRechazada(true); return; }
     if (!activo)
       return;
     const id = `exp-${Date.now()}`;
@@ -274,6 +287,8 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
       setLocales((v) => [
         {
           id,
+          reservaId: reserva.id,
+          huespedId,
           nombre: activo.nombre,
           fecha: fecha || "Por coordinar",
           hora: hora || "Por coordinar",
@@ -297,6 +312,10 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
     <Cabecera titulo="Reservas y experiencias" subtitulo="Agenda restaurante, spa, piscina, experiencias y transporte durante tu estancia." />
 
     <div className="space-y-5 p-4 sm:p-6">
+      {(!disponible || rechazada) && <div role="status" className="rounded-xl border border-[#D8B94E] bg-[#FFF9E5] p-4 text-[#18345C]">
+        <p className="font-semibold">{reserva.estado === "finalizada" ? (en ? "Your stay has ended" : "Tu estancia ha finalizado") : reserva.estado === "cancelada" ? (en ? "Your reservation is cancelled" : "Tu reserva está cancelada") : (en ? "Bookings require an active stay" : "Las reservas requieren una estancia activa")}</p>
+        <p className="mt-1 text-sm">{reserva.codigo} · {en ? "You can view your booking history. New bookings are unavailable for this stay." : "Puedes consultar Mis reservas y el historial. No se pueden crear nuevas reservas para esta estancia."}</p>
+      </div>}
 
       <section className="relative min-h-[190px] overflow-hidden rounded-xl border border-[#E5E0D8] bg-[#18345C] shadow-sm">
 
@@ -392,7 +411,7 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
                 {ui("Confirmada")}
               </span>
 
-              <button onClick={() => onCancelar(r.id)} className="text-xs font-semibold text-[#A33A3A]">
+              <button disabled={!disponible} onClick={() => { if (puedeCrearExperiencia(reserva.id, huespedId)) onCancelar(r.id); }} className="text-xs font-semibold text-[#A33A3A]">
                 {ui("Cancelar")}
               </button>
 
@@ -449,7 +468,7 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
               {ui(o.precio)}
             </b>
 
-            <button onClick={() => abrir(o)} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">
+            <button disabled={!disponible} onClick={() => abrir(o)} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
               {ui(o.categoria ===
                 "Transporte"
                 ? "Reservar traslado"
@@ -464,7 +483,7 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
 
     </div>
 
-    {activo && (<div
+    {activo && disponible && (<div
       className="fixed inset-0 z-[80] grid place-items-center bg-[#071D34]/55 p-4"
       onMouseDown={(e) => e.target === e.currentTarget &&
         setActivo(null)}>
@@ -602,7 +621,7 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
             {ui(activo.precio)}
           </b>
 
-          <button onClick={confirmar} className="rounded-lg bg-[#18345C] px-5 py-3 font-semibold text-white">
+          <button disabled={!disponible} onClick={confirmar} className="rounded-lg bg-[#18345C] px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
             {ui("Confirmar reserva")}
           </button>
 

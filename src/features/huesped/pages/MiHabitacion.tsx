@@ -1,11 +1,17 @@
+import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
+import { fotoHabitacion } from "@/store/roomStore";
 import { UiText, useUiText } from "@/i18n/UiText";
 import { useState } from "react";
-import type { HabitacionHotel, Domotica, TurnoAmenidad, ReservaAmenidad, } from "@/lib/pms/types";
-import { WIFI_RED, WIFI_PASSWORD } from "@/data/pms";
+import type { Reserva, HabitacionHotel, Domotica, TurnoAmenidad, ReservaAmenidad, } from "@/lib/pms/types";
+import { WIFI_RED, WIFI_PASSWORD, formatoFecha, formatoFechaHora } from "@/data/pms";
 import { Chip, Cabecera, Tarjeta, Aviso, BotonFiltro, BotonPrimario, CodigoQR, plazasLibres, turnoLleno, KeyIcon, DoorIcon, ThermoIcon, LightIcon, CurtainIcon, WifiIcon, CheckIcon, SparkIcon, } from "@/features/huesped/pages/huespedUtils";
 const TEMP_MIN = 16;
 const TEMP_MAX = 30;
 interface Props {
+  reserva?: Reserva;
+  onCompartirExperiencia?: () => void;
+  onReservarEstancia?: () => void;
+  onVerCuentaFinal?: () => void;
   habitacion: HabitacionHotel;
   domotica: Domotica;
   turnos: TurnoAmenidad[];
@@ -23,8 +29,9 @@ interface Props {
   onCancelarTurno: (reservaId: string) => void;
   onIrCheckin: () => void;
 }
-export default function MiHabitacion({ habitacion, domotica, turnos, reservasAmenidad, llaveActiva, codigoLlave, estanciaCerrada, onActualizarDomotica, onActualizarLuz, onConectarWifi, onReservarTurno, onCancelarTurno, onIrCheckin, }: Props) {
+export default function MiHabitacion({ reserva, onCompartirExperiencia, onReservarEstancia, onVerCuentaFinal, habitacion, domotica, turnos, reservasAmenidad, llaveActiva, codigoLlave, estanciaCerrada, onActualizarDomotica, onActualizarLuz, onConectarWifi, onReservarTurno, onCancelarTurno, onIrCheckin, }: Props) {
   const ui = useUiText();
+  const { en } = usePublicLanguage();
   const [puerta, setPuerta] = useState<"cerrada" | "abriendo" | "abierta">("cerrada");
   const [verQR, setVerQR] = useState(false);
   const [verWifi, setVerWifi] = useState(false);
@@ -36,6 +43,44 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
     window.setTimeout(() => setPuerta("abierta"), 1200);
     window.setTimeout(() => setPuerta("cerrada"), 5000);
   }
+  if (reserva?.estado === 'finalizada') return <div className="flex-1 overflow-y-auto bg-[#F8F6F0]">
+    <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
+      <header className="space-y-2">
+        <Chip cls="border-[#D8B94E] bg-[#F8F1DE] text-[#7A6327]">{en ? 'Stay completed' : 'Estancia finalizada'}</Chip>
+        <h1 className="text-2xl font-semibold text-[#18345C] sm:text-3xl">{en ? 'Thank you for staying at Villa Serena' : 'Gracias por hospedarte en Villa Serena'}</h1>
+        <p className="text-sm text-[#52677F]">{en ? 'Your room is now part of your stay history. Access and controls are deactivated.' : 'Tu habitación forma parte del historial de esta estancia. El acceso y los controles están desactivados.'}</p>
+      </header>
+      <section className="grid gap-3 rounded-xl border border-[#E5E0D8] bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div><p className="text-xs text-[#72829A]">{en ? 'Reservation' : 'Reserva'}</p><p className="font-semibold text-[#18345C]">{reserva.codigo}</p></div>
+        <div><p className="text-xs text-[#72829A]">{en ? 'Arrival' : 'Entrada'}</p><p className="font-semibold text-[#18345C]">{formatoFecha(reserva.fechaEntrada)}</p></div>
+        <div><p className="text-xs text-[#72829A]">{en ? 'Departure' : 'Salida'}</p><p className="font-semibold text-[#18345C]">{formatoFecha(reserva.fechaSalida)}</p></div>
+        <div><p className="text-xs text-[#72829A]">{en ? 'Check-out' : 'Check-out'}</p><p className="font-semibold text-[#18345C]">{reserva.checkOutEn ? formatoFechaHora(reserva.checkOutEn) : (en ? 'Stay completed' : 'Estancia finalizada')}</p></div>
+      </section>
+      <section className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-white sm:flex">
+        <img src={fotoHabitacion(habitacion.numero)} alt={en ? 'Room ' + habitacion.numero : 'Habitación ' + habitacion.numero} className="h-48 w-full object-cover sm:h-auto sm:w-64 sm:shrink-0" />
+        <div className="space-y-3 p-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#A77E20]">{en ? 'Your room during this stay' : 'Tu habitación durante esta estancia'}</p>
+          <h2 className="text-xl font-semibold text-[#18345C]">{en ? 'Room ' : 'Habitación '}{habitacion.numero}</h2>
+          <p className="text-[#52677F]">{habitacion.tipo} · {en ? 'Floor' : 'Piso'} {habitacion.piso} · {habitacion.capacidad} {en ? 'guests' : 'huéspedes'}</p>
+        </div>
+      </section>
+      <div className="flex flex-wrap gap-3">
+        <button type="button" onClick={onCompartirExperiencia} className="rounded-lg bg-[#B59A52] px-4 py-3 font-semibold text-white">{en ? 'Share your experience' : 'Compartir tu experiencia'}</button>
+        <button type="button" onClick={onReservarEstancia} className="rounded-lg bg-[#18345C] px-4 py-3 font-semibold text-white">{en ? 'Book another stay' : 'Reservar otra estancia'}</button>
+        <button type="button" onClick={onVerCuentaFinal} className="rounded-lg border border-[#18345C] px-4 py-3 font-semibold text-[#18345C]">{en ? 'View final account' : 'Ver cuenta final'}</button>
+      </div>
+    </div>
+  </div>;
+  if (estanciaCerrada) return <div className="flex-1 overflow-y-auto bg-[#F8F6F0]">
+    <Cabecera titulo="Mi habitación" subtitulo={`Habitación ${habitacion.numero} · ${habitacion.tipo}`} />
+    <div className="p-4 space-y-3">
+      <Aviso tono="alerta"><UiText text="Tu estancia finalizó. Gracias por hospedarte con nosotros." /></Aviso>
+      <Tarjeta titulo="Mi habitación">
+        <p className="text-lg font-semibold text-[#18345C]">{habitacion.numero} · {habitacion.tipo}</p>
+        <p className="text-sm text-[#52677F]"><UiText text="Piso" /> {habitacion.piso} · {habitacion.capacidad} <UiText text="huéspedes" /></p>
+      </Tarjeta>
+    </div>
+  </div>;
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
     <Cabecera titulo="Mi habitación" subtitulo={`Habitación ${habitacion.numero} · ${habitacion.tipo} · piso ${habitacion.piso}`} />
 

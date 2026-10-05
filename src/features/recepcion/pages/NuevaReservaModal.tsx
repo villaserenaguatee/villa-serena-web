@@ -2,8 +2,6 @@ import { useMemo, useState } from 'react';
 import { Minus, Plus, Users } from 'lucide-react';
 import type { Huesped, HabitacionHotel, Reserva, TipoHabitacion, TipoDocumento, } from '@/lib/pms/types';
 import { nochesEntre, fechaHoyISO, fechaRelativaISO } from '@/data/pms';
-import { leerPromociones } from '@/store/promotionStore';
-import type { Promocion } from '@/lib/pms/types';
 import { dinero, Campo, INPUT_CLS, CloseIcon, BedIcon, habitacionesDisponibles, } from '@/features/recepcion/pages/recUtils';
 import { publicRooms, publicRoomForHotelType, money } from '@/data/publicRooms';
 import { fotoHabitacion } from '@/store/roomStore';
@@ -78,9 +76,6 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
   const [tipo, setTipo] = useState<TipoHabitacion>(preset?.tipo ?? 'Standard');
   const [habitacionId, setHabitacionId] = useState<string>(preset?.habitacionId ?? '');
   const [errores, setErrores] = useState<Record<string, string>>({});
-  const [codigoPromo, setCodigoPromo] = useState('');
-  const [promoAplicada, setPromoAplicada] = useState<Promocion | null>(null);
-  const [promoMsg, setPromoMsg] = useState('');
   const nPersonas = Math.max(1, (Number(adultos) || 0) + (Number(ninos) || 0));
   const rangoValido = entrada < salida;
   const noches = rangoValido ? nochesEntre(entrada, salida) : 0;
@@ -149,7 +144,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
       adultos: Number(adultos),
       ninos: Number(ninos),
       habitacionId: habitacionId || null,
-      descuento: promoAplicada && habElegida ? Math.round(habElegida.precioNoche * noches * promoAplicada.descuentoPct) / 100 : 0,
+      descuento: 0,
       metodoPago,
     });
     setPagoAbierto(false);
@@ -158,36 +153,46 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
   return (<div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4">
     <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
 
-    <div className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-4xl max-h-[94vh] overflow-y-auto">
-      <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-[#E5E0D8] sticky top-0 bg-white z-10">
-        <h2 className="text-[22px] font-semibold text-[#18345C]">Nueva reserva</h2>
+    <div className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[780px] max-h-[90vh] overflow-y-auto">
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#E5E0D8] sticky top-0 bg-white z-10">
+        <h2 className="text-[20px] font-semibold text-[#18345C]">Nueva reserva</h2>
         <button onClick={onCerrar} className="text-[#AEBCC1] hover:text-[#1F2933] p-1">
           <CloseIcon />
         </button>
       </div>
 
-      <div className="px-5 sm:px-6 py-5 space-y-5">
+      <div className="px-5 py-4 space-y-4">
 
         <div>
           <div className="flex items-center justify-between mb-2">
             <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest">Huésped</p>
-            <button onClick={() => {
+            {modoNuevoHuesped && <button onClick={() => {
               setModoNuevoHuesped(v => !v);
               setErrores({});
             }} className="text-[12px] font-semibold text-[#18345C] hover:underline">
-              {modoNuevoHuesped ? 'Elegir uno existente' : 'Registrar nuevo huésped'}
-            </button>
+              Elegir uno existente
+            </button>}
           </div>
 
           {!modoNuevoHuesped ? (<div className="space-y-2">
-            <div className="grid sm:grid-cols-[180px_1fr] gap-2">
-              <select value={campoBusqueda} onChange={e => setCampoBusqueda(e.target.value as 'nombre' | 'correo' | 'telefono')} className={INPUT_CLS}>
-                <option value="nombre">Nombre</option>
-                <option value="correo">Correo</option>
-                <option value="telefono">Teléfono</option>
-              </select>
+            <div className="grid sm:grid-cols-[124px_minmax(0,1fr)] gap-2">
+              <div className="flex items-end">
+                <select value={campoBusqueda} onChange={e => setCampoBusqueda(e.target.value as 'nombre' | 'correo' | 'telefono')} className={`${INPUT_CLS} !h-10 !py-2 !px-3`}>
+                  <option value="nombre">Nombre</option>
+                  <option value="correo">Correo</option>
+                  <option value="telefono">Teléfono</option>
+                </select>
+              </div>
               <Campo label="Buscar huésped" error={errores.huesped}>
-                <input value={buscarHuesped} onChange={e => setBuscarHuesped(e.target.value)} placeholder={`Buscar por ${campoBusqueda}…`} className={INPUT_CLS} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <input value={buscarHuesped} onChange={e => setBuscarHuesped(e.target.value)} placeholder={`Buscar por ${campoBusqueda}…`} className={`${INPUT_CLS} !h-10 !py-2 min-w-[180px] flex-1`} />
+                  <button onClick={() => {
+                    setModoNuevoHuesped(v => !v);
+                    setErrores({});
+                  }} className="ml-auto whitespace-nowrap text-[12px] font-semibold text-[#18345C] hover:underline">
+                    Registrar nuevo huésped
+                  </button>
+                </div>
               </Campo>
             </div>
             {buscarHuesped.trim() && !huespedId && <div className="max-h-44 overflow-y-auto border border-[#E5E0D8] rounded-lg divide-y">
@@ -299,17 +304,17 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
         {seleccionPrevia && habElegida && (() => {
           const visual = publicRoomForHotelType(habElegida.tipo);
           return <section className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-[#F8F6F0] sm:flex">
-            <img src={visual.image} alt={`Habitación ${habElegida.numero}`} className="h-48 w-full object-cover sm:w-64" />
-            <div className="flex-1 p-5">
+            <img src={visual.image} alt={`Habitación ${habElegida.numero}`} className="h-40 w-full object-cover sm:w-52" />
+            <div className="flex-1 p-4">
               <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#B38719]">Habitación seleccionada · Piso {habElegida.piso}</p>
-              <h3 className="mt-1 text-xl font-semibold text-[#18345C]">Habitación {habElegida.numero} · {visual.name}</h3>
-              <p className="mt-2 text-sm text-[#52677F]">{habElegida.tipo} · {visual.beds} · hasta {habElegida.capacidad} huéspedes · {visual.size} m²</p>
-              <div className="mt-3 flex flex-wrap gap-1.5">
+              <h3 className="mt-1 text-lg font-semibold text-[#18345C]">Habitación {habElegida.numero} · {visual.name}</h3>
+              <p className="mt-1.5 text-sm text-[#52677F]">{habElegida.tipo} · {visual.beds} · hasta {habElegida.capacidad} huéspedes · {visual.size} m²</p>
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
                 {visual.features.slice(0, 4).map(f => <span key={f} className="rounded-full border bg-white px-2.5 py-1 text-xs text-[#52677F]">
                   {f}
                 </span>)}
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div className="mt-3 grid grid-cols-2 gap-2.5 text-sm">
                 <span>
                   <small className="block text-[#AEBCC1]">Estancia</small>
                   <b>{entrada} → {salida}</b>
@@ -407,42 +412,6 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
             {errores.fechas}
           </p>}
 
-          <div className="rounded-xl border border-[#E5E0D8] p-4 bg-[#FCFBF8]">
-            <p className="text-sm font-semibold text-[#18345C]">Código promocional</p>
-            <div className="flex gap-2 mt-2">
-              <input
-                value={codigoPromo}
-                onChange={e => {
-                  setCodigoPromo(e.target.value.toUpperCase());
-                  setPromoAplicada(null);
-                  setPromoMsg('');
-                }}
-                placeholder="Código"
-                className={`${INPUT_CLS} flex-1`} />
-              <button
-                type="button"
-                onClick={() => {
-                  const hoy = fechaHoyISO();
-                  const p = leerPromociones().find(x => x.codigo.toUpperCase() === codigoPromo.trim().toUpperCase());
-                  if (!p) {
-                    setPromoMsg('Código no válido.');
-                    setPromoAplicada(null);
-                  }
-                  else if (!p.activa || hoy < p.desde || hoy > p.hasta) {
-                    setPromoMsg('Esta promoción no está vigente.');
-                    setPromoAplicada(null);
-                  }
-                  else {
-                    setPromoAplicada(p);
-                    setPromoMsg(`${p.nombre}: ${p.descuentoPct}% de descuento aplicado.`);
-                  }
-                }}
-                className="px-4 py-2 rounded-lg bg-[#18345C] text-white font-semibold">Aplicar</button>
-            </div>
-            {promoMsg && <p className={`text-xs mt-2 ${promoAplicada ? 'text-green-700' : 'text-red-700'}`}>
-              {promoMsg}
-            </p>}
-          </div>
 
           <div>
             <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-2">
@@ -519,7 +488,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
             </div>
           </div>
           <div className="mt-6 grid grid-cols-2 gap-3">
-            <button onClick={() => setPagoAbierto(false)} className="rounded-lg border py-3 font-semibold text-[#52677F]">Volver</button>
+            <button onClick={() => setPagoAbierto(false)} className="relative top-5 text-[12px] font-semibold text-[#18345C] hover:underline">Volver</button>
             <button onClick={confirmarPago} className="rounded-lg bg-[#18345C] py-3 font-semibold text-white">
               {metodoPago === 'tarjeta' ? 'Registrar cobro y confirmar' : 'Registrar efectivo y confirmar'}
             </button>
@@ -553,7 +522,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
               </div>
             </section>
           </div>
-          <div className="mt-5 rounded-xl border border-[#9BC5F2] bg-[#F1F7FE] p-4 text-sm text-[#52677F]">El huésped recibirá por correo la confirmación y el enlace para activar su cuenta. Veinticuatro horas antes de su llegada recibirá el acceso para completar el check-in web.</div>
+          <div className="mt-5 rounded-xl border border-[#9BC5F2] bg-[#F1F7FE] p-4 text-sm text-[#52677F]">El huésped recibirá por correo la confirmación de la reserva y las instrucciones para descargar la app de huéspedes.</div>
           <div className="mt-6 flex flex-wrap justify-end gap-2">
             <button onClick={onCerrar} className="min-h-11 rounded-lg border border-[#18345C] px-4 py-2.5 text-sm font-semibold text-[#18345C]">Hacer otra reserva</button>
             <button onClick={() => onVerReserva(reservaCreada.id)} className="min-h-11 rounded-lg bg-[#18345C] px-4 py-2.5 text-sm font-semibold text-white">Ver reserva / realizar check-in</button>
@@ -561,13 +530,13 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
         </div>
       </div>)}
 
-      {!revisando && <div className="px-5 sm:px-6 pb-6 flex gap-3">
-        <button onClick={onCerrar} className="flex-1 py-3 text-sm border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-[#F8F6F0] transition-colors">
+      {!revisando && <div className="px-5 pb-5 flex gap-3">
+        <button onClick={onCerrar} className="flex-1 py-2.5 text-sm border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-[#F8F6F0] transition-colors">
           Cancelar
         </button>
         <button
           onClick={() => setRevisando(true)}
-          className="flex-1 py-3 text-sm font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
+          className="flex-1 py-2.5 text-sm font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
           Revisar datos
         </button>
       </div>}
@@ -631,7 +600,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
               <h3 className="text-lg font-semibold text-[#18345C]">Habitación {habElegida.numero}</h3>
               <p className="text-sm">{room.name} · Piso {habElegida.piso}</p>
               <p className="text-sm">{room.beds} · hasta {habElegida.capacidad} huéspedes</p>
-              <b className="block mt-2 text-[#18345C]">{dinero(habElegida.precioNoche)} / noche · {noches} noches · Subtotal {dinero(habElegida.precioNoche * noches)}{promoAplicada ? ` · ${promoAplicada.codigo} (-${promoAplicada.descuentoPct}%) · Total ${dinero(habElegida.precioNoche * noches * (1 - promoAplicada.descuentoPct / 100))}` : ` · Total ${dinero(habElegida.precioNoche * noches)}`}</b>
+              <b className="block mt-2 text-[#18345C]">{dinero(habElegida.precioNoche)} / noche · {noches} noches · Total {dinero(habElegida.precioNoche * noches)}</b>
             </div>
           </section> : <div className="border rounded-xl p-4 bg-[#F8F6F0]">
             <b>Sin habitación asignada</b>
