@@ -12,7 +12,6 @@ import { money, usePublicRooms } from "@/data/publicRooms";
 import { availableRoom, usePublicAvailability, validGuests, validStay, todayISO } from "@/lib/publicAvailability";
 export default function RoomDetail() {
   const publicRooms = usePublicRooms();
-  const inventory = usePublicAvailability();
   const sp = useSearchParams();
   const router = useRouter();
   const fromResults = sp.get("origen") === "disponibilidad";
@@ -28,6 +27,7 @@ export default function RoomDetail() {
     [children, setChildren] = useState(fromResults ? Number(sp.get("ninos") || 0) : 0),
     [photo, setPhoto] = useState(0);
   const total = adults + children;
+  const inventory = usePublicAvailability({ arrival, departure, adults, children });
   const canCheck = validGuests(adults, children) && validStay(arrival, departure) &&
     total <= Number(room?.capacity || 0);
   const physical = room && canCheck ? availableRoom(room, arrival, departure, total, inventory, fromResults ? sp.get("habitacionId") || undefined : undefined) : undefined;
@@ -146,7 +146,8 @@ export default function RoomDetail() {
         </div>
       </div>
     </section>
-    {fromResults && inventory && !physical && <p role="alert">
+    {inventory?.error && <p role="alert">{en ? "Availability could not be checked. Try again." : "No se pudo consultar la disponibilidad. Intenta nuevamente."}</p>}
+    {fromResults && inventory && !inventory.error && !physical && <p role="alert">
       {en ? "This room is no longer available for this stay. Return to the results to choose another room." : "Esta habitación ya no está disponible para esta estancia. Vuelve a los resultados para elegir otra habitación."}
     </p>}
     {open && !fromResults && (<div className="booking-modal-backdrop" onMouseDown={() => setOpen(false)}>
@@ -199,7 +200,7 @@ export default function RoomDetail() {
             }}
             max={room.capacity} />
         </label>
-        {!checked ? (<button className="availability-button" disabled={!canCheck} onClick={() => canCheck && setChecked(true)}>
+        {!checked ? (<button className="availability-button" disabled={!canCheck || !inventory || inventory.error} onClick={() => canCheck && setChecked(true)}>
           {en ? "Check availability" : "Comprobar disponibilidad"}
         </button>) : physical ? (<div className="availability-result">
           <b>
@@ -215,10 +216,10 @@ export default function RoomDetail() {
           </Link>
         </div>) : (<div className="availability-result">
           <b>
-            {en ? "Not available" : "No disponible"}
+            {!inventory ? (en ? "Loading availability..." : "Cargando disponibilidad...") : inventory.error ? (en ? "Could not check availability" : "No se pudo consultar disponibilidad") : (en ? "Not available" : "No disponible")}
           </b>
           <span>
-            {en ? "This room is occupied or unavailable for part of the selected stay." : "Esta habitación está ocupada o no disponible durante parte de las fechas seleccionadas."}
+            {inventory && !inventory.error && (en ? "This room is occupied or unavailable for part of the selected stay." : "Esta habitación está ocupada o no disponible durante parte de las fechas seleccionadas.")}
           </span>
         </div>)}
       </div>
