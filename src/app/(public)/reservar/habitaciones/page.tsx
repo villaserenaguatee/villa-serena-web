@@ -11,7 +11,6 @@ import { money, usePublicRooms } from "@/data/publicRooms";
 import { availableRoom, usePublicAvailability, validGuests } from "@/lib/publicAvailability";
 export default function Habitaciones() {
   const publicRooms = usePublicRooms();
-  const inventory = usePublicAvailability();
   const ui = useUiText();
   const { en } = usePublicLanguage();
   const router = useRouter(), sp = useSearchParams();
@@ -25,6 +24,7 @@ export default function Habitaciones() {
     [max, setMax] = useState("");
   const [applied, setApplied] = useState({ adults: initialAdults, children: initialChildren, type: "Todas", floor: "Todos", min: "", max: "" });
   const total = applied.adults + applied.children;
+  const inventory = usePublicAvailability({ arrival: llegada, departure: salida, adults: applied.adults, children: applied.children });
   const rooms = useMemo(() => {
     if (!validGuests(applied.adults, applied.children))
       return [];
@@ -194,7 +194,8 @@ export default function Habitaciones() {
     {!inventory && <p role="status">
       {en ? "Loading availability..." : "Cargando disponibilidad..."}
     </p>}
-    {inventory && rooms.length === 0 && (<div className="catalog-empty">
+    {inventory?.error && <p role="alert">{en ? "Availability could not be checked. Try again." : "No se pudo consultar la disponibilidad. Intenta nuevamente."}</p>}
+    {inventory && !inventory.error && rooms.length === 0 && (<div className="catalog-empty">
       {en
         ? "No rooms are available for these dates and filters. Change your search criteria."
         : "No hay habitaciones disponibles para estas fechas y filtros. Cambia los criterios de búsqueda."}

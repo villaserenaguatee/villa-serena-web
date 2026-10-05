@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "check:i18n": "node scripts/check-i18n.mjs",
+    "test:bff": "node --import ./tests/bff/register.mjs --test --test-isolation=none tests/bff/*.test.ts",
     "check": "tsc --noEmit && node scripts/check-i18n.mjs"
   },
   "dependencies": {

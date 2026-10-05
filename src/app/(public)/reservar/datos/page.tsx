@@ -9,7 +9,6 @@ import { money, usePublicRooms } from "@/data/publicRooms";
 import { availableRoom, usePublicAvailability, validGuests } from "@/lib/publicAvailability";
 export default function Datos() {
   const publicRooms = usePublicRooms();
-  const inventory = usePublicAvailability();
   const ui = useUiText();
   const { en } = usePublicLanguage();
   const r = useRouter(), sp = useSearchParams();
@@ -32,6 +31,7 @@ export default function Datos() {
     adultos = sp.get("adultos") || sp.get("huespedes") || "1",
     ninos = sp.get("ninos") || "0",
     huespedes = String(Number(adultos) + Number(ninos));
+  const inventory = usePublicAvailability({ arrival: llegada, departure: salida, adults: Number(adultos), children: Number(ninos) });
   const room = publicRooms.find((x) => sp.get("slug") ? x.slug === sp.get("slug") : x.name === habitacion);
   const physical = room && validGuests(Number(adultos), Number(ninos)) ? availableRoom(room, llegada, salida, Number(huespedes), inventory, sp.get("habitacionId") || undefined) : undefined;
   const nights = useMemo(() => {
@@ -70,7 +70,7 @@ export default function Datos() {
   if (!physical)
     return (<main className="reserve-public">
       <p role="status">
-        {!inventory ? (en ? "Loading availability..." : "Cargando disponibilidad...") : (en ? "This room is unavailable or the stay is invalid." : "La habitación no está disponible o la estancia no es válida.")}
+        {!inventory ? (en ? "Loading availability..." : "Cargando disponibilidad...") : inventory.error ? (en ? "Availability could not be checked. Try again." : "No se pudo consultar la disponibilidad. Intenta nuevamente.") : (en ? "This room is unavailable or the stay is invalid." : "La habitación no está disponible o la estancia no es válida.")}
       </p>
       <button className="reserve-primary" onClick={() => r.push(`/reservar/habitaciones?${sp.toString()}`)}>
         {en ? "Back to results" : "Volver a resultados"}
