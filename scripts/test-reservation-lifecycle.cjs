@@ -43,7 +43,7 @@ visit(ast);
 const selected = {}; vm.createContext(selected);
 vm.runInContext(ts.transpileModule(selector.getText(ast).replace(/^export /, ''), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, selected);
 const pending = { id: 'portal-RES-1201', codigo: 'RES-1201', huespedId: 'hu-ana', estado: 'pendiente', habitacionId: null,
-  fechaEntrada: '2026-10-02', fechaSalida: '2026-10-05', tipoHabitacion: 'Standard', personas: 1, servicios: [], pagos: [], creadoEn: '2026-10-01T10:00:00Z' };
+  fechaEntrada: runtime()('src/data/pms.ts').fechaHoyISO(), fechaSalida: runtime()('src/data/pms.ts').fechaRelativaISO(3), tipoHabitacion: 'Standard', personas: 1, servicios: [], pagos: [], creadoEn: '2026-10-01T10:00:00Z' };
 const ended = { ...pending, id: 're-7', codigo: 'VS-2026-00995', estado: 'finalizada', checkOutEn: '2026-08-06T10:45:00Z' };
 const room = { id: 'integration-room', numero: '999', piso: 1, tipo: 'Standard', capacidad: 2, precioNoche: 420, estado: 'disponible' };
 localStorage.setItem('vs-reservas', JSON.stringify([pending, ended]));

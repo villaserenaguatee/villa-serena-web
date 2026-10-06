@@ -85,9 +85,10 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
   const [erroresAcompanante, setErroresAcompanante] = useState<Record<string, string>>({});
   const fechaUI = (fecha: string) => new Date(`${fecha}T12:00:00`).toLocaleDateString(en ? "en-US" : "es-GT", { day: "numeric", month: "short", year: "numeric" });
   const [archivo, setArchivo] = useState<DocumentoCargado | null>(checkin.documento);
-  const [documentoFrente, setDocumentoFrente] = useState<DocumentoCargado | null>(null);
-  const [documentoReverso, setDocumentoReverso] = useState<DocumentoCargado | null>(null);
-  const [documentoUnico, setDocumentoUnico] = useState<DocumentoCargado | null>(checkin.documento);
+  const documentosGuardados = checkin.documentos?.length ? checkin.documentos : checkin.documento ? [checkin.documento] : [];
+  const [documentoFrente, setDocumentoFrente] = useState<DocumentoCargado | null>(documentosGuardados.find(d => d.lado === 'frente') ?? (tipoDocumento === 'DPI' ? documentosGuardados[0] : null) ?? null);
+  const [documentoReverso, setDocumentoReverso] = useState<DocumentoCargado | null>(documentosGuardados.find(d => d.lado === 'reverso') ?? (tipoDocumento === 'DPI' ? documentosGuardados[1] : null) ?? null);
+  const [documentoUnico, setDocumentoUnico] = useState<DocumentoCargado | null>(tipoDocumento === 'Pasaporte' ? documentosGuardados[0] ?? null : null);
   const [errorArchivo, setErrorArchivo] = useState("");
   const [aceptado, setAceptado] = useState(false);
   const completado = checkin.estado === "aprobado";
@@ -122,17 +123,17 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
       return;
     }
     setErrorArchivo("");
-    const cargado = { nombre: f.name, formato, pesoKb, previewUrl: URL.createObjectURL(f), lado };
-    setArchivo(cargado);
-    if (lado === "frente") {
-      setDocumentoFrente(cargado);
-    }
-    else if (lado === "reverso") {
-      setDocumentoReverso(cargado);
-    }
-    else {
-      setDocumentoUnico(cargado);
-    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") return;
+      const cargado: DocumentoCargado = { nombre: f.name, formato, pesoKb, previewUrl: reader.result, lado };
+      setArchivo(cargado);
+      if (lado === "frente") setDocumentoFrente(cargado);
+      else if (lado === "reverso") setDocumentoReverso(cargado);
+      else setDocumentoUnico(cargado);
+    };
+    reader.onerror = () => setErrorArchivo("No se pudo leer el documento. Selecciona el archivo nuevamente.");
+    reader.readAsDataURL(f);
   }
   function validarAcompanante(): boolean {
     const e: Record<string, string> = {};
@@ -172,7 +173,11 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
     const documentos = tipoDocumento === "DPI" ? [documentoFrente, documentoReverso].filter(Boolean) as DocumentoCargado[] : documentoUnico ? [documentoUnico] : [];
     if (documentos.length === 0 || (tipoDocumento === "DPI" && documentos.length !== 2) || !aceptado)
       return;
-    onCompletar({ documento: documentos[0], documentos, peticiones: [], notaPeticiones: "" });
+    try {
+      onCompletar({ documento: documentos[0], documentos, peticiones: [], notaPeticiones: "" });
+    } catch {
+      setErrorArchivo("No se pudieron guardar los documentos. El almacenamiento puede estar lleno; selecciona archivos más livianos e intenta nuevamente.");
+    }
   }
   if (pendiente) {
     return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
@@ -668,6 +673,7 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
         </Tarjeta>)}
 
         {paso === 4 && (<Tarjeta titulo="Revisa tu check-in">
+          {errorArchivo && <Aviso tono="error">{ui(errorArchivo)}</Aviso>}
           <div className="grid gap-3 sm:grid-cols-2">
             <ResumenDato label="Huésped" valor={nombre} />
             <ResumenDato label="Documento" valor={`${tipoDocumento} · ${documento}`} />

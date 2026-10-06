@@ -42,7 +42,6 @@ interface Props {
     ninos?: number;
     habitacionId: string | null;
     descuento?: number;
-    metodoPago?: 'efectivo' | 'tarjeta';
   }) => Reserva;
 }
 export default function NuevaReservaModal({ huespedes, habitaciones, reservas, preset, onCerrar, onVerReserva, onCrearHuesped, onCrearReserva, }: Props) {
@@ -53,9 +52,6 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
   const [piso, setPiso] = useState('Todos');
   const [usarHoraLlegada, setUsarHoraLlegada] = useState(false);
   const [revisando, setRevisando] = useState(false);
-  const [pagoAbierto, setPagoAbierto] = useState(false);
-  const [metodoPago, setMetodoPago] = useState<'efectivo' | 'tarjeta'>('tarjeta');
-  const [huespedReservaId, setHuespedReservaId] = useState('');
   const [reservaCreada, setReservaCreada] = useState<Reserva | null>(null);
   const [nh, setNh] = useState<NuevoHuespedForm>({
     nombre: '',
@@ -87,7 +83,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
     })
     : [],
     [rangoValido, entrada, salida, habitaciones, reservas, nPersonas, tipo]);
-  const habElegida = disponibles.find(h => h.id === habitacionId) ?? null;
+  const habElegida = (reservaCreada ? habitaciones : disponibles).find(h => h.id === habitacionId) ?? null;
   const huespedesFiltrados = huespedes.filter(h => {
     const q = buscarHuesped.toLowerCase().trim();
     if (!q)
@@ -98,14 +94,16 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
   const disponiblesPiso = disponibles.filter(h => piso === 'Todos' || String(h.piso) === piso);
   function guardar() {
     const e: Record<string, string> = {};
-    if (!rangoValido)
-      e.fechas = 'La salida debe ser posterior a la entrada.';
+    if (!rangoValido || entrada < fechaHoyISO() || noches > 30 || entrada > fechaRelativaISO(365))
+      e.fechas = 'Revisa las fechas: desde hoy, máximo 30 noches y entrada dentro de un año.';
     let idHuesped = huespedId;
     if (modoNuevoHuesped) {
       if (!nh.nombre.trim())
         e.nombre = 'Nombre obligatorio.';
       if (!nh.documento.trim())
         e.documento = 'Documento obligatorio.';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nh.correo.trim())) e.correo = 'Correo válido obligatorio.';
+      if (!nh.nacionalidad.trim()) e.nacionalidad = 'Nacionalidad obligatoria.';
       if (!nh.telefono.trim())
         e.telefono = 'Teléfono obligatorio.';
     }
@@ -129,14 +127,9 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
       });
       idHuesped = creado.id;
     }
-    setHuespedReservaId(idHuesped);
-    setPagoAbierto(true);
-  }
-  function confirmarPago() {
-    if (!huespedReservaId)
-      return;
+    try {
     const creada = onCrearReserva({
-      huespedId: huespedReservaId,
+      huespedId: idHuesped,
       tipoHabitacion: tipo,
       fechaEntrada: entrada,
       fechaSalida: salida,
@@ -145,10 +138,10 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
       ninos: Number(ninos),
       habitacionId: habitacionId || null,
       descuento: 0,
-      metodoPago,
     });
-    setPagoAbierto(false);
     setReservaCreada(creada);
+    setRevisando(false);
+    } catch (error) { setErrores({ reserva: error instanceof Error ? error.message : 'No se pudo guardar la reserva.' }); }
   }
   return (<div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4">
     <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
@@ -162,6 +155,9 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
       </div>
 
       <div className="px-5 py-4 space-y-4">
+        <p className="text-sm text-[#52677F]">Se paga en el check-out · modo demo local.</p>
+        {modoNuevoHuesped && nh.correo && huespedes.some(h => h.correo.trim().toLowerCase() === nh.correo.trim().toLowerCase()) && <p role="status">Ese correo ya existe. Se usará el perfil registrado sin modificarlo.</p>}
+        {Object.entries(errores).map(([key, message]) => <p key={key} role="alert" className="text-sm text-[#991B1B]">{message}</p>)}
 
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -304,7 +300,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
         {seleccionPrevia && habElegida && (() => {
           const visual = publicRoomForHotelType(habElegida.tipo);
           return <section className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-[#F8F6F0] sm:flex">
-            <img src={visual.image} alt={`Habitación ${habElegida.numero}`} className="h-40 w-full object-cover sm:w-52" />
+            <img src={visual.image} alt={`Habitación ${habElegida?.numero ?? 'sin asignar'}`} className="h-40 w-full object-cover sm:w-52" />
             <div className="flex-1 p-4">
               <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#B38719]">Habitación seleccionada · Piso {habElegida.piso}</p>
               <h3 className="mt-1 text-lg font-semibold text-[#18345C]">Habitación {habElegida.numero} · {visual.name}</h3>
@@ -455,74 +451,33 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
         </>}
       </div>
 
-      {pagoAbierto && habElegida && (<div className="absolute inset-0 z-30 overflow-y-auto bg-white p-6">
-        <div className="mx-auto max-w-2xl">
-          <p className="text-[10px] uppercase tracking-[.18em] text-[#B38719]">Reserva · Pago</p>
-          <h2 className="text-3xl font-semibold text-[#18345C]">Selecciona el método de pago</h2>
-          <p className="mt-1 text-[#71839B]">El pago se registrará directamente en recepción.</p>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {([['efectivo', 'Efectivo', 'Registrar el pago recibido en caja.'], ['tarjeta', 'Tarjeta', 'Cobro realizado mediante la terminal de recepción.']] as const).map(([id, titulo, texto]) => <button
-              key={id}
-              onClick={() => setMetodoPago(id)}
-              className={`rounded-xl border p-5 text-left ${metodoPago === id ? 'border-[#18345C] bg-[#EEF4FB] ring-2 ring-[#18345C]/15' : 'border-[#E5E0D8]'}`}>
-              <b className="text-lg text-[#18345C]">
-                {titulo}
-              </b>
-              <p className="mt-1 text-sm text-[#71839B]">
-                {texto}
-              </p>
-            </button>)}
-          </div>
-          <div className="mt-6 rounded-xl bg-[#F8F6F0] p-5">
-            <div className="flex justify-between text-sm">
-              <span>Habitación {habElegida.numero} · {noches} noches</span>
-              <b>
-                {dinero(habElegida.precioNoche * noches)}
-              </b>
-            </div>
-            <div className="mt-3 flex justify-between border-t pt-3 text-xl font-bold text-[#18345C]">
-              <span>Total</span>
-              <span>
-                {dinero(habElegida.precioNoche * noches)}
-              </span>
-            </div>
-          </div>
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <button onClick={() => setPagoAbierto(false)} className="relative top-5 text-[12px] font-semibold text-[#18345C] hover:underline">Volver</button>
-            <button onClick={confirmarPago} className="rounded-lg bg-[#18345C] py-3 font-semibold text-white">
-              {metodoPago === 'tarjeta' ? 'Registrar cobro y confirmar' : 'Registrar efectivo y confirmar'}
-            </button>
-          </div>
-        </div>
-      </div>)}
-
-      {reservaCreada && habElegida && (<div className="absolute inset-0 z-40 overflow-y-auto bg-white p-6">
+      {reservaCreada && (<div className="absolute inset-0 z-40 overflow-y-auto bg-white p-6">
         <div className="mx-auto max-w-3xl">
           <div className="text-center">
             <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#EAF7EE] text-3xl text-[#188247]">✓</span>
             <h2 className="mt-4 text-3xl font-semibold text-[#18345C]">Reserva confirmada</h2>
-            <p className="mt-1 text-[#71839B]">El pago y la reservación fueron registrados correctamente.</p>
+            <p className="mt-1 text-[#71839B]">Reserva guardada en modo demo local. Se paga en el check-out.</p>
           </div>
           <div className="mt-7 grid gap-5 md:grid-cols-[.9fr_1.1fr]">
             <img
-              src={publicRoomForHotelType(habElegida.tipo).image}
-              alt={`Habitación ${habElegida.numero}`}
+              src={publicRoomForHotelType(tipo).image}
+              alt={`Habitación ${habElegida?.numero ?? 'sin asignar'}`}
               className="h-full min-h-64 w-full rounded-xl object-cover" />
             <section className="rounded-xl border border-[#E5E0D8] p-5">
               <p className="text-xs uppercase tracking-widest text-[#B38719]">Detalle de la reservación</p>
               <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
                 <ResumenFinal label="Código" valor={reservaCreada.codigo} />
-                <ResumenFinal label="Habitación" valor={`${habElegida.numero} · ${habElegida.tipo}`} />
+                <ResumenFinal label="Habitación" valor={habElegida ? `${habElegida.numero} · ${habElegida.tipo}` : 'Sin asignar'} />
                 <ResumenFinal label="Huésped" valor={huespedes.find(h => h.id === reservaCreada.huespedId)?.nombre || `${nh.nombre} ${nh.apellidos}`.trim()} />
                 <ResumenFinal label="Entrada" valor={entrada} />
                 <ResumenFinal label="Salida" valor={salida} />
                 <ResumenFinal label="Ocupación" valor={`${adultos} adultos · ${ninos} niños`} />
-                <ResumenFinal label="Total pagado" valor={dinero(reservaCreada.pagos[0]?.monto || 0)} />
-                <ResumenFinal label="Método" valor={metodoPago === 'tarjeta' ? 'Tarjeta · terminal' : 'Efectivo'} />
+                <ResumenFinal label="Total estimado demo" valor={dinero((habElegida?.precioNoche ?? disponibles[0]?.precioNoche ?? 0) * noches)} />
+                <ResumenFinal label="Pago" valor="En el check-out" />
               </div>
             </section>
           </div>
-          <div className="mt-5 rounded-xl border border-[#9BC5F2] bg-[#F1F7FE] p-4 text-sm text-[#52677F]">El huésped recibirá por correo la confirmación de la reserva y las instrucciones para descargar la app de huéspedes.</div>
+          <div className="mt-5 rounded-xl border border-[#9BC5F2] bg-[#F1F7FE] p-4 text-sm text-[#52677F]">El envío de correo y la conexión al API están pendientes. Esta reserva solo se guarda en este navegador.</div>
           <div className="mt-6 flex flex-wrap justify-end gap-2">
             <button onClick={onCerrar} className="min-h-11 rounded-lg border border-[#18345C] px-4 py-2.5 text-sm font-semibold text-[#18345C]">Hacer otra reserva</button>
             <button onClick={() => onVerReserva(reservaCreada.id)} className="min-h-11 rounded-lg bg-[#18345C] px-4 py-2.5 text-sm font-semibold text-white">Ver reserva / realizar check-in</button>
@@ -545,6 +500,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
           <div>
             <p className="text-[10px] tracking-[.18em] text-[#B38719] uppercase">Reserva · Revisión</p>
             <h2 className="text-2xl font-semibold text-[#18345C]">Revisa los datos</h2>
+            {Object.values(errores).map(message => <p key={message} role="alert" className="text-sm text-red-800">{message}</p>)}
           </div>
           <button onClick={() => setRevisando(false)} className="text-2xl" aria-label="Cerrar revisión">×</button>
         </div>
@@ -594,7 +550,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
               </div>
             </div>
           </section>{habElegida && room ? <section className="border rounded-xl overflow-hidden flex bg-[#F8F6F0]">
-            <img src={room.image} alt={`Habitación ${habElegida.numero}`} className="w-36 h-24 object-cover" />
+            <img src={room.image} alt={`Habitación ${habElegida?.numero ?? 'sin asignar'}`} className="w-36 h-24 object-cover" />
             <div className="p-3">
               <small className="text-[#AEBCC1]">Habitación seleccionada</small>
               <h3 className="text-lg font-semibold text-[#18345C]">Habitación {habElegida.numero}</h3>
