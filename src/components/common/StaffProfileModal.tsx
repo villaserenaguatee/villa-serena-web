@@ -389,6 +389,10 @@ export default function StaffProfileModal({ open, onClose, name, role, email, on
           </div>
         </div>
         <button onClick={() => {
+          if (user?.staff) {
+            window.location.assign('/panel/cambiar-contrasena');
+            return;
+          }
           if (!onCambiarClave) {
             setMensajeClave(tAuth('passwordChangeUnavailable'));
             return;
@@ -460,10 +464,14 @@ export default function StaffProfileModal({ open, onClose, name, role, email, on
           {perfil.foto && <button onClick={() => guardar({ ...perfil, foto: '' })} className="rounded-lg border px-4 py-2 font-semibold text-[#B42318]">Eliminar foto actual</button>}
         </div>
       </div>}
-      {modal === 'salir' && <><p>¿Deseas cerrar tu sesión?</p><Acciones cancel={() => setModal(null)} ok={() => {
-        logout();
-        onClose();
-        window.location.href = '/login';
+      {modal === 'salir' && <><p>¿Deseas cerrar tu sesión?</p>{mensajeClave && <p role="alert">{mensajeClave}</p>}<Acciones cancel={() => setModal(null)} ok={async () => {
+        try {
+          await logout();
+          onClose();
+          window.location.href = '/panel/login';
+        } catch (error) {
+          setMensajeClave(error instanceof Error ? error.message : 'No se pudo cerrar sesión.');
+        }
       }} text="Cerrar sesión" danger /></>}
     </Modal>}
   </div>;
