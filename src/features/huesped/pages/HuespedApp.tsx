@@ -785,8 +785,8 @@ function HuespedPortal({ onCambiarModulo, huesped, reservaInicial }: PortalProps
         enviadoEn,
       },
     };
-    setReserva(actualizada);
     upsertReserva(actualizada);
+    setReserva(actualizada);
     mostrarAviso("Check-in enviado. Recepción revisará la información antes de activar tu llave digital.");
   }
   const renderCuenta = () => {

@@ -1,6 +1,8 @@
 import { leerHuespedes } from './guestStore';
 import { leerHabitaciones, guardarHabitaciones } from './roomStore';
 import { registrarLimpiezaDeSalida } from './cleaningEvents';
+import { habilitarAccesoHuesped } from './guestAccountAccess';
+import { fechaHoyISO } from '@/data/pms';
 import type { Reserva } from '@/lib/pms/types';
 import { RESERVAS_INICIALES } from '@/data/pms';
 import { migrateLegacyPortalReceptionData } from './portalReceptionMigration';
@@ -73,11 +75,47 @@ export function upsertReserva(reserva: Reserva) {
   return leerReservas().find(r => r.id === reserva.id || r.codigo === reserva.codigo)!;
 }
 
+export function errorActivacionCheckInPortal(id: string): string | undefined {
+  const reserva = leerReservas().find(r => r.id === id);
+  if (!reserva) return 'No se encontró la reserva.';
+  if (reserva.estado !== 'confirmada' || checkInRealizado(reserva)) return 'La reserva debe estar confirmada y pendiente de activación.';
+  const web = reserva.checkInWeb;
+  if (web?.estado !== 'pendiente' || !Number.isFinite(Date.parse(web.enviadoEn))) return 'Falta un check-in enviado desde el portal.';
+  if (!web.terminosAceptados) return 'Falta la aceptación de los términos y condiciones.';
+  const huesped = leerHuespedes().find(h => h.id === reserva.huespedId);
+  if (!huesped) return 'No se encontró el huésped de la reserva.';
+  const documentos = web.documentos?.length ? web.documentos : [web.documento];
+  if (!documentos.every(d => d?.nombre && d.previewUrl && ['JPG', 'PNG', 'PDF'].includes(d.formato)) ||
+      (huesped.tipoDocumento === 'DPI' && (!documentos.some(d => d.lado === 'frente') || !documentos.some(d => d.lado === 'reverso')))) {
+    return 'Faltan las evidencias del documento de identidad. Solicita un nuevo envío al huésped.';
+  }
+  if (!reserva.habitacionId) return 'Primero asigna una habitación para poder activar la llave.';
+  const habitacion = leerHabitaciones().find(h => h.id === reserva.habitacionId);
+  if (!habitacion) return 'La habitación asignada no existe.';
+  if (habitacion.estado === 'en-limpieza' || habitacion.estado === 'mantenimiento') return 'La habitación asignada está en limpieza o mantenimiento.';
+  if (leerReservas().some(r => r.id !== id && r.habitacionId === habitacion.id && r.estado === 'en-curso')) return 'La habitación asignada tiene otra estancia activa.';
+}
+
+export function errorCheckInRecepcion(id: string): string | undefined {
+  const reserva = leerReservas().find(r => r.id === id);
+  if (!reserva || reserva.estado !== 'confirmada' || checkInRealizado(reserva)) return 'Solo se puede hacer check-in de una reserva confirmada.';
+  const today = fechaHoyISO();
+  if (today < reserva.fechaEntrada || today >= reserva.fechaSalida) return 'El check-in solo se puede hacer desde la entrada hasta el día anterior a la salida.';
+  if (!leerHuespedes().some(h => h.id === reserva.huespedId)) return 'Revisa los datos del huésped principal.';
+  if (!reserva.habitacionId) return 'Asigna una habitación antes de hacer el check-in.';
+  const room = leerHabitaciones().find(h => h.id === reserva.habitacionId);
+  if (!room || !['disponible', 'reservada'].includes(room.estado)) return 'La habitación no está libre y limpia. Revisa su estado antes del check-in.';
+  if (leerReservas().some(r => r.id !== id && r.habitacionId === room.id && r.estado === 'en-curso')) return 'La habitación tiene otra estancia activa.';
+}
+
 export function completarCheckInReserva(id: string, origen: 'portal' | 'recepcion'): Reserva | undefined {
+  if (origen === 'recepcion' && errorCheckInRecepcion(id)) return;
+  if (origen === 'portal' && errorActivacionCheckInPortal(id)) return;
   const reserva = leerReservas().find(r => r.id === id);
   if (!reserva?.habitacionId || checkInRealizado(reserva) || reserva.estado !== 'confirmada' ||
       (origen === 'portal' && reserva.checkInWeb?.estado !== 'pendiente')) return;
-  if (!leerHuespedes().some(h => h.id === reserva.huespedId)) return;
+  const huesped = leerHuespedes().find(h => h.id === reserva.huespedId);
+  if (!huesped) return;
   const habitaciones = leerHabitaciones();
   const habitacion = habitaciones.find(h => h.id === reserva.habitacionId);
   if (!habitacion || habitacion.estado === 'en-limpieza' || habitacion.estado === 'mantenimiento' ||
@@ -88,6 +126,7 @@ export function completarCheckInReserva(id: string, origen: 'portal' | 'recepcio
   };
   guardarHabitaciones(habitaciones.map(h => h.id === habitacion.id ? { ...h, estado: 'ocupada' } : h));
   upsertReserva(actualizada);
+  if (origen === 'portal') habilitarAccesoHuesped(huesped.correo);
   return actualizada;
 }
 export function completarCheckOutReserva(id: string, origen: 'portal' | 'recepcion'): Reserva | undefined {

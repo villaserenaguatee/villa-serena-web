@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import type { Reserva, Huesped, HabitacionHotel, Acompanante, ServicioAdicional, MetodoPago, Pago, TipoHabitacion, SolicitudHuesped, } from '@/lib/pms/types';
 import { formatoFecha, formatoFechaHora, nochesEntre, } from '@/data/pms';
 import { dinero, Chip, RESERVA_META, calcularCuenta, habitacionesDisponibles, habitacionTieneConflicto, Campo, INPUT_CLS, BedIcon, UserIcon, CalendarIcon, CloseIcon, } from '@/features/recepcion/pages/recUtils';
+import DocumentosCheckIn from '@/features/recepcion/pages/DocumentosCheckIn';
 import Comprobante from '@/features/recepcion/pages/Comprobante';
 import { publicRooms, publicRoomForHotelType, money } from '@/data/publicRooms';
 type Tab = 'resumen' | 'actividad' | 'cuenta' | 'servicios' | 'huespedes' | 'cambios';
@@ -76,7 +77,7 @@ export default function DetalleReserva(props: Props) {
             {huesped.nombre} · {formatoFecha(reserva.fechaEntrada)} → {formatoFecha(reserva.fechaSalida)}
           </p>
         </div>
-        <button onClick={onCerrar} className="text-[#AEBCC1] hover:text-[#1F2933] p-1 shrink-0">
+        <button aria-label="Cerrar detalle de reserva" onClick={onCerrar} className="text-[#AEBCC1] hover:text-[#1F2933] p-1 shrink-0">
           <CloseIcon />
         </button>
       </div>
@@ -369,15 +370,8 @@ function TabResumen({ reserva, huesped, habitacion, habitaciones, reservas, onAs
           </span>
         </div>
         <div className="mt-2 grid gap-2 md:grid-cols-2">
-          <div className="grid grid-cols-[80px_minmax(0,1fr)] items-center gap-x-2 rounded-lg border border-[#DCE3EA] bg-white p-2">
-            <p className="col-start-2 text-xs font-semibold uppercase tracking-wider text-[#71839B]">Documento de identidad</p>
-            {reserva.checkInWeb.documento.previewUrl && reserva.checkInWeb.documento.formato !== 'PDF' ? <img src={reserva.checkInWeb.documento.previewUrl} alt="Documento del huésped" className="col-start-1 row-start-1 row-span-2 h-14 w-20 rounded-md object-contain bg-[#F8F6F0]" /> : <div className="col-start-1 row-start-1 row-span-2 grid h-14 w-20 place-items-center rounded-md bg-[#F8F6F0] font-semibold text-[#18345C]">
-              {reserva.checkInWeb.documento.formato}
-            </div>}
-            <p className="col-start-2 break-words text-xs text-[#52677F]">
-              {reserva.checkInWeb.documento.nombre}
-            </p>
-          </div>
+          <DocumentosCheckIn key={reserva.checkInWeb.enviadoEn} checkInWeb={reserva.checkInWeb} tipoDocumento={huesped.tipoDocumento}
+            onSolicitarReenvio={checkInWebPendiente(reserva) ? motivo => onRechazarCheckInWeb(reserva.id, motivo) : undefined} />
           <div className="rounded-lg border border-[#DCE3EA] bg-white p-2">
             <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#71839B]">Aceptación registrada</p>
             <div className="grid place-items-center rounded-md bg-[#F0FAF4] px-3 text-center text-sm font-semibold text-[#166534]">✓ El huésped aceptó los términos y condiciones de la estancia</div>

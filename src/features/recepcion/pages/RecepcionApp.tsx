@@ -1,3 +1,5 @@
+import CalendarioReservas from './CalendarioReservas';
+import { crearReservaRecepcionDemo } from '@/store/receptionReservation';
 import { asignarHabitacionReserva } from '@/store/reservationAssignment';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,7 +25,7 @@ import { guardarHuespedes, leerHuespedes, upsertHuesped, HUESPEDES_EVENT } from 
 import { guardarReservas, leerReservas, RESERVAS_EVENT, upsertReserva } from '@/store/reservationStore';
 import { guardarHabitaciones, leerHabitaciones, HABITACIONES_EVENT } from '@/store/roomStore';
 import { EVENTO_INCIDENCIAS_MANTENIMIENTO, leerIncidenciasMantenimiento, reportarIncidenciaMantenimiento } from '@/store/maintenanceEvents';
-import { completarCheckInReserva, completarCheckOutReserva } from '@/store/reservationStore';
+import { completarCheckInReserva, completarCheckOutReserva, errorActivacionCheckInPortal, errorCheckInRecepcion } from '@/store/reservationStore';
 import { actualizarObjetoOlvidado, CLAVE_OBJETOS_OLVIDADOS, guardarObjetosOlvidados, leerObjetosOlvidados } from '@/store/lostFoundEvents';
 const SECCIONES: {
   id: SeccionRecepcion;
@@ -204,8 +206,8 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       const siguientes = actuales.map(h => {
         if (h.estado === 'mantenimiento' || h.estado === 'en-limpieza')
           return h;
-        const activa = reservas.find(r => r.habitacionId === h.id && (r.estado === 'en-curso' || r.estado === 'confirmada' || r.estado === 'pendiente'));
-        const estado: EstadoHabHotel = activa ? (activa.estado === 'en-curso' ? 'ocupada' : 'reservada') : 'disponible';
+        const asignadas = reservas.filter(r => r.habitacionId === h.id && (r.estado === 'en-curso' || r.estado === 'confirmada' || r.estado === 'pendiente'));
+        const estado: EstadoHabHotel = asignadas.some(r => r.estado === 'en-curso') ? 'ocupada' : asignadas.length ? 'reservada' : 'disponible';
         if (estado === h.estado)
           return h;
         cambio = true;
@@ -301,8 +303,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
   function actualizarHuesped(id: string, cambios: Partial<Huesped>) { setHuespedes(prev => prev.map(h => h.id === id ? { ...h, ...cambios } : h)); }
   function crearHuesped(datos: Omit<Huesped, 'id' | 'creadoEn'>): Huesped {
     const existente = leerHuespedes().find(h =>
-      Boolean(datos.documento) &&
-      h.tipoDocumento === datos.tipoDocumento && h.documento === datos.documento,
+      h.correo.trim().toLowerCase() === datos.correo.trim().toLowerCase(),
     );
     if (existente)
       return existente;
@@ -320,31 +321,10 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
     ninos?: number;
     habitacionId: string | null;
     descuento?: number;
-    metodoPago?: 'efectivo' | 'tarjeta';
   }): Reserva {
-    const habitacion = d.habitacionId ? habitaciones.find(h => h.id === d.habitacionId) : null;
-    const total = Math.max(0, (habitacion?.precioNoche ?? 0) * nochesEntre(d.fechaEntrada, d.fechaSalida) - (d.descuento || 0));
-    const nueva: Reserva = {
-      id: generarId(),
-      codigo: siguienteCodigoReserva(),
-      huespedId: d.huespedId,
-      habitacionId: d.habitacionId,
-      tipoHabitacion: d.tipoHabitacion,
-      fechaEntrada: d.fechaEntrada,
-      fechaSalida: d.fechaSalida,
-      personas: d.personas,
-      adultos: d.adultos,
-      ninos: d.ninos,
-      estado: d.habitacionId ? 'confirmada' : 'pendiente',
-      acompanantes: [],
-      servicios: [],
-      pagos: d.metodoPago && total > 0 ? [{ destino: 'alojamiento', id: generarId(), fecha: ahoraISO(), monto: total, metodo: d.metodoPago, comprobante: siguienteComprobante() }] : [],
-      descuento: d.descuento || 0,
-      creadoEn: ahoraISO(),
-    };
-    setReservas(prev => [nueva, ...prev]);
-    if (d.habitacionId)
-      reservaHabitacionSiLibre(d.habitacionId);
+    const nueva = crearReservaRecepcionDemo(d);
+    setReservas(leerReservas());
+    setHabitaciones(aplicarTarifasHabitaciones(leerHabitaciones()));
     return nueva;
   }
   function asignarHabitacion(reservaId: string,
@@ -374,10 +354,16 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       reservaHabitacionSiLibre(c.habitacionId);
   }
   function checkIn(reservaId: string) {
+    const error = errorCheckInRecepcion(reservaId);
+    if (error) { window.alert(error); return; }
     completarCheckInReserva(reservaId, 'recepcion');
   }
   function validarCheckInWeb(reservaId: string) {
+    const error = errorActivacionCheckInPortal(reservaId);
+    if (error) { window.alert(error); return; }
     completarCheckInReserva(reservaId, 'portal');
+    setReservas(leerReservas());
+    setHabitaciones(aplicarTarifasHabitaciones(leerHabitaciones()));
   }
   function rechazarCheckInWeb(reservaId: string,
     motivo: string) {
@@ -582,7 +568,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
         </div>
 
         <div className="flex-1 flex overflow-hidden relative">
-          {contenido}
+          {seccion === 'dia' ? <div className="flex-1 overflow-y-auto"><div className="p-4"><p className="mb-2 text-sm text-[#71839B]">Modo demo local · API de Recepción pendiente</p><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={setReservaAbiertaId} onNueva={() => setNuevaReserva({ open: true })} /></div>{contenido}</div> : contenido}
         </div>
 
         <div className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
