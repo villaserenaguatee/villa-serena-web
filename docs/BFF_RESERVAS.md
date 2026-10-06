@@ -52,7 +52,10 @@ o en `VILLA_SERENA_BFF_STATE_PATH`. No importa huéspedes, pagos ni reservas loc
 Cada escritura guarda huésped, reserva y huella del intento en una única operación:
 archivo temporal privado y rename. Una lectura corrupta o escritura fallida devuelve
 503; nunca reinicia silenciosamente el estado. Misma clave y parámetros devuelve
-la misma reserva; parámetros distintos con esa clave devuelve 409. Los cambios de
+la misma reserva. Las lecturas también validan la forma de cada registro, sus fechas,
+identificadores, vínculos y total; un JSON sintácticamente válido con datos incoherentes
+falla sin liberar cupo, exponer el registro ni sobrescribir el archivo. Parámetros distintos
+con esa clave devuelven 409. Los cambios de
 contexto demo no modifican un resultado ya guardado. No hay reintentos POST automáticos.
 El borrador conserva los parámetros y la clave del intento tras un fallo incierto.
 Cambiar datos, fechas o promoción no crea otra clave mientras ese intento siga

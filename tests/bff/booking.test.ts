@@ -277,3 +277,22 @@ test('existing booking replays after its arrival date while a new past stay is r
     assert.equal(readBookingState().entries.length, 1);
   } finally { globalThis.Date = OriginalDate; }
 });
+
+test('malformed persisted records fail closed for status, availability and creation without rewriting state', async () => {
+  const value = input(), created = createBooking(parseBooking(value)), original = readBookingState();
+  const mutations: ((state: ReturnType<typeof readBookingState>) => void)[] = [
+    state => { delete (state.entries[0].compatibility.reservation as Partial<typeof created.compatibility.reservation>).fechaSalida; },
+    state => { state.entries[0].compatibility.reservation.huespedId = 'wrong-guest'; },
+    state => { state.entries[0].result.total = 1; },
+    state => { (state.entries[0].result as unknown as Record<string, unknown>).status = { email: 'PRIVATE-STATE' }; },
+    state => { state.entries.push(structuredClone(state.entries[0])); },
+  ];
+  for (const mutate of mutations) {
+    const state = structuredClone(original); mutate(state); const raw = JSON.stringify(state);
+    writeFileSync(process.env.VILLA_SERENA_BFF_STATE_PATH!, raw);
+    const response = await lookup(created.result.code); assert.equal(response.status, 503); assert.ok(!(await response.text()).includes('PRIVATE-STATE'));
+    assert.equal((await availability(new Request('http://localhost:3000/api/public/availability', { method: 'POST', body: JSON.stringify(value) }))).status, 503);
+    assert.equal((await POST(request({ ...value, requestId: randomUUID() }))).status, 503);
+    assert.equal(readFileSync(process.env.VILLA_SERENA_BFF_STATE_PATH!, 'utf8'), raw);
+  }
+});
