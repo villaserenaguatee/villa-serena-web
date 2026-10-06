@@ -19,14 +19,14 @@ export function validAvailabilityDate(value: unknown): value is string {
   const date = new Date(`${value}T00:00:00Z`);
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
-export function parseAvailability(value: unknown): AvailabilityInput {
+export function parseAvailability(value: unknown, allowPastArrival = false): AvailabilityInput {
   if (!object(value) || !validAvailabilityDate(value.arrival) || !validAvailabilityDate(value.departure) ||
     value.departure <= value.arrival || !Number.isInteger(value.adults) || Number(value.adults) < 1 || Number(value.adults) > 30 ||
     !Number.isInteger(value.children) || Number(value.children) < 0 || Number(value.children) > 30) {
     throw new AvailabilityError('INVALID_AVAILABILITY_QUERY', 400);
   }
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-  if (value.arrival < today) throw new AvailabilityError('INVALID_AVAILABILITY_QUERY', 400);
+  if (!allowPastArrival && value.arrival < today) throw new AvailabilityError('INVALID_AVAILABILITY_QUERY', 400);
   const demo = value.demo;
   if (!object(demo) || !Array.isArray(demo.rooms) || demo.rooms.length > 1000 || !Array.isArray(demo.holds) || demo.holds.length > 5000) {
     throw new AvailabilityError('INVALID_DEMO_CONTEXT', 400);

@@ -1,15 +1,18 @@
 "use client";
 import { UiText, useUiText } from "@/i18n/UiText";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ChevronDown, Search } from "lucide-react";
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { money, usePublicRooms } from "@/data/publicRooms";
 import { availableRoom, usePublicAvailability, validGuests } from "@/lib/publicAvailability";
+import { saveBookingDraft, readBookingDraft, BookingAttemptPendingError } from "@/lib/bookingDraft";
 export default function Datos() {
   const publicRooms = usePublicRooms();
   const ui = useUiText();
+  const bookingText = useTranslations("publicBooking");
   const { en } = usePublicLanguage();
   const r = useRouter(), sp = useSearchParams();
   const [method, setMethod] = useState("email"),
@@ -40,6 +43,21 @@ export default function Datos() {
     return Math.max(1, Math.ceil((new Date(salida).getTime() - new Date(llegada).getTime()) / 86400000));
   }, [llegada, salida]);
   const total = (room?.price || 0) * nights;
+  const [draftError, setDraftError] = useState("");
+  useEffect(() => {
+    const draft = readBookingDraft(sp.get("draft") || "");
+    if (!draft) return;
+    const saved = new URLSearchParams(draft.params);
+    setNombre(saved.get("nombre") || ""); setApellidos(saved.get("apellidos") || "");
+    setCorreo(saved.get("correo") || ""); setDocumento(saved.get("documento") || "");
+    setDocType(saved.get("tipoDocumento") || "DPI"); setNacionalidad(saved.get("nacionalidad") || "Guatemala");
+    const [code, ...phone] = (saved.get("telefono") || "+502 ").split(" ");
+    setPrefix(code); setTel(phone.join(" ")); setHora(saved.get("hora") || "15:00");
+  }, [sp]);
+  function continueBooking() {
+    try { r.push("/reservar/verificar?" + saveBookingDraft(q(), sp.get("draft") || "")); }
+    catch (error) { setDraftError(error instanceof BookingAttemptPendingError ? bookingText("requestUncertain") : en ? "Could not save your details. Try again." : "No se pudieron guardar tus datos. Intenta nuevamente."); }
+  }
   const q = () => new URLSearchParams({
     nombre,
     apellidos,
@@ -387,11 +405,12 @@ export default function Datos() {
               {salida}
             </b>
           </div>
+          {draftError && <p role="alert">{draftError}</p>}
           <div className="review-actions">
             <button className="reserve-secondary" onClick={() => setReview(false)}>
               <UiText text="Editar" />
             </button>
-            <button className="reserve-primary" onClick={() => r.push("/reservar/verificar?" + q())}>
+            <button className="reserve-primary" onClick={continueBooking}>
               <UiText text="Continuar" />
             </button>
           </div>
