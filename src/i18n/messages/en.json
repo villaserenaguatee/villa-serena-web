@@ -64,6 +64,8 @@
     "invalidPromo": "The discount code is invalid or inactive.",
     "saveFailed": "The reservation could not be saved. Please try again.",
     "requestUncertain": "Recover the result of the previous attempt before changing the details or creating another reservation.",
+    "resultUnavailable": "The reservation result could not be retrieved. Retry the status check without creating another reservation.",
+    "copyUnavailable": "The reservation is still saved, but its local copy could not be recovered. You can retry.",
     "paymentUnverified": "The payment could not be confirmed. The reservation was not created.",
     "paymentUnavailable": "Card payment is not available at this time."
   }

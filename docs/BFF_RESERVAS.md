@@ -79,6 +79,8 @@ sin nombre, correo, teléfono ni documento. No es autenticación ni storage priv
 frente a scripts del mismo origen. Si falla/vencen los datos se pide volver al formulario.
 Cambiar correo actualiza el borrador. La pantalla conserva el formulario de verificación
 sin fingir un proveedor, y permite continuar con correo pendiente para la reserva demo.
+La reserva pública usa el correo de su borrador aunque exista otra sesión de huésped;
+no hereda su identidad ni su estado de verificación. Un borrador vencido impide continuar.
 
 Tras la respuesta del servidor se añade una copia a los stores existentes, sin borrar
 colecciones ni modificar huéspedes ya guardados con el mismo documento. Se conserva
@@ -86,6 +88,9 @@ su ID local para enlazar la reserva y mantener el portal, Recepción y cuenta de
 Repetir el intento no sobrescribe check-in, pagos, servicios ni perfiles locales.
 Una copia fallida no invalida la reserva guardada: confirmación muestra el resultado
 servidor y permite reintentar la copia usando el mismo intento del borrador.
+Una consulta fallida de confirmación puede reintentarse mediante GET sin crear otra
+reserva. Si falla la recuperación de la copia local, se muestra el error y se conserva
+el resultado guardado del servidor.
 **Las acciones posteriores locales no se sincronizan con el BFF**: cancelación,
 check-in/check-out y pagos locales no liberan inventario ni cambian el resultado
 servidor. Esto es un puente temporal, no un PMS compartido.
