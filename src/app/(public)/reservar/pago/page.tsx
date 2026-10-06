@@ -1,6 +1,6 @@
 "use client";
 import { UiText, useUiText } from "@/i18n/UiText";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, LockKeyhole, X } from "lucide-react";
@@ -10,13 +10,18 @@ import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { money, usePublicRooms } from "@/data/publicRooms";
 import { leerPromociones } from "@/store/promotionStore";
 import { fechaHotel } from "@/lib/hotel";
-import { confirmarReservaPublica, PublicBookingError } from "@/lib/publicBooking";
+import { confirmarReservaPublica, copyBookingToLocal, PublicBookingError } from "@/lib/publicBooking";
+import { useBookingDraft } from "@/lib/bookingDraft";
 export default function Pago() {
   const publicRooms = usePublicRooms();
   const ui = useUiText();
   const bookingText = useTranslations("publicBooking");
   const { en } = usePublicLanguage();
-  const r = useRouter(), sp = useSearchParams();
+  const r = useRouter(), query = useSearchParams();
+  const draft = useBookingDraft(query.toString());
+  const sp = draft ?? new URLSearchParams(query.toString());
+  const busy = useRef(false);
+  const [paymentMethod, setPaymentMethod] = useState<"hotel" | "card" | "bank">("hotel");
   const [saving, setSaving] = useState(false),
     [accepted, setAccepted] = useState(false),
     [card, setCard] = useState(""),
@@ -38,22 +43,23 @@ export default function Pago() {
     return Math.max(1, Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / 86400000));
   },
     [sp]);
-  const canPay = accepted &&
-    card.replace(/\s/g, "").length === 16 &&
-    holder.trim().length > 2 &&
-    /^\d{2}\/\d{2}$/.test(expiry) &&
-    cvv.length >= 3;
+  const canPay = accepted && Boolean(draft) && paymentMethod === "hotel";
   async function finish() {
-    if (!canPay || saving)
+    if (!canPay || busy.current)
       return;
+    busy.current = true;
     setSaving(true);
     setPaymentError("");
     try {
-      const reservation = await confirmarReservaPublica(
-        new URLSearchParams(sp.toString()),
+      const bookingParams = new URLSearchParams(sp.toString());
+      bookingParams.set("total", String(Math.round(promoTotal * 100) / 100));
+      const created = await confirmarReservaPublica(
+        bookingParams,
         promoPct > 0 ? promo.trim() : "",
+        paymentMethod, query.get("draft") || "",
       );
-      r.push(`/reservar/confirmacion?${new URLSearchParams({ reservaId: reservation.id })}`);
+      try { copyBookingToLocal(created); } catch { /* Server result stays valid; confirmation can report local copy failure. */ }
+      r.push(`/reservar/confirmacion?${new URLSearchParams({ code: created.result.code, draft: query.get("draft") || "" })}`);
     }
     catch (error) {
       setPaymentError(
@@ -63,6 +69,7 @@ export default function Pago() {
       );
     }
     finally {
+      busy.current = false;
       setSaving(false);
     }
   }
@@ -197,12 +204,14 @@ export default function Pago() {
         <p>
           <UiText text="Elige cómo deseas garantizar tu reserva." />
         </p>
+        {!draft && <p role="alert">{en ? "Your details are unavailable or expired. Return to the guest form." : "Tus datos no están disponibles o vencieron. Vuelve al formulario de huésped."}</p>}
         <div className="payment-methods">
-          <label>
-            <UiText text="Tarjeta de crédito o débito" />
-          </label>
+          <label><input type="radio" checked={paymentMethod === "hotel"} onChange={() => setPaymentMethod("hotel")} />{en ? "Pay at the hotel (check-out)" : "Pagar en el hotel (al check-out)"}</label>
+          <label><input type="radio" checked={paymentMethod === "card"} onChange={() => setPaymentMethod("card")} />Stripe</label>
+          <label><input type="radio" checked={paymentMethod === "bank"} onChange={() => setPaymentMethod("bank")} />{en ? "Bank transfer / deposit" : "Transferencia / depósito bancario"}</label>
         </div>
-        <>
+        {paymentMethod === "hotel" ? <p>{en ? "Demo booking. No payment is collected now." : "Reserva demo. No se cobra ningún pago ahora."}</p> : <p role="status">{en ? "This payment method is pending integration. No booking or charge will be created." : "Este método de pago está pendiente de integración. No se creará una reserva ni un cobro."}</p>}
+        {paymentMethod === "card" && <>
           <div className="online-payment-head">
             <div>
               <b>
@@ -261,7 +270,7 @@ export default function Pago() {
             </div>
           </div>
 
-        </>
+        </>}
         <label className="terms-check">
           <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
           <span>

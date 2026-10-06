@@ -1,4 +1,5 @@
 import { AvailabilityError, parseAvailability, queryAvailability } from '@/lib/bff/publicAvailability';
+import { mergeBookingHolds, storedHolds } from '@/lib/bff/demoBookingStore';
 export const runtime = 'nodejs';
 export async function POST(request: Request) {
   try {
@@ -20,7 +21,9 @@ export async function POST(request: Request) {
     let body: unknown;
     try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
     catch { throw new AvailabilityError('INVALID_JSON', 400); }
-    return Response.json(queryAvailability(parseAvailability(body)), { headers: { 'Cache-Control': 'no-store' } });
+    const input = parseAvailability(body);
+    if ((process.env.VILLA_SERENA_BFF_MODE ?? 'demo') === 'demo') input.demo.holds = mergeBookingHolds(input.demo.holds, storedHolds());
+    return Response.json(queryAvailability(input), { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return Response.json({ error: { code: error instanceof AvailabilityError ? error.code : 'AVAILABILITY_UNAVAILABLE' } },
       { status: error instanceof AvailabilityError ? error.status : 500, headers: { 'Cache-Control': 'no-store' } });
