@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 const KEY = 'vs-public-booking-draft';
 const MAX_AGE = 2 * 60 * 60 * 1000;
-const publicKeys = ['habitacion', 'slug', 'habitacionId', 'categoria', 'precio', 'noches', 'llegada', 'salida', 'adultos', 'ninos', 'huespedes', 'total'];
+const publicKeys = ['habitacion', 'slug', 'habitacionId', 'tipoHabitacionId', 'categoria', 'precio', 'noches', 'llegada', 'salida', 'adultos', 'ninos', 'huespedes', 'total'];
 type Draft = { id: string; createdAt: number; params: string; attempt?: { fingerprint: string; id: string; code?: string } };
 export class BookingAttemptPendingError extends Error {}
 export function readBookingDraft(id: string): Draft | null {

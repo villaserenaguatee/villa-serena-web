@@ -1,5 +1,10 @@
 # BFF del flujo público de reservas
 
+Estado actual del Issue #5: consultar [BFF_PUBLICO.md](BFF_PUBLICO.md).
+Añade peticiones con los DTO del contrato y pago de tarjeta de prueba como única
+opción pública. Retira hotel y banco de las pantallas. Los apartados siguientes describen los bloques
+anteriores y sus decisiones en el momento de integración.
+
 Primer bloque: las pantallas de resultados, detalle y datos consultan
 `POST /api/public/availability` en Next.js. Se conserva el catálogo, las imágenes
 y las configuraciones demo existentes. No se adopta todavía el contrato propuesto.

@@ -6,11 +6,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ChevronDown, Search } from "lucide-react";
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
-import { money, usePublicRooms } from "@/data/publicRooms";
+import { money } from "@/data/publicRooms";
+import { usePublicCatalog, usePublicQuotes } from "@/lib/usePublicCatalog";
 import { availableRoom, usePublicAvailability, validGuests } from "@/lib/publicAvailability";
 import { saveBookingDraft, readBookingDraft, BookingAttemptPendingError } from "@/lib/bookingDraft";
 export default function Datos() {
-  const publicRooms = usePublicRooms();
+  const { rooms: publicRooms, loading: catalogLoading, error: catalogError } = usePublicCatalog();
   const ui = useUiText();
   const bookingText = useTranslations("publicBooking");
   const { en } = usePublicLanguage();
@@ -34,15 +35,17 @@ export default function Datos() {
     adultos = sp.get("adultos") || sp.get("huespedes") || "1",
     ninos = sp.get("ninos") || "0",
     huespedes = String(Number(adultos) + Number(ninos));
-  const inventory = usePublicAvailability({ arrival: llegada, departure: salida, adults: Number(adultos), children: Number(ninos) });
   const room = publicRooms.find((x) => sp.get("slug") ? x.slug === sp.get("slug") : x.name === habitacion);
+  const inventory = usePublicAvailability({ arrival: llegada, departure: salida, adults: Number(adultos), children: Number(ninos) }, room?.capacity ?? 0);
+  const quoteResult = usePublicQuotes(llegada, salida, Number(adultos), Number(ninos), room?.capacity ?? 0);
+  const quote = quoteResult.quotes.find(q => q.tipoHabitacion.id === room?.apiTypeId);
   const physical = room && validGuests(Number(adultos), Number(ninos)) ? availableRoom(room, llegada, salida, Number(huespedes), inventory, sp.get("habitacionId") || undefined) : undefined;
   const nights = useMemo(() => {
     if (!llegada || !salida)
       return 1;
     return Math.max(1, Math.ceil((new Date(salida).getTime() - new Date(llegada).getTime()) / 86400000));
   }, [llegada, salida]);
-  const total = (room?.price || 0) * nights;
+  const total = quote?.total ?? 0;
   const [draftError, setDraftError] = useState("");
   useEffect(() => {
     const draft = readBookingDraft(sp.get("draft") || "");
@@ -55,7 +58,8 @@ export default function Datos() {
     setPrefix(code); setTel(phone.join(" ")); setHora(saved.get("hora") || "15:00");
   }, [sp]);
   function continueBooking() {
-    try { r.push("/reservar/verificar?" + saveBookingDraft(q(), sp.get("draft") || "")); }
+    if (!physical || !quote) return;
+    try { r.push("/reservar/pago?" + saveBookingDraft(q(), sp.get("draft") || "")); }
     catch (error) { setDraftError(error instanceof BookingAttemptPendingError ? bookingText("requestUncertain") : en ? "Could not save your details. Try again." : "No se pudieron guardar tus datos. Intenta nuevamente."); }
   }
   const q = () => new URLSearchParams({
@@ -70,6 +74,7 @@ export default function Datos() {
     habitacion: room?.name || habitacion,
     slug: room?.slug || "",
     habitacionId: physical?.id || "",
+    tipoHabitacionId: String(room?.apiTypeId || ""),
     categoria: room?.type || "",
     precio: String(room?.price || 0),
     noches: String(nights),
@@ -82,13 +87,22 @@ export default function Datos() {
   });
   function submit(e: FormEvent) {
     e.preventDefault();
-    if (physical)
+    if (![nombre, apellidos, correo, tel, documento, nacionalidad].every(v => v.trim())) {
+      setDraftError(en ? "Complete all required guest details." : "Completa todos los datos obligatorios del huésped.");
+      return;
+    }
+    if (`${nombre.trim()} ${apellidos.trim()}`.length > 150 || correo.length > 150 || nacionalidad.length > 60) {
+      setDraftError(en ? "Use up to 150 characters for your full name and email, and 60 for nationality." : "Usa hasta 150 caracteres en el nombre completo y correo, y 60 en nacionalidad.");
+      return;
+    }
+    setDraftError("");
+    if (physical && quote)
       setReview(true);
   }
-  if (!physical)
+  if (!physical || !quote)
     return (<main className="reserve-public">
       <p role="status">
-        {!inventory ? (en ? "Loading availability..." : "Cargando disponibilidad...") : inventory.error ? (en ? "Availability could not be checked. Try again." : "No se pudo consultar la disponibilidad. Intenta nuevamente.") : (en ? "This room is unavailable or the stay is invalid." : "La habitación no está disponible o la estancia no es válida.")}
+        {catalogError || (!catalogLoading && quoteResult.error) || (!inventory || catalogLoading || quoteResult.loading ? (en ? "Loading availability..." : "Cargando disponibilidad...") : inventory.error ? (en ? "Availability could not be checked. Try again." : "No se pudo consultar la disponibilidad. Intenta nuevamente.") : (en ? "This room is unavailable or the stay is invalid." : "La habitación no está disponible o la estancia no es válida."))}
       </p>
       <button className="reserve-primary" onClick={() => r.push(`/reservar/habitaciones?${sp.toString()}`)}>
         {en ? "Back to results" : "Volver a resultados"}
@@ -189,6 +203,7 @@ export default function Datos() {
             </span>
           </div>
           <form onSubmit={submit}>
+            {draftError && <p role="alert">{draftError}</p>}
             <div className="guest-form-grid">
               <label>
                 <UiText text="Nombre" />
@@ -343,6 +358,7 @@ export default function Datos() {
             </small>
             <b>
               {nombre}
+              {" "}
               {apellidos}
             </b>
           </div>
