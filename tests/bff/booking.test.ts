@@ -192,3 +192,88 @@ test('lost response retry and failed local copy recover original booking without
     assert.equal(leerReservas().length, 1); assert.equal(readBookingState().entries.length, 1);
   } finally { b.restore(); }
 });
+
+test('recovery refuses a missing or different booking instead of creating inventory or guests', async () => {
+  const value = input(), unknownCode = 'RES-00000000000000000000000000000000';
+  assert.equal((await POST(request({ ...value, recoveryCode: unknownCode }))).status, 404);
+  assert.equal(readBookingState().entries.length, 0);
+  const created = createBooking(parseBooking(value));
+  assert.equal((await POST(request({ ...value, recoveryCode: unknownCode }))).status, 404);
+  const recovered = await POST(request({ ...value, recoveryCode: created.result.code }));
+  assert.equal(recovered.status, 201); assert.equal((await recovered.json()).result.code, created.result.code);
+  assert.equal(readBookingState().entries.length, 1);
+});
+function guestParams(value = input()) {
+  return new URLSearchParams({ slug: value.slug, habitacionId: value.roomId, llegada: value.arrival, salida: value.departure,
+    adultos: String(value.adults), ninos: String(value.children), total: String(value.expectedTotal), nombre: 'Test', apellidos: 'Guest',
+    correo: value.guest.email, telefono: value.guest.phone, nacionalidad: value.guest.nationality, documento: value.guest.document, tipoDocumento: 'DPI' });
+}
+test('lost response followed by changed dates or price stays bound to original attempt', async () => {
+  const b = browser(); try {
+    const params = guestParams(), id = saveBookingDraft(params).get('draft')!;
+    b.storage.set('vs-habitaciones', JSON.stringify(input().demo.rooms)); b.storage.set('vs-reservas', '[]'); b.storage.set('vs-huespedes', '[]');
+    let lost = true, posts = 0;
+    globalThis.fetch = async (_url, init) => { posts++; const response = await POST(request(JSON.parse(String(init?.body)))); if (lost) { lost = false; throw Error('lost'); } return response; };
+    await assert.rejects(confirmarReservaPublica(params, '', 'hotel', id));
+    const originalAttempt = readBookingDraft(id)!.attempt!;
+    const changed = new URLSearchParams(params); changed.set('salida', new Date(Date.parse(departure) + 86400000).toISOString().slice(0, 10)); changed.set('total', '1260');
+    await assert.rejects(confirmarReservaPublica(changed, '', 'hotel', id));
+    assert.equal(posts, 1); assert.deepEqual(readBookingDraft(id)!.attempt, originalAttempt);
+    assert.throws(() => updateDraftEmail(id, 'changed@example.test'));
+    assert.throws(() => saveBookingDraft(changed, id));
+    assert.equal(saveBookingDraft(params, id).get('draft'), id);
+    const { retryBookingAttempt } = await import('@/lib/publicBooking');
+    const recovered = await retryBookingAttempt(id);
+    assert.equal(recovered.compatibility.reservation.fechaSalida, departure); assert.equal(recovered.result.total, 840);
+    assert.equal(readBookingState().entries.length, 1); assert.equal(readBookingDraft(id)!.attempt!.code, recovered.result.code);
+  } finally { b.restore(); }
+});
+test('explicit server rejection allows correcting data without losing an unresolved attempt', async () => {
+  const b = browser(); try {
+    const params = guestParams(); params.set('total', '1'); const id = saveBookingDraft(params).get('draft')!;
+    b.storage.set('vs-habitaciones', JSON.stringify(input().demo.rooms)); b.storage.set('vs-reservas', '[]');
+    globalThis.fetch = async (_url, init) => POST(request(JSON.parse(String(init?.body))));
+    await assert.rejects(confirmarReservaPublica(params, '', 'hotel', id));
+    assert.equal(readBookingDraft(id)!.attempt, undefined); assert.equal(readBookingState().entries.length, 0);
+    params.set('total', '840'); const created = await confirmarReservaPublica(params, '', 'hotel', id);
+    assert.equal(created.result.total, 840); assert.equal(readBookingState().entries.length, 1);
+  } finally { b.restore(); }
+});
+test('known-result recovery reuses captured guest and never creates when server state is absent', async () => {
+  const b = browser(); try {
+    const params = guestParams(), id = saveBookingDraft(params).get('draft')!;
+    b.storage.set('vs-habitaciones', JSON.stringify(input().demo.rooms)); b.storage.set('vs-reservas', '[]'); b.storage.set('vs-huespedes', '[]');
+    globalThis.fetch = async (_url, init) => POST(request(JSON.parse(String(init?.body))));
+    const created = await confirmarReservaPublica(params, '', 'hotel', id);
+    const draft = JSON.parse(b.session.get('vs-public-booking-draft')!); const changed = new URLSearchParams(draft.params); changed.set('correo', 'changed@example.test'); draft.params = changed.toString();
+    b.session.set('vs-public-booking-draft', JSON.stringify(draft));
+    const recovered = await recoverBookingCopy(id, created.result.code);
+    assert.equal(recovered.codigo, created.result.code); assert.equal(leerHuespedes()[0].correo, 'test@example.test'); assert.equal(readBookingState().entries.length, 1);
+    rmSync(process.env.VILLA_SERENA_BFF_STATE_PATH!);
+    await assert.rejects(recoverBookingCopy(id, created.result.code)); assert.equal(readBookingState().entries.length, 0);
+  } finally { b.restore(); }
+});
+test('replaying a local copy repairs missing guest while preserving reservation actions', () => {
+  const b = browser(); try {
+    const created = createBooking(parseBooking(input()));
+    const existing = { ...created.compatibility.reservation, huespedId: 'local-guest', estado: 'cancelada' as const, motivoCancelacion: 'Keep reason' };
+    b.storage.set('vs-reservas', JSON.stringify([existing])); b.storage.set('vs-huespedes', '[]');
+    assert.deepEqual(copyBookingToLocal(created), existing);
+    assert.equal(leerHuespedes()[0].id, 'local-guest'); assert.deepEqual(leerReservas(), [existing]);
+  } finally { b.restore(); }
+});
+
+test('existing booking replays after its arrival date while a new past stay is rejected', async () => {
+  const { fechaHotel } = await import('@/lib/hotel');
+  const value = input(); value.arrival = fechaHotel(); value.departure = new Date(Date.parse(value.arrival) + 2 * 86400000).toISOString().slice(0, 10);
+  const created = createBooking(parseBooking(value));
+  const OriginalDate = Date;
+  class Tomorrow extends OriginalDate { constructor(value?: string | number) { super(value ?? OriginalDate.now() + 2 * 86400000); } }
+  globalThis.Date = Tomorrow as DateConstructor;
+  try {
+    assert.equal((await (await POST(request({ ...value, recoveryCode: created.result.code }))).json()).result.code, created.result.code);
+    assert.equal((await (await POST(request(value))).json()).result.code, created.result.code);
+    assert.equal((await POST(request({ ...value, requestId: randomUUID() }))).status, 400);
+    assert.equal(readBookingState().entries.length, 1);
+  } finally { globalThis.Date = OriginalDate; }
+});

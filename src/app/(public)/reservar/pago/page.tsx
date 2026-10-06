@@ -10,8 +10,9 @@ import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { money, usePublicRooms } from "@/data/publicRooms";
 import { leerPromociones } from "@/store/promotionStore";
 import { fechaHotel } from "@/lib/hotel";
-import { confirmarReservaPublica, copyBookingToLocal, PublicBookingError } from "@/lib/publicBooking";
-import { useBookingDraft } from "@/lib/bookingDraft";
+import { confirmarReservaPublica, copyBookingToLocal, PublicBookingError, retryBookingAttempt } from "@/lib/publicBooking";
+import { useBookingDraft, readBookingDraft } from "@/lib/bookingDraft";
+import type { BookingCreated } from "@/lib/bff/contracts/booking";
 export default function Pago() {
   const publicRooms = usePublicRooms();
   const ui = useUiText();
@@ -21,6 +22,7 @@ export default function Pago() {
   const draft = useBookingDraft(query.toString());
   const sp = draft ?? new URLSearchParams(query.toString());
   const busy = useRef(false);
+  const [canRecover, setCanRecover] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"hotel" | "card" | "bank">("hotel");
   const [saving, setSaving] = useState(false),
     [accepted, setAccepted] = useState(false),
@@ -44,6 +46,17 @@ export default function Pago() {
   },
     [sp]);
   const canPay = accepted && Boolean(draft) && paymentMethod === "hotel";
+  function showCreated(created: BookingCreated) {
+    try { copyBookingToLocal(created); } catch { /* Confirmation can recover the local copy. */ }
+    r.push(`/reservar/confirmacion?${new URLSearchParams({ code: created.result.code, draft: query.get("draft") || "" })}`);
+  }
+  async function recoverPrevious() {
+    if (!accepted || busy.current) return;
+    busy.current = true; setSaving(true); setPaymentError("");
+    try { showCreated(await retryBookingAttempt(query.get("draft") || "")); }
+    catch (error) { setPaymentError(bookingText(error instanceof PublicBookingError ? error.code : "saveFailed")); }
+    finally { busy.current = false; setSaving(false); }
+  }
   async function finish() {
     if (!canPay || busy.current)
       return;
@@ -58,10 +71,10 @@ export default function Pago() {
         promoPct > 0 ? promo.trim() : "",
         paymentMethod, query.get("draft") || "",
       );
-      try { copyBookingToLocal(created); } catch { /* Server result stays valid; confirmation can report local copy failure. */ }
-      r.push(`/reservar/confirmacion?${new URLSearchParams({ code: created.result.code, draft: query.get("draft") || "" })}`);
+      showCreated(created);
     }
     catch (error) {
+      setCanRecover(Boolean(readBookingDraft(query.get("draft") || "")?.attempt));
       setPaymentError(
         error instanceof PublicBookingError
           ? bookingText(error.code)
@@ -290,6 +303,9 @@ export default function Pago() {
         {paymentError && <p className="password-error" role="alert">
           {paymentError}
         </p>}
+        {canRecover && <button className="reserve-secondary" disabled={!accepted || saving} onClick={recoverPrevious}>
+          {en ? "Recover previous attempt" : "Recuperar intento anterior"}
+        </button>}
         <button className="reserve-primary" disabled={!canPay || saving} onClick={finish}>
           <UiText text="Confirmar reserva" />
         </button>

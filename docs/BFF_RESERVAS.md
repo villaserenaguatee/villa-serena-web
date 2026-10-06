@@ -54,6 +54,12 @@ archivo temporal privado y rename. Una lectura corrupta o escritura fallida devu
 503; nunca reinicia silenciosamente el estado. Misma clave y parámetros devuelve
 la misma reserva; parámetros distintos con esa clave devuelve 409. Los cambios de
 contexto demo no modifican un resultado ya guardado. No hay reintentos POST automáticos.
+El borrador conserva los parámetros y la clave del intento tras un fallo incierto.
+Cambiar datos, fechas o promoción no crea otra clave mientras ese intento siga
+pendiente o guardado. «Recuperar intento anterior» reenvía explícitamente los datos
+originales. Solo un rechazo explícito sin escritura permite corregir el intento.
+La recuperación por código incluye `recoveryCode`: si ese resultado no existe o
+pertenece a otro intento, falla sin crear una nueva reserva.
 
 El bloqueo exclusivo de archivo protege procesos que comparten el mismo archivo en
 un host; si está ocupado devuelve 503 para un reintento explícito. No garantiza

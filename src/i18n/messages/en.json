@@ -63,6 +63,7 @@
     "priceChanged": "The rate changed. Return to the results and try again.",
     "invalidPromo": "The discount code is invalid or inactive.",
     "saveFailed": "The reservation could not be saved. Please try again.",
+    "requestUncertain": "Recover the result of the previous attempt before changing the details or creating another reservation.",
     "paymentUnverified": "The payment could not be confirmed. The reservation was not created.",
     "paymentUnavailable": "Card payment is not available at this time."
   }

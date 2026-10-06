@@ -3,6 +3,8 @@ import type { Huesped, Promocion, Reserva, TipoHabitacion } from '@/lib/pms/type
 
 export type BookingInput = AvailabilityInput & {
   requestId: string;
+  // Recovery may return only this existing booking; it must never create one.
+  recoveryCode?: string;
   slug: string;
   roomId: string;
   guest: { name: string; email: string; phone: string; nationality: string;

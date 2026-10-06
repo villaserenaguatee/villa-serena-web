@@ -22,6 +22,7 @@ export function parseBooking(value: unknown): BookingInput {
   if (!record(value) || !record(value.guest)) throw new AvailabilityError('INVALID_BOOKING', 400);
   const g = value.guest;
   if (!text(value.requestId, 36) || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.requestId) ||
+    (value.recoveryCode !== undefined && (typeof value.recoveryCode !== 'string' || !/^RES-[A-F0-9]{32}$/.test(value.recoveryCode))) ||
     !text(value.slug, 100) || !text(value.roomId, 100) || !text(value.promoCode, 100, false) ||
     typeof value.expectedTotal !== 'number' || !Number.isFinite(value.expectedTotal) || value.expectedTotal < 0 ||
     !['hotel', 'card', 'bank'].includes(String(value.paymentMethod)) ||
@@ -29,7 +30,8 @@ export function parseBooking(value: unknown): BookingInput {
     !text(g.phone, 30) || !text(g.nationality, 60) || !text(g.document, 30) || !['DPI', 'passport'].includes(String(g.documentType))) {
     throw new AvailabilityError('INVALID_BOOKING', 400);
   }
-  const availability = parseAvailability(value);
+  // An existing attempt can be recovered after midnight; new stays are checked in the transaction.
+  const availability = parseAvailability(value, true);
   const demo = value.demo as Record<string, unknown>;
   if (!record(demo.rates) || types.some(type => typeof (demo.rates as Record<string, unknown>)[type] !== 'number' ||
     !Number.isFinite((demo.rates as Record<string, number>)[type]) || (demo.rates as Record<string, number>)[type] <= 0 ||
@@ -44,7 +46,7 @@ export function parseBooking(value: unknown): BookingInput {
     }
     return { id: p.id, nombre: p.nombre, codigo: p.codigo, activa: p.activa, descuentoPct: p.descuentoPct, desde: p.desde, hasta: p.hasta };
   });
-  return { ...availability, requestId: value.requestId, slug: value.slug, roomId: value.roomId,
+  return { ...availability, requestId: value.requestId, recoveryCode: value.recoveryCode as string | undefined, slug: value.slug, roomId: value.roomId,
     paymentMethod: value.paymentMethod as BookingInput['paymentMethod'], promoCode: value.promoCode.trim().toUpperCase(), expectedTotal: value.expectedTotal,
     guest: { name: g.name.trim(), email: g.email.trim(), phone: g.phone.trim(), nationality: g.nationality.trim(),
       document: g.document.trim(), documentType: g.documentType as BookingInput['guest']['documentType'] },
@@ -54,14 +56,17 @@ export function createBooking(input: BookingInput): BookingCreated {
   requireDemo();
   // Provider flows remain separate and unavailable; no inventory or guest is written.
   if (input.paymentMethod !== 'hotel') throw new AvailabilityError('PAYMENT_UNAVAILABLE', 503);
-  const { demo, ...attempt } = input;
+  const { demo, recoveryCode, ...attempt } = input;
   const fingerprint = createHash('sha256').update(JSON.stringify(attempt)).digest('hex');
   return bookingTransaction(state => {
     const previous = state.entries.find(e => e.requestId === input.requestId);
     if (previous) {
+      if (recoveryCode && previous.result.code !== recoveryCode) throw new AvailabilityError('BOOKING_NOT_FOUND', 404);
       if (previous.fingerprint !== fingerprint) throw new AvailabilityError('BOOKING_REQUEST_CONFLICT', 409);
       return { value: { result: previous.result, compatibility: previous.compatibility }, changed: false };
     }
+    if (recoveryCode) throw new AvailabilityError('BOOKING_NOT_FOUND', 404);
+    if (input.arrival < fechaHotel()) throw new AvailabilityError('INVALID_AVAILABILITY_QUERY', 400);
     const offer = publicRooms.find(o => o.slug === input.slug);
     if (!offer || input.adults + input.children > offer.capacity) throw new AvailabilityError('ROOM_UNAVAILABLE', 409);
     const type = tipoPublicoATipoHotel(offer.type);

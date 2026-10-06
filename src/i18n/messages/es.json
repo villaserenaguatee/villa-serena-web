@@ -63,6 +63,7 @@
     "priceChanged": "La tarifa cambió. Regresa a los resultados y vuelve a intentarlo.",
     "invalidPromo": "El código de descuento no es válido o está inactivo.",
     "saveFailed": "No se pudo guardar la reserva. Inténtalo de nuevo.",
+    "requestUncertain": "Hay un intento anterior cuyo resultado debes recuperar antes de cambiar los datos o crear otra reserva.",
     "paymentUnverified": "No se pudo confirmar el pago. No se creó la reserva.",
     "paymentUnavailable": "El pago con tarjeta no está disponible en este momento."
   }
