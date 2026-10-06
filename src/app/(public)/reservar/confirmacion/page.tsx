@@ -13,6 +13,7 @@ import type { HabitacionHotel, Huesped, Reserva } from "@/lib/pms/types";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
+import PublicPaymentStatus from "@/components/public/PublicPaymentStatus";
 function LegacyConfirmation() {
   const r = useRouter(), sp = useSearchParams();
   const t = useTranslations("publicBooking");
@@ -134,6 +135,7 @@ function LegacyConfirmation() {
 
 export default function Confirmacion() {
   const code = useSearchParams().get("code");
+  if (code?.startsWith('VS-')) return <PublicPaymentStatus code={code} />;
   return code ? <BffConfirmation code={code} /> : <LegacyConfirmation />;
 }
 function BffConfirmation({ code }: { code: string }) {
