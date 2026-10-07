@@ -9,7 +9,8 @@ import { HABITACIONES_CENTRALES } from '@/data/pms';
 import { TARIFAS_PREDETERMINADAS } from '@/store/tarifasStore';
 import { parseBooking, createBooking } from '@/lib/bff/publicBooking';
 import { readBookingState } from '@/lib/bff/demoBookingStore';
-import { POST } from '@/app/api/public/bookings/route';
+import { POST as legacyPublicPost } from '@/app/api/public/bookings/route';
+import { assertSameOrigin, publicError, readPublicJson } from '@/lib/bff/publicHttp';
 import { GET } from '@/app/api/public/bookings/[code]/route';
 import { POST as availability } from '@/app/api/public/availability/route';
 import { copyBookingToLocal, confirmarReservaPublica, recoverBookingCopy } from '@/lib/publicBooking';
@@ -35,7 +36,30 @@ function input(): BookingInput {
     demo: { rooms: [{ ...room, estado: 'disponible' }], holds: [], rates: { ...TARIFAS_PREDETERMINADAS }, promotions: [] } };
 }
 function request(body: unknown, headers = {}) { return new Request('http://localhost:3000/api/public/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) }); }
+// Pruebas de los servicios heredados y de recuperación de #13. Ya no son altas permitidas por la ruta pública.
+async function POST(request: Request) {
+  try {
+    assertSameOrigin(request);
+    return Response.json(createBooking(parseBooking(await readPublicJson(request))), { status: 201, headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) { return publicError(error); }
+}
 async function lookup(code: string) { return GET(new Request(`http://localhost:3000/api/public/bookings/${code}`), { params: Promise.resolve({ code }) }); }
+
+test('public legacy route rejects hotel creation and only recovers an already saved booking', async () => {
+  const value = input();
+  const rejected = await legacyPublicPost(request(value));
+  assert.equal(rejected.status, 409);
+  assert.equal((await rejected.json()).error.code, 'PUBLIC_CARD_ONLY');
+  assert.equal(readBookingState().entries.length, 0);
+  const saved = createBooking(parseBooking(value));
+  const recovered = await legacyPublicPost(request({ ...value, recoveryCode: saved.result.code }));
+  assert.equal(recovered.status, 201);
+  assert.equal((await recovered.json()).result.code, saved.result.code);
+  assert.equal(readBookingState().entries.length, 1);
+  assert.equal((await legacyPublicPost(request({ ...input(), recoveryCode: 'RES-00000000000000000000000000000000' }))).status, 404);
+  assert.equal(readBookingState().entries.length, 1);
+  assert.equal((await legacyPublicPost(request(value, { Origin: 'https://other.example' }))).status, 403);
+});
 
 test('valid hotel booking persists guest, reservation and attempt atomically without payments', async () => {
   const value = input(), before = structuredClone(value), response = await POST(request(value));

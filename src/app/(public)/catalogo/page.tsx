@@ -6,9 +6,10 @@ import { ArrowLeft, BedDouble, Users } from "lucide-react";
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
 import PublicLanguageToggle, { usePublicLanguage, } from "@/components/common/PublicLanguageToggle";
 import GuestSelector from "@/components/common/GuestSelector";
-import { money, usePublicRooms } from "@/data/publicRooms";
+import { money } from "@/data/publicRooms";
+import { usePublicCatalog } from "@/lib/usePublicCatalog";
 export default function Catalogo() {
-  const publicRooms = usePublicRooms();
+  const { rooms: publicRooms, loading, error } = usePublicCatalog();
   const ui = useUiText();
   const { en } = usePublicLanguage();
   const [draftCat, setDraftCat] = useState("Todas"),
@@ -33,7 +34,7 @@ export default function Catalogo() {
     (filters.floor === "Todos" || r.floor === Number(filters.floor)) &&
     r.price >= filters.min &&
     r.price <= filters.max),
-    [filters]);
+    [filters, publicRooms]);
   const apply = () => setFilters({
     cat: draftCat,
     guests: adults + children,
@@ -163,7 +164,9 @@ export default function Catalogo() {
         </div>
       </article>))}
     </section>
-    {filtered.length === 0 && (<div className="catalog-empty">
+    {loading && <p role="status">{en ? "Loading rooms..." : "Cargando habitaciones..."}</p>}
+    {error && <p role="alert">{error}</p>}
+    {!loading && !error && filtered.length === 0 && (<div className="catalog-empty">
       {en
         ? "No rooms match those criteria. Try another range or category."
         : "No encontramos habitaciones con esos criterios. Prueba otro rango o categoría."}
