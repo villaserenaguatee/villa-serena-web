@@ -8,7 +8,7 @@ export class TiempoReal {
   private listeners = new Map<Destino, Set<Listener>>();
   private subscriptions = new Map<Destino, StompSubscription>();
   private client?: Client;
-  constructor(private url: string | undefined, private makeClient = (config: ConstructorParameters<typeof Client>[0]) => new Client(config), private request: typeof fetch = fetch) {}
+  constructor(private url: string | undefined, private makeClient = (config: ConstructorParameters<typeof Client>[0]) => new Client(config), private request: typeof fetch = (input, init) => fetch(input, init)) {}
   subscribe(destino: Destino, listener: Listener) {
     if (!destinos.has(destino)) throw new Error('Destino de tiempo real no permitido.');
     const group = this.listeners.get(destino) ?? new Set<Listener>();

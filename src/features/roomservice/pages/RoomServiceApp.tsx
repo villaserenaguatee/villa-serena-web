@@ -77,7 +77,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
   },
     []);
   const empleadoRS = empleados.find(e => e.id === user?.id && e.activo);
-  const encargadoRS = empleadoRS?.nombre ?? 'Room Service';
+  const encargadoRS = conectado ? user?.name ?? 'Room Service' : empleadoRS?.nombre ?? 'Room Service';
   const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [pedidosLocales, setPedidos] = useState<Pedido[]>(() => conectado ? [] : leerPedidosPortal());
   const [menu, setMenu] = useState<ItemMenu[]>(() => conectado ? [] : leerMenu());
