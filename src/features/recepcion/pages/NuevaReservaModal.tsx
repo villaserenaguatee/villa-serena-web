@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ReceptionRequestError, getReceptionAvailability, getAvailableRoomReferences } from '@/lib/api/reception';
 import { Minus, Plus, Users } from 'lucide-react';
 import type { Huesped, HabitacionHotel, Reserva, TipoHabitacion, TipoDocumento, } from '@/lib/pms/types';
-import { nochesEntre, fechaHoyISO, fechaRelativaISO } from '@/data/pms';
-import { dinero, Campo, INPUT_CLS, CloseIcon, BedIcon, habitacionesDisponibles, } from '@/features/recepcion/pages/recUtils';
-import { publicRooms, publicRoomForHotelType, money } from '@/data/publicRooms';
+import { nochesEntre, fechaHoyISO, fechaRelativaISO, RESERVAS_INICIALES } from '@/data/pms';
+import { dinero, Campo, INPUT_CLS, CloseIcon } from '@/features/recepcion/pages/recUtils';
+import { publicRoomForHotelType } from '@/data/publicRooms';
 import { fotoHabitacion } from '@/store/roomStore';
 const TIPOS: TipoHabitacion[] = ['Standard', 'Superior', 'Deluxe', 'Suite Deluxe', 'Suite'];
 interface NuevoHuespedForm {
@@ -42,7 +43,7 @@ interface Props {
     ninos?: number;
     habitacionId: string | null;
     descuento?: number;
-  }) => Reserva;
+  }) => Promise<Reserva>;
 }
 export default function NuevaReservaModal({ huespedes, habitaciones, reservas, preset, onCerrar, onVerReserva, onCrearHuesped, onCrearReserva, }: Props) {
   const [modoNuevoHuesped, setModoNuevoHuesped] = useState(huespedes.length === 0);
@@ -53,6 +54,9 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
   const [usarHoraLlegada, setUsarHoraLlegada] = useState(false);
   const [revisando, setRevisando] = useState(false);
   const [reservaCreada, setReservaCreada] = useState<Reserva | null>(null);
+  const saving = useRef(false);
+  const [guardando, setGuardando] = useState(false);
+  const [resultadoDesconocido, setResultadoDesconocido] = useState(false);
   const [nh, setNh] = useState<NuevoHuespedForm>({
     nombre: '',
     apellidos: '',
@@ -76,13 +80,30 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
   const rangoValido = entrada < salida;
   const noches = rangoValido ? nochesEntre(entrada, salida) : 0;
   const seleccionPrevia = Boolean(preset?.habitacionId);
-  const disponibles = useMemo(() => rangoValido
-    ? habitacionesDisponibles(entrada, salida, habitaciones, reservas, {
-      personas: nPersonas,
-      tipo,
-    })
-    : [],
-    [rangoValido, entrada, salida, habitaciones, reservas, nPersonas, tipo]);
+  const [disponibles, setDisponibles] = useState<HabitacionHotel[]>([]);
+  const [consultando, setConsultando] = useState(true);
+  const [disponibilidadError, setDisponibilidadError] = useState('');
+  useEffect(() => {
+    const controller = new AbortController();
+    setDisponibles([]); setConsultando(true); setDisponibilidadError('');
+    getReceptionAvailability(entrada, salida, nPersonas, controller.signal).then(async options => {
+      const option = options.find(o => o.tipoHabitacion.nombre === tipo);
+      if (!option) return [];
+      const refs = await getAvailableRoomReferences(option.tipoHabitacion.id, entrada, salida, controller.signal);
+      // Conserva el bloqueo de reservas antiguas de este navegador sin recrearlas en el BFF.
+      const legacy = reservas.filter(r => !/^VS-[A-Z0-9]{6}$/.test(r.codigo) && !RESERVAS_INICIALES.some(seed => seed.id === r.id) &&
+        r.tipoHabitacion === tipo && !['cancelada', 'finalizada'].includes(r.estado) && r.fechaEntrada < salida && r.fechaSalida > entrada);
+      const rooms = habitaciones.filter(h => h.tipo === tipo && h.capacidad >= nPersonas && refs.some(r => r.numero === h.numero) && !legacy.some(r => r.habitacionId === h.id));
+      let peak = 0;
+      for (let day = entrada; day < salida; day = new Date(Date.parse(day) + 86400000).toISOString().slice(0, 10))
+        peak = Math.max(peak, legacy.filter(r => r.fechaEntrada <= day && r.fechaSalida > day).length);
+      if (option.habitacionesDisponibles <= peak) return [];
+      return rooms.map(h => ({ ...h, precioNoche: option.total / option.noches }));
+    }).then(rooms => { if (!controller.signal.aborted) setDisponibles(rooms); })
+      .catch(e => { if (!controller.signal.aborted) setDisponibilidadError(e instanceof Error ? e.message : 'No se pudo consultar la disponibilidad.'); })
+      .finally(() => { if (!controller.signal.aborted) setConsultando(false); });
+    return () => controller.abort();
+  }, [entrada, salida, nPersonas, tipo, habitaciones, reservas]);
   const habElegida = (reservaCreada ? habitaciones : disponibles).find(h => h.id === habitacionId) ?? null;
   const huespedesFiltrados = huespedes.filter(h => {
     const q = buscarHuesped.toLowerCase().trim();
@@ -92,8 +113,10 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
     return valor.toLowerCase().includes(q);
   });
   const disponiblesPiso = disponibles.filter(h => piso === 'Todos' || String(h.piso) === piso);
-  function guardar() {
+  async function guardar() {
+    if (saving.current || reservaCreada || resultadoDesconocido) return;
     const e: Record<string, string> = {};
+    if (consultando || disponibilidadError || !disponibles.length) e.habitacion = disponibilidadError || 'Comprueba la disponibilidad antes de guardar.';
     if (!rangoValido || entrada < fechaHoyISO() || noches > 30 || entrada > fechaRelativaISO(365))
       e.fechas = 'Revisa las fechas: desde hoy, máximo 30 noches y entrada dentro de un año.';
     let idHuesped = huespedId;
@@ -127,8 +150,10 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
       });
       idHuesped = creado.id;
     }
+    saving.current = true;
+    setGuardando(true);
     try {
-    const creada = onCrearReserva({
+    const creada = await onCrearReserva({
       huespedId: idHuesped,
       tipoHabitacion: tipo,
       fechaEntrada: entrada,
@@ -141,12 +166,18 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
     });
     setReservaCreada(creada);
     setRevisando(false);
-    } catch (error) { setErrores({ reserva: error instanceof Error ? error.message : 'No se pudo guardar la reserva.' }); }
+    } catch (error) {
+      const uncertain = !(error instanceof ReceptionRequestError) || error.status >= 500;
+      setResultadoDesconocido(uncertain);
+      setErrores({ reserva: uncertain
+        ? 'No se pudo comprobar el resultado. Consulta las reservas por el huésped antes de crear otra; la solicitud no se repetirá automáticamente.'
+        : error.message });
+    } finally { saving.current = false; setGuardando(false); }
   }
   return (<div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4">
     <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
 
-    <div className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[780px] max-h-[90vh] overflow-y-auto">
+    <div role="dialog" aria-modal="true" aria-label="Nueva reserva" className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[780px] max-h-[90vh] overflow-y-auto">
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#E5E0D8] sticky top-0 bg-white z-10">
         <h2 className="text-[20px] font-semibold text-[#18345C]">Nueva reserva</h2>
         <button onClick={onCerrar} className="text-[#AEBCC1] hover:text-[#1F2933] p-1">
@@ -155,9 +186,11 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
       </div>
 
       <div className="px-5 py-4 space-y-4">
-        <p className="text-sm text-[#52677F]">Se paga en el check-out · modo demo local.</p>
+        <p className="text-sm text-[#52677F]">Se paga en el check-out · datos de prueba mediante el BFF.</p>
         {modoNuevoHuesped && nh.correo && huespedes.some(h => h.correo.trim().toLowerCase() === nh.correo.trim().toLowerCase()) && <p role="status">Ese correo ya existe. Se usará el perfil registrado sin modificarlo.</p>}
-        {Object.entries(errores).map(([key, message]) => <p key={key} role="alert" className="text-sm text-[#991B1B]">{message}</p>)}
+        {!revisando && Object.entries(errores).map(([key, message]) => <p key={key} role="alert" className="text-sm text-[#991B1B]">{message}</p>)}
+        {consultando && <p role="status">Consultando disponibilidad…</p>}
+        {disponibilidadError && <p role="alert" className="text-sm text-[#991B1B]">{disponibilidadError}</p>}
 
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -218,10 +251,10 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
             })()}
           </div>) : (<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border border-[#E5E0D8] rounded-xl p-4">
             <Campo label="Nombre" error={errores.nombre}>
-              <input type="text" value={nh.nombre} onChange={e => setNh(f => ({ ...f, nombre: e.target.value }))} className={`${INPUT_CLS} !h-10 !py-2`} />
+              <input aria-label="Nombre" type="text" value={nh.nombre} onChange={e => setNh(f => ({ ...f, nombre: e.target.value }))} className={`${INPUT_CLS} !h-10 !py-2`} />
             </Campo>
             <Campo label="Apellidos">
-              <input type="text" value={nh.apellidos} onChange={e => setNh(f => ({ ...f, apellidos: e.target.value }))} className={INPUT_CLS} />
+              <input aria-label="Apellidos" type="text" value={nh.apellidos} onChange={e => setNh(f => ({ ...f, apellidos: e.target.value }))} className={INPUT_CLS} />
             </Campo>
             <Campo label="Tipo de documento">
               <select value={nh.tipoDocumento} onChange={e => setNh(f => ({ ...f, tipoDocumento: e.target.value as TipoDocumento }))} className={INPUT_CLS}>
@@ -231,6 +264,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
             </Campo>
             <Campo label="Número de documento" error={errores.documento}>
               <input
+                aria-label="Número de documento"
                 type="text"
                 value={nh.documento}
                 onChange={e => setNh(f => ({ ...f, documento: e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, f.tipoDocumento === 'DPI' ? 13 : 20) }))}
@@ -239,7 +273,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
                 className={INPUT_CLS} />
             </Campo>
             <Campo label="Correo electrónico">
-              <input type="email" value={nh.correo} onChange={e => setNh(f => ({ ...f, correo: e.target.value }))} className={INPUT_CLS} />
+              <input aria-label="Correo electrónico" type="email" value={nh.correo} onChange={e => setNh(f => ({ ...f, correo: e.target.value }))} className={INPUT_CLS} />
             </Campo>
             <Campo label="Teléfono" error={errores.telefono}>
               <div className="flex gap-3">
@@ -265,6 +299,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
                   <option value="+39">+39</option>
                 </select>
                 <input
+                  aria-label="Teléfono"
                   type="text"
                   value={nh.telefono}
                   onChange={e => setNh(f => {
@@ -277,7 +312,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
               </div>
             </Campo>
             <Campo label="Nacionalidad">
-              <input value={nh.nacionalidad} onChange={e => setNh(f => ({ ...f, nacionalidad: e.target.value }))} className={INPUT_CLS} />
+              <input aria-label="Nacionalidad" value={nh.nacionalidad} onChange={e => setNh(f => ({ ...f, nacionalidad: e.target.value }))} className={INPUT_CLS} />
             </Campo>
             <div className="rounded-xl border border-[#EEE7DA] p-4">
               <label className="flex items-center justify-between gap-3 cursor-pointer">
@@ -337,10 +372,10 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
         {!seleccionPrevia && <>
           <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
             <Campo label="Entrada">
-              <input type="date" value={entrada} onChange={e => setEntrada(e.target.value)} className={INPUT_CLS} />
+              <input aria-label="Entrada" type="date" value={entrada} onChange={e => setEntrada(e.target.value)} className={INPUT_CLS} />
             </Campo>
             <Campo label="Salida">
-              <input type="date" value={salida} min={entrada} onChange={e => setSalida(e.target.value)} className={INPUT_CLS} />
+              <input aria-label="Salida" type="date" value={salida} min={entrada} onChange={e => setSalida(e.target.value)} className={INPUT_CLS} />
             </Campo>
             <div className="sm:col-span-2">
               <Campo label="Huéspedes">
@@ -456,7 +491,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
           <div className="text-center">
             <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#EAF7EE] text-3xl text-[#188247]">✓</span>
             <h2 className="mt-4 text-3xl font-semibold text-[#18345C]">Reserva confirmada</h2>
-            <p className="mt-1 text-[#71839B]">Reserva guardada en modo demo local. Se paga en el check-out.</p>
+            <p className="mt-1 text-[#71839B]">Reserva guardada con datos de prueba mediante el BFF. Se paga en el check-out.</p>
           </div>
           <div className="mt-7 grid gap-5 md:grid-cols-[.9fr_1.1fr]">
             <img
@@ -472,12 +507,12 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
                 <ResumenFinal label="Entrada" valor={entrada} />
                 <ResumenFinal label="Salida" valor={salida} />
                 <ResumenFinal label="Ocupación" valor={`${adultos} adultos · ${ninos} niños`} />
-                <ResumenFinal label="Total estimado demo" valor={dinero((habElegida?.precioNoche ?? disponibles[0]?.precioNoche ?? 0) * noches)} />
+                <ResumenFinal label="Total estimado demo" valor={dinero((reservaCreada.precioNoche ?? 0) * noches)} />
                 <ResumenFinal label="Pago" valor="En el check-out" />
               </div>
             </section>
           </div>
-          <div className="mt-5 rounded-xl border border-[#9BC5F2] bg-[#F1F7FE] p-4 text-sm text-[#52677F]">El envío de correo y la conexión al API están pendientes. Esta reserva solo se guarda en este navegador.</div>
+          <div className="mt-5 rounded-xl border border-[#9BC5F2] bg-[#F1F7FE] p-4 text-sm text-[#52677F]">El envío de correo y la conexión real al API están pendientes. Esta reserva de prueba queda disponible en el calendario y la búsqueda.</div>
           <div className="mt-6 flex flex-wrap justify-end gap-2">
             <button onClick={onCerrar} className="min-h-11 rounded-lg border border-[#18345C] px-4 py-2.5 text-sm font-semibold text-[#18345C]">Hacer otra reserva</button>
             <button onClick={() => onVerReserva(reservaCreada.id)} className="min-h-11 rounded-lg bg-[#18345C] px-4 py-2.5 text-sm font-semibold text-white">Ver reserva / realizar check-in</button>
@@ -563,7 +598,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
             <p className="text-sm text-[#6B7280]">La reserva puede crearse ahora y asignar la habitación más tarde.</p>
           </div>}<div className="flex justify-end gap-3 mt-3">
               <button onClick={() => setRevisando(false)} className="px-4 py-2 border rounded-md text-sm">Editar</button>
-              <button onClick={guardar} className="px-4 py-2 bg-[#18345C] text-white rounded-md text-sm font-semibold">Confirmar reserva</button>
+              <button onClick={guardar} disabled={guardando || resultadoDesconocido || consultando} className="px-4 py-2 bg-[#18345C] text-white rounded-md text-sm font-semibold disabled:opacity-50">{guardando ? 'Guardando…' : 'Confirmar reserva'}</button>
             </div></>;
         })()}
       </div>}

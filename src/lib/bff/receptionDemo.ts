@@ -5,14 +5,18 @@ import { randomUUID } from 'node:crypto';
 import { HABITACIONES_CENTRALES, HUESPEDES_INICIALES, RESERVAS_INICIALES, fechaRelativaISO } from '@/data/pms';
 import { fechaHotel } from '@/lib/hotel';
 import { validReceptionDate as validPublicDate } from '@/lib/receptionValidation';
+import { TARIFAS_PREDETERMINADAS } from '@/store/tarifasStore';
+import type { TipoHabitacion } from '@/lib/pms/types';
+import type { components } from '@/lib/api/schema';
 import { canAssign, canCancel, canMarkDirty, isExternal } from '@/lib/receptionPresentation';
 import type { CancellationPreview, ReservationDetail, ReservationPage, ReservationSummary, RoomReference, RoomState } from './contracts/reception';
+import type { GuestData, RegisteredGuest, ReceptionCreation, ReceptionCalendar } from './contracts/reception';
 
 export class ReceptionDemoError extends Error {
   constructor(public codigo: string, public status: number, message: string) { super(message); }
 }
 type Entry = { detail: ReservationDetail; paid: number; payment: 'TARJETA' | 'CANAL' | null; refunded: boolean; refundRejected: boolean; account: 'ABIERTA' | 'CERRADA' };
-export type ReceptionState = { version: 1; entries: Entry[]; rooms: RoomState[]; audit: { action: string; code: string; at: string; responsible: string }[] };
+export type ReceptionState = { version: 1; entries: Entry[]; rooms: RoomState[]; guests?: ReservationDetail['huesped'][]; audit: { action: string; code: string; at: string; responsible: string }[] };
 const types = ['Standard', 'Superior', 'Deluxe', 'Suite Deluxe', 'Suite'];
 const active = (r: ReservationDetail) => ['PENDIENTE_PAGO', 'CONFIRMADA', 'EN_ESTADIA'].includes(r.estado);
 const path = () => process.env.VILLA_SERENA_RECEPTION_DEMO_PATH ?? resolve(process.cwd(), '.data/reception-demo.json');
@@ -62,7 +66,10 @@ export function readReceptionState(): ReceptionState {
     if (state?.version !== 1 || !Array.isArray(state.entries) || !Array.isArray(state.rooms) || !Array.isArray(state.audit) ||
       state.entries.some(e => !e?.detail || !/^VS-[A-Z0-9]{6}$/.test(e.detail.codigo) || !validPublicDate(e.detail.entrada) || !validPublicDate(e.detail.salida) || e.detail.salida <= e.detail.entrada || !Array.isArray(e.detail.historial) || !Number.isFinite(e.paid) || e.paid < 0 || !['ABIERTA', 'CERRADA'].includes(e.account)) ||
       state.rooms.some(r => !Number.isInteger(r?.id) || !['LIBRE', 'OCUPADA'].includes(r.ocupacion) || !['LIMPIA', 'SUCIA', 'EN_LIMPIEZA', 'FUERA_DE_SERVICIO'].includes(r.condicion)) ||
-      new Set(state.entries.map(e => e.detail.codigo)).size !== state.entries.length || new Set(state.rooms.map(r => r.id)).size !== state.rooms.length) throw new Error('Estado inválido');
+      new Set(state.entries.map(e => e.detail.codigo)).size !== state.entries.length || new Set(state.rooms.map(r => r.id)).size !== state.rooms.length ||
+      (state.guests !== undefined && (!Array.isArray(state.guests) || state.guests.some(g => !Number.isInteger(g?.id) || g.id < 1 ||
+        ['nombreCompleto', 'correo', 'telefono', 'nacionalidad', 'numeroDocumento'].some(k => typeof g[k as keyof typeof g] !== 'string' || !String(g[k as keyof typeof g]).trim()) || !['DPI', 'PASAPORTE'].includes(g.tipoDocumento)) ||
+        new Set(state.guests.map(g => g.id)).size !== state.guests.length || new Set(state.guests.map(g => g.correo.toLowerCase())).size !== state.guests.length))) throw new Error('Estado inválido');
     return state;
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return receptionSeed();
@@ -86,6 +93,100 @@ export function receptionTransaction<T>(action: (state: ReceptionState) => T): T
 }
 const find = (state: ReceptionState, code: string) => state.entries.find(e => e.detail.codigo === code) ?? fail('NO_ENCONTRADO', 404, 'No se encontró la reserva.');
 export const receptionDetail = (code: string) => structuredClone(find(readReceptionState(), code).detail);
+
+// El registro opcional permite leer los archivos de demostración anteriores sin reiniciarlos.
+function registeredGuests(state: ReceptionState): ReservationDetail['huesped'][] {
+  return state.guests ??= HUESPEDES_INICIALES.map((g, i) => ({ id: i + 1, nombreCompleto: g.nombre,
+    correo: g.correo, telefono: g.telefono, nacionalidad: g.nacionalidad,
+    tipoDocumento: g.tipoDocumento === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: g.documento }));
+}
+export function registerReceptionGuest(input: Record<string, unknown>): RegisteredGuest {
+  const keys = ['nombreCompleto', 'correo', 'telefono', 'nacionalidad', 'tipoDocumento', 'numeroDocumento'];
+  const limits: Record<string, number> = { nombreCompleto: 150, correo: 150, telefono: 30, nacionalidad: 60, tipoDocumento: 9, numeroDocumento: 30 };
+  if (Object.keys(input).some(k => !keys.includes(k)) || keys.some(k => typeof input[k] !== 'string' || !(input[k] as string).trim() || (input[k] as string).length > limits[k]) ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(input.correo)) || !['DPI', 'PASAPORTE'].includes(String(input.tipoDocumento)))
+    fail('DATOS_INVALIDOS', 400, 'Completa los seis datos del huésped y un correo válido.');
+  return receptionTransaction(state => {
+    const guests = registeredGuests(state), correo = String(input.correo).trim().toLowerCase();
+    const existing = guests.find(g => g.correo.toLowerCase() === correo);
+    if (existing) return { yaExistia: true, huesped: structuredClone(existing) };
+    const data = Object.fromEntries(keys.map(k => [k, String(input[k]).trim()])) as GuestData;
+    const huesped = { ...data, correo, id: Math.max(0, ...guests.map(g => g.id)) + 1 };
+    guests.push(huesped); return { yaExistia: false, huesped: structuredClone(huesped) };
+  });
+}
+export function createReceptionReservation(input: Record<string, unknown>, responsible: string): ReservationDetail {
+  const keys = ['huespedId', 'tipoHabitacionId', 'entrada', 'salida', 'numeroHuespedes', 'habitacionId'];
+  if (Object.keys(input).some(k => !keys.includes(k)) || !validPublicDate(input.entrada) || !validPublicDate(input.salida) ||
+    input.entrada < fechaHotel() || input.entrada > fechaRelativaISO(365) || input.salida <= input.entrada ||
+    (Date.parse(input.salida) - Date.parse(input.entrada)) / 86400000 > 30 ||
+    !Number.isInteger(input.numeroHuespedes) || Number(input.numeroHuespedes) < 1 || Number(input.numeroHuespedes) > 5 ||
+    !Number.isInteger(input.huespedId) || Number(input.huespedId) < 1 || !Number.isInteger(input.tipoHabitacionId) || Number(input.tipoHabitacionId) < 1 ||
+    (input.habitacionId != null && (!Number.isInteger(input.habitacionId) || Number(input.habitacionId) < 1)))
+    fail('DATOS_INVALIDOS', 400, 'Revisa las fechas, el huésped y la cantidad de huéspedes.');
+  const data = input as ReceptionCreation;
+  return receptionTransaction(state => {
+    const guest = registeredGuests(state).find(g => g.id === data.huespedId);
+    const type = state.rooms.find(r => r.tipoHabitacion.id === data.tipoHabitacionId)?.tipoHabitacion;
+    if (!guest || !type) fail('NO_ENCONTRADO', 404, 'No se encontró el huésped o el tipo de habitación.');
+    const candidates = state.rooms.filter(r => r.tipoHabitacion.id === type.id && r.condicion !== 'FUERA_DE_SERVICIO' &&
+      HABITACIONES_CENTRALES.find(h => h.numero === r.numero)!.capacidad >= data.numeroHuespedes);
+    // Cuenta reservas asignadas y sin asignar por noche, no solo habitaciones locales libres.
+    for (let day = data.entrada; day < data.salida;) {
+      const reservations = state.entries.filter(e => active(e.detail) && e.detail.tipoHabitacion.id === type.id && e.detail.entrada <= day && e.detail.salida > day);
+      const available = candidates.filter(r => !reservations.some(e => e.detail.habitacion?.id === r.id)).length;
+      if (available <= reservations.filter(e => !e.detail.habitacion).length) fail('SIN_DISPONIBILIDAD', 409, 'Ya no hay disponibilidad para esas fechas y capacidad.');
+      day = new Date(Date.parse(day) + 86400000).toISOString().slice(0, 10);
+    }
+    const room = data.habitacionId == null ? null : candidates.find(r => r.id === data.habitacionId);
+    if (data.habitacionId != null && (!room || state.entries.some(e => active(e.detail) && e.detail.habitacion?.id === room.id && e.detail.entrada < data.salida && e.detail.salida > data.entrada)))
+      fail('HABITACION_NO_DISPONIBLE', 409, 'La habitación seleccionada ya no está disponible.');
+    let codigo: string;
+    do { codigo = `VS-${randomUUID().replaceAll('-', '').slice(0, 6).toUpperCase()}`; } while (state.entries.some(e => e.detail.codigo === codigo));
+    const noches = (Date.parse(data.salida) - Date.parse(data.entrada)) / 86400000;
+    const total = Math.round(noches * TARIFAS_PREDETERMINADAS[type.nombre as TipoHabitacion] * 100) / 100;
+    const now = new Date().toISOString();
+    const detail: ReservationDetail = { codigo, estado: 'CONFIRMADA', canal: 'RECEPCION', identificadorExterno: null,
+      entrada: data.entrada, salida: data.salida, noches, numeroHuespedes: data.numeroHuespedes, tipoHabitacion: type,
+      habitacion: room ? reference(room) : null, huesped: structuredClone(guest), huespedesAdicionales: [], total,
+      saldoPendiente: total, creadaEn: now, historial: [{ estadoAnterior: null, estadoNuevo: 'CONFIRMADA', responsable: responsible, fechaHora: now, motivo: null }] };
+    state.entries.push({ detail, paid: 0, payment: null, refunded: false, refundRejected: false, account: 'ABIERTA' });
+    state.audit.push({ action: 'CREAR_RESERVA', code: codigo, at: now, responsible });
+    return structuredClone(detail);
+  });
+}
+export function receptionCalendar(query: URLSearchParams): ReceptionCalendar {
+  const desde = query.get('desde'), hasta = query.get('hasta');
+  if (!validPublicDate(desde) || !validPublicDate(hasta) || hasta < desde) fail('DATOS_INVALIDOS', 400, 'Revisa las fechas del calendario.');
+  const state = readReceptionState();
+  return { desde, hasta,
+    grupos: types.map((nombre, i) => ({ tipoHabitacion: { id: i + 1, nombre }, habitaciones: state.rooms.filter(r => r.tipoHabitacion.id === i + 1).map(reference) })),
+    reservas: state.entries.filter(e => e.detail.estado !== 'CANCELADA' && e.detail.entrada <= hasta && e.detail.salida > desde).map(({ detail: d }) => ({
+      codigo: d.codigo, huespedPrincipal: d.huesped.nombreCompleto, entrada: d.entrada, salida: d.salida, estado: d.estado, canal: d.canal,
+      tipoHabitacionId: d.tipoHabitacion.id, habitacionId: d.habitacion?.id ?? null })) };
+}
+export function receptionAvailability(query: URLSearchParams): components['schemas']['OpcionDisponibleRecepcion'][] {
+  const entrada = query.get('entrada'), salida = query.get('salida'), huespedes = Number(query.get('huespedes'));
+  if (!validPublicDate(entrada) || !validPublicDate(salida) || entrada < fechaHotel() || entrada > fechaRelativaISO(365) ||
+    salida <= entrada || (Date.parse(salida) - Date.parse(entrada)) / 86400000 > 30 || !Number.isInteger(huespedes) || huespedes < 1 || huespedes > 5)
+    fail('DATOS_INVALIDOS', 400, 'Revisa las fechas y la cantidad de huéspedes.');
+  const state = readReceptionState(), noches = (Date.parse(salida) - Date.parse(entrada)) / 86400000;
+  return types.flatMap((nombre, i) => {
+    const rooms = state.rooms.filter(r => r.tipoHabitacion.id === i + 1 && r.condicion !== 'FUERA_DE_SERVICIO' && HABITACIONES_CENTRALES.find(h => h.numero === r.numero)!.capacidad >= huespedes);
+    let remaining = rooms.length;
+    for (let day = entrada; day < salida; day = new Date(Date.parse(day) + 86400000).toISOString().slice(0, 10)) {
+      const holds = state.entries.filter(e => active(e.detail) && e.detail.tipoHabitacion.id === i + 1 && e.detail.entrada <= day && e.detail.salida > day);
+      remaining = Math.min(remaining, rooms.filter(r => !holds.some(e => e.detail.habitacion?.id === r.id)).length - holds.filter(e => !e.detail.habitacion).length);
+    }
+    if (remaining <= 0) return [];
+    const price = TARIFAS_PREDETERMINADAS[nombre as TipoHabitacion];
+    return [{ tipoHabitacion: { id: i + 1, nombre }, capacidad: Math.max(...rooms.map(r => HABITACIONES_CENTRALES.find(h => h.numero === r.numero)!.capacidad)), habitacionesDisponibles: remaining,
+      noches, total: Math.round(price * noches * 100) / 100, desglose: Array.from({ length: noches }, (_, n) => {
+        const date = new Date(Date.parse(entrada) + n * 86400000);
+        return { fecha: date.toISOString().slice(0, 10), precio: price, temporada: null, finDeSemana: [5, 6].includes(date.getUTCDay()) };
+      }) }];
+  });
+}
 function cancellable(e: Entry) {
   if (isExternal(e.detail)) fail('CANAL_NO_CANCELABLE', 409, 'Las reservas de canal no se cancelan desde el sistema.');
   if (!canCancel(e.detail)) fail('ESTADO_INVALIDO', 409, 'Solo se pueden cancelar reservas confirmadas.');

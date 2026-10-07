@@ -1,5 +1,5 @@
 import CalendarioReservas from './CalendarioReservas';
-import { crearReservaRecepcionDemo } from '@/store/receptionReservation';
+import { createReservation, registerGuest, getRooms } from '@/lib/api/reception';
 import { asignarHabitacionReserva } from '@/store/reservationAssignment';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -274,6 +274,11 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       if (parts[2]?.startsWith('VS-')) setBffCode(decodeURIComponent(parts[2]));
     } else if (parts[1] === 'habitaciones') setSeccion('habitaciones');
   }, [pathname]);
+  function abrirReserva(id: string) {
+    const code = reservas.find(r => r.id === id)?.codigoBff ?? (id.startsWith('bff-reservation-') ? id.slice('bff-reservation-'.length) : undefined);
+    if (code) { setReservaAbiertaId(null); setBffCode(code); }
+    else setReservaAbiertaId(id);
+  }
   function existingAction(detail: ReservationDetail, action: ExistingAction) {
     setLegacyAction(action);
     const id = prepareExistingReceptionScreen(detail);
@@ -336,7 +341,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
     setHuespedes(leerHuespedes());
     return nuevo;
   }
-  function crearReserva(d: {
+  async function crearReserva(d: {
     huespedId: string;
     tipoHabitacion: TipoHabitacion;
     fechaEntrada: string;
@@ -346,8 +351,19 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
     ninos?: number;
     habitacionId: string | null;
     descuento?: number;
-  }): Reserva {
-    const nueva = crearReservaRecepcionDemo(d);
+  }): Promise<Reserva> {
+    const guest = leerHuespedes().find(h => h.id === d.huespedId);
+    if (!guest) throw new Error('Selecciona un huésped registrado.');
+    const registered = await registerGuest({ nombreCompleto: guest.nombre, correo: guest.correo, telefono: guest.telefono,
+      nacionalidad: guest.nacionalidad, tipoDocumento: guest.tipoDocumento === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: guest.documento });
+    const rooms = await getRooms();
+    const type = rooms.find(r => r.tipoHabitacion.nombre === d.tipoHabitacion)?.tipoHabitacion;
+    const room = d.habitacionId ? rooms.find(r => 'hh-' + r.numero === d.habitacionId) : null;
+    if (!type || (d.habitacionId && !room)) throw new Error('Revisa la habitación seleccionada.');
+    const detail = await createReservation({ huespedId: registered.huesped.id, tipoHabitacionId: type.id,
+      entrada: d.fechaEntrada, salida: d.fechaSalida, numeroHuespedes: d.personas, habitacionId: room?.id ?? null });
+    const id = prepareExistingReceptionScreen(detail);
+    const nueva = upsertReserva({ ...leerReservas().find(r => r.id === id)!, adultos: d.adultos, ninos: d.ninos });
     setReservas(leerReservas());
     setHabitaciones(aplicarTarifasHabitaciones(leerHabitaciones()));
     return nueva;
@@ -594,7 +610,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
         </div>
 
         <div className="flex-1 flex overflow-hidden relative">
-          {seccion === 'dia' ? <div className="flex-1 overflow-y-auto"><div className="p-4"><p className="mb-2 text-sm text-[#71839B]">Modo demo local · API de Recepción pendiente</p><Link href="/panel/recepcion/reservas/VS-DEMO-4C/cuenta" className="mb-3 inline-block text-sm font-semibold text-[#18345C] underline">Cuenta, check-out y factura de demostración</Link><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={setReservaAbiertaId} onNueva={() => setNuevaReserva({ open: true })} /></div>{contenido}</div> : contenido}
+          {seccion === 'dia' ? <div className="flex-1 overflow-y-auto"><div className="p-4"><p className="mb-2 text-sm text-[#71839B]">Datos de prueba · reservas nuevas mediante el BFF</p><Link href="/panel/recepcion/reservas/VS-DEMO-4C/cuenta" className="mb-3 inline-block text-sm font-semibold text-[#18345C] underline">Cuenta, check-out y factura de demostración</Link><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={abrirReserva} onNueva={() => setNuevaReserva({ open: true })} /></div>{contenido}</div> : contenido}
         </div>
 
         <div className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
@@ -659,7 +675,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       onVerReserva={id => {
         setNuevaReserva({ open: false });
         setSeccion('reservas');
-        setReservaAbiertaId(id);
+        abrirReserva(id);
       }}
       onCrearHuesped={crearHuesped}
       onCrearReserva={crearReserva} />)}

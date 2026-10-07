@@ -1,5 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getCalendar } from '@/lib/api/reception';
+import type { ReceptionCalendar } from '@/lib/bff/contracts/reception';
+import { calendarWithBff } from '@/features/recepcion/receptionCalendarLink';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Reserva, Huesped, HabitacionHotel } from '@/lib/pms/types';
 import { fechaHoyISO } from '@/data/pms';
@@ -30,8 +33,21 @@ export default function CalendarioReservas({ reservas, huespedes, habitaciones, 
   const [view, setView] = useState<'week' | 'month'>('month');
   const [date, setDate] = useState(fechaHoyISO());
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = reservas.find(r => r.id === selectedId);
   const days = calendarDays(date, view);
+  const [data, setData] = useState<ReceptionCalendar | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const desde = days[0], hasta = days.at(-1)!;
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true); setError('');
+    getCalendar(desde, hasta, controller.signal).then(value => { if (!controller.signal.aborted) setData(value); })
+      .catch(e => { if (!controller.signal.aborted) { setData(null); setError(e instanceof Error ? e.message : 'No se pudo consultar el calendario.'); } })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [desde, hasta, reservas]);
+  const merged = data ? calendarWithBff(data, reservas, huespedes) : { reservas, huespedes };
+  const selectedReservation = merged.reservas.find(r => r.id === selectedId);
   return <section aria-label="Calendario de reservas" className="rounded-xl border border-[#E5E0D8] bg-white p-4 text-[#18345C]">
     <div className="mb-3 flex flex-wrap items-center gap-2">
       <h2 className="mr-auto text-xl font-semibold">Calendario de reservas</h2>
@@ -44,12 +60,14 @@ export default function CalendarioReservas({ reservas, huespedes, habitaciones, 
       </select>
     </div>
     <p aria-live="polite" className="mb-2 text-sm">{days[0]} — {days.at(-1)}</p>
-    <ReceptionTimeline date={days[0]} view={view} reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onSelect={r => setSelectedId(r.id)} />
+    {loading && <p role="status" className="mb-2 text-sm">Consultando reservas…</p>}
+    {error && <p role="alert" className="mb-2 text-sm text-red-800">{error} Se conservan las reservas locales.</p>}
+    <ReceptionTimeline date={days[0]} view={view} reservas={merged.reservas} huespedes={merged.huespedes} habitaciones={habitaciones} onSelect={r => setSelectedId(r.id)} />
     <div className="mt-3 flex flex-wrap gap-2 text-xs">{Object.entries(RESERVA_META).filter(([key]) => key !== 'cancelada').map(([key, meta]) => <span key={key} className={`rounded px-2 py-1 ${meta.chip}`}>{meta.label}</span>)}</div>
-    {selected && <div className="mt-3 rounded-lg border p-3" role="region" aria-label="Resumen de reserva">
-      <p>{selected.codigo} · {huespedes.find(h => h.id === selected.huespedId)?.nombre}</p>
-      <p>{selected.fechaEntrada} → {selected.fechaSalida} · {RESERVA_META[selected.estado].label} · {selected.origenReserva === 'publica' ? 'Web' : 'Recepción'}</p>
-      <button className="mr-4 mt-2 underline" onClick={() => onAbrir(selected.id)}>Ver detalle</button><button onClick={() => setSelectedId(null)}>Cerrar resumen</button>
+    {selectedReservation && <div className="mt-3 rounded-lg border p-3" role="region" aria-label="Resumen de reserva">
+      <p>{selectedReservation.codigo} · {merged.huespedes.find(h => h.id === selectedReservation.huespedId)?.nombre}</p>
+      <p>{selectedReservation.fechaEntrada} → {selectedReservation.fechaSalida} · {RESERVA_META[selectedReservation.estado].label} · {data?.reservas.find(r => r.codigo === selectedReservation.codigo)?.canal ?? (selectedReservation.origenReserva === 'publica' ? 'Web' : 'Recepción')}</p>
+      <button className="mr-4 mt-2 underline" onClick={() => onAbrir(selectedReservation.id)}>Ver detalle</button><button onClick={() => setSelectedId(null)}>Cerrar resumen</button>
     </div>}
   </section>;
 }

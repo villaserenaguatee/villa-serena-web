@@ -86,6 +86,25 @@ Permite consultar habitaciones, revisar disponibilidad y completar el flujo de r
 
 Gestiona vista del día, reservas, disponibilidad, habitaciones, huéspedes, solicitudes, incidencias, reportes, objetos olvidados y chat. Se conecta con Limpieza al realizar check-out, con Mantenimiento al reportar incidencias y con el Portal del huésped para mantener reservas y actividad sincronizadas.
 
+Las reservas nuevas del calendario se crean mediante el BFF (`POST /api/huespedes` y
+`POST /api/reservas`). Disponibilidad, calendario, búsqueda y detalle consultan las
+rutas de Recepción del contrato. En modo de prueba quedan en
+`.data/reception-demo.json` (o `VILLA_SERENA_RECEPTION_DEMO_PATH`), con cuenta abierta
+y sin pagos. No se envía correo ni se conecta Spring.
+
+Se conservan las reservas locales anteriores y la copia necesaria para cuenta y
+check-in. El calendario evita repetir las ocho reservas iniciales que ya representa
+el BFF; no borra sus registros. Las reservas antiguas que solo existen en el
+navegador siguen siendo locales: el contrato no contempla importarlas con su código
+anterior y no se recrean automáticamente. Si se pierde una respuesta de creación,
+se pide consultar la búsqueda antes de crear otra reserva.
+
+Prueba de creación con y sin habitación, búsqueda, detalle y recarga en computadora
+y móvil: `node scripts/test-reception-creation-browser.cjs` con la web de prueba en
+`RECEPTION_TEST_URL` (por defecto `http://localhost:3025`).
+La prueba guarda reservas: al repetirla puede usarse `RECEPTION_TEST_OFFSET` para
+elegir otro día de entrada (días desde hoy; por defecto 5), sin vaciar el inventario.
+
 ### Portal del huésped
 
 Permite consultar la estancia, realizar check-in web, reservar otra estancia, solicitar servicios, consultar cuenta, utilizar el chat y reservar experiencias. Comparte reservas, habitaciones, menú, pedidos, cargos y mensajes con los módulos internos correspondientes.
