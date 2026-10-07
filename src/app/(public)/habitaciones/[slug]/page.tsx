@@ -8,10 +8,11 @@ import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
 import PublicLanguageToggle, { usePublicLanguage, } from "@/components/common/PublicLanguageToggle";
 import GuestSelector from "@/components/common/GuestSelector";
 import BilingualDateInput from "@/components/common/BilingualDateInput";
-import { money, usePublicRooms } from "@/data/publicRooms";
+import { money } from "@/data/publicRooms";
+import { usePublicCatalog, usePublicQuotes } from "@/lib/usePublicCatalog";
 import { availableRoom, usePublicAvailability, validGuests, validStay, todayISO } from "@/lib/publicAvailability";
 export default function RoomDetail() {
-  const publicRooms = usePublicRooms();
+  const { rooms: publicRooms, loading, error: catalogError } = usePublicCatalog();
   const sp = useSearchParams();
   const router = useRouter();
   const fromResults = sp.get("origen") === "disponibilidad";
@@ -27,7 +28,9 @@ export default function RoomDetail() {
     [children, setChildren] = useState(fromResults ? Number(sp.get("ninos") || 0) : 0),
     [photo, setPhoto] = useState(0);
   const total = adults + children;
-  const inventory = usePublicAvailability({ arrival, departure, adults, children });
+  const inventory = usePublicAvailability({ arrival, departure, adults, children }, room?.capacity ?? 0);
+  const quoteResult = usePublicQuotes(arrival, departure, adults, children, room?.capacity ?? 0);
+  const quote = quoteResult.quotes.find(q => q.tipoHabitacion.id === room?.apiTypeId);
   const canCheck = validGuests(adults, children) && validStay(arrival, departure) &&
     total <= Number(room?.capacity || 0);
   const physical = room && canCheck ? availableRoom(room, arrival, departure, total, inventory, fromResults ? sp.get("habitacionId") || undefined : undefined) : undefined;
@@ -36,6 +39,7 @@ export default function RoomDetail() {
       habitacion: room.name,
       slug: room.slug,
       habitacionId: physical?.id || "",
+      tipoHabitacionId: String(room.apiTypeId),
       llegada: arrival,
       salida: departure,
       adultos: String(adults),
@@ -47,7 +51,7 @@ export default function RoomDetail() {
   if (!room)
     return (<main className="room-detail-page">
       <p>
-        {en ? "Room not found." : "Habitación no encontrada."}
+        {loading ? (en ? "Loading room..." : "Cargando habitación...") : catalogError || (en ? "Room not found." : "Habitación no encontrada.")}
       </p>
     </main>);
   return (<main className="room-detail-page">
@@ -135,7 +139,7 @@ export default function RoomDetail() {
               </em>
             </b>
           </div>
-          {fromResults ? (<button disabled={!physical} onClick={() => router.push(reserveHref)}>
+          {fromResults ? (<button disabled={!physical || !quote} onClick={() => router.push(reserveHref)}>
             {en ? "Book room" : "Reservar habitación"}
           </button>) : <button onClick={() => {
             setChecked(false);
@@ -144,10 +148,12 @@ export default function RoomDetail() {
             {en ? "Check availability" : "Consultar disponibilidad"}
           </button>}
         </div>
+        {quote && <p>{en ? "Stay total" : "Total de la estancia"}: {money(quote.total)} · {quote.noches} {en ? "night(s)" : "noche(s)"}</p>}
       </div>
     </section>
     {inventory?.error && <p role="alert">{en ? "Availability could not be checked. Try again." : "No se pudo consultar la disponibilidad. Intenta nuevamente."}</p>}
-    {fromResults && inventory && !inventory.error && !physical && <p role="alert">
+    {fromResults && quoteResult.error && <p role="alert">{quoteResult.error}</p>}
+    {fromResults && inventory && !inventory.error && !quoteResult.error && !physical && <p role="alert">
       {en ? "This room is no longer available for this stay. Return to the results to choose another room." : "Esta habitación ya no está disponible para esta estancia. Vuelve a los resultados para elegir otra habitación."}
     </p>}
     {open && !fromResults && (<div className="booking-modal-backdrop" onMouseDown={() => setOpen(false)}>
@@ -200,9 +206,10 @@ export default function RoomDetail() {
             }}
             max={room.capacity} />
         </label>
+        {quoteResult.error && <p role="alert">{quoteResult.error}</p>}
         {!checked ? (<button className="availability-button" disabled={!canCheck || !inventory || inventory.error} onClick={() => canCheck && setChecked(true)}>
           {en ? "Check availability" : "Comprobar disponibilidad"}
-        </button>) : physical ? (<div className="availability-result">
+        </button>) : physical && quote ? (<div className="availability-result">
           <b>
             {en ? "Available ✓" : "Disponible ✓"}
           </b>

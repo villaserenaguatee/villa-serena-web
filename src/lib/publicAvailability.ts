@@ -6,10 +6,10 @@ import { tipoPublicoATipoHotel } from '@/store/tarifasStore';
 import { habitacionesDisponibles } from '@/features/recepcion/pages/recUtils';
 import { getPublicAvailability } from '@/lib/api/availability';
 import type { AvailabilityQuery } from '@/lib/bff/contracts/availability';
+import { fechaHotel } from '@/lib/hotel';
+import { publicSearchError } from '@/lib/publicStayValidation';
 export function todayISO() {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  return fechaHotel();
 }
 function validDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value))
@@ -18,7 +18,7 @@ function validDate(value: string) {
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 export function validStay(arrival: string, departure: string) {
-  return validDate(arrival) && validDate(departure) && arrival >= todayISO() && departure > arrival;
+  return validDate(arrival) && validDate(departure) && !publicSearchError(arrival, departure, 1, 0);
 }
 export function validGuests(adults: number, children: number) {
   return Number.isInteger(adults) && adults >= 1 && Number.isInteger(children) && children >= 0;
@@ -27,7 +27,7 @@ export function readAvailability() {
   return { habitaciones: leerHabitaciones(), reservas: leerReservas() };
 }
 export type PublicAvailability = ReturnType<typeof readAvailability> & { query?: AvailabilityQuery; error?: boolean };
-export function usePublicAvailability(query: AvailabilityQuery) {
+export function usePublicAvailability(query: AvailabilityQuery, capacity = 5) {
   const { arrival, departure, adults, children } = query;
   const [inventory, setInventory] = useState<PublicAvailability | null>(null);
   useEffect(() => {
@@ -38,7 +38,7 @@ export function usePublicAvailability(query: AvailabilityQuery) {
       controller = new AbortController();
       const current = controller;
       setInventory(null);
-      if (!validStay(arrival, departure) || !validGuests(adults, children)) {
+      if (publicSearchError(arrival, departure, adults, children, capacity)) {
         setInventory({ habitaciones: [], reservas: [], query: { arrival, departure, adults, children } });
         return;
       }
@@ -58,7 +58,7 @@ export function usePublicAvailability(query: AvailabilityQuery) {
     events.forEach(event => window.addEventListener(event, refresh));
     return () => { disposed = true; controller?.abort(); events.forEach(event => window.removeEventListener(event, refresh)); };
   },
-    [arrival, departure, adults, children]);
+    [arrival, departure, adults, children, capacity]);
   return inventory;
 }
 export function availableRoom(room: PublicRoom,

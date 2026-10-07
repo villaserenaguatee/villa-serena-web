@@ -7,6 +7,7 @@ import ts from 'typescript';
 const root = new URL('../../', import.meta.url);
 registerHooks({
   resolve(specifier, context, nextResolve) {
+    if (specifier === 'next/server') return nextResolve('next/server.js', context);
     // Next enforces this boundary in builds; the Node test process has no Next runtime.
     if (specifier === 'server-only') return { url: 'data:text/javascript,export {};', shortCircuit: true };
     if (specifier.startsWith('@/') || specifier.startsWith('.')) {

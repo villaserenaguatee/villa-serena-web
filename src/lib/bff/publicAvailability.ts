@@ -27,6 +27,8 @@ export function parseAvailability(value: unknown, allowPastArrival = false): Ava
   }
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   if (!allowPastArrival && value.arrival < today) throw new AvailabilityError('INVALID_AVAILABILITY_QUERY', 400);
+  if ((Date.parse(value.departure) - Date.parse(value.arrival)) / 86400000 > 30 ||
+    (!allowPastArrival && (Date.parse(value.arrival) - Date.parse(today)) / 86400000 > 365)) throw new AvailabilityError('INVALID_AVAILABILITY_QUERY', 400);
   const demo = value.demo;
   if (!object(demo) || !Array.isArray(demo.rooms) || demo.rooms.length > 1000 || !Array.isArray(demo.holds) || demo.holds.length > 5000) {
     throw new AvailabilityError('INVALID_DEMO_CONTEXT', 400);

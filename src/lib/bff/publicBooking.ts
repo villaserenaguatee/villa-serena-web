@@ -6,6 +6,7 @@ import { fechaHotel } from '@/lib/hotel';
 import type { Huesped, Promocion, Reserva, TipoHabitacion } from '@/lib/pms/types';
 import { AvailabilityError, parseAvailability, queryAvailability, validAvailabilityDate } from './publicAvailability';
 import { bookingTransaction, mergeBookingHolds, readBookingState, storedHolds } from './demoBookingStore';
+import { contractHolds } from './publicContractStore';
 import type { BookingCreated, BookingInput, BookingResult } from './contracts/booking';
 
 const types: TipoHabitacion[] = ['Standard', 'Superior', 'Deluxe', 'Suite Deluxe', 'Suite'];
@@ -70,7 +71,7 @@ export function createBooking(input: BookingInput): BookingCreated {
     const offer = publicRooms.find(o => o.slug === input.slug);
     if (!offer || input.adults + input.children > offer.capacity) throw new AvailabilityError('ROOM_UNAVAILABLE', 409);
     const type = tipoPublicoATipoHotel(offer.type);
-    const rooms = queryAvailability({ ...input, demo: { rooms: demo.rooms, holds: mergeBookingHolds(demo.holds, storedHolds(state)) } }).rooms;
+    const rooms = queryAvailability({ ...input, demo: { rooms: demo.rooms, holds: [...mergeBookingHolds(demo.holds, storedHolds(state)), ...contractHolds()] } }).rooms;
     const room = rooms.find(r => r.id === input.roomId && r.tipo === type && r.piso === offer.floor);
     if (!room) throw new AvailabilityError('ROOM_UNAVAILABLE', 409);
     const price = demo.rates[type], nights = (Date.parse(input.departure) - Date.parse(input.arrival)) / 86400000;
