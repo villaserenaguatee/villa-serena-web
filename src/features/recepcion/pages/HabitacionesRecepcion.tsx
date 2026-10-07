@@ -4,12 +4,17 @@ import { publicRoomForHotelType } from '@/data/publicRooms';
 import { getRooms, markRoomDirty } from '@/lib/api/reception';
 import { canMarkDirty, conditionLabels } from '@/lib/receptionPresentation';
 import type { RoomState } from '@/lib/bff/contracts/reception';
-interface Props { habitaciones: HabitacionHotel[]; reservas: Reserva[]; huespedes: Huesped[]; onCambiarEstado: (id: string, nuevo: EstadoHabHotel) => void; onVerReserva: (id: string) => void }
+import { useTiempoReal } from '@/lib/tiempo-real/useTiempoReal';
+import ReportarIncidencia from '@/components/common/ReportarIncidencia';
+interface Props { habitaciones: HabitacionHotel[]; reservas: Reserva[]; huespedes: Huesped[]; onCambiarEstado: (id: string, nuevo: EstadoHabHotel) => void; onVerReserva: (id: string) => void; conectado?: boolean }
 const control = 'min-w-0 rounded-md border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#18345C]';
 export default function HabitacionesRecepcion(_props: Props) {
+  const conectado = _props.conectado ?? false;
+  const [reportar, setReportar] = useState<RoomState>();
   const [rooms, setRooms] = useState<RoomState[]>([]), [types, setTypes] = useState<RoomState['tipoHabitacion'][]>([]);
   const [occupancy, setOccupancy] = useState(''), [condition, setCondition] = useState(''), [type, setType] = useState(''), [floor, setFloor] = useState('');
   const [error, setError] = useState(''), [notice, setNotice] = useState(''), [loading, setLoading] = useState(false), [busy, setBusy] = useState<number | null>(null), [reload, setReload] = useState(0);
+  useTiempoReal('/topic/habitaciones', () => setReload(n => n + 1), () => setReload(n => n + 1), conectado, setError);
   useEffect(() => {
     const controller = new AbortController(); setLoading(true); setError(''); setRooms([]);
     const query = new URLSearchParams();
@@ -19,12 +24,12 @@ export default function HabitacionesRecepcion(_props: Props) {
   }, [occupancy, condition, type, floor, reload]);
   async function dirty(room: RoomState) {
     if (busy !== null) return; setBusy(room.id); setError(''); setNotice('');
-    try { await markRoomDirty(room.id); setNotice(`Habitación ${room.numero} marcada sucia en la simulación.`); setReload(n => n + 1); }
+    try { await markRoomDirty(room.id); setNotice(`Habitación ${room.numero} marcada sucia${conectado ? '' : ' en la simulación'}.`); setReload(n => n + 1); }
     catch (e) { setError(e instanceof Error ? e.message : 'No se pudo actualizar la habitación.'); }
     finally { setBusy(null); }
   }
   return <div className="flex-1 overflow-y-auto bg-[#F8F6F0] text-[#18345C]">
-    <header className="border-b border-[#E5E0D8] bg-white px-4 py-4 sm:px-6"><div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-[32px] font-semibold">Estado de habitaciones</h1><p className="text-sm text-[#52677F]">Datos de prueba del BFF. Se actualizan al abrir y al pulsar Actualizar.</p></div><button className={control} disabled={loading || busy !== null} onClick={() => setReload(n => n + 1)}>Actualizar</button></div>
+    <header className="border-b border-[#E5E0D8] bg-white px-4 py-4 sm:px-6"><div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-[32px] font-semibold">Estado de habitaciones</h1><p className="text-sm text-[#52677F]">{conectado ? 'Habitaciones consultadas al API, con actualizaciones de limpieza.' : 'Datos de prueba del BFF. Se actualizan al abrir y al pulsar Actualizar.'}</p></div><button className={control} disabled={loading || busy !== null} onClick={() => setReload(n => n + 1)}>Actualizar</button></div>
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-sm">Ocupación<select aria-label="Ocupación" className={`${control} w-full`} value={occupancy} onChange={e => setOccupancy(e.target.value)}><option value="">Todas</option><option value="LIBRE">Libre</option><option value="OCUPADA">Ocupada</option></select></label>
         <label className="text-sm">Condición<select aria-label="Condición" className={`${control} w-full`} value={condition} onChange={e => setCondition(e.target.value)}><option value="">Todas</option>{Object.entries(conditionLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
@@ -39,8 +44,10 @@ export default function HabitacionesRecepcion(_props: Props) {
           {room.llegaHoy && <p className="text-sm">Llega hoy</p>}{room.saleHoy && <p className="text-sm">Sale hoy</p>}{room.incidenciaPendiente && <p className="text-sm text-red-800">Incidencia pendiente</p>}
           {room.incidenciaBloqueante && <div className="rounded-lg bg-red-50 p-3 text-sm"><b>Incidencia bloqueante · solo lectura</b><p>{room.incidenciaBloqueante.descripcion}</p><p>{room.incidenciaBloqueante.estado}</p></div>}
           {canMarkDirty(room) && <button className={control} disabled={busy !== null} onClick={() => void dirty(room)}>Marcar sucia</button>}
+          {conectado && <button className={control} onClick={() => setReportar(room)}>Reportar daño</button>}
         </div>
       </article>)}</div>
     </div>
+    {reportar && <ReportarIncidencia rooms={rooms} selected={reportar.id} cerrar={() => setReportar(undefined)} creado={() => setReload(n => n + 1)} />}
   </div>;
 }

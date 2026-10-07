@@ -149,3 +149,26 @@ marcado como propuesta: las pruebas con transporte falso no acreditan la
 integración con el API ni la app. Cargos, historial y registro telefónico
 conservan su funcionamiento demo; este bloque conectado cubre cola, detalle,
 avance, cancelación y agotados.
+
+## Incidencias conectadas (OBJ-3B-4)
+
+Con `STAFF_AUTH_MODE=spring`, `/mantenimiento/incidencias` consulta la cola,
+permite tomar y resolver con solución obligatoria, y conserva la autorización
+por área y técnico. Recepción reporta daños desde `/recepcion/habitaciones`;
+ese tablero consulta Spring y se recarga con `/topic/habitaciones`.
+Las fotos JPG/PNG de hasta 5 MiB se validan antes de enviar y en el BFF, se
+cargan por multipart a `/archivos/imagenes` con uso `INCIDENCIA` y se asocian al
+reporte mediante su clave. Spring valida contenido completo, propiedad y
+almacenamiento privado; las vistas consumen URLs firmadas.
+
+El catálogo completo de habitaciones para reportar desde MYL está pendiente en
+[API #28](https://github.com/villaserenaguatee/villa-serena-api/issues/28).
+Mantenimiento solo dispone de las referencias presentes en su cola; Limpieza
+no puede seleccionar una habitación aún. No se sustituyen por IDs locales.
+Los servicios de API #15 y #21, y la prueba con la app, siguen pendientes.
+Estas limitaciones impiden cerrar web #9 y #11 todavía.
+
+Verificación: `pnpm check`, `pnpm test:bff`, `pnpm build` y
+`pnpm test:operaciones:browser`. Esta última levanta servicios falsos locales
+(puerto 3111 y el siguiente; ajustables con `OPERACIONES_TEST_PORT`), verifica
+computadora/móvil y los cierra al terminar. No acredita Spring ni la app real.
