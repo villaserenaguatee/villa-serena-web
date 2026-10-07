@@ -1,3 +1,4 @@
+import { needsReservationChannel, permitsLocalCancellation } from '@/features/recepcion/localCancellation';
 import CalendarioReservas from './CalendarioReservas';
 import { crearReservaRecepcionDemo } from '@/store/receptionReservation';
 import { asignarHabitacionReserva } from '@/store/reservationAssignment';
@@ -274,6 +275,13 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       if (parts[2]?.startsWith('VS-')) setBffCode(decodeURIComponent(parts[2]));
     } else if (parts[1] === 'habitaciones') setSeccion('habitaciones');
   }, [pathname]);
+  function abrirReserva(id: string) {
+    const reservation = reservas.find(r => r.id === id);
+    setLegacyAction(undefined);
+    if (reservation && needsReservationChannel(reservation)) {
+      setReservaAbiertaId(null); setBffCode(reservation.codigo);
+    } else { setBffCode(null); setReservaAbiertaId(id); }
+  }
   function existingAction(detail: ReservationDetail, action: ExistingAction) {
     setLegacyAction(action);
     const id = prepareExistingReceptionScreen(detail);
@@ -406,7 +414,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
   function cancelarReserva(reservaId: string,
     motivo: string) {
     const r = reservas.find(x => x.id === reservaId);
-    if (!r)
+    if (!r || !permitsLocalCancellation(r))
       return;
     setReservas(rs => rs.map(x => (x.id === reservaId ? { ...x, estado: 'cancelada', motivoCancelacion: motivo } : x)));
     if (r.habitacionId) {
@@ -467,7 +475,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
   const contenido = (() => {
     switch (seccion) {
       case 'dia':
-        return (<DiaRecepcion reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrirReserva={setReservaAbiertaId} onIr={setSeccion} />);
+        return (<DiaRecepcion reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrirReserva={abrirReserva} onIr={setSeccion} />);
       case 'reservas':
         return (<Reservas
           refreshTick={bffRefresh}
@@ -486,7 +494,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
           onCambiarEstado={cambiarEstadoHab}
           onVerReserva={id => {
             setSeccion('reservas');
-            setReservaAbiertaId(id);
+            abrirReserva(id);
           }} />);
       case 'huespedes':
         return (<Huespedes
@@ -497,7 +505,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
           onActualizar={actualizarHuesped}
           onAbrirReserva={id => {
             setSeccion('reservas');
-            setReservaAbiertaId(id);
+            abrirReserva(id);
           }} />);
       case 'solicitudes':
         return (<SolicitudesRecepcion
@@ -594,7 +602,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
         </div>
 
         <div className="flex-1 flex overflow-hidden relative">
-          {seccion === 'dia' ? <div className="flex-1 overflow-y-auto"><div className="p-4"><p className="mb-2 text-sm text-[#71839B]">Modo demo local · API de Recepción pendiente</p><Link href="/panel/recepcion/reservas/VS-DEMO-4C/cuenta" className="mb-3 inline-block text-sm font-semibold text-[#18345C] underline">Cuenta, check-out y factura de demostración</Link><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={setReservaAbiertaId} onNueva={() => setNuevaReserva({ open: true })} /></div>{contenido}</div> : contenido}
+          {seccion === 'dia' ? <div className="flex-1 overflow-y-auto"><div className="p-4"><p className="mb-2 text-sm text-[#71839B]">Modo demo local · API de Recepción pendiente</p><Link href="/panel/recepcion/reservas/VS-DEMO-4C/cuenta" className="mb-3 inline-block text-sm font-semibold text-[#18345C] underline">Cuenta, check-out y factura de demostración</Link><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={abrirReserva} onNueva={() => setNuevaReserva({ open: true })} /></div>{contenido}</div> : contenido}
         </div>
 
         <div className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
@@ -659,7 +667,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       onVerReserva={id => {
         setNuevaReserva({ open: false });
         setSeccion('reservas');
-        setReservaAbiertaId(id);
+        abrirReserva(id);
       }}
       onCrearHuesped={crearHuesped}
       onCrearReserva={crearReserva} />)}

@@ -174,6 +174,7 @@ export interface ServicioAdicional {
 }
 export interface Reserva {
   id: string;
+  canal?: 'DIRECTO_WEB' | 'RECEPCION' | 'BOOKING' | 'EXPEDIA';
   origenReserva?: 'publica';
   solicitudPublicaId?: string;
   precioNoche?: number;
