@@ -7,6 +7,8 @@ import { dinero, Chip, RESERVA_META, calcularCuenta, habitacionesDisponibles, ha
 import DocumentosCheckIn from '@/features/recepcion/pages/DocumentosCheckIn';
 import Comprobante from '@/features/recepcion/pages/Comprobante';
 import { publicRooms, publicRoomForHotelType, money } from '@/data/publicRooms';
+import ReceptionDetailBff, { type ExistingAction } from './ReceptionDetailBff';
+import type { ReservationDetail } from '@/lib/bff/contracts/reception';
 type Tab = 'resumen' | 'actividad' | 'cuenta' | 'servicios' | 'huespedes' | 'cambios';
 const MOTIVOS_CANCELACION = [
   'El huésped canceló',
@@ -20,6 +22,8 @@ const METODO_LABEL: Record<MetodoPago, string> = {
   transferencia: 'Transferencia',
 };
 interface Props {
+  initialTab?: Tab;
+  bffAction?: ExistingAction;
   reserva: Reserva;
   huesped: Huesped;
   habitaciones: HabitacionHotel[];
@@ -50,9 +54,13 @@ interface Props {
   }) => Pago;
   onAplicarDescuento: (reservaId: string, monto: number) => void;
 }
-export default function DetalleReserva(props: Props) {
+type BffProps = { codigo: string; onCerrar: () => void; onExistingAction: (detail: ReservationDetail, action: ExistingAction) => void };
+export default function DetalleReserva(props: Props | BffProps) {
+  return 'codigo' in props ? <ReceptionDetailBff {...props} /> : <LocalDetail {...props} />;
+}
+function LocalDetail(props: Props) {
   const { reserva, huesped, habitaciones, reservas, onCerrar } = props;
-  const [tab, setTab] = useState<Tab>('resumen');
+  const [tab, setTab] = useState<Tab>(props.initialTab ?? 'resumen');
   const [comprobante, setComprobante] = useState<Pago | null>(null);
   const habitacion = habitaciones.find(h => h.id === reserva.habitacionId) ?? null;
   const cuenta = calcularCuenta(reserva, habitacion);
@@ -93,7 +101,7 @@ export default function DetalleReserva(props: Props) {
         ] as [
           Tab,
           string
-        ][]).map(([id, label]) => (<button
+        ][]).filter(([id]) => !props.bffAction || (props.bffAction === 'cuenta' ? id === 'cuenta' : id === 'resumen')).map(([id, label]) => (<button
           key={id}
           onClick={() => setTab(id)}
           className={`px-3 py-2 text-[13px] font-semibold rounded-t-md whitespace-nowrap transition-colors ${tab === id
@@ -254,7 +262,7 @@ function TabActividad({ reserva, huesped, reservas, solicitudes }: Props) {
     </div>
   </div>;
 }
-function TabResumen({ reserva, huesped, habitacion, habitaciones, reservas, onAsignarHabitacion, onCheckIn, onValidarCheckInWeb, onRechazarCheckInWeb, onCheckOut, onCancelar, }: Props & {
+function TabResumen({ bffAction, reserva, huesped, habitacion, habitaciones, reservas, onAsignarHabitacion, onCheckIn, onValidarCheckInWeb, onRechazarCheckInWeb, onCheckOut, onCancelar, }: Props & {
   habitacion: HabitacionHotel | null;
 }) {
   const [cancelando, setCancelando] = useState(false);
@@ -346,7 +354,7 @@ function TabResumen({ reserva, huesped, habitacion, habitaciones, reservas, onAs
         Sin habitación asignada. Asigna una para poder hacer el check-in.
       </p>)}
 
-      {!cerrada && (<div className="mt-1">
+      {!bffAction && !cerrada && (<div className="mt-1">
         <SelectorHabitacion
           habitaciones={disponiblesParaAsignar}
           seleccionadaId={reserva.habitacionId ?? ''}
@@ -429,21 +437,21 @@ function TabResumen({ reserva, huesped, habitacion, habitaciones, reservas, onAs
     </Seccion>)}
 
     {!cerrada && !cancelando && (<div className="flex flex-col sm:flex-row gap-2">
-      {puedeCheckIn && (<button
+      {puedeCheckIn && (!bffAction || bffAction === 'check-in') && (<button
         onClick={() => onCheckIn(reserva.id)}
         className="flex-1 py-2 text-[15px] font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
         Realizar check-in
       </button>)}
-      {puedeCheckOut && (<button
+      {puedeCheckOut && (!bffAction || bffAction === 'check-out') && (<button
         onClick={() => setFacturaCheckout(true)}
         className="flex-1 py-2 text-[15px] font-semibold bg-[#166534] text-white rounded-md hover:bg-[#14532D] transition-colors">
         Revisar factura y check-out
       </button>)}
-      <button
+      {!bffAction && <button
         onClick={() => setCancelando(true)}
         className="flex-1 sm:flex-none sm:px-5 py-2 text-[15px] font-semibold border border-[#FCA5A5] text-[#991B1B] rounded-md hover:bg-[#FEF2F2] transition-colors">
         Cancelar reserva
-      </button>
+      </button>}
     </div>)}
 
     {!cerrada && !cancelando && !reserva.habitacionId && (reserva.estado === 'confirmada' || reserva.estado === 'pendiente') && (<p className="text-[12px] text-[#9A3412]">Asigna una habitación para habilitar el check-in.</p>)}
