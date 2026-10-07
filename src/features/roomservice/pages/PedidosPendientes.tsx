@@ -7,16 +7,17 @@ interface Props {
   pedidos: Pedido[];
   turno: TurnoRS;
   onAbrirDetalle: (id: string) => void;
-  onNuevoTelefonico: () => void;
+  onNuevoTelefonico?: () => void;
+  conectado?: boolean;
 }
 const ESTADOS_ACTIVOS: Pedido['estado'][] = [
   'nuevo',
   'en-preparacion',
   'en-camino',
 ];
-export default function PedidosPendientes({ pedidos, turno, onAbrirDetalle, onNuevoTelefonico, }: Props) {
+export default function PedidosPendientes({ pedidos, turno, onAbrirDetalle, onNuevoTelefonico, conectado = false }: Props) {
   const pendientes = pedidos
-    .filter((p) => p.turno === turno &&
+    .filter((p) => (conectado || p.turno === turno) &&
       ESTADOS_ACTIVOS.includes(p.estado))
     .sort((a, b) => new Date(a.creadoEn).getTime() -
       new Date(b.creadoEn).getTime());
@@ -34,7 +35,7 @@ export default function PedidosPendientes({ pedidos, turno, onAbrirDetalle, onNu
           </h1>
 
           <p className="text-[15px] text-[#6B7280] mt-1">
-            Turno de {turno} · {TURNOS_HORARIO[turno]}
+            {conectado ? 'Pedidos activos por antigüedad' : `Turno de ${turno} · ${TURNOS_HORARIO[turno]}`}
           </p>
 
           <div className="mt-3 flex flex-wrap gap-2">
@@ -48,13 +49,13 @@ export default function PedidosPendientes({ pedidos, turno, onAbrirDetalle, onNu
           </div>
         </div>
 
-        <button
+        {onNuevoTelefonico && <button
           type="button"
           onClick={onNuevoTelefonico}
           className="flex items-center gap-2 px-4 py-2.5 text-[15px] font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
           <PhoneIcon />
           Registrar pedido telefónico
-        </button>
+        </button>}
       </div>
     </div>
 
@@ -200,7 +201,7 @@ export default function PedidosPendientes({ pedidos, turno, onAbrirDetalle, onNu
                 </div>
 
                 <p className="text-[14px] text-[#6B7280] mt-1.5 truncate">
-                  {p.lineas
+                  {p.huesped} · {p.lineas
                     .map((linea) => `${linea.cantidad}× ${linea.nombre}`)
                     .join(' · ')}
                 </p>

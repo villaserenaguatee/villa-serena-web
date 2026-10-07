@@ -14,6 +14,8 @@ import HistorialPedidos from '@/features/roomservice/pages/HistorialPedidos';
 import Cargos from '@/features/roomservice/pages/Cargos';
 import { EVENTO_PEDIDO_RS, EVENTO_ESTADO_RS, PEDIDOS_RS_KEY, relacionEstanciaRoomService, actualizarPedidoPortal, guardarPedidoRoomService, leerPedidosPortal } from '@/store/roomServiceSync';
 import { MENU_EVENT, actualizarDisponibilidadMenu, leerMenu } from '@/store/menuStore';
+import { useRoomService } from '@/features/roomservice/useRoomService';
+import MenuOperativo from './MenuOperativo';
 const SECCIONES: {
   id: SeccionRS;
   label: string;
@@ -59,8 +61,9 @@ function SeccionIcon({ id, size = 18 }: {
 }
 interface Props {
   onCambiarModulo: (m: Modulo) => void;
+  conectado?: boolean;
 }
-export default function RoomServiceApp({ onCambiarModulo }: Props) {
+export default function RoomServiceApp({ onCambiarModulo, conectado = false }: Props) {
   const [empleados, setEmpleados] = useState(() => leerEmpleados());
   const { user } = useAuth();
   useEffect(() => {
@@ -76,9 +79,10 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
   const empleadoRS = empleados.find(e => e.id === user?.id && e.activo);
   const encargadoRS = empleadoRS?.nombre ?? 'Room Service';
   const [perfilAbierto, setPerfilAbierto] = useState(false);
-  const [pedidos, setPedidos] = useState<Pedido[]>(() => leerPedidosPortal());
-  const [menu, setMenu] = useState<ItemMenu[]>(() => leerMenu());
+  const [pedidosLocales, setPedidos] = useState<Pedido[]>(() => conectado ? [] : leerPedidosPortal());
+  const [menu, setMenu] = useState<ItemMenu[]>(() => conectado ? [] : leerMenu());
   useEffect(() => {
+    if (conectado) return;
     const sincronizarMenu = () => setMenu(leerMenu());
     window.addEventListener(MENU_EVENT, sincronizarMenu);
     window.addEventListener('storage', sincronizarMenu);
@@ -87,7 +91,7 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
       window.removeEventListener('storage', sincronizarMenu);
     };
   },
-    []);
+    [conectado]);
   const [seccion, setSeccion] = useState<SeccionRS>('resumen');
   const [pedidoAbierto, setPedidoAbierto] = useState<string | null>(null);
   const [mostrarNuevo, setMostrarNuevo] = useState(false);
@@ -95,7 +99,15 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
   const [toasts, setToasts] = useState<NotificacionRS[]>([]);
   const [panelNotif, setPanelNotif] = useState(false);
   const turno = useMemo(() => turnoActual(), []);
+  const remoto = useRoomService(conectado, pedido => {
+    const notif: NotificacionRS = { id: generarId(), pedidoId: pedido.id, habitacionNumero: pedido.habitacionNumero, hora: pedido.creadoEn, leida: false };
+    setNotificaciones(prev => [notif, ...prev].slice(0, 100));
+    setToasts(prev => [notif, ...prev].slice(0, 5));
+    window.setTimeout(() => setToasts(prev => prev.filter(t => t.id !== notif.id)), 8000);
+  });
+  const pedidos = conectado ? remoto.pedidos : pedidosLocales;
   useEffect(() => {
+    if (conectado) return;
     const recibir = (event: Event) => {
       const pedido = (event as CustomEvent<Pedido>).detail;
       if (!pedido)
@@ -118,17 +130,19 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
       window.removeEventListener('storage', storage);
     };
   },
-    []);
+    [conectado]);
   const pedidoActual = pedidos.find(p => p.id === pedidoAbierto) ?? null;
   const noLeidas = notificaciones.filter(n => !n.leida).length;
   const nuevosTurno = pedidos.filter(p => p.turno === turno && p.estado === 'nuevo').length;
   function avanzarEstado(id: string) {
+    if (conectado) { void remoto.avanzar(id); return; }
     const actual = leerPedidosPortal().find(p => p.id === id);
     const proximo = actual ? SIGUIENTE_ESTADO[actual.estado] : undefined;
     if (proximo) actualizarPedidoPortal(id, proximo);
     setPedidos(leerPedidosPortal());
   }
   function cancelarPedido(id: string, motivo: string) {
+    if (conectado) { void remoto.cancelar(id, motivo); return; }
     actualizarPedidoPortal(id, 'cancelado', motivo);
     setPedidos(leerPedidosPortal());
   }
@@ -171,9 +185,10 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
     setNotificaciones(prev => prev.map(n => (n.id === notif.id ? { ...n, leida: true } : n)));
     setToasts(prev => prev.filter(t => t.id !== notif.id));
     setPanelNotif(false);
-    setPedidoAbierto(notif.pedidoId);
+    abrirDetalle(notif.pedidoId);
   }
   function abrirDetalle(id: string) {
+    if (conectado) { void remoto.abrir(id).then(() => setPedidoAbierto(id)).catch(() => setPedidoAbierto(null)); return; }
     setPedidoAbierto(id);
   }
   const contenido = (() => {
@@ -424,9 +439,9 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
         </section>);
       }
       case 'pedidos':
-        return (<PedidosPendientes pedidos={pedidos} turno={turno} onAbrirDetalle={abrirDetalle} onNuevoTelefonico={() => setMostrarNuevo(true)} />);
+        return (<PedidosPendientes pedidos={pedidos} turno={turno} conectado={conectado} onAbrirDetalle={abrirDetalle} onNuevoTelefonico={conectado ? undefined : () => setMostrarNuevo(true)} />);
       case 'menu':
-        return <MenuCatalogo menu={menu} onMarcarAgotado={marcarAgotado} onReactivar={reactivarItem} />;
+        return conectado ? <MenuOperativo menu={remoto.menu} busy={remoto.busy} agotar={id => void remoto.agotar(id)} /> : <MenuCatalogo menu={menu} onMarcarAgotado={marcarAgotado} onReactivar={reactivarItem} />;
       case 'cargos':
         return <Cargos pedidos={pedidos} onAbrirDetalle={abrirDetalle} />;
       case 'historial':
@@ -452,7 +467,7 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
         </div>
 
         <div className="vs-scroll-clean flex-1 py-3 overflow-y-auto">
-          {SECCIONES.map(s => {
+          {SECCIONES.filter(s => !conectado || !['cargos', 'historial'].includes(s.id)).map(s => {
             const active = seccion === s.id;
             const badge = s.id === 'pedidos' ? nuevosTurno : 0;
             return (<button
@@ -549,11 +564,13 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
         </div>
 
         <div className="flex-1 flex overflow-hidden relative">
+          {conectado && remoto.error && <p role="alert" className="bg-red-50 text-red-800 p-3">{remoto.error}</p>}
+          {conectado && remoto.loading && <p role="status" className="p-3">Consultando pedidos…</p>}
           {contenido}
         </div>
 
         <div className="lg:hidden flex shrink-0 border-t" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
-          {SECCIONES.map(s => {
+          {SECCIONES.filter(s => !conectado || !['cargos', 'historial'].includes(s.id)).map(s => {
             const active = seccion === s.id;
             const badge = s.id === 'pedidos' ? nuevosTurno : 0;
             return (<button
@@ -590,7 +607,7 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
         <div className="min-w-0 flex-1">
           <p className="text-[14px] font-semibold text-[#18345C]">Nuevo pedido de Room Service</p>
           <p className="text-[13px] text-[#6B7280] mt-0.5">
-            Habitación {t.habitacionNumero} · {formatoHoraISO(t.hora)}
+            Habitación {t.habitacionNumero} · Piso {pedidos.find(p => p.id === t.pedidoId)?.piso ?? pisoDeHabitacion(t.habitacionNumero)} · {formatoHoraISO(t.hora)}
           </p>
           <p className="text-[12px] text-[#18345C] font-medium mt-1">Toca para ver el detalle</p>
         </div>
@@ -599,6 +616,8 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
 
     {pedidoActual && (<DetallePedido
       pedido={pedidoActual}
+      conectado={conectado}
+      busy={remoto.busy}
       onCerrar={() => setPedidoAbierto(null)}
       onAvanzarEstado={avanzarEstado}
       onCancelar={(id, motivo) => cancelarPedido(id, motivo)} />)}

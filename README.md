@@ -126,3 +126,26 @@ La sincronización operativa actual se realiza mediante stores y eventos del nav
 ## Documentación adicional
 
 Consultar [`docs/ACCESO_Y_CONEXIONES.md`](docs/ACCESO_Y_CONEXIONES.md) para una descripción detallada de cada módulo, sus funciones y sus dependencias.
+# Tiempo real de operaciones (OBJ-3A-3)
+
+Room Service conserva su modo local cuando `STAFF_AUTH_MODE=demo`. Con
+`STAFF_AUTH_MODE=spring`, consulta pedidos y menú mediante el BFF y obtiene un
+ticket de un solo uso de Spring con `POST /api/auth/ws-ticket`. Configura
+`API_URL` en el servidor y `NEXT_PUBLIC_WS_URL` con el endpoint público `/ws`
+(`wss://` cuando la web usa HTTPS). El JWT permanece en cookies httpOnly.
+
+Las pantallas comparten una conexión STOMP por pestaña. Cada intento obtiene
+un ticket nuevo y cada conexión restaura suscripciones y recarga los datos:
+
+```tsx
+useTiempoReal('/topic/habitaciones', () => recargar(), () => recargar(), conectado);
+```
+
+El cliente se basa en los callbacks de conexión y suscripción de
+[StompJS](https://stomp-js.github.io/guide/stompjs/using-stompjs-v5.html).
+Spring sigue siendo responsable de autorizar CONNECT/SUBSCRIBE, caducar y
+consumir tickets y publicar después del commit. El contrato `x-websocket` está
+marcado como propuesta: las pruebas con transporte falso no acreditan la
+integración con el API ni la app. Cargos, historial y registro telefónico
+conservan su funcionamiento demo; este bloque conectado cubre cola, detalle,
+avance, cancelación y agotados.

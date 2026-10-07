@@ -13,8 +13,10 @@ interface Props {
   onCerrar: () => void;
   onAvanzarEstado: (id: string) => void;
   onCancelar: (id: string, motivo: string) => void;
+  busy?: boolean;
+  conectado?: boolean;
 }
-export default function DetallePedido({ pedido, onCerrar, onAvanzarEstado, onCancelar }: Props) {
+export default function DetallePedido({ pedido, onCerrar, onAvanzarEstado, onCancelar, busy = false, conectado = false }: Props) {
   const [modoCancelar, setModoCancelar] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [errorMotivo, setErrorMotivo] = useState(false);
@@ -127,7 +129,7 @@ export default function DetallePedido({ pedido, onCerrar, onAvanzarEstado, onCan
           </div>
         </div>
 
-        <div className={`rounded-xl px-4 py-3 border ${pedido.estado === 'cancelado'
+        {(!conectado || terminal) && <div className={`rounded-xl px-4 py-3 border ${pedido.estado === 'cancelado'
           ? 'bg-[#F1F5F9] border-[#CBD5E1]'
           : 'bg-[#F0FAF4] border-[#86EFAC]'}`}>
           <p className="text-[13px] text-[#1F2933]">
@@ -138,7 +140,7 @@ export default function DetallePedido({ pedido, onCerrar, onAvanzarEstado, onCan
               </span>. Visible para recepción; se cobra en el check-out.
             </>)}
           </p>
-        </div>
+        </div>}
 
         <div>
           <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-2">Progreso del pedido</p>
@@ -168,11 +170,13 @@ export default function DetallePedido({ pedido, onCerrar, onAvanzarEstado, onCan
         {!terminal && !modoCancelar && (<div className="flex flex-col sm:flex-row gap-3 pt-1">
           {siguiente && (<button
             onClick={() => onAvanzarEstado(pedido.id)}
+            disabled={busy}
             className="flex-1 py-3 text-[15px] font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
             {ACCION_AVANZAR[pedido.estado]}
           </button>)}
           <button
             onClick={() => setModoCancelar(true)}
+            disabled={busy}
             className="flex-1 sm:flex-none sm:px-5 py-3 text-[15px] font-semibold border border-[#FCA5A5] text-[#991B1B] rounded-md hover:bg-[#FEF2F2] transition-colors">
             Cancelar pedido
           </button>
@@ -222,6 +226,7 @@ export default function DetallePedido({ pedido, onCerrar, onAvanzarEstado, onCan
             </button>
             <button
               onClick={confirmarCancelacion}
+              disabled={busy}
               className="flex-1 py-2.5 text-sm font-semibold bg-[#991B1B] text-white rounded-md hover:bg-[#7F1D1D] transition-colors">
               Confirmar cancelación
             </button>
