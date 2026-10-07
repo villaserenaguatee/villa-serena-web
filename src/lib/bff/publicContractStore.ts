@@ -4,10 +4,12 @@ import { dirname, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { CreatedPublicDto, CreatePublicDto, PaymentDto } from './contracts/public';
 import type { ReservationHold } from './contracts/availability';
+import type { ChannelReservation } from './contracts/channel';
 import { AvailabilityError } from './publicAvailability';
 import { validPublicDate } from '@/lib/publicStayValidation';
 export type ContractEntry = { attempt: string; fingerprint: string; created: CreatedPublicDto; guest: CreatePublicDto['huesped']; roomType: ReservationHold['roomType']; payment?: PaymentDto };
-type State = { version: 1; entries: ContractEntry[] };
+export type ChannelEntry = { reservation: ChannelReservation; guest: CreatePublicDto['huesped'] };
+type State = { version: 1; entries: ContractEntry[]; channels?: ChannelEntry[] };
 const path = () => process.env.VILLA_SERENA_PUBLIC_CONTRACT_PATH ?? resolve(process.cwd(), '.data/public-stripe-demo.json');
 export function readPublicContractState(): State {
   try {
@@ -22,6 +24,17 @@ export function readPublicContractState(): State {
       !e.guest?.correo || !e.attempt || !/^[a-f0-9]{64}$/.test(e.fingerprint) ||
       (e.payment && (e.payment.expiraEn !== e.created.pagoVenceEn || typeof e.payment.urlPago !== 'string')))) throw new Error('Estado inválido');
     if (new Set(state.entries.map(e => e.attempt)).size !== state.entries.length || new Set(state.entries.map(e => e.created.codigo)).size !== state.entries.length) throw new Error('Duplicados');
+    if (state.channels !== undefined && (!Array.isArray(state.channels) || state.channels.some(e => {
+      const r = e?.reservation;
+      return !r || !/^VS-[A-Z0-9]{6}$/.test(r.codigo) || r.estado !== 'CONFIRMADA' || !['BOOKING', 'EXPEDIA'].includes(r.canal) ||
+        typeof r.identificadorExterno !== 'string' || !r.identificadorExterno.trim() || r.identificadorExterno.length > 60 ||
+        !validPublicDate(r.entrada) || !validPublicDate(r.salida) || r.salida <= r.entrada || (Date.parse(r.salida) - Date.parse(r.entrada)) / 86400000 > 30 ||
+        !Number.isInteger(r.numeroHuespedes) || r.numeroHuespedes < 1 || r.numeroHuespedes > 5 || !Number.isFinite(r.montoTotal) || r.montoTotal <= 0 ||
+        !r.tipoHabitacion || r.tipoHabitacion.id !== types.indexOf(r.tipoHabitacion.nombre) + 1 || !types.includes(r.tipoHabitacion.nombre) || !e.guest?.correo;
+    }))) throw new Error('Estado de canal inválido');
+    const channels = state.channels ?? [];
+    if (new Set(channels.map(e => `${e.reservation.canal}:${e.reservation.identificadorExterno}`)).size !== channels.length ||
+      new Set([...state.entries.map(e => e.created.codigo), ...channels.map(e => e.reservation.codigo)]).size !== state.entries.length + channels.length) throw new Error('Duplicados');
     return state;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { version: 1, entries: [] };
@@ -29,7 +42,8 @@ export function readPublicContractState(): State {
   }
 }
 export function contractHolds(state = readPublicContractState()): ReservationHold[] {
-  return state.entries.filter(e => Date.parse(e.created.pagoVenceEn) > Date.now()).map(e => ({ code: e.created.codigo, roomId: null, roomType: e.roomType, arrival: e.created.entrada, departure: e.created.salida, status: 'pendiente' }));
+  return [...state.entries.filter(e => Date.parse(e.created.pagoVenceEn) > Date.now()).map(e => ({ code: e.created.codigo, roomId: null, roomType: e.roomType, arrival: e.created.entrada, departure: e.created.salida, status: 'pendiente' })),
+    ...(state.channels ?? []).map(({ reservation: r }): ReservationHold => ({ code: r.codigo, roomId: null, roomType: r.tipoHabitacion.nombre as ReservationHold['roomType'], arrival: r.entrada, departure: r.salida, status: 'confirmada' }))];
 }
 export function publicContractTransaction<T>(action: (state: State) => { value: T; changed: boolean }): T {
   const file = path(), lock = `${file}.lock`, temporary = `${file}.${randomUUID()}.tmp`;

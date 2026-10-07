@@ -72,7 +72,7 @@ async function flow(browser, mobile, offset) {
   await noOverflow(page);
   await page.screenshot({ path: `${evidence}/${mobile ? 'mobile' : 'desktop'}-resumen.png`, fullPage: true });
   await page.getByRole('button', { name: 'Iniciar pago de prueba', exact: true }).click();
-  await page.getByRole('heading', { name: 'Pago pendiente', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Pago en proceso', exact: true }).waitFor();
   await page.getByText('PAGO DE PRUEBA', { exact: true }).waitFor();
   const code = new URL(page.url()).searchParams.get('codigo'); assert.match(code, /^VS-[A-Z0-9]{6}$/);
   assert.equal(await page.getByText('¡Reserva confirmada!', { exact: true }).count(), 0);
@@ -84,9 +84,9 @@ async function flow(browser, mobile, offset) {
   assert.deepEqual(Object.keys(creation).sort(), ['entrada', 'huesped', 'numeroHuespedes', 'salida', 'tipoHabitacionId']);
   assert.equal(creation.numeroHuespedes, 2);
   await page.reload({ waitUntil: 'networkidle' });
-  await page.getByRole('heading', { name: 'Pago pendiente', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Pago en proceso', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Consultar estado otra vez' }).click();
-  await page.getByRole('heading', { name: 'Pago pendiente', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Pago en proceso', exact: true }).waitFor();
   assert.equal(calls.filter(c => c.method === 'POST' && c.url.includes('/publico/reservas')).length, 2);
   assert.ok(calls.some(c => c.url.endsWith('/hotel'))); assert.ok(calls.some(c => c.url.endsWith('/tipos-habitacion')));
   assert.ok(calls.filter(c => c.url.endsWith(`/${code}/estado`)).length >= 3);
@@ -98,7 +98,7 @@ async function flow(browser, mobile, offset) {
   assert.equal(await page.getByText('¡Reserva confirmada!', { exact: true }).count(), 0);
   await page.unroute(stateRoute);
   await page.getByRole('button', { name: 'Consultar estado otra vez' }).click();
-  await page.getByRole('heading', { name: 'Pago pendiente', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Pago en proceso', exact: true }).waitFor();
   assert.equal(calls.filter(c => c.method === 'POST' && c.url.includes('/publico/reservas')).length, 2);
   await page.goto(`${base}/reservar/habitaciones?llegada=${day(offset)}&salida=${day(offset)}&adultos=0&ninos=-1`, { waitUntil: 'networkidle' });
   const searchesBefore = calls.filter(c => c.url.includes('disponibilidad') || c.url.includes('/availability')).length;
@@ -125,7 +125,7 @@ async function flow(browser, mobile, offset) {
   await page.getByRole('heading', { name: 'Pago con tarjeta', exact: true }).waitFor();
   await page.locator('.terms-check input').check();
   await page.getByRole('button', { name: 'Iniciar pago de prueba', exact: true }).click();
-  await page.getByRole('heading', { name: 'Pago pendiente', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Pago en proceso', exact: true }).waitFor();
   assert.match(new URL(page.url()).searchParams.get('codigo'), /^VS-[A-Z0-9]{6}$/);
   assert.equal(calls.filter(c => c.method === 'POST' && c.url.includes('/api/public/bookings')).length, 0);
   assert.deepEqual(errors, []);

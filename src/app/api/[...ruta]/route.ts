@@ -13,7 +13,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ ruta: st
   try {
     if (request.method !== 'GET') sameOrigin(request);
     const { ruta } = await context.params;
-    if (!permittedRoots.has(ruta[0]) || ruta.some(segment => !/^[a-zA-Z0-9_-]+$/.test(segment)))
+    if (!permittedRoots.has(ruta[0]) || (ruta[0] === 'admin' && ruta[1] === 'canal-simulado') || ruta.some(segment => !/^[a-zA-Z0-9_-]+$/.test(segment)))
       throw new AuthError('RUTA_NO_PERMITIDA', 403, 'Esta ruta no está disponible a través del BFF.');
     const body = ['GET', 'HEAD'].includes(request.method) ? undefined : await request.arrayBuffer();
     const operation = async (token?: string) => {
