@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { RoleGuard } from '@/components/common/RoleGuard';
+import { StaffServerGuard } from '@/components/common/StaffServerGuard';
 export default function Layout({ children }: {
   children: ReactNode;
 }) {
-  return <RoleGuard role="limpieza">
+  return <StaffServerGuard role="limpieza">
     {children}
-  </RoleGuard>;
+  </StaffServerGuard>;
 }

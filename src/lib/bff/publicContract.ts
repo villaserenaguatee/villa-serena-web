@@ -9,6 +9,7 @@ import { AvailabilityError, queryAvailability } from './publicAvailability';
 import { bookingTransaction, storedHolds, mergeBookingHolds } from './demoBookingStore';
 import { contractHolds, publicContractTransaction, readPublicContractState } from './publicContractStore';
 import type { CreatePublicDto, CreatedPublicDto, HotelDto, PaymentDto, PublicStatusDto, QuoteDto, RoomTypeDto } from './contracts/public';
+import { paymentResultFixture, fixturePayment } from './demoPaymentResults';
 
 const types = ['Standard', 'Superior', 'Deluxe', 'Suite Deluxe', 'Suite'] as const;
 // IDs exclusivos de estas fixtures, publicados por el BFF. No se reutilizan al conectar Spring.
@@ -62,11 +63,11 @@ export function demoCreate(input: CreatePublicDto, attempt: string): CreatedPubl
     let codigo: string;
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     do { codigo = `VS-${Array.from({ length: 6 }, () => alphabet[randomInt(alphabet.length)]).join('')}`; }
-    while (state.entries.some(e => e.created.codigo === codigo) || RESERVAS_INICIALES.some(r => r.codigo === codigo) || hotelState.entries.some(e => e.result.code === codigo));
+    while (codigo.startsWith('VS-DEMO') || state.entries.some(e => e.created.codigo === codigo) || state.channels?.some(e => e.reservation.codigo === codigo) || RESERVAS_INICIALES.some(r => r.codigo === codigo) || hotelState.entries.some(e => e.result.code === codigo));
     const created: CreatedPublicDto = { codigo, estado: 'PENDIENTE_PAGO', tipoHabitacion: { id: quote.tipoHabitacion.id, nombre: quote.tipoHabitacion.nombre },
       entrada: input.entrada, salida: input.salida, numeroHuespedes: input.numeroHuespedes, noches: quote.noches, total: quote.total, pagoVenceEn: new Date(Date.now() + 30 * 60000).toISOString() };
     const legacyGuest = hotelState.entries.map(e => e.compatibility.guest).concat(HUESPEDES_INICIALES).find(g => g.correo.toLowerCase() === input.huesped.correo);
-    const known = state.entries.find(e => e.guest.correo === input.huesped.correo)?.guest ?? (legacyGuest ? {
+    const known = state.entries.find(e => e.guest.correo === input.huesped.correo)?.guest ?? state.channels?.find(e => e.guest.correo === input.huesped.correo)?.guest ?? (legacyGuest ? {
       nombreCompleto: legacyGuest.nombre, correo: legacyGuest.correo, telefono: legacyGuest.telefono, nacionalidad: legacyGuest.nacionalidad,
       numeroDocumento: legacyGuest.documento, tipoDocumento: legacyGuest.tipoDocumento === 'DPI' ? 'DPI' as const : 'PASAPORTE' as const,
     } : undefined);
@@ -75,12 +76,20 @@ export function demoCreate(input: CreatePublicDto, attempt: string): CreatedPubl
   }) }));
 }
 export function demoStatus(codigo: string): PublicStatusDto {
+  const fixture = paymentResultFixture(codigo);
+  if (fixture) return fixture;
   const entry = readPublicContractState().entries.find(e => e.created.codigo === codigo);
   if (!entry) throw new AvailabilityError('RESERVA_NO_ENCONTRADA', 404);
   const expired = Date.parse(entry.created.pagoVenceEn) <= Date.now();
   return { codigo, estadoReserva: expired ? 'CANCELADA' : 'PENDIENTE_PAGO', estadoPago: expired ? 'FALLIDO' : entry.payment ? 'PENDIENTE' : null, puedeReintentar: !expired };
 }
 export function demoPayment(codigo: string, origin: string): PaymentDto {
+  const fixture = paymentResultFixture(codigo);
+  if (fixture) {
+    const payment = fixturePayment(codigo, origin);
+    if (!payment) throw new AvailabilityError('RESERVA_NO_PAGABLE', 409);
+    return payment;
+  }
   return publicContractTransaction(state => {
     const entry = state.entries.find(e => e.created.codigo === codigo);
     if (!entry) throw new AvailabilityError('RESERVA_NO_ENCONTRADA', 404);

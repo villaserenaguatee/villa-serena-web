@@ -5,6 +5,7 @@ export interface SessionUser {
   email: string;
   role: UserRole;
   guestId?: string;
+  staff?: import('./staff-contract').Employee;
 }
 export const ROLE_HOME: Record<UserRole, string> = {
   admin: '/admin',

@@ -25,7 +25,7 @@ export default function LoginPage() {
     setBusy(true);
     try {
       const u = await login(email, password);
-      router.push(ROLE_HOME[u.role]);
+      router.push(u.staff?.debeCambiarContrasena ? '/panel/cambiar-contrasena' : ROLE_HOME[u.role]);
     }
     catch (err) {
       setError(err instanceof Error ? err.message : t("auth.loginError"));
