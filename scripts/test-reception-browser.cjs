@@ -23,7 +23,7 @@ function range(view, offset = 0) {
   page.on('pageerror', e => errors.push(e.message));
   await page.goto(`${process.env.RECEPTION_TEST_URL ?? 'http://localhost:3017'}/login`);
   await page.getByPlaceholder('Correo electrónico').fill('recepcion@villaserena.gt');
-  await page.getByPlaceholder('Contraseña', { exact: true }).fill('local-test');
+  await page.getByPlaceholder('Contraseña', { exact: true }).fill('VillaSerena26');
   await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
   if (process.argv.includes('--api')) {
     await page.getByRole('heading', { name: 'Recepción pendiente de conexión' }).waitFor();

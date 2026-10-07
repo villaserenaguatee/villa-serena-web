@@ -42,18 +42,18 @@ DEEPL_API_URL=https://api-free.deepl.com/v2/translate
 
 ## Accesos
 
-Estas cuentas están configuradas en la aplicación actual:
+El personal entra desde `/panel/login`. Estas cuentas usan datos de prueba del BFF:
 
 | Área | Correo | Contraseña para uso local |
 | --- | --- | --- |
-| Administración | `admin@villaserena.gt` | Cualquier contraseña no vacía |
-| Recepción | `recepcion@villaserena.gt` | Cualquier contraseña no vacía |
-| Limpieza | `limpieza@villaserena.gt` | Cualquier contraseña no vacía |
-| Room Service | `roomservice@villaserena.gt` | Cualquier contraseña no vacía |
-| Mantenimiento | `mantenimiento@villaserena.gt` | Cualquier contraseña no vacía |
+| Administración | `admin@villaserena.gt` | `VillaSerena26` |
+| Recepción | `recepcion@villaserena.gt` | `VillaSerena26` |
+| Limpieza | `limpieza@villaserena.gt` | `VillaSerena26` |
+| Room Service | `roomservice@villaserena.gt` | `VillaSerena26` |
+| Mantenimiento | `mantenimiento@villaserena.gt` | `VillaSerena26` |
 | Portal del huésped | `anamorales@gmail.com` | `demo123` |
 
-Las cuentas activas creadas desde Administración usan `demo123` mientras se mantenga el proveedor de autenticación local actual.
+El huésped entra desde `/login` con `anamorales@gmail.com` y `demo123`. Su acceso no cambia. La contraseña del personal corresponde al modo de prueba; no configura las credenciales de Spring.
 
 ## Estructura principal
 

@@ -9,11 +9,28 @@ import { AuthError } from '../../src/lib/bff/auth/errors';
 import { NextResponse } from 'next/server';
 import { publicEmployee, serverSession } from '../../src/lib/bff/auth/response';
 import { isAuthError } from '../../src/lib/bff/auth/errors';
-const loginInput = { correo: 'recepcion@villaserena.gt', contrasena: 'demo123' };
+const loginInput = { correo: 'recepcion@villaserena.gt', contrasena: 'VillaSerena26' };
 const request = (path: string, input?: unknown, cookie?: string, origin = 'http://localhost:3000') => new NextRequest(`http://localhost:3000/api/auth/${path}`, {
   method: input ? 'POST' : 'GET', headers: { Origin: origin, ...(cookie ? { Cookie: cookie } : {}), ...(input ? { 'Content-Type': 'application/json' } : {}) }, ...(input ? { body: JSON.stringify(input) } : {}),
 });
 const cookieHeader = (response: NextResponse) => response.cookies.getAll().map(c => `${c.name}=${c.value}`).join('; ');
+
+test('personal demo: VillaSerena26 permite entrar y demo123 se rechaza sin cambiar roles', async () => {
+  const auth = createDemoAuth();
+  for (const [correo, rol] of [
+    ['admin@villaserena.gt', 'ADMIN'], ['recepcion@villaserena.gt', 'RECEPCION'],
+    ['limpieza@villaserena.gt', 'MANTENIMIENTO_LIMPIEZA'], ['roomservice@villaserena.gt', 'ROOM_SERVICE'],
+    ['mantenimiento@villaserena.gt', 'MANTENIMIENTO_LIMPIEZA'],
+    ['temporal@villaserena.gt', 'RECEPCION'], ['ambas@villaserena.gt', 'MANTENIMIENTO_LIMPIEZA'],
+  ]) {
+    await assert.rejects(auth.login({ correo, contrasena: 'demo123' }), { codigo: 'CREDENCIALES_INVALIDAS', status: 401 });
+    const employee = (await auth.login({ correo, contrasena: 'VillaSerena26' })).empleado;
+    assert.equal(employee.correo, correo); assert.equal(employee.rol, rol);
+  }
+  const old = await authRoute(request('login', { ...loginInput, contrasena: 'demo123' }), 'login');
+  assert.equal(old.status, 401); assert.equal((await old.json()).codigo, 'CREDENCIALES_INVALIDAS');
+  assert.equal(old.cookies.getAll().length, 0);
+});
 test('datos demo: roles, área Ambas, cuentas inactivas y bloqueo de 15 minutos', async () => {
   let time = 0; const auth = createDemoAuth(() => time);
   for (let i = 0; i < 5; i++) await assert.rejects(auth.login({ ...loginInput, contrasena: 'incorrecta' }), { codigo: 'CREDENCIALES_INVALIDAS' });
@@ -26,7 +43,7 @@ test('datos demo: roles, área Ambas, cuentas inactivas y bloqueo de 15 minutos'
 test('contraseña temporal: validaciones, tokens nuevos y contraseña anterior inválida', async () => {
   const auth = createDemoAuth(), old = await auth.login({ ...loginInput, correo: 'temporal@villaserena.gt' });
   assert.equal(old.empleado.debeCambiarContrasena, true);
-  const input = { contrasenaActual: 'demo123', contrasenaNueva: 'NuevaClave123', confirmacion: 'NuevaClave123' };
+  const input = { contrasenaActual: 'VillaSerena26', contrasenaNueva: 'NuevaClave123', confirmacion: 'NuevaClave123' };
   await assert.rejects(auth.change(old.accessToken, { ...input, confirmacion: 'otra' }), { codigo: 'DATOS_INVALIDOS' });
   await assert.rejects(auth.change(old.accessToken, { ...input, contrasenaActual: 'otra' }), { codigo: 'CONTRASENA_ACTUAL_INCORRECTA' });
   await assert.rejects(auth.change(old.accessToken, { ...input, contrasenaNueva: '12345678', confirmacion: '12345678' }), { codigo: 'CONTRASENA_INVALIDA' });
@@ -82,7 +99,7 @@ test('adaptador Spring: contrato y rutas comprobados con transporte falso, sin A
   };
   const api = createSpringAuth('http://localhost:8080', mock);
   await api.login(loginInput); await api.yo('servidor'); await api.renew('refresh'); await api.logout('servidor', 'refresh');
-  await api.change('servidor', { contrasenaActual: 'demo123', contrasenaNueva: 'Nueva123', confirmacion: 'Nueva123' });
+  await api.change('servidor', { contrasenaActual: 'VillaSerena26', contrasenaNueva: 'Nueva123', confirmacion: 'Nueva123' });
   assert.deepEqual(calls.map(c => c.path), ['login', 'yo', 'renovar', 'cerrar-sesion', 'cambiar-contrasena'].map(p => `/api/v1/auth/${p}`));
   assert.deepEqual(calls[0].body, loginInput); assert.deepEqual(calls[2].body, { refreshToken: 'refresh' }); assert.equal(calls[1].authorization, 'Bearer servidor');
 });
