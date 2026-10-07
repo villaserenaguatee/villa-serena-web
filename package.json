@@ -11,6 +11,8 @@
     "check:i18n": "node scripts/check-i18n.mjs",
     "test:bff": "node --import ./tests/bff/register.mjs --test --test-isolation=none tests/bff/*.test.ts",
     "test:reception:browser": "node scripts/test-reception-browser.cjs",
+    "test:cuenta": "node --import ./tests/bff/register.mjs --test tests/panel/*.test.ts",
+    "test:cuenta:browser": "node scripts/test-cuenta-browser.cjs",
     "test:staff:browser": "node scripts/test-staff-session-browser.cjs",
     "generate:api": "openapi-typescript openapi.yaml -o src/lib/api/schema.d.ts",
     "check": "tsc --noEmit && node scripts/check-i18n.mjs"
