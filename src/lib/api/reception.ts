@@ -6,7 +6,7 @@ async function call<T>(route: string, method = 'GET', body?: unknown, signal?: A
   const response = await fetch(`/api/${route}`, { method, signal, cache: 'no-store', ...(body === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }) });
   const value = await response.json().catch(() => null);
   if (!response.ok) throw new ReceptionRequestError(value?.mensaje ?? 'No se pudo completar la operación.', response.status, value?.codigo);
-  if (response.headers.get('X-Villa-Serena-Mode') !== 'demo') throw new Error('La conexión real está pendiente de validación.');
+  if (!['demo', ...(route.startsWith('habitaciones') ? ['spring'] : [])].includes(response.headers.get('X-Villa-Serena-Mode') ?? '')) throw new Error('La conexión real está pendiente de validación.');
   return value as T;
 }
 export const searchReservations = (query: URLSearchParams, signal?: AbortSignal) => call<ReservationPage>(`reservas?${query}`, 'GET', undefined, signal);

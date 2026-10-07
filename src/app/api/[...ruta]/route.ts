@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withStaffSession, sameOrigin, authError, writeCookies } from '@/lib/bff/auth/http';
 import { AuthError } from '@/lib/bff/auth/errors';
+import { withoutSessionTokens } from '@/lib/bff/publicPayload';
 export const runtime = 'nodejs';
 // El webhook, el canal externo, el acceso móvil y las rutas auth nunca pasan por el proxy.
 const permittedRoots = new Set(['publico', 'huespedes', 'reservas', 'habitaciones', 'room-service', 'limpieza', 'incidencias', 'cuentas', 'checkout', 'facturas', 'archivos', 'admin']);
-function withoutTokens(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(withoutTokens);
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).filter(([key]) => !['accessToken', 'refreshToken', 'tipoToken', 'expiraEn'].includes(key)).map(([key, child]) => [key, withoutTokens(child)]));
-  return value;
-}
 async function proxy(request: NextRequest, context: { params: Promise<{ ruta: string[] }> }) {
   try {
     if (request.method !== 'GET') sameOrigin(request);
@@ -28,10 +24,19 @@ async function proxy(request: NextRequest, context: { params: Promise<{ ruta: st
       if (response.status === 401) throw new AuthError('SESION_VENCIDA', 401, 'Tu sesión venció. Inicia sesión de nuevo.');
       if (response.status === 204) return new NextResponse(null, { status: 204 });
       const payload = await response.json().catch(() => null);
-      return NextResponse.json(withoutTokens(payload), { status: response.status, headers: { 'Cache-Control': 'no-store' } });
+      return NextResponse.json(withoutSessionTokens(payload), { status: response.status, headers: { 'Cache-Control': 'no-store' } });
     };
     if (ruta[0] === 'publico') return operation();
-    const result = await withStaffSession(request, access => operation(access));
+    const result = await withStaffSession(request, (access, employee) => {
+      if (ruta[0] === 'room-service' && employee.rol !== 'ROOM_SERVICE') throw new AuthError('ACCESO_DENEGADO', 403, 'Acceso denegado');
+      if (ruta[0] === 'incidencias') {
+        const report = request.method === 'POST' && ruta.length === 1;
+        const maintenance = employee.rol === 'MANTENIMIENTO_LIMPIEZA' && ['MANTENIMIENTO', 'AMBAS'].includes(employee.area ?? '');
+        if (report ? !['RECEPCION', 'MANTENIMIENTO_LIMPIEZA'].includes(employee.rol) : !maintenance && !(employee.rol === 'ADMIN' && request.method === 'GET'))
+          throw new AuthError('ACCESO_DENEGADO', 403, 'Acceso denegado');
+      }
+      return operation(access);
+    });
     if (result.response) return result.response;
     return result.rotated ? writeCookies(result.value, request, result.rotated) : result.value;
   } catch (error) { return authError(error); }

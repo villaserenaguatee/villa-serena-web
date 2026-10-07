@@ -112,6 +112,9 @@ importers:
       '@event-calendar/core':
         specifier: ^5.15.0
         version: 5.15.0
+      '@stomp/stompjs':
+        specifier: 7.2.0
+        version: 7.2.0
       '@tanstack/react-query':
         specifier: ^5.67.1
         version: 5.102.8(react@19.3.0)
@@ -548,6 +551,9 @@ packages:
 
   '@schummar/icu-type-parser@1.21.5':
     resolution: {integrity: sha512-bXHSaW5jRTmke9Vd0h5P7BtWZG9Znqb8gSDxZnxaGSJnGwPLDPfS+3g0BKzeWqzgZPsIVZkM7m2tbo18cm5HBw==}
+
+  '@stomp/stompjs@7.2.0':
+    resolution: {integrity: sha512-+Waf/wdSxgRmXHWg7HXUt51YNK/Cp2pMhW+OELwX5fzbO6pd+O2bLrWqGmyFNC/RyeUQIMGESP7oE3L1dXXm0Q==}
 
   '@sveltejs/acorn-typescript@1.0.13':
     resolution: {integrity: sha512-wgKggnhZVL9Bfx1OaKKTrYY9BFRk6C8UAkQNUcIv1+llzYrIqy+RZm5HPKzn0NpEBvTVhTqB4kQyllZywsRBRQ==}
@@ -1513,6 +1519,8 @@ snapshots:
       - supports-color
 
   '@schummar/icu-type-parser@1.21.5': {}
+
+  '@stomp/stompjs@7.2.0': {}
 
   '@sveltejs/acorn-typescript@1.0.13(acorn@8.18.0)':
     dependencies:

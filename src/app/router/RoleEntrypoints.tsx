@@ -10,7 +10,7 @@ import { RoleGuard } from '@/components/common/RoleGuard';
 const noop = () => { };
 export function RecepcionRoleApp() {
   return <RoleGuard role="recepcion">
-    <RecepcionApp onCambiarModulo={noop} />
+    <ScopedI18nProvider><RecepcionApp onCambiarModulo={noop} /></ScopedI18nProvider>
   </RoleGuard>;
 }
 export function HuespedRoleApp() {
@@ -21,9 +21,9 @@ export function HuespedRoleApp() {
     </ScopedI18nProvider>
   </RoleGuard>;
 }
-export function RoomServiceRoleApp() {
+export function RoomServiceRoleApp({ conectado = false }: { conectado?: boolean }) {
   return <RoleGuard role="room-service">
-    <RoomServiceApp onCambiarModulo={noop} />
+    <ScopedI18nProvider><RoomServiceApp onCambiarModulo={noop} conectado={conectado} /></ScopedI18nProvider>
   </RoleGuard>;
 }
 export function AdminRoleApp() {
