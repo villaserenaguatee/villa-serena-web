@@ -2,6 +2,10 @@ import CalendarioReservas from './CalendarioReservas';
 import { crearReservaRecepcionDemo } from '@/store/receptionReservation';
 import { asignarHabitacionReserva } from '@/store/reservationAssignment';
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { prepareExistingReceptionScreen } from '@/features/recepcion/receptionLegacyLink';
+import type { ReservationDetail } from '@/lib/bff/contracts/reception';
+import type { ExistingAction } from './ReceptionDetailBff';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import type { Modulo, SeccionRecepcion, Huesped, Reserva, HabitacionHotel, SolicitudHuesped, EstadoHabHotel, EstadoSolicitudHuesped, MetodoPago, Pago, Acompanante, ServicioAdicional, TipoHabitacion, ObjetoOlvidado, Incidencia, } from '@/lib/pms/types';
@@ -257,6 +261,26 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
     catch { }
   };
   const [reservaAbiertaId, setReservaAbiertaId] = useState<string | null>(null);
+  const [bffCode, setBffCode] = useState<string | null>(null);
+  const [bffRefresh, setBffRefresh] = useState(0);
+  const [legacyAction, setLegacyAction] = useState<ExistingAction | undefined>();
+  const [legacyTab, setLegacyTab] = useState<'resumen' | 'cuenta'>('resumen');
+  const pathname = usePathname();
+  useEffect(() => {
+    const parts = pathname.split('/').filter(Boolean);
+    if (parts[0] !== 'recepcion') return;
+    if (parts[1] === 'reservas') {
+      setSeccion('reservas');
+      if (parts[2]?.startsWith('VS-')) setBffCode(decodeURIComponent(parts[2]));
+    } else if (parts[1] === 'habitaciones') setSeccion('habitaciones');
+  }, [pathname]);
+  function existingAction(detail: ReservationDetail, action: ExistingAction) {
+    setLegacyAction(action);
+    const id = prepareExistingReceptionScreen(detail);
+    setReservas(leerReservas()); setHuespedes(leerHuespedes());
+    setLegacyTab(action === 'cuenta' ? 'cuenta' : 'resumen');
+    setBffCode(null); setReservaAbiertaId(id);
+  }
   const [nuevaReserva, setNuevaReserva] = useState<{
     open: boolean;
     preset?: {
@@ -446,10 +470,11 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
         return (<DiaRecepcion reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrirReserva={setReservaAbiertaId} onIr={setSeccion} />);
       case 'reservas':
         return (<Reservas
+          refreshTick={bffRefresh}
           reservas={reservas}
           huespedes={huespedes}
           habitaciones={habitaciones}
-          onAbrir={setReservaAbiertaId}
+          onAbrir={setBffCode}
           onNueva={() => setSeccion('disponibilidad')} />);
       case 'disponibilidad':
         return (<Disponibilidad habitaciones={habitaciones} reservas={reservas} onReservar={preset => setNuevaReserva({ open: true, preset })} />);
@@ -601,13 +626,16 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
 
     {perfilAbierto && (<StaffProfileModal open={perfilAbierto} onClose={() => setPerfilAbierto(false)} name={perfil.nombre} role="Recepción" email={perfil.correo} />)}
 
+    {bffCode && <DetalleReserva codigo={bffCode} onCerrar={() => { setBffCode(null); setBffRefresh(n => n + 1); }} onExistingAction={existingAction} />}
     {reservaAbierta && huespedAbierto && (<DetalleReserva
+      initialTab={legacyTab}
+      bffAction={legacyAction}
       reserva={reservaAbierta}
       huesped={huespedAbierto}
       habitaciones={habitaciones}
       reservas={reservas}
       solicitudes={solicitudes}
-      onCerrar={() => setReservaAbiertaId(null)}
+      onCerrar={() => { setReservaAbiertaId(null); setLegacyAction(undefined); }}
       onAsignarHabitacion={asignarHabitacion}
       onCheckIn={checkIn}
       onValidarCheckInWeb={validarCheckInWeb}
