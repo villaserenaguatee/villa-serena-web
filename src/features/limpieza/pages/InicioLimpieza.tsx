@@ -1,4 +1,5 @@
 import type { Habitacion, Solicitud, EntradaHistorial } from '@/lib/pms/types';
+import type { HabitacionLimpiezaAPI, SolicitudLimpiezaAPI } from '@/lib/api/operaciones';
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 function fechaHoy(): string {
@@ -77,8 +78,38 @@ interface Props {
   onComenzarLimpieza: (id: string) => void;
   onAbrirHabitacion: (id: string, iniciar: boolean) => void;
   usuarioActual?: string;
+  conectado?: boolean;
+  habitacionesConectadas?: HabitacionLimpiezaAPI[];
+  solicitudesConectadas?: SolicitudLimpiezaAPI[];
+  onIniciarLimpieza?: (id: number) => void;
+  onInterrumpirLimpieza?: (id: number) => void;
+  onTerminarLimpieza?: (id: number) => void;
+  onTomarSolicitud?: (id: number) => void;
+  onAtenderSolicitud?: (id: number) => void;
+  estaACargo?: (empleado?: { id?: number; nombre?: string } | null) => boolean;
+  busy?: boolean;
 }
-export default function Inicio({ habitaciones, solicitudes, historial, onIrMapa, onIrSolicitudes, onVerSolicitud, onComenzarLimpieza, onAbrirHabitacion, usuarioActual = 'Personal de limpieza', }: Props) {
+export default function Inicio({
+  habitaciones,
+  solicitudes,
+  historial,
+  onIrMapa,
+  onIrSolicitudes,
+  onVerSolicitud,
+  onComenzarLimpieza,
+  onAbrirHabitacion,
+  usuarioActual = 'Personal de limpieza',
+  conectado = false,
+  habitacionesConectadas = [],
+  solicitudesConectadas = [],
+  onIniciarLimpieza,
+  onInterrumpirLimpieza,
+  onTerminarLimpieza,
+  onTomarSolicitud,
+  onAtenderSolicitud,
+  estaACargo,
+  busy = false,
+}: Props) {
   const misHabitaciones = habitaciones.filter(h => h.personal === usuarioActual);
   const misNumeros = new Set(misHabitaciones.map(h => h.numero));
   const pendientes = misHabitaciones.filter(h => h.estado === 'pendiente').length;
@@ -129,9 +160,96 @@ export default function Inicio({ habitaciones, solicitudes, historial, onIrMapa,
     <div className="px-4 sm:px-8 py-5 sm:py-7 space-y-8">
 
       <section>
-        <SectionHeader title="Habitaciones asignadas" />
+        <SectionHeader title={conectado ? "Habitaciones por limpiar" : "Habitaciones asignadas"} />
 
-        {habitacionesAsignadas.length === 0 ? (<EmptyCard msg="No tienes habitaciones asignadas." />) : (<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {conectado ? (
+          habitacionesConectadas.length === 0 ? (
+            <EmptyCard msg="No hay habitaciones pendientes de limpieza." />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {habitacionesConectadas.map(h => {
+                const prioritaria = h.llegadaHoy;
+                const enCurso = h.condicion === 'EN_LIMPIEZA';
+                const aCargo = estaACargo ? estaACargo(h.empleadoACargo) : false;
+                return (
+                  <div key={h.habitacion.id} className="bg-white border border-[#E5E0D8] rounded-xl p-4 relative overflow-hidden shadow-sm">
+                    {prioritaria && <div className="absolute top-0 left-0 w-1 h-full bg-[#D8B94E]" />}
+                    <div className={prioritaria ? "pl-3" : ""}>
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-8 h-8 rounded-lg bg-[#F8F6F0] flex items-center justify-center text-[#18345C]">
+                              <BedIcon />
+                            </span>
+                            <p className="text-[28px] font-semibold text-[#18345C] leading-none">
+                              {h.habitacion.numero}
+                            </p>
+                          </div>
+                          <p className="text-[14px] text-[#AEBCC1] mt-1 ml-10">
+                            Piso {h.habitacion.piso}
+                          </p>
+                        </div>
+                        {enCurso ? (
+                          <Chip cls="bg-[#EFF6FF] text-[#1E40AF] border-[#93C5FD]">En limpieza</Chip>
+                        ) : (
+                          <Chip cls="bg-[#FFFBEF] text-[#78450A] border-[#F3D98B]">Sucia</Chip>
+                        )}
+                      </div>
+
+                      {prioritaria && (
+                        <div className="inline-flex items-center gap-1.5 text-[12px] text-[#8A6818] bg-[#FFF8DD] border border-[#F3D98B] px-2.5 py-1 rounded-md mb-2 font-medium">
+                          <span>★</span>
+                          <span>Llegada hoy</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-1.5 text-[13px] text-[#6B7280] mb-3">
+                        <PersonIcon />
+                        <span>{h.empleadoACargo ? h.empleadoACargo.nombre : 'Sin asignar'}</span>
+                      </div>
+
+                      {h.condicion === 'SUCIA' && (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => onIniciarLimpieza?.(h.habitacion.id)}
+                          className="w-full py-2.5 text-[15px] font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors disabled:opacity-50">
+                          Iniciar
+                        </button>
+                      )}
+
+                      {enCurso && aCargo && (
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => onInterrumpirLimpieza?.(h.habitacion.id)}
+                            className="flex-1 py-2 text-[14px] font-semibold border border-[#D97706] text-[#D97706] rounded-md hover:bg-[#FFFBEB] transition-colors disabled:opacity-50">
+                            Interrumpir
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => onTerminarLimpieza?.(h.habitacion.id)}
+                            className="flex-1 py-2 text-[14px] font-semibold bg-[#16A34A] text-white rounded-md hover:bg-[#15803D] transition-colors disabled:opacity-50">
+                            Terminar
+                          </button>
+                        </div>
+                      )}
+
+                      {enCurso && !aCargo && (
+                        <div className="w-full py-2 text-[13px] font-medium text-center text-[#6B7280] bg-[#F3F4F6] rounded-md">
+                          A cargo de {h.empleadoACargo?.nombre ?? 'otro empleado'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : (
+          habitacionesAsignadas.length === 0 ? (<EmptyCard msg="No tienes habitaciones asignadas." />) : (<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {habitacionesAsignadas.map(h => {
             const tareasDone = h.tareas.filter(t => t.completada).length;
             const total = h.tareas.length;
@@ -216,13 +334,76 @@ export default function Inicio({ habitaciones, solicitudes, historial, onIrMapa,
               </div>
             </div>);
           })}
-        </div>)}
+        </div>)
+        )}
       </section>
 
       <section>
         <SectionHeader title="Solicitudes pendientes" onAction={onIrSolicitudes} actionLabel="Ver todas" />
 
-        {solicitudesActivas.length === 0 ? (<EmptyCard msg="No tienes solicitudes pendientes." />) : (<div className="space-y-2">
+        {conectado ? (
+          solicitudesConectadas.length === 0 ? (
+            <EmptyCard msg="No tienes solicitudes pendientes." />
+          ) : (
+            <div className="space-y-2">
+              {solicitudesConectadas.slice(0, 6).map(s => {
+                const aCargo = estaACargo ? estaACargo(s.empleadoACargo) : false;
+                const horaStr = s.creadaEn ? new Date(s.creadaEn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                const detalleArticulos = s.articulos?.length ? s.articulos.map(a => `${a.cantidad}× ${a.nombre}`).join(', ') : s.comentario ?? (s.tipo === 'LIMPIEZA' ? 'Solicitud de limpieza de habitación' : 'Solicitud de artículos');
+                return (
+                  <div key={s.id} className="bg-white border border-[#E5E0D8] rounded-xl p-3 sm:p-4 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-[#F8F6F0] flex items-center justify-center shrink-0 text-[#18345C]">
+                      <BedIcon size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-bold text-[#18345C]">
+                          Habitación {s.habitacion.numero} · Piso {s.habitacion.piso}
+                        </p>
+                        <Chip cls={s.tipo === 'LIMPIEZA' ? "bg-[#EFF6FF] text-[#1E40AF] border-[#93C5FD]" : "bg-[#F5F3FF] text-[#6D28D9] border-[#DDD6FE]"}>
+                          {s.tipo === 'LIMPIEZA' ? 'Limpieza' : 'Artículos'}
+                        </Chip>
+                        <Chip cls={s.estado === 'PENDIENTE' ? "bg-[#FFFBEF] text-[#78450A] border-[#F3D98B]" : "bg-[#EFF6FF] text-[#1E40AF] border-[#93C5FD]"}>
+                          {s.estado === 'PENDIENTE' ? 'Pendiente' : 'En proceso'}
+                        </Chip>
+                      </div>
+                      <p className="text-xs text-[#6B7280] truncate mt-0.5">
+                        {detalleArticulos}
+                      </p>
+                      <p className="text-[10px] text-[#AEBCC1] mt-0.5">
+                        {horaStr}{s.empleadoACargo ? ` · A cargo de ${s.empleadoACargo.nombre}` : ''}
+                      </p>
+                    </div>
+                    {s.estado === 'PENDIENTE' && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => onTomarSolicitud?.(s.id)}
+                        className="shrink-0 px-3 py-1.5 text-[14px] font-semibold bg-[#18345C] text-white hover:bg-[#102747] rounded-md transition-colors disabled:opacity-50">
+                        Tomar
+                      </button>
+                    )}
+                    {s.estado === 'EN_PROCESO' && aCargo && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => onAtenderSolicitud?.(s.id)}
+                        className="shrink-0 px-3 py-1.5 text-[14px] font-semibold bg-[#16A34A] text-white hover:bg-[#15803D] rounded-md transition-colors disabled:opacity-50">
+                        Atendida
+                      </button>
+                    )}
+                    {s.estado === 'EN_PROCESO' && !aCargo && (
+                      <span className="shrink-0 text-xs text-[#6B7280]">
+                        {s.empleadoACargo?.nombre}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : (
+          solicitudesActivas.length === 0 ? (<EmptyCard msg="No tienes solicitudes pendientes." />) : (<div className="space-y-2">
           {solicitudesActivas.slice(0, 4).map(s => ((() => {
             const habitacion = habitaciones.find(h => h.numero === s.habitacionNumero);
             return (<div key={s.id} className="bg-white border border-[#E5E0D8] rounded-xl p-3 sm:p-4 flex items-center gap-3">
@@ -256,7 +437,8 @@ export default function Inicio({ habitaciones, solicitudes, historial, onIrMapa,
               </button>
             </div>);
           })()))}
-        </div>)}
+        </div>)
+        )}
       </section>
 
       {historialPersonal.length > 0 && (<section>
