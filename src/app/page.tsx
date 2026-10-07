@@ -6,7 +6,9 @@ import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
 import PublicLanguageToggle, { usePublicLanguage, } from "@/components/common/PublicLanguageToggle";
 import { UiText, useUiText } from "@/i18n/UiText";
 import BilingualDateInput from "@/components/common/BilingualDateInput";
-import { money, usePublicRooms } from "@/data/publicRooms";
+import { money } from "@/data/publicRooms";
+import { usePublicCatalog, usePublicHotel } from "@/lib/usePublicCatalog";
+import { publicSearchError } from "@/lib/publicStayValidation";
 import { translatePublicContent } from "@/lib/translation/client";
 import ScopedI18nProvider from "@/i18n/ScopedI18nProvider";
 import { validStay } from "@/lib/publicAvailability";
@@ -98,7 +100,8 @@ export default function Home() {
   </ScopedI18nProvider>);
 }
 function HomeContent() {
-  const publicRooms = usePublicRooms();
+  const { rooms: publicRooms } = usePublicCatalog();
+  const hotel = usePublicHotel();
   const ui = useUiText();
   const [slide, setSlide] = useState(0),
     [preference, setPreference] = useState("Descanso"),
@@ -110,6 +113,8 @@ function HomeContent() {
     [arrival, setArrival] = useState(""),
     [departure, setDeparture] = useState("");
   const [reviewPage, setReviewPage] = useState(0);
+  const [searchError, setSearchError] = useState("");
+  const invalidSearch = publicSearchError(arrival, departure, adults, children, Math.max(0, ...publicRooms.map(room => room.capacity)));
   const [publicReviews, setPublicReviews] = useState<any[]>([]);
   const [reviewTranslations, setReviewTranslations] = useState<Record<string, string>>({});
   const [reviewOriginal, setReviewOriginal] = useState<Record<string, boolean>>({});
@@ -173,7 +178,7 @@ function HomeContent() {
     const t = setInterval(() => setSlide((s) => (s + 1) % slides.length), 6500);
     return () => clearInterval(t);
   }, []);
-  const recommended = useMemo(() => publicRooms.filter((r) => r.preferences.includes(preference)).slice(0, 3), [preference]);
+  const recommended = useMemo(() => publicRooms.filter((r) => r.preferences.includes(preference)).slice(0, 3), [preference, publicRooms]);
   const featured = publicRooms.filter((r) => ["deluxe-jardin", "suite-serena", "familiar-premium"].includes(r.slug));
   const searchHref = "/reservar/habitaciones?" +
     new URLSearchParams({
@@ -279,7 +284,7 @@ function HomeContent() {
           <p>
             {en
               ? "Warm hospitality, comfortable rooms and thoughtful experiences for your stay."
-              : "Hospitalidad cercana, habitaciones cómodas y experiencias pensadas para acompañar tu estancia."}
+              : hotel?.descripcion ?? "Hospitalidad cercana, habitaciones cómodas y experiencias pensadas para acompañar tu estancia."}
           </p>
         </div>
         <button className="carousel-arrow carousel-prev" onClick={() => setSlide((slide - 1 + slides.length) % slides.length)}>
@@ -356,16 +361,19 @@ function HomeContent() {
             </div>)}
           </div>
           <Link
-            className={!validStay(arrival, departure)
+            className={invalidSearch
               ? "availability-search disabled"
               : "availability-search"}
-            aria-disabled={!validStay(arrival, departure)}
-            href={validStay(arrival, departure) ? searchHref : "#"}>
+            aria-describedby={searchError ? 'public-search-error' : undefined}
+            style={{ pointerEvents: 'auto' }}
+            onClick={(event) => { setSearchError(invalidSearch || ""); if (invalidSearch) event.preventDefault(); }}
+            href={!invalidSearch ? searchHref : "#buscar"}>
             {en ? "Check availability" : "Comprobar disponibilidad"}
             {" "}
             <ArrowRight size={16} />
           </Link>
         </div>
+        {searchError && <p id="public-search-error" role="alert">{searchError}</p>}
       </section>
 
       <section id="habitaciones" className="hotel-section rooms-section">

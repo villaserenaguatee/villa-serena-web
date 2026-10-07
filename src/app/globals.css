@@ -5360,6 +5360,22 @@ html,body,button,input,select,textarea {
   margin:8px 0 18px
 }
 
+.public-payment-status .reserve-code {
+  overflow-wrap:anywhere;
+  font-size:16px;
+}
+
+.payment-status-actions {
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.payment-status-actions .reserve-primary {
+  display:block;
+  margin-top:0;
+}
+
 .reserve-success .reserve-primary {
   margin-top:18px
 }

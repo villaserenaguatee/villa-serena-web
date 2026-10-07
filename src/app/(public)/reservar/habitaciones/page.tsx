@@ -7,10 +7,12 @@ import { ArrowLeft, BedDouble, Users, Wifi } from "lucide-react";
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import GuestSelector from "@/components/common/GuestSelector";
-import { money, usePublicRooms } from "@/data/publicRooms";
+import { money } from "@/data/publicRooms";
+import { usePublicCatalog, usePublicQuotes } from "@/lib/usePublicCatalog";
+import { publicSearchError } from "@/lib/publicStayValidation";
 import { availableRoom, usePublicAvailability, validGuests } from "@/lib/publicAvailability";
 export default function Habitaciones() {
-  const publicRooms = usePublicRooms();
+  const { rooms: publicRooms, error: catalogError } = usePublicCatalog();
   const ui = useUiText();
   const { en } = usePublicLanguage();
   const router = useRouter(), sp = useSearchParams();
@@ -24,21 +26,25 @@ export default function Habitaciones() {
     [max, setMax] = useState("");
   const [applied, setApplied] = useState({ adults: initialAdults, children: initialChildren, type: "Todas", floor: "Todos", min: "", max: "" });
   const total = applied.adults + applied.children;
-  const inventory = usePublicAvailability({ arrival: llegada, departure: salida, adults: applied.adults, children: applied.children });
+  const capacity = Math.max(0, ...publicRooms.map(room => room.capacity));
+  const [validationError, setValidationError] = useState("");
+  const quoteResult = usePublicQuotes(llegada, salida, applied.adults, applied.children, capacity);
+  const inventory = usePublicAvailability({ arrival: llegada, departure: salida, adults: applied.adults, children: applied.children }, capacity);
   const rooms = useMemo(() => {
     if (!validGuests(applied.adults, applied.children))
       return [];
     return publicRooms.flatMap(room => {
       const physical = availableRoom(room, llegada, salida, total, inventory);
-      if (!physical || (applied.type !== "Todas" && room.type !== applied.type) ||
+      const quote = quoteResult.quotes.find(q => q.tipoHabitacion.id === room.apiTypeId);
+      if (!physical || !quote || (applied.type !== "Todas" && room.type !== applied.type) ||
         (applied.floor !== "Todos" && room.floor !== Number(applied.floor)) ||
         (applied.min && room.price < Number(applied.min)) ||
         (applied.max && room.price > Number(applied.max)))
         return [];
-      return [{ ...room, capacity: Math.min(room.capacity, physical.capacidad), physicalId: physical.id }];
+      return [{ ...room, capacity: Math.min(room.capacity, physical.capacidad), physicalId: physical.id, total: quote.total, nights: quote.noches }];
     });
   },
-    [publicRooms, llegada, salida, total, applied, inventory]);
+    [publicRooms, llegada, salida, total, applied, inventory, quoteResult.quotes]);
   const detailHref = (slug: string,
     physicalId: string) => `/habitaciones/${slug}?${new URLSearchParams({
       origen: "disponibilidad",
@@ -83,6 +89,9 @@ export default function Habitaciones() {
       className="reserve-filters reserve-filters-complete"
       onSubmit={(event) => {
         event.preventDefault();
+        const reason = publicSearchError(llegada, salida, adults, children, capacity);
+        setValidationError(reason || "");
+        if (reason) return;
         setApplied({ adults, children, type, floor, min, max });
       }}>
       <label>
@@ -147,6 +156,7 @@ export default function Habitaciones() {
         {en ? "options" : "opciones"}
       </span>
     </form>
+    {(validationError || quoteResult.error || catalogError) && <p role="alert">{validationError || quoteResult.error || catalogError}</p>}
     <div className="reserve-room-grid">
       {rooms.map((room) => (<article className="reserve-room" key={room.slug}>
         <Link href={detailHref(room.slug, room.physicalId)}>
@@ -178,10 +188,9 @@ export default function Habitaciones() {
           </p>
           <footer>
             <b>
-              {money(room.price)}
+              {money(room.total)}
               <small>
-                <UiText text=" / " />
-                {en ? "night" : "noche"}
+                {en ? ` / ${room.nights} night(s)` : ` / ${room.nights} noche(s)`}
               </small>
             </b>
             <Link className="reserve-view-room" href={detailHref(room.slug, room.physicalId)}>
