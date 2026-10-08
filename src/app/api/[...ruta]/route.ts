@@ -29,6 +29,10 @@ async function proxy(request: NextRequest, context: { params: Promise<{ ruta: st
     if (ruta[0] === 'publico') return operation();
     const result = await withStaffSession(request, (access, employee) => {
       if (ruta[0] === 'room-service' && employee.rol !== 'ROOM_SERVICE') throw new AuthError('ACCESO_DENEGADO', 403, 'Acceso denegado');
+      if (ruta[0] === 'limpieza') {
+        const limpieza = employee.rol === 'MANTENIMIENTO_LIMPIEZA' && ['LIMPIEZA', 'AMBAS'].includes(employee.area ?? '');
+        if (!limpieza) throw new AuthError('ACCESO_DENEGADO', 403, 'Acceso denegado');
+      }
       if (ruta[0] === 'incidencias') {
         const report = request.method === 'POST' && ruta.length === 1;
         const maintenance = employee.rol === 'MANTENIMIENTO_LIMPIEZA' && ['MANTENIMIENTO', 'AMBAS'].includes(employee.area ?? '');

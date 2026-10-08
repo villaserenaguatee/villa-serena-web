@@ -4,6 +4,7 @@ import HuespedApp from '@/features/huesped/pages/HuespedApp';
 import RoomServiceApp from '@/features/roomservice/pages/RoomServiceApp';
 import AdminApp from '@/features/admin/pages/AdminApp';
 import MantenimientoApp from '@/features/mantenimiento/pages/MantenimientoApp';
+import CleaningApp from '@/features/limpieza/pages/LimpiezaApp';
 import PublicLanguageToggle from '@/components/common/PublicLanguageToggle';
 import ScopedI18nProvider from '@/i18n/ScopedI18nProvider';
 import { RoleGuard } from '@/components/common/RoleGuard';
@@ -24,6 +25,11 @@ export function HuespedRoleApp() {
 export function RoomServiceRoleApp({ conectado = false }: { conectado?: boolean }) {
   return <RoleGuard role="room-service">
     <ScopedI18nProvider><RoomServiceApp onCambiarModulo={noop} conectado={conectado} /></ScopedI18nProvider>
+  </RoleGuard>;
+}
+export function LimpiezaRoleApp({ conectado = false }: { conectado?: boolean }) {
+  return <RoleGuard role="limpieza">
+    <ScopedI18nProvider><CleaningApp onCambiarModulo={noop} conectado={conectado} /></ScopedI18nProvider>
   </RoleGuard>;
 }
 export function AdminRoleApp() {

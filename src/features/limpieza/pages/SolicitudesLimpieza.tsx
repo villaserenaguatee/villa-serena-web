@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Habitacion, Solicitud } from '@/lib/pms/types';
+import type { SolicitudLimpiezaAPI } from '@/lib/api/operaciones';
 function Chip({ cls, children, }: {
   cls: string;
   children: React.ReactNode;
@@ -58,8 +59,26 @@ interface Props {
   onAtenderArticulo?: (id: string) => void;
   onConfirmarEntrega?: (id: string) => void;
   onAbrirLimpieza: (solicitudId: string, habitacionNumero: string) => void;
+  conectado?: boolean;
+  solicitudesConectadas?: SolicitudLimpiezaAPI[];
+  onTomarSolicitud?: (id: number) => void;
+  onAtenderSolicitud?: (id: number) => void;
+  estaACargo?: (empleado?: { id?: number; nombre?: string } | null) => boolean;
+  busy?: boolean;
 }
-export default function Solicitudes({ solicitudes, habitaciones, solicitudInicialId, onCerrarDetalle, onAbrirLimpieza, }: Props) {
+export default function Solicitudes({
+  solicitudes,
+  habitaciones,
+  solicitudInicialId,
+  onCerrarDetalle,
+  onAbrirLimpieza,
+  conectado = false,
+  solicitudesConectadas = [],
+  onTomarSolicitud,
+  onAtenderSolicitud,
+  estaACargo,
+  busy = false,
+}: Props) {
   const [detalleLocal, setDetalleLocal] = useState<string | null>(null);
   const solicitudesLimpieza = solicitudes
     .filter(s => s.tipo === 'limpieza')
@@ -105,7 +124,100 @@ export default function Solicitudes({ solicitudes, habitaciones, solicitudInicia
     </div>
 
     <div className="px-4 sm:px-6 py-5">
-      {solicitudesLimpieza.length === 0 ? (<div className="bg-white border border-[#E5E0D8] rounded-xl p-5 text-center">
+      {conectado ? (
+        solicitudesConectadas.length === 0 ? (
+          <div className="bg-white border border-[#E5E0D8] rounded-xl p-5 text-center">
+            <p className="text-[15px] text-[#AEBCC1]">
+              No hay solicitudes de limpieza pendientes.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {solicitudesConectadas.map(sol => {
+              const aCargo = estaACargo ? estaACargo(sol.empleadoACargo) : false;
+              const horaStr = sol.creadaEn ? new Date(sol.creadaEn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+              const detalleArticulos = sol.articulos?.length
+                ? sol.articulos.map(a => `${a.cantidad}× ${a.nombre}`).join(', ')
+                : sol.comentario ?? (sol.tipo === 'LIMPIEZA' ? 'Solicitud de limpieza de habitación' : 'Solicitud de artículos');
+              return (
+                <div key={sol.id} className="bg-white border border-[#E5E0D8] rounded-xl px-4 py-4 shadow-sm">
+                  <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
+                    <div className="w-10 h-10 rounded-lg bg-[#F8F6F0] flex items-center justify-center shrink-0 text-[#18345C]">
+                      <BedIcon size={18} />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-[28px] font-semibold text-[#18345C] leading-none">
+                          Habitación {sol.habitacion.numero}
+                        </p>
+                        <Chip cls={sol.tipo === 'LIMPIEZA' ? "bg-[#EFF6FF] text-[#1E40AF] border-[#93C5FD]" : "bg-[#F5F3FF] text-[#6D28D9] border-[#DDD6FE]"}>
+                          {sol.tipo === 'LIMPIEZA' ? 'Limpieza' : 'Artículos'}
+                        </Chip>
+                        <Chip cls={sol.estado === 'PENDIENTE' ? "bg-[#FFFBEF] text-[#78450A] border-[#F3D98B]" : "bg-[#EFF6FF] text-[#1E40AF] border-[#93C5FD]"}>
+                          {sol.estado === 'PENDIENTE' ? 'Pendiente' : 'En proceso'}
+                        </Chip>
+                      </div>
+
+                      <p className="mt-1 text-[13px] font-medium text-[#71839B]">
+                        Piso {sol.habitacion.piso}
+                      </p>
+
+                      <p className="text-[16px] font-medium text-[#1F2933] mt-2">
+                        {detalleArticulos}
+                      </p>
+
+                      {sol.comentario && sol.articulos?.length > 0 && (
+                        <p className="text-[14px] text-[#6B7280] mt-1">
+                          {sol.comentario}
+                        </p>
+                      )}
+
+                      <div className="flex items-center gap-3 flex-wrap mt-2">
+                        <span className="text-[13px] text-[#AEBCC1]">
+                          Solicitado: {horaStr}
+                        </span>
+                        {sol.empleadoACargo && (
+                          <span className="text-[13px] text-[#6B7280]">
+                            A cargo de: {sol.empleadoACargo.nombre}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {sol.estado === 'PENDIENTE' && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => onTomarSolicitud?.(sol.id)}
+                        className="w-full sm:w-auto px-5 py-2.5 bg-[#18345C] text-white text-[15px] font-semibold rounded-md hover:bg-[#102747] transition-colors shrink-0 disabled:opacity-50">
+                        Tomar solicitud
+                      </button>
+                    )}
+
+                    {sol.estado === 'EN_PROCESO' && aCargo && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => onAtenderSolicitud?.(sol.id)}
+                        className="w-full sm:w-auto px-5 py-2.5 bg-[#16A34A] text-white text-[15px] font-semibold rounded-md hover:bg-[#15803D] transition-colors shrink-0 disabled:opacity-50">
+                        Marcar atendida
+                      </button>
+                    )}
+
+                    {sol.estado === 'EN_PROCESO' && !aCargo && (
+                      <div className="w-full sm:w-auto px-4 py-2.5 bg-[#F3F4F6] text-[#6B7280] text-[14px] font-medium rounded-md text-center shrink-0">
+                        Asignada a {sol.empleadoACargo?.nombre}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : (
+      solicitudesLimpieza.length === 0 ? (<div className="bg-white border border-[#E5E0D8] rounded-xl p-5 text-center">
         <p className="text-[15px] text-[#AEBCC1]">
           No hay solicitudes de limpieza pendientes.
         </p>
@@ -188,7 +300,8 @@ export default function Solicitudes({ solicitudes, habitaciones, solicitudInicia
             </div>
           </div>);
         })}
-      </div>)}
+      </div>)
+      )}
     </div>
     {detalle && <div className="fixed inset-0 z-[70] flex items-end justify-end bg-[#071D34]/45" onMouseDown={cerrarDetalle}>
       <aside className="h-full w-full max-w-lg overflow-y-auto bg-white shadow-2xl" onMouseDown={e => e.stopPropagation()}>
