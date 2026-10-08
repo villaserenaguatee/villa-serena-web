@@ -1,48 +1,32 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment } from 'react';
 import type { Reserva, Huesped, HabitacionHotel } from '@/lib/pms/types';
 import { RESERVA_META } from './recUtils';
-const COLORS = { pendiente: '#78450A', confirmada: '#1E40AF', 'en-curso': '#166534', finalizada: '#475569', cancelada: '#991B1B' };
-type Props = { date: string; view: 'week' | 'month'; reservas: Reserva[]; huespedes: Huesped[]; habitaciones: HabitacionHotel[]; onSelect: (r: Reserva) => void };
-export default function ReceptionTimeline({ date, view, reservas, huespedes, habitaciones, onSelect }: Props) {
-  const target = useRef<HTMLDivElement>(null);
-  const callback = useRef(onSelect);
-  callback.current = onSelect;
-  const [error, setError] = useState('');
-  useEffect(() => {
-    let cancelled = false;
-    let cleanup: (() => void) | undefined;
-    setError('');
-    // Sin el plugin de arrastre ni selección. Carga solo en el navegador.
-    import('@event-calendar/core').then(({ createCalendar, destroyCalendar, ResourceTimeline }) => {
-      if (cancelled || !target.current) return;
-      const types = [...new Set(habitaciones.map(h => h.tipo))];
-      const calendar = createCalendar(target.current, [ResourceTimeline], {
-        view: view === 'month' ? 'resourceTimelineMonth' : 'resourceTimelineWeek',
-        date, locale: 'es-GT', firstDay: 1, height: '500px',
-        headerToolbar: { start: '', center: '', end: '' },
-        editable: false, eventStartEditable: false, eventDurationEditable: false, selectable: false,
-        slotWidth: 50, views: { resourceTimelineWeek: { slotDuration: { days: 1 }, slotLabelFormat: { day: 'numeric', weekday: 'short' } } },
-        resources: [{ id: 'unassigned', title: 'Sin asignar' }, ...types.map(type => ({ id: `type-${type}`, title: type,
-          children: habitaciones.filter(h => h.tipo === type).sort((a, b) => a.numero.localeCompare(b.numero)).map(h => ({ id: h.id, title: `Habitación ${h.numero}` })) }))],
-        events: reservas.filter(r => r.estado !== 'cancelada').map(r => ({ id: r.id, start: r.fechaEntrada, end: r.fechaSalida,
-          allDay: true, resourceIds: [r.habitacionId ?? 'unassigned'], backgroundColor: COLORS[r.estado], textColor: '#ffffff',
-          title: `${r.origenReserva === 'publica' ? '🌐 Web' : '🏨 Recepción'} · ${huespedes.find(h => h.id === r.huespedId)?.nombre ?? 'Huésped'} · ${r.codigo}` })),
-        eventClick: info => { const r = reservas.find(r => r.id === String(info.event.id)); if (r) callback.current(r); },
-        eventDidMount: info => {
-          const r = reservas.find(r => r.id === String(info.event.id));
-          if (!r) return;
-          info.el.setAttribute('role', 'button');
-          info.el.setAttribute('tabindex', '0');
-          info.el.setAttribute('aria-label', `${r.codigo}, ${RESERVA_META[r.estado].label}`);
-          info.el.addEventListener('keydown', event => {
-            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); callback.current(r); }
-          });
-        },
-      });
-      cleanup = () => { void destroyCalendar(calendar); };
-    }).catch(() => { if (!cancelled) setError('No se pudo abrir el calendario. Vuelve a abrir la vista del día.'); });
-    return () => { cancelled = true; cleanup?.(); };
-  }, [date, view, reservas, huespedes, habitaciones]);
-  return <>{error && <p role="alert">{error}</p>}<div ref={target} /></>;
+
+type Props = { days: string[]; groupByFloor: boolean; reservas: Reserva[]; huespedes: Huesped[]; habitaciones: (Pick<HabitacionHotel, 'id' | 'numero' | 'piso'> & { tipo: string })[]; onSelect: (r: Reserva) => void };
+const weekdays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+export default function ReceptionTimeline({ days, groupByFloor, reservas, huespedes, habitaciones, onSelect }: Props) {
+  const floors = [...new Set(habitaciones.map(h => h.piso))].sort((a,b) => a-b);
+  return <table aria-label="Reservas por habitación y día" className="w-max border-separate border-spacing-0 text-xs">
+    <thead><tr><th scope="col" className="sticky top-0 left-0 z-30 min-w-24 border border-[#E5E0D8] bg-[#F8F6F0] p-2 text-left">Habitación</th>
+      {days.map(day => <th key={day} scope="col" className="sticky top-0 z-20 min-w-24 border-b border-r border-t border-[#E5E0D8] bg-[#F8F6F0] p-2 font-semibold">
+        {weekdays[new Date(`${day}T12:00:00Z`).getUTCDay()]} {Number(day.slice(-2))}
+      </th>)}
+    </tr></thead>
+    <tbody>{floors.map(floor => <Fragment key={floor}>
+      {groupByFloor && <tr><th scope="rowgroup" colSpan={days.length + 1} className="border-b border-l border-r border-[#E5E0D8] bg-[#EFF3F7] py-2 text-left"><span className="sticky left-0 px-2">Piso {floor}</span></th></tr>}
+      {habitaciones.filter(h => h.piso === floor).sort((a,b) => a.numero.localeCompare(b.numero)).map(room => <tr key={room.id}>
+        <th scope="row" className="sticky left-0 z-10 border-b border-l border-r border-[#E5E0D8] bg-white p-2 text-left font-semibold">Hab. {room.numero}</th>
+        {days.map(day => <td key={day} aria-label={`Hab. ${room.numero}, ${day}`} className="h-10 w-24 max-w-24 border-b border-r border-[#E5E0D8] p-1 align-top">
+          {reservas.filter(r => r.habitacionId === room.id && r.estado !== 'cancelada' && r.fechaEntrada <= day && r.fechaSalida > day).map(r => {
+            const name = huespedes.find(h => h.id === r.huespedId)?.nombre ?? 'Huésped';
+            return <button key={r.id} data-reservation-code={r.codigo} aria-label={`${r.codigo}, ${RESERVA_META[r.estado].label}`} title={`${name} · ${r.codigo}`}
+              onClick={() => onSelect(r)} className={`mb-1 block w-full rounded border px-1 py-1 text-left text-[11px] leading-tight break-words ${RESERVA_META[r.estado].chip}`}>
+              {r.origenReserva === 'publica' ? '🌐' : '🏨'} {name}
+            </button>;
+          })}
+        </td>)}
+      </tr>)}
+    </Fragment>)}</tbody>
+  </table>;
 }
