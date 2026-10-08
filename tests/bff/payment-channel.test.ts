@@ -41,7 +41,8 @@ describe('Issue 6: resultado y canal exclusivamente simulados', () => {
       const response = await publicGet(new Request(`${origin}/api/publico/reservas/${code}/estado?success=true&pagado=1`));
       assert.equal(response.status, 200); assert.equal(paymentView(await response.json(), code), expected);
     }
-    assert.equal(paymentView(demoStatus('VS-DEMO02'), 'VS-DEMO02', true), 'incomplete');
+    assert.equal(paymentView(demoStatus('VS-DEMO02'), 'VS-DEMO02', true), 'processing');
+    assert.equal(paymentView({ ...demoStatus('VS-DEMO02'), estadoPago: 'FALLIDO' }, 'VS-DEMO02'), 'incomplete');
     assert.throws(() => paymentView({ ...demoStatus('VS-DEMO02'), estadoReserva: 'CONFIRMADA' }, 'VS-DEMO02'));
     assert.throws(() => paymentView(demoStatus('VS-DEMO01'), 'VS-DEMO02'));
     assert.equal((await publicPost(new Request(`${origin}/api/publico/reservas/VS-DEMO04/pago`, { method: 'POST', headers: { Origin: origin } }))).status, 409);
