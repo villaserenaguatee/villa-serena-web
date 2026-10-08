@@ -1,3 +1,4 @@
+import { permitsLocalCancellation } from '@/features/recepcion/localCancellation';
 import { checkInRealizado, checkInWebPendiente } from '@/store/reservationStore';
 import { HOTEL } from "@/lib/hotel";
 import { useMemo, useState } from 'react';
@@ -447,7 +448,7 @@ function TabResumen({ bffAction, reserva, huesped, habitacion, habitaciones, res
         className="flex-1 py-2 text-[15px] font-semibold bg-[#166534] text-white rounded-md hover:bg-[#14532D] transition-colors">
         Revisar factura y check-out
       </button>)}
-      {!bffAction && <button
+      {!bffAction && permitsLocalCancellation(reserva) && <button
         onClick={() => setCancelando(true)}
         className="flex-1 sm:flex-none sm:px-5 py-2 text-[15px] font-semibold border border-[#FCA5A5] text-[#991B1B] rounded-md hover:bg-[#FEF2F2] transition-colors">
         Cancelar reserva
@@ -456,7 +457,7 @@ function TabResumen({ bffAction, reserva, huesped, habitacion, habitaciones, res
 
     {!cerrada && !cancelando && !reserva.habitacionId && (reserva.estado === 'confirmada' || reserva.estado === 'pendiente') && (<p className="text-[12px] text-[#9A3412]">Asigna una habitación para habilitar el check-in.</p>)}
 
-    {cancelando && (<div className="border border-[#FCA5A5] bg-[#FEF2F2] rounded-xl px-4 py-2 space-y-2">
+    {cancelando && permitsLocalCancellation(reserva) && (<div className="border border-[#FCA5A5] bg-[#FEF2F2] rounded-xl px-4 py-2 space-y-2">
       <p className="text-[15px] font-semibold text-[#991B1B]">Cancelar {reserva.codigo}</p>
       <p className="text-[13px] text-[#7F1D1D]">
         Selecciona un motivo. La habitación quedará liberada y la reserva no podrá reactivarse.
