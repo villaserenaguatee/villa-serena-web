@@ -1,6 +1,6 @@
 import { needsReservationChannel, permitsLocalCancellation } from '@/features/recepcion/localCancellation';
 import CalendarioReservas from './CalendarioReservas';
-import { crearReservaRecepcionDemo } from '@/store/receptionReservation';
+import { createReservation, registerGuest, getRooms } from '@/lib/api/reception';
 import { asignarHabitacionReserva } from '@/store/reservationAssignment';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -275,13 +275,20 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       if (parts[2]?.startsWith('VS-')) setBffCode(decodeURIComponent(parts[2]));
     } else if (parts[1] === 'habitaciones') setSeccion('habitaciones');
   }, [pathname]);
+  
   function abrirReserva(id: string) {
     const reservation = reservas.find(r => r.id === id);
     setLegacyAction(undefined);
-    if (reservation && needsReservationChannel(reservation)) {
-      setReservaAbiertaId(null); setBffCode(reservation.codigo);
-    } else { setBffCode(null); setReservaAbiertaId(id); }
-  }
+    
+//     if (reservation && needsReservationChannel(reservation)) {
+//       setReservaAbiertaId(null); setBffCode(reservation.codigo);
+//     } else { setBffCode(null); setReservaAbiertaId(id); }
+    
+    const code = reservas.find(r => r.id === id)?.codigoBff ?? (id.startsWith('bff-reservation-') ? id.slice('bff-reservation-'.length) : undefined);
+    if (code) { setReservaAbiertaId(null); setBffCode(code); }
+    else { setReservaAbiertaId(id); setBffCode(null);}
+  } //07-oct-26 conflict resolved by Alexander
+  
   function existingAction(detail: ReservationDetail, action: ExistingAction) {
     setLegacyAction(action);
     const id = prepareExistingReceptionScreen(detail);
@@ -344,7 +351,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
     setHuespedes(leerHuespedes());
     return nuevo;
   }
-  function crearReserva(d: {
+  async function crearReserva(d: {
     huespedId: string;
     tipoHabitacion: TipoHabitacion;
     fechaEntrada: string;
@@ -354,8 +361,19 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
     ninos?: number;
     habitacionId: string | null;
     descuento?: number;
-  }): Reserva {
-    const nueva = crearReservaRecepcionDemo(d);
+  }): Promise<Reserva> {
+    const guest = leerHuespedes().find(h => h.id === d.huespedId);
+    if (!guest) throw new Error('Selecciona un huésped registrado.');
+    const registered = await registerGuest({ nombreCompleto: guest.nombre, correo: guest.correo, telefono: guest.telefono,
+      nacionalidad: guest.nacionalidad, tipoDocumento: guest.tipoDocumento === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: guest.documento });
+    const rooms = await getRooms();
+    const type = rooms.find(r => r.tipoHabitacion.nombre === d.tipoHabitacion)?.tipoHabitacion;
+    const room = d.habitacionId ? rooms.find(r => 'hh-' + r.numero === d.habitacionId) : null;
+    if (!type || (d.habitacionId && !room)) throw new Error('Revisa la habitación seleccionada.');
+    const detail = await createReservation({ huespedId: registered.huesped.id, tipoHabitacionId: type.id,
+      entrada: d.fechaEntrada, salida: d.fechaSalida, numeroHuespedes: d.personas, habitacionId: room?.id ?? null });
+    const id = prepareExistingReceptionScreen(detail);
+    const nueva = upsertReserva({ ...leerReservas().find(r => r.id === id)!, adultos: d.adultos, ninos: d.ninos });
     setReservas(leerReservas());
     setHabitaciones(aplicarTarifasHabitaciones(leerHabitaciones()));
     return nueva;

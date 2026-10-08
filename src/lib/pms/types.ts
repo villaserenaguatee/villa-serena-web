@@ -175,6 +175,8 @@ export interface ServicioAdicional {
 export interface Reserva {
   id: string;
   canal?: 'DIRECTO_WEB' | 'RECEPCION' | 'BOOKING' | 'EXPEDIA';
+  /** Referencia del BFF para la copia de compatibilidad; conserva los códigos locales anteriores. */
+  codigoBff?: string;
   origenReserva?: 'publica';
   solicitudPublicaId?: string;
   precioNoche?: number;
