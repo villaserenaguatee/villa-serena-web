@@ -1,8 +1,10 @@
 import { needsReservationChannel, permitsLocalCancellation } from '@/features/recepcion/localCancellation';
 import CalendarioReservas from './CalendarioReservas';
-import { createReservation, registerGuest, getRooms } from '@/lib/api/reception';
+import { requireReadyCheckInRoom } from '@/features/recepcion/checkInRoom';
+import { crearReservaRecepcionDemo } from '@/store/receptionReservation';
 import { asignarHabitacionReserva } from '@/store/reservationAssignment';
-import { useEffect, useState } from 'react';
+import { createReservation, registerGuest, getRooms } from '@/lib/api/reception';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { prepareExistingReceptionScreen } from '@/features/recepcion/receptionLegacyLink';
 import type { ReservationDetail } from '@/lib/bff/contracts/reception';
@@ -404,18 +406,32 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
     if (c.habitacionId)
       reservaHabitacionSiLibre(c.habitacionId);
   }
-  function checkIn(reservaId: string) {
-    const error = errorCheckInRecepcion(reservaId);
-    if (error) { window.alert(error); return; }
-    completarCheckInReserva(reservaId, 'recepcion');
+  const checkInPending = useRef(new Set<string>());
+  async function checkedCheckIn(reservaId: string, origin: 'recepcion' | 'portal') {
+    if (checkInPending.current.has(reservaId)) return;
+    checkInPending.current.add(reservaId);
+    const validate = origin === 'recepcion' ? errorCheckInRecepcion : errorActivacionCheckInPortal;
+    try {
+      const error = validate(reservaId);
+      if (error) throw new Error(error);
+      const reservation = leerReservas().find(r => r.id === reservaId)!;
+      const room = leerHabitaciones().find(r => r.id === reservation.habitacionId)!;
+      await requireReadyCheckInRoom(room.numero);
+      // Revalidar después de la consulta: otra acción pudo cambiar la reserva.
+      const currentError = validate(reservaId);
+      if (currentError) throw new Error(currentError);
+      if (leerReservas().find(r => r.id === reservaId)?.habitacionId !== reservation.habitacionId) {
+        throw new Error('La habitación asignada cambió. Revisa la reserva antes del check-in.');
+      }
+      completarCheckInReserva(reservaId, origin);
+      setReservas(leerReservas());
+      setHabitaciones(aplicarTarifasHabitaciones(leerHabitaciones()));
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'No se pudo consultar el estado de la habitación. No se realizó el check-in.');
+    } finally { checkInPending.current.delete(reservaId); }
   }
-  function validarCheckInWeb(reservaId: string) {
-    const error = errorActivacionCheckInPortal(reservaId);
-    if (error) { window.alert(error); return; }
-    completarCheckInReserva(reservaId, 'portal');
-    setReservas(leerReservas());
-    setHabitaciones(aplicarTarifasHabitaciones(leerHabitaciones()));
-  }
+  function checkIn(reservaId: string) { void checkedCheckIn(reservaId, 'recepcion'); }
+  function validarCheckInWeb(reservaId: string) { void checkedCheckIn(reservaId, 'portal'); }
   function rechazarCheckInWeb(reservaId: string,
     motivo: string) {
     const r = leerReservas().find(x => x.id === reservaId);
