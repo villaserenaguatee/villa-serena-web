@@ -144,6 +144,10 @@ La sincronización operativa actual se realiza mediante stores y eventos del nav
 
 ## Documentación adicional
 
+Cuenta, check-out y factura de Recepción: [configuración, alcance y evidencia del issue #12](docs/CUENTA_CHECKOUT_FACTURA.md).
+Con `STAFF_AUTH_MODE=spring`, `/panel/recepcion/cuenta` consulta el API mediante el BFF;
+`pnpm test:cuenta:connected` verifica el recorrido con un API falso y exporta los PDF de 80 mm y carta.
+
 Consultar [`docs/ACCESO_Y_CONEXIONES.md`](docs/ACCESO_Y_CONEXIONES.md) para una descripción detallada de cada módulo, sus funciones y sus dependencias.
 # Tiempo real de operaciones (OBJ-3A-3)
 
