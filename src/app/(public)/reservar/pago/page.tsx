@@ -69,7 +69,7 @@ export default function Pago() {
       setSaving(false);
     }
   }
-  return (<main className="reserve-public booking-checkout">
+  return (<main className="reserve-public booking-checkout payment-page">
     <header className="reserve-nav">
       <button className="icon-back" onClick={() => r.back()} aria-label={ui("Volver")}>
         <ArrowLeft />
@@ -137,7 +137,7 @@ export default function Pago() {
         </div>
         <div className="summary-total">
           <span>
-            {en ? "Estimated total" : "Total estimado"}
+            {en ? "Total to pay" : "Total a pagar"}
           </span>
           <b>
             {money(total)}
@@ -145,21 +145,15 @@ export default function Pago() {
         </div>
       </aside>
       <section className="reserve-form-card reserve-form-wide checkout-form">
-        <span className="reserve-kicker">
-          <UiText text="ÚLTIMO PASO" />
-        </span>
+        <span className="reserve-kicker">{en ? "Last step" : "Último paso"}</span>
         <h1>
           {en ? "Card payment" : "Pago con tarjeta"}
         </h1>
         <p>
-          {en ? "Continue with Stripe to pay by card." : "Continúa con Stripe para pagar con tarjeta."}
+          {en ? "Continue to Stripe to enter your card and complete payment." : "Continúa a Stripe para ingresar tu tarjeta y completar el pago"}
         </p>
+        <p className="payment-processor"><LockKeyhole size={16} aria-hidden="true" /><span>{en ? "Payment processed by Stripe" : "Pago procesado por Stripe"}</span></p>
         {!draft && <p role="alert">{en ? "Your details are unavailable or expired. Return to the guest form." : "Tus datos no están disponibles o vencieron. Vuelve al formulario de huésped."}</p>}
-        <div className="online-payment-head">
-          <div><b>{en ? "Card payment through Stripe" : "Pago con tarjeta mediante Stripe"}</b>
-          <span>{en ? "Test simulation: no charge or card details. The booking will remain pending payment." : "Simulación de prueba: sin cobros ni datos de tarjeta. La reserva quedará pendiente de pago."}</span></div>
-          <span className="reservation-secure"><LockKeyhole /> Stripe Checkout</span>
-        </div>
         {quoteResult.error && !canRecover && <p role="alert">{quoteResult.error}</p>}
         {quoteResult.loading && <p role="status">{en ? "Checking price..." : "Consultando precio..."}</p>}
         <label className="terms-check">
@@ -185,7 +179,7 @@ export default function Pago() {
           {en ? "Recover previous attempt" : "Recuperar intento anterior"}
         </button>}
         <button className="reserve-primary" disabled={!canPay || saving} onClick={finish}>
-          {saving ? (en ? "Processing..." : "Procesando...") : (en ? "Start test payment" : "Iniciar pago de prueba")}
+          {saving ? (en ? "Processing..." : "Procesando...") : (en ? "Continue payment →" : "Continuar pago →")}
         </button>
       </section>
     </div>
