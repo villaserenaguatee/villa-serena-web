@@ -174,6 +174,8 @@ export interface ServicioAdicional {
 }
 export interface Reserva {
   id: string;
+  /** Referencia del BFF para la copia de compatibilidad; conserva los códigos locales anteriores. */
+  codigoBff?: string;
   origenReserva?: 'publica';
   solicitudPublicaId?: string;
   precioNoche?: number;

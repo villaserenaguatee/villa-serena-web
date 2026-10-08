@@ -6,3 +6,7 @@ export type ReservationPage = S['PaginaReservas'];
 export type RoomState = S['HabitacionEstado'];
 export type RoomReference = S['HabitacionReferencia'];
 export type CancellationPreview = S['VistaPreviaCancelacion'];
+export type ReceptionCreation = import('@/lib/api/schema').components['schemas']['ReservaRecepcionPeticion'];
+export type ReceptionCalendar = import('@/lib/api/schema').components['schemas']['CalendarioReservas'];
+export type GuestData = import('@/lib/api/schema').components['schemas']['HuespedDatos'];
+export type RegisteredGuest = import('@/lib/api/schema').components['schemas']['RegistroHuespedRespuesta'];
