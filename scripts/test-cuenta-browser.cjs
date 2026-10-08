@@ -13,7 +13,7 @@ async function login(context, role = 'recepcion') {
   const page = await context.newPage();
   await page.goto(`${base}/login`);
   await page.getByPlaceholder('Correo electrónico').fill(`${role}@villaserena.gt`);
-  await page.getByPlaceholder('Contraseña', { exact: true }).fill('local-test');
+  await page.getByPlaceholder('Contraseña', { exact: true }).fill('VillaSerena26');
   await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
   await page.waitForURL(`**/${role}`);
   return page;

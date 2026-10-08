@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
 const base = process.env.STAFF_TEST_URL ?? 'http://localhost:3000';
 let browser;
-async function login(page, correo, contrasena = 'demo123') {
+async function login(page, correo, contrasena = 'VillaSerena26') {
   await page.goto(`${base}/panel/login`);
   await page.getByLabel('Correo', { exact: true }).fill(correo);
   await page.getByLabel('Contraseña', { exact: true }).fill(contrasena);
@@ -57,7 +57,7 @@ async function login(page, correo, contrasena = 'demo123') {
   await login(page, 'temporal@villaserena.gt'); await page.waitForURL('**/panel/cambiar-contrasena');
   await page.goto(`${base}/recepcion`); await page.waitForURL('**/panel/cambiar-contrasena');
   const blocked = await context.request.get(`${base}/api/reservas`); assert.equal(blocked.status(), 403); assert.equal((await blocked.json()).codigo, 'CONTRASENA_TEMPORAL');
-  await page.getByLabel('Contraseña actual', { exact: true }).fill('demo123');
+  await page.getByLabel('Contraseña actual', { exact: true }).fill('VillaSerena26');
   await page.getByLabel('Nueva contraseña', { exact: true }).fill('NuevaClave123');
   await page.getByLabel('Confirmar nueva contraseña', { exact: true }).fill('distinta');
   await page.getByRole('button', { name: 'Guardar contraseña' }).click(); await page.getByText('La confirmación no coincide con la nueva contraseña.', { exact: true }).waitFor();

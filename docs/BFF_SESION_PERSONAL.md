@@ -20,7 +20,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Abrir `http://localhost:3000` y `/panel/login`. `STAFF_AUTH_MODE=demo` es el valor predeterminado; no necesita Spring. Todas las cuentas siguientes usan inicialmente `demo123`:
+Abrir `http://localhost:3000` y `/panel/login`. `STAFF_AUTH_MODE=demo` es el valor predeterminado; no necesita Spring. Todas las cuentas siguientes usan inicialmente `VillaSerena26`:
 
 | Correo | Rol / área | Caso |
 | --- | --- | --- |

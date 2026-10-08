@@ -32,7 +32,7 @@ describe('Issue 6: resultado y canal exclusivamente simulados', () => {
     huesped: { nombreCompleto: 'Prueba Canal', correo: 'canal@example.test', telefono: '+502 55550101', nacionalidad: 'Guatemala', tipoDocumento: 'DPI', numeroDocumento: '1234567890123' } } });
   const request = (body: unknown, cookie = '', requestOrigin = origin) => new NextRequest(origin + path, { method: 'POST', headers: { Origin: requestOrigin, Cookie: cookie, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   async function login(correo = 'admin@villaserena.gt') {
-    const response = await authRoute(new NextRequest(origin + '/api/auth/login', { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ correo, contrasena: 'demo123' }) }), 'login');
+    const response = await authRoute(new NextRequest(origin + '/api/auth/login', { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ correo, contrasena: 'VillaSerena26' }) }), 'login');
     assert.equal(response.status, 200);
     return response.cookies.getAll().map(c => `${c.name}=${c.value}`).join('; ');
   }

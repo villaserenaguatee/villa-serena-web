@@ -2,20 +2,20 @@
 
 ## Inicio de sesión
 
-La ruta de acceso es `/login`.
+El personal entra desde `/panel/login`; el huésped, desde `/login`.
 
 ### Cuentas por área
 
 | Rol | Correo | Acceso |
 | --- | --- | --- |
-| Administración | `admin@villaserena.gt` | Contraseña no vacía |
-| Recepción | `recepcion@villaserena.gt` | Contraseña no vacía |
-| Limpieza | `limpieza@villaserena.gt` | Contraseña no vacía |
-| Room Service | `roomservice@villaserena.gt` | Contraseña no vacía |
-| Mantenimiento | `mantenimiento@villaserena.gt` | Contraseña no vacía |
+| Administración | `admin@villaserena.gt` | `VillaSerena26` |
+| Recepción | `recepcion@villaserena.gt` | `VillaSerena26` |
+| Limpieza | `limpieza@villaserena.gt` | `VillaSerena26` |
+| Room Service | `roomservice@villaserena.gt` | `VillaSerena26` |
+| Mantenimiento | `mantenimiento@villaserena.gt` | `VillaSerena26` |
 | Huésped | `anamorales@gmail.com` | `demo123` |
 
-Los empleados activos registrados en Administración se autentican con su correo y `demo123` en la implementación local actual. Un empleado inactivo no puede iniciar sesión.
+Las cuentas de prueba del personal usan `VillaSerena26` en el BFF. Un empleado inactivo no puede iniciar sesión. Estas credenciales no configuran el acceso real de Spring.
 
 La sesión demo del huésped incluye un `guestId` explícito vinculado a su registro en `guestStore`. El portal resuelve el perfil y sus reservas por ese ID; si la sesión o el huésped asociado no son válidos, no muestra datos de otra cuenta.
 

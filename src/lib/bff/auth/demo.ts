@@ -15,7 +15,7 @@ export function createDemoAuth(now = Date.now, accessSeconds = 900) {
   function add(id: number, nombre: string, correo: string, rol: Employee['rol'], area: Employee['area'], active = true, temporary = false) {
     const salt = randomBytes(16).toString('hex');
     accounts.set(correo, { employee: { id, nombre, correo, rol, area, debeCambiarContrasena: temporary }, active, salt,
-      hash: scryptSync('demo123', salt, 32), failures: 0, blockedUntil: 0 });
+      hash: scryptSync('VillaSerena26', salt, 32), failures: 0, blockedUntil: 0 });
   }
   EMPLEADOS_INICIALES.forEach((e, i) => {
     const rol = roles[e.rol];
