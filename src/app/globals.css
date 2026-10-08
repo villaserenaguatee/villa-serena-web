@@ -7802,6 +7802,69 @@ html,body,button,input,select,textarea {
   width:100%!important
 }
 
+/* Presentación de pago: conserva los estilos compartidos de los otros pasos. */
+.payment-page .checkout-layout {
+  width:min(1000px,94vw);
+  grid-template-columns:minmax(0,1fr) minmax(0,2fr);
+  margin:20px auto 36px;
+  gap:20px;
+}
+.payment-page .checkout-form {
+  padding:24px;
+  margin:0;
+}
+.payment-page .checkout-form h1 {
+  margin:0 0 6px;
+}
+.payment-page .checkout-form > p {
+  margin:0 0 8px;
+}
+.payment-page .payment-processor {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+}
+.payment-page .payment-processor svg {
+  flex-shrink:0;
+}
+.payment-page .terms-check {
+  margin:12px 0 8px;
+  border:0;
+  border-top:1px solid #E5E0D8;
+  padding:12px 0 0;
+}
+.payment-page .booking-summary-card {
+  padding:20px;
+  position:static;
+  border-radius:12px;
+}
+.payment-page .booking-summary-card > img {
+  height:170px;
+}
+.payment-page .summary-dates {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  padding:12px 0;
+}
+.payment-page .summary-dates > span {
+  display:block;
+  padding:0;
+}
+.payment-page .checkout-form > .reserve-primary,
+.payment-page .checkout-form > .reserve-secondary {
+  width:100%!important;
+}
+@media(max-width:800px) {
+  .payment-page .checkout-layout {
+    grid-template-columns:minmax(0,1fr);
+  }
+  .payment-page .booking-summary-card > img {
+    height:150px;
+  }
+}
+
 .social-copy {
   color:#66758e
 }
