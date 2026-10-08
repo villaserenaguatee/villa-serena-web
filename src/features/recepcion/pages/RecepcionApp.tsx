@@ -610,7 +610,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
         </div>
 
         <div className="flex-1 flex overflow-hidden relative">
-          {seccion === 'dia' ? <div className="flex-1 overflow-y-auto"><div className="p-4"><p className="mb-2 text-sm text-[#71839B]">Datos de prueba · reservas nuevas mediante el BFF</p><Link href="/panel/recepcion/reservas/VS-DEMO-4C/cuenta" className="mb-3 inline-block text-sm font-semibold text-[#18345C] underline">Cuenta, check-out y factura de demostración</Link><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={abrirReserva} onNueva={() => setNuevaReserva({ open: true })} /></div>{contenido}</div> : contenido}
+          {seccion === 'dia' ? <div className="flex-1 overflow-y-auto"><div className="p-4"><Link href="/panel/recepcion/reservas/VS-DEMO-4C/cuenta" className="mb-3 inline-block text-sm font-semibold text-[#18345C] underline">Cuenta, check-out y factura</Link><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={abrirReserva} onNueva={() => setNuevaReserva({ open: true })} /></div>{contenido}</div> : contenido}
         </div>
 
         <div className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
