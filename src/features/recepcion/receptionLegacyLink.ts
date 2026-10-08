@@ -16,7 +16,17 @@ export function prepareExistingReceptionScreen(detail: ReservationDetail): strin
   const guestId = (existing ?? upsertHuesped({ id: `bff-guest-${detail.huesped.id}`, nombre: detail.huesped.nombreCompleto, correo: detail.huesped.correo, telefono: detail.huesped.telefono, nacionalidad: detail.huesped.nacionalidad, tipoDocumento, documento: detail.huesped.numeroDocumento, creadoEn: detail.creadaEn })).id;
   const states = { PENDIENTE_PAGO: 'pendiente', CONFIRMADA: 'confirmada', EN_ESTADIA: 'en-curso', FINALIZADA: 'finalizada', CANCELADA: 'cancelada' } as const;
   const paid = Math.max(0, detail.total - detail.saldoPendiente);
-  const value: Reserva = { ...previous, id, codigo: previous?.codigo ?? detail.codigo, codigoBff: detail.codigo, huespedId: guestId, habitacionId: detail.habitacion ? `hh-${detail.habitacion.numero}` : null, tipoHabitacion: detail.tipoHabitacion.nombre as TipoHabitacion,
+  const value: Reserva = {
+  ...previous,
+  id,
+  codigo: previous?.codigo ?? detail.codigo,
+  codigoBff: detail.codigo,
+  canal: detail.canal,
+  huespedId: guestId,
+  habitacionId: detail.habitacion
+    ? `hh-${detail.habitacion.numero}`
+    : null,
+  tipoHabitacion: detail.tipoHabitacion.nombre as TipoHabitacion,
     fechaEntrada: detail.entrada, fechaSalida: detail.salida, personas: detail.numeroHuespedes, estado: states[detail.estado], creadoEn: detail.creadaEn,
     acompanantes: previous?.acompanantes.length ? previous.acompanantes : detail.huespedesAdicionales.map(g => ({ nombre: g.nombreCompleto, documento: g.numeroDocumento, tipoDocumento: g.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte' })), servicios: previous?.servicios ?? [], descuento: previous?.descuento ?? 0,
     precioNoche: detail.total / detail.noches,

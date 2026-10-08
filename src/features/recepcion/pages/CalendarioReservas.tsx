@@ -35,6 +35,7 @@ export default function CalendarioReservas({ reservas, huespedes, habitaciones, 
   const [category, setCategory] = useState('');
   const view = 'month' as const;
   const [date, setDate] = useState(fechaHoyISO());
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const days = calendarDays(date, view);
   const [data, setData] = useState<ReceptionCalendar | null>(null);
   const [error, setError] = useState('');
@@ -65,6 +66,7 @@ export default function CalendarioReservas({ reservas, huespedes, habitaciones, 
     {originIcon(r)} {label(r)}<span className="block text-[10px]">{r.codigo}</span>
   </button>;
   const leading = (new Date(`${days[0]}T12:00:00Z`).getUTCDay() + 6) % 7;
+  const selectedReservation = merged.reservas.find(r => r.id === selectedId);
   return <section aria-label="Calendario de reservas" className="rounded-xl border border-[#E5E0D8] bg-white p-4 text-[#18345C]">
     <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
       <h2 className="text-xl font-semibold">Calendario de reservas</h2>

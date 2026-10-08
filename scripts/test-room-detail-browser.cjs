@@ -1,0 +1,71 @@
+const { chromium } = require('playwright');
+const assert = require('node:assert/strict');
+const base = process.env.RECEPTION_TEST_URL ?? 'http://localhost:3030';
+(async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    for (const width of [1440, 390]) {
+      const context = await browser.newContext({ viewport: { width, height: 844 } });
+      const page = await context.newPage(), errors = [];
+      page.on('pageerror', e => errors.push(e.message));
+      const initial = page.waitForResponse(r => r.url().endsWith('/api/auth/yo'));
+      await page.goto(`${base}/panel/login`, { waitUntil: 'domcontentloaded' });
+      await initial;
+      await page.getByLabel('Correo', { exact: true }).fill('recepcion@villaserena.gt');
+      await page.getByLabel('Contraseña', { exact: true }).fill('demo123');
+      await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
+      await page.getByRole('heading', { name: 'Panel del personal' }).waitFor();
+      await page.goto(`${base}/recepcion/habitaciones`, { waitUntil: 'domcontentloaded' });
+      await page.locator('[data-room="101"] img').click();
+      const room = page.getByRole('dialog', { name: 'Detalle de habitación 101', exact: true });
+      await room.getByText('VS-TEST01 · En estadía', { exact: true }).waitFor();
+      const expected = await (await context.request.get(`${base}/api/reservas/VS-TEST01`)).json();
+      assert.equal(expected.habitacion.numero, '101');
+      await room.getByText(expected.huesped.nombreCompleto, { exact: true }).waitFor();
+      await room.getByRole('link', { name: 'Ver reserva completa', exact: true }).click();
+      const detail = page.getByRole('dialog', { name: 'Detalle de reserva', exact: true });
+      await detail.getByRole('heading', { name: 'VS-TEST01', exact: true }).waitFor();
+      await detail.getByRole('heading', { name: expected.huesped.nombreCompleto, exact: true }).waitFor();
+      assert.equal(await detail.getByRole('button', { name: 'Cancelar reserva', exact: true }).count(), 0);
+      await page.waitForURL('**/recepcion/reservas/VS-TEST01');
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.getByRole('dialog', { name: 'Detalle de reserva' }).getByRole('heading', { name: 'VS-TEST01', exact: true }).waitFor();
+      // La URL de la reserva permanece al cerrar: volver a abrirla sin navegación nueva.
+      await page.getByRole('button', { name: 'Cerrar detalle de reserva', exact: true }).click();
+      const roomsMenu = () => page.getByRole('button', { name: width < 1024 ? /Habs\./ : /^Habitaciones/ }).first();
+      await roomsMenu().click();
+      await page.getByRole('button', { name: 'Abrir detalle de habitación 101', exact: true }).click();
+      await page.getByRole('dialog', { name: 'Detalle de habitación 101', exact: true }).getByRole('link', { name: 'Ver reserva completa' }).click();
+      await page.getByRole('dialog', { name: 'Detalle de reserva', exact: true }).getByRole('heading', { name: 'VS-TEST01', exact: true }).waitFor();
+      await page.getByRole('button', { name: 'Cerrar detalle de reserva', exact: true }).click();
+      await roomsMenu().click();
+      await page.getByRole('button', { name: 'Abrir detalle de habitación 105', exact: true }).click();
+      await page.getByRole('dialog', { name: 'Detalle de habitación 105', exact: true }).getByRole('link', { name: 'Ver reserva completa' }).click();
+      const other = page.getByRole('dialog', { name: 'Detalle de reserva', exact: true });
+      await other.getByRole('heading', { name: 'VS-TEST03', exact: true }).waitFor();
+      await other.getByText('Deluxe · Habitación 105', { exact: true }).waitFor();
+      assert.equal(await other.getByRole('heading', { name: 'VS-TEST01', exact: true }).count(), 0);
+      await page.goto(`${base}/recepcion/habitaciones`, { waitUntil: 'domcontentloaded' });
+      const emptyNumber = width === 1440 ? '103' : '107';
+      await page.getByRole('button', { name: `Abrir detalle de habitación ${emptyNumber}`, exact: true }).click();
+      const empty = page.getByRole('dialog', { name: `Detalle de habitación ${emptyNumber}`, exact: true });
+      await empty.getByText('No hay reservas activas asignadas a esta habitación.', { exact: true }).waitFor();
+      assert.equal(await empty.getByRole('link', { name: 'Ver reserva completa' }).count(), 0);
+      await empty.getByRole('button', { name: 'Cerrar detalle de habitación' }).click();
+      const clean = page.locator(`[data-room="${emptyNumber}"]`);
+      if (await clean.getByRole('button', { name: 'Marcar sucia', exact: true }).count()) await clean.getByRole('button', { name: 'Marcar sucia', exact: true }).click();
+      await clean.getByText(/Sucia/).waitFor();
+      assert.equal(await page.getByRole('dialog').count(), 0);
+      await page.getByLabel('Condición', { exact: true }).selectOption('SUCIA');
+      await page.locator(`[data-room="${emptyNumber}"]`).waitFor();
+      assert.equal(await page.locator('[data-room="101"]').count(), 0);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
+      const denied = await context.request.post(`${base}/api/auth/login`, { headers: { Origin: base }, data: { correo: 'admin@villaserena.gt', contrasena: 'demo123' } });
+      assert.equal(denied.status(), 200);
+      for (const path of ['habitaciones', 'reservas', 'reservas/VS-TEST01']) assert.equal((await context.request.get(`${base}/api/${path}`)).status(), 403);
+      assert.deepEqual(errors, []);
+      console.log(`PASS ${width}: apertura inmediata, reapertura VS-TEST01, cambio a VS-TEST03, recarga, habitación sin reserva, filtros y permisos`);
+      await context.close();
+    }
+  } finally { await browser.close(); }
+})().catch(e => { console.error(e); process.exitCode = 1; });

@@ -6,7 +6,7 @@ let browser;
 async function login(page, correo = 'recepcion@villaserena.gt') {
   await page.goto(`${base}/panel/login`);
   await page.getByLabel('Correo', { exact: true }).fill(correo);
-  await page.getByLabel('Contraseña', { exact: true }).fill('demo123');
+  await page.getByLabel('Contraseña', { exact: true }).fill('VillaSerena26');
   await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
   await page.getByRole('heading', { name: 'Panel del personal' }).waitFor();
 }

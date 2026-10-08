@@ -113,7 +113,7 @@ describe('Issue 8: operaciones de recepción con datos de prueba', () => {
   test('BFF: sesión y rol, Origin, cuerpos del contrato y separación del modo real', async () => {
     const request = (path: string, method = 'GET', cookie = '', body?: unknown, origin = 'http://localhost:3008') => new NextRequest(`http://localhost:3008/api/${path}`, { method, headers: { Cookie: cookie, Origin: origin, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
     const login = async (correo: string) => {
-      const response = await authRoute(request('auth/login', 'POST', '', { correo, contrasena: 'demo123' }), 'login');
+      const response = await authRoute(request('auth/login', 'POST', '', { correo, contrasena: 'VillaSerena26' }), 'login');
       assert.equal(response.status, 200); return response.cookies.getAll().map(c => `${c.name}=${c.value}`).join('; ');
     };
     const send = (path: string, method = 'GET', cookie = '', body?: unknown, origin?: string) => receptionRoute(request(path, method, cookie, body, origin), path.startsWith('reservas') ? 'reservas' : 'habitaciones');
