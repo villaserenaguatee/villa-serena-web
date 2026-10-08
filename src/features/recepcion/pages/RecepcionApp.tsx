@@ -526,6 +526,12 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
           reservas={reservas}
           huespedes={huespedes}
           onCambiarEstado={cambiarEstadoHab}
+          onVerReservaBff={codigo => {
+            setLegacyAction(undefined);
+            setReservaAbiertaId(null);
+            setSeccion('reservas');
+            setBffCode(codigo);
+          }}
           onVerReserva={id => {
             setSeccion('reservas');
             abrirReserva(id);
