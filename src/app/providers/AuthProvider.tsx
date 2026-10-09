@@ -10,7 +10,7 @@ import type { SessionUser } from '@/lib/auth/types';
 interface AuthContextValue {
   user: SessionUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<SessionUser>;
+  login: (email: string, password: string, staffOnly?: boolean) => Promise<SessionUser>;
   logout: () => Promise<void>;
 }
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -46,9 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener(EMPLEADOS_EVENT, focus); window.removeEventListener(HUESPEDES_EVENT, focus);
     };
   }, []);
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, staffOnly = false) => {
     let next: SessionUser;
-    if (email.trim().toLowerCase() === 'anamorales@gmail.com' && !window.location.pathname.startsWith('/panel')) {
+    if (!staffOnly && email.trim().toLowerCase() === 'anamorales@gmail.com' && !window.location.pathname.startsWith('/panel')) {
       next = await loginLocal(email, password); localStorage.setItem(KEY, JSON.stringify(next));
     } else {
       next = sessionUser(await staffLogin({ correo: email, contrasena: password })); localStorage.removeItem(KEY);

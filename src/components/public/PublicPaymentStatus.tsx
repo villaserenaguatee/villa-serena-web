@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Check, Clock3, CircleAlert } from 'lucide-react';
+import { Check } from 'lucide-react';
 import VillaSerenaLogo from '@/components/common/VillaSerenaLogo';
 import { usePublicLanguage } from '@/components/common/PublicLanguageToggle';
 import { getPublicStatus, startPublicPayment } from '@/lib/api/public';
