@@ -14,10 +14,14 @@
     "test:cuenta": "node --import ./tests/bff/register.mjs --test tests/panel/*.test.ts",
     "test:cuenta:connected": "node scripts/test-cuenta-connected.cjs",
     "test:cuenta:browser": "node scripts/test-cuenta-browser.cjs",
-    "test:staff:browser": "node scripts/test-staff-session-browser.cjs",
+    "test:staff:browser": "playwright test tests/e2e/staff-session.spec.ts",
     "test:operaciones:browser": "node scripts/test-operaciones-browser.cjs",
     "generate:api": "openapi-typescript openapi.yaml -o src/lib/api/schema.d.ts",
-    "check": "tsc --noEmit && node scripts/check-i18n.mjs"
+    "check": "tsc --noEmit && node scripts/check-i18n.mjs",
+    "test:unit": "vitest run --project unit",
+    "test:component": "vitest run --project component",
+    "test:e2e": "playwright test",
+    "test:ci": "pnpm check && pnpm test:bff && pnpm test:cuenta && pnpm test:unit && pnpm test:component && pnpm test:e2e"
   },
   "dependencies": {
     "@event-calendar/core": "^5.15.0",
@@ -35,15 +39,21 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/postcss": "^4.0.12",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
     "@types/node": "^22.13.10",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "jsdom": "^30.1.2",
     "openapi-typescript": "7.13.0",
-    "playwright": "^1.63.0",
+    "playwright": "^1.64.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.0.12",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vitest": "^5.0.3"
   },
   "packageManager": "pnpm@12.0.0"
 }

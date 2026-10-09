@@ -7,6 +7,11 @@ Sistema web para la operación de Villa Serena. El proyecto está construido con
 - Node.js 20 o superior.
 - pnpm.
 
+Para las suites de pruebas y CI: Node 24.16.0 y pnpm 12.0.0.
+Consultar [pruebas y migración de #48](docs/TESTING_ISSUE48.md) para instalación
+de Chromium, comandos `test:unit`, `test:component`, `test:e2e` y `test:ci`,
+reportes y alcance del modo demo.
+
 ## Instalación
 
 ```powershell

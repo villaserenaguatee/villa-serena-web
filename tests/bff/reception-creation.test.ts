@@ -75,7 +75,11 @@ describe('Issue 25: creación y lecturas comparten el BFF de prueba', () => {
 
   test('BFF devuelve 201, protege rol y Origin y rechaza modo conectado sin usar demo', async () => {
     const request = (path: string, method = 'GET', cookie = '', body?: unknown, origin = 'http://localhost:3025') => new NextRequest(`http://localhost:3025/api/${path}`, { method, headers: { Cookie: cookie, Origin: origin, 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-    const login = async (correo: string) => (await authRoute(request('auth/login', 'POST', '', { correo, contrasena: 'demo123' }), 'login')).cookies.getAll().map(c => `${c.name}=${c.value}`).join('; ');
+    const login = async (correo: string) => {
+      const response = await authRoute(request('auth/login', 'POST', '', { correo, contrasena: 'VillaSerena26' }), 'login');
+      assert.equal(response.status, 200, 'La prueba de permisos requiere una sesión válida');
+      return response.cookies.getAll().map(c => `${c.name}=${c.value}`).join('; ');
+    };
     const send = (path: string, method = 'GET', cookie = '', body?: unknown, origin?: string) => receptionRoute(request(path, method, cookie, body, origin), path === 'huespedes' ? 'huespedes' : 'reservas');
     const cookie = await login('recepcion@villaserena.gt');
     assert.equal((await send('reservas', 'POST', '', input())).status, 401);

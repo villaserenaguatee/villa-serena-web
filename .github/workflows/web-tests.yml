@@ -1,0 +1,87 @@
+name: Web tests
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  TZ: America/Guatemala
+  STAFF_AUTH_MODE: demo
+  VILLA_SERENA_BFF_MODE: demo
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  checks:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: typecheck
+            command: pnpm exec tsc --noEmit
+          - name: i18n
+            command: pnpm check:i18n
+          - name: unit
+            command: pnpm test:unit
+          - name: component
+            command: pnpm test:component
+          - name: node-bff
+            command: pnpm test:bff
+          - name: node-cuenta
+            command: pnpm test:cuenta
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.0.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: ${{ matrix.command }}
+      - uses: actions/upload-artifact@v7
+        if: always() && (matrix.name == 'unit' || matrix.name == 'component')
+        with:
+          name: ${{ matrix.name }}-results
+          path: test-results/*.xml
+          retention-days: 7
+          if-no-files-found: ignore
+
+  e2e-demo:
+    name: e2e-demo
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.0.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: e2e-demo-results
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
