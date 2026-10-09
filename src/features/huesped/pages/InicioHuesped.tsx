@@ -78,7 +78,7 @@ export default function InicioHuesped({ huesped, reserva, habitacion, estadoHabi
           <div className="flex items-start gap-4">
             <img
               src={habitacion.tipo === "Standard"
-                ? "https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=600&h=380&fit=crop&auto=format"
+                ? "/images/demo-standard.jpg"
                 : habitacion.tipo === "Superior"
                   ? "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&h=380&fit=crop&auto=format"
                   : habitacion.tipo === "Deluxe"

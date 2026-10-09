@@ -2,6 +2,7 @@ import 'server-only';
 import type { PaymentDto, PublicStatusDto } from './contracts/public';
 // Reservas sembradas: ningún regreso del navegador confirma un pago.
 const fixtures: Record<string, PublicStatusDto> = {
+  'VS-DEMO05': { codigo: 'VS-DEMO05', estadoReserva: 'CONFIRMADA', estadoPago: 'APROBADO', puedeReintentar: false },
   'VS-DEMO01': { codigo: 'VS-DEMO01', estadoReserva: 'CONFIRMADA', estadoPago: 'APROBADO', puedeReintentar: false },
   'VS-DEMO02': { codigo: 'VS-DEMO02', estadoReserva: 'PENDIENTE_PAGO', estadoPago: 'PENDIENTE', puedeReintentar: true },
   'VS-DEMO03': { codigo: 'VS-DEMO03', estadoReserva: 'PENDIENTE_PAGO', estadoPago: null, puedeReintentar: true },

@@ -61,38 +61,214 @@ export default function PublicPaymentStatus({ code }: { code: string }) {
     } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo reintentar el pago.'); }
     finally { setBusy(false); }
   }
-  const title = view === 'confirmed' ? (en ? 'Your booking is confirmed' : 'Tu reserva está confirmada')
-    : view === 'processing' ? (en ? 'Payment processing' : 'Pago en proceso')
-    : view === 'incomplete' ? (en ? 'Payment not completed' : 'Pago no completado')
-    : error ? (en ? 'Status unavailable' : 'Estado no disponible') : (en ? 'Checking booking status' : 'Consultando estado de reserva');
-  const explanation = view === 'confirmed' ? (en ? 'Check the details of your stay.' : 'Consulta los detalles de tu estancia')
-    : view === 'processing' ? (en ? 'Your payment is still pending. Check its status in a moment.' : 'Tu pago sigue pendiente. Consulta su estado en un momento.')
-    : result?.estadoReserva === 'CANCELADA' ? (en ? 'The payment window expired and the booking was cancelled.' : 'Venció el plazo para pagar y la reserva fue cancelada.')
-    : result?.estadoPago === null ? (en ? 'Payment has not been started. You can retry while the booking is pending.' : 'El pago no se ha iniciado. Puedes reintentarlo mientras la reserva siga pendiente.')
-    : result?.estadoPago === 'FALLIDO' ? (en ? 'The payment attempt expired. Check its status or retry if available.' : 'Venció el intento de pago. Consulta su estado o reintenta si está disponible.')
-    : view === 'incomplete' ? (en ? 'Payment was not completed. Check its status or retry if available.' : 'El pago no se completó. Consulta su estado o reintenta si está disponible.') : '';
-  const Icon = view === 'confirmed' ? Check : view === 'processing' ? Clock3 : CircleAlert;
-  const canRetry = result?.estadoReserva === 'PENDIENTE_PAGO' && result.puedeReintentar;
-  const retryButton = canRetry && <button className={view === 'processing' ? 'reserve-secondary' : 'reserve-primary'} disabled={busy || consulting} onClick={retry}>{busy ? (en ? 'Checking…' : 'Consultando…') : (en ? 'Retry payment' : 'Reintentar pago')}</button>;
-  const consultButton = <button className={view === 'processing' ? 'reserve-primary' : 'reserve-secondary'} disabled={busy || consulting} onClick={() => { setConsulting(true); setReload(n => n + 1); }}>{consulting ? (en ? 'Checking…' : 'Consultando…') : (en ? 'Check status' : 'Consultar estado')}</button>;
-  return <main className="reserve-public reserve-center public-payment-status compact-payment-result">
+
+  const title =
+  view === 'confirmed'
+    ? en
+      ? 'Your booking is confirmed'
+      : 'Tu reserva está confirmada'
+    : view === 'processing'
+      ? en
+        ? 'Payment processing'
+        : 'Pago en proceso'
+      : view === 'incomplete'
+        ? en
+          ? 'Payment not completed'
+          : 'Pago no completado'
+        : error
+          ? en
+            ? 'Status unavailable'
+            : 'Estado no disponible'
+          : en
+            ? 'Checking booking status'
+            : 'Consultando estado de reserva';
+
+const explanation =
+  view === 'confirmed'
+    ? en
+      ? 'Check the details of your stay.'
+      : 'Consulta los detalles de tu estancia'
+    : view === 'processing'
+      ? en
+        ? 'Your payment is still pending. Check its status in a moment.'
+        : 'Tu pago sigue pendiente. Consulta su estado en un momento.'
+      : result?.estadoReserva === 'CANCELADA'
+        ? en
+          ? 'The payment window expired and the booking was cancelled.'
+          : 'Venció el plazo para pagar y la reserva fue cancelada.'
+        : result?.estadoPago === null
+          ? en
+            ? 'Payment has not been started. You can retry while the booking is pending.'
+            : 'El pago no se ha iniciado. Puedes reintentarlo mientras la reserva siga pendiente.'
+          : result?.estadoPago === 'FALLIDO'
+            ? en
+              ? 'The payment attempt expired. Check its status or retry if available.'
+              : 'Venció el intento de pago. Consulta su estado o reintenta si está disponible.'
+            : view === 'incomplete'
+              ? en
+                ? 'Payment was not completed. Check its status or retry if available.'
+                : 'El pago no se completó. Consulta su estado o reintenta si está disponible.'
+              : '';
+
+const Icon =
+  view === 'confirmed'
+    ? Check
+    : view === 'processing'
+      ? Clock3
+      : CircleAlert;
+
+const canRetry =
+  result?.estadoReserva === 'PENDIENTE_PAGO' &&
+  result.puedeReintentar;
+
+const retryButton =
+  canRetry && (
+    <button
+      className={view === 'processing' ? 'reserve-secondary' : 'reserve-primary'}
+      disabled={busy || consulting}
+      onClick={retry}
+    >
+      {busy
+        ? en
+          ? 'Checking…'
+          : 'Consultando…'
+        : en
+          ? 'Retry payment'
+          : 'Reintentar pago'}
+    </button>
+  );
+
+const consultButton = (
+  <button
+    className={view === 'processing' ? 'reserve-primary' : 'reserve-secondary'}
+    disabled={busy || consulting}
+    onClick={() => {
+      setConsulting(true);
+      setReload(n => n + 1);
+    }}
+  >
+    {consulting
+      ? en
+        ? 'Checking…'
+        : 'Consultando…'
+      : en
+        ? 'Check status'
+        : 'Consultar estado'}
+  </button>
+);
+
+return (
+  <main className="reserve-public reserve-center public-payment-status compact-payment-result">
     <VillaSerenaLogo />
+
     <section className="reserve-form-card reserve-success" aria-live="polite">
-      {view && <Icon className="payment-result-icon" size={38} strokeWidth={1.7} aria-hidden="true" />}
+      {view && (
+        <Icon
+          className="payment-result-icon"
+          size={38}
+          strokeWidth={1.7}
+          aria-hidden="true"
+        />
+      )}
+
       <h1>{title}</h1>
+
       {explanation && <p>{explanation}</p>}
-      {result && <div className="payment-result-summary">
-        <div><span>{en ? 'Booking' : 'Reserva'}</span><b>{result.estadoReserva === 'CONFIRMADA' ? (en ? 'Confirmed' : 'Confirmada') : result.estadoReserva === 'CANCELADA' ? (en ? 'Cancelled' : 'Cancelada') : (en ? 'Pending payment' : 'Pendiente de pago')}</b></div>
-        <div><span>{en ? 'Payment' : 'Pago'}</span><b>{result.estadoPago === 'APROBADO' ? (en ? 'Approved' : 'Aprobado') : result.estadoPago === 'PENDIENTE' ? (en ? 'Pending' : 'Pendiente') : result.estadoPago === 'FALLIDO' ? (en ? 'Failed' : 'Fallido') : (en ? 'Not started' : 'Sin iniciar')}</b></div>
-        <div><span>{en ? 'Booking code' : 'Código de reserva'}</span><b>{result.codigo}</b></div>
-      </div>}
+
+      {result && (
+        <div className="payment-result-summary">
+          <div>
+            <span>{en ? 'Booking' : 'Reserva'}</span>
+            <b>
+              {result.estadoReserva === 'CONFIRMADA'
+                ? en
+                  ? 'Confirmed'
+                  : 'Confirmada'
+                : result.estadoReserva === 'CANCELADA'
+                  ? en
+                    ? 'Cancelled'
+                    : 'Cancelada'
+                  : en
+                    ? 'Pending payment'
+                    : 'Pendiente de pago'}
+            </b>
+          </div>
+
+          <div>
+            <span>{en ? 'Payment' : 'Pago'}</span>
+            <b>
+              {result.estadoPago === 'APROBADO'
+                ? en
+                  ? 'Approved'
+                  : 'Aprobado'
+                : result.estadoPago === 'PENDIENTE'
+                  ? en
+                    ? 'Pending'
+                    : 'Pendiente'
+                  : result.estadoPago === 'FALLIDO'
+                    ? en
+                      ? 'Failed'
+                      : 'Fallido'
+                    : en
+                      ? 'Not started'
+                      : 'Sin iniciar'}
+            </b>
+          </div>
+
+          <div>
+            <span>{en ? 'Booking code' : 'Código de reserva'}</span>
+            <b>{result.codigo}</b>
+          </div>
+        </div>
+      )}
+
       {error && <p role="alert">{error}</p>}
-      {(consulting || feedback) && <p role="status">{consulting ? (en ? 'Checking…' : 'Consultando…') : feedback}</p>}
-      {view !== 'confirmed' && <div className="payment-status-actions">
-        {result?.estadoReserva === 'CANCELADA' ? <Link className="reserve-primary" href="/catalogo">{en ? 'Make a new booking' : 'Hacer nueva reserva'}</Link>
-          : view === 'processing' ? <>{consultButton}{retryButton}</> : <>{retryButton}{consultButton}</>}
-      </div>}
-      <Link className="payment-home-link" href="/">{en ? 'Return home' : 'Volver al inicio'}</Link>
+
+      {(consulting || feedback) && (
+        <p role="status">
+          {consulting
+            ? en
+              ? 'Checking…'
+              : 'Consultando…'
+            : feedback}
+        </p>
+      )}
+
+      {view === 'confirmed' && result && (
+        <div className="payment-status-actions">
+          <Link
+            className="reserve-primary"
+            href={`/reserva/detalle?codigo=${encodeURIComponent(result.codigo)}`}
+          >
+            {en ? 'View my booking' : 'Ver mi reserva'}
+          </Link>
+        </div>
+      )}
+
+      {view !== 'confirmed' && (
+        <div className="payment-status-actions">
+          {result?.estadoReserva === 'CANCELADA' ? (
+            <Link className="reserve-primary" href="/catalogo">
+              {en ? 'Make a new booking' : 'Hacer nueva reserva'}
+            </Link>
+          ) : view === 'processing' ? (
+            <>
+              {consultButton}
+              {retryButton}
+            </>
+          ) : (
+            <>
+              {retryButton}
+              {consultButton}
+            </>
+          )}
+        </div>
+      )}
+
+      <Link className="payment-home-link" href="/">
+        {en ? 'Return home' : 'Volver al inicio'}
+      </Link>
     </section>
-  </main>;
+  </main>
+);
 }
