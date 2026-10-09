@@ -58,7 +58,7 @@ comparación de flujos no forman parte de esta rama. No cerrar el Issue con esta
 ```powershell
 pnpm test:bff
 node scripts/test-portal-checkin.cjs
-node scripts/test-checkin-documentos.cjs
+pnpm exec vitest run --project component tests/component/checkin-documentos.test.tsx
 node scripts/test-reservation-lifecycle.cjs
 pnpm check
 pnpm build

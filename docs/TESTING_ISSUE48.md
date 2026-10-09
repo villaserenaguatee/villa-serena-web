@@ -1,8 +1,9 @@
 # Pruebas: primera etapa de #48
 
 Rama de partida: `develop`, commit `2713317` (#53), 09-10-2026.
-Alcance acordado: infraestructura y tres casos representativos. La issue completa
-continúa pendiente; esta etapa no elimina los scripts CJS.
+Primera etapa: infraestructura y tres casos representativos (`e25b7a2`), sin
+retirar CJS. Segunda etapa: más pruebas de unidad/componentes sin levantar Next.
+La issue completa continúa pendiente.
 
 ## Ejecutar localmente
 
@@ -26,7 +27,8 @@ secuencia; presupone que Chromium ya está instalado.
 Vitest descubre exclusivamente `tests/unit/**/*.test.ts` y
 `tests/component/**/*.test.tsx`. Configura el alias `@/` y la transformación JSX
 automática sin alterar el JSX de Next.js. Los componentes se montan con React y
-jsdom; Testing Library limpia DOM y localStorage después de cada prueba.
+jsdom; Testing Library limpia DOM y localStorage después de cada prueba. Se usa
+un worker para limitar el número de entornos jsdom simultáneos.
 
 Las 17 suites TS anteriores conservan `node:test` y el loader
 `tests/bff/register.mjs`, mediante `test:bff` y `test:cuenta`. No se incluyen en
@@ -67,6 +69,29 @@ módulo del rol directamente. El reemplazo comprueba los destinos actuales y
 consulta los menús en la página de cambio de contraseña del panel, que conserva
 el layout con enlaces autorizados. El cierre también se comprueba en ese layout.
 `pnpm test:staff:browser` apunta al reemplazo; el CJS sigue disponible como referencia.
+
+## Segunda etapa: componentes y unidad sin Next
+
+Se migraron `test-checkin-documentos.cjs` a
+`tests/component/checkin-documentos.test.tsx` (cuatro casos) y
+`test-guest-review-click.cjs` a `tests/component/guest-review.test.tsx` (seis casos
+ES/EN). Los CJS pasaron antes de la comparación y se retiraron después de
+validar sus reemplazos. El visor comprueba también el ciclo de foco con Tab;
+jsdom no acredita la geometría visual, pero ejecuta los eventos y hooks reales.
+Las únicas APIs de DOM simuladas se fijan en el nodo del área de arrastre:
+captura de puntero y `scrollTo`, que jsdom no implementa.
+
+`tests/unit/card-form.test.ts` extrae la detección de marca y las validaciones
+ES/EN de `test-guest-profile.cjs`, con fecha explícita, sin transpilar ni VM.
+Añade la longitud del CVV de American Express y comprueba ausencia de mutación.
+Son quince casos. El CJS de perfil se conserva porque sus formularios,
+persistencia y privacidad siguen pendientes de migración completa.
+
+Totales de Vitest: **25 unidad + 22 componentes**, con un worker. Estos comandos
+no levantan Next ni Chromium y se incluyen en los jobs existentes de CI. La
+[matriz completa](TESTING_CJS_INVENTORY.md) describe los 29 orígenes históricos,
+los 27 CJS que quedan y sus destinos propuestos. No se ejecutó nuevamente el
+E2E en esta segunda etapa.
 
 ## CI
 
@@ -118,10 +143,13 @@ localmente; aún no hay evidencia de ejecución remota en GitHub Actions.
 Los CJS representativos de cuenta y correo pasan y conservan sus aserciones en
 las suites nuevas. Su retirada se deja para la siguiente etapa, tras revisión.
 
-Inventario actual: **29 CJS**, no los 27 de la auditoría inicial. Se añadieron
+Inventario al comenzar: **29 CJS**, no los 27 de la auditoría inicial. Se añadieron
 `test-booking-context-browser.cjs` y `test-selected-public-portal.cjs`.
 Clasificación preliminar para las siguientes etapas (no representa una auditoría
 completa ni equivalencia comprobada del resto):
+
+La [matriz por archivo y escenario](TESTING_CJS_INVENTORY.md) desarrolla este
+inventario, distingue los híbridos y registra obsolescencias y orden de trabajo.
 
 | Grupo previsto | Scripts pendientes |
 | --- | --- |
