@@ -190,50 +190,24 @@ function HomeContent() {
     });
   const renderHelpAnswer = (key: string) => {
     const linkClass = "help-answer-link";
-    if (key === "availability") {
-      return en ? (<>
-        From <a className={linkClass} href="#inicio">
-          <UiText text="Inicio" />
-        </a>, select your arrival date, departure date and number of guests. Then select “<a className={linkClass} href="#buscar">
-          <UiText text="Comprobar disponibilidad" />
-        </a>” to view the rooms available for your stay.
-      </>) : (<>
-        Desde <a className={linkClass} href="#inicio">
-          <UiText text="Inicio" />
-        </a>, selecciona tu fecha de llegada, fecha de salida y número de huéspedes. Luego selecciona «<a className={linkClass} href="#buscar">
-          <UiText text="Comprobar disponibilidad" />
-        </a>» para consultar las habitaciones disponibles para tu estancia.
-      </>);
-    }
-    if (key === "rooms") {
-      return en ? (<>Select “<a className={linkClass} href="/catalogo">
-        <UiText text="Ver habitaciones" />
-      </a>” to browse the Villa Serena room catalog. You can explore rooms and filter by category, number of guests, floor and price range.</>) : (<>Selecciona «<a className={linkClass} href="/catalogo">
-        <UiText text="Ver habitaciones" />
-      </a>» para consultar el catálogo de Villa Serena. Puedes explorar las habitaciones y filtrar por categoría, número de huéspedes, piso y rango de precio.</>);
-    }
-    if (key === "book") {
-      return en ? (<> <a className={linkClass} href="#buscar">
-        <UiText text="Comprobar disponibilidad" />
-      </a> for your dates, choose an available room and select “Book room”. Enter your details, review your stay information, select a payment method and confirm your reservation.</>) : (<>«<a className={linkClass} href="#buscar">Comprobar disponibilidad</a>» para tus fechas, elige una habitación disponible y selecciona «Reservar habitación». Completa tus datos, revisa la información de tu estancia, selecciona el método de pago y confirma tu reserva.</>);
-    }
-    if (key === "services") {
-      return en ? (<>In “<a className={linkClass} href="#servicios">
-        <UiText text="Servicios y experiencias" />
-      </a>” you can find information about the Spa, Gym, Pool and Restaurant, including available details and opening hours for each service.</>) : (<>En «<a className={linkClass} href="#servicios">Servicios y experiencias</a>» puedes consultar información sobre Spa, Gimnasio, Piscina y Restaurante, incluyendo los detalles y horarios disponibles de cada servicio.</>);
-    }
-    if (key === "stay") {
-      return en ? (<>Select “<a className={linkClass} href="/login">
-        <UiText text="Gestionar mi estancia" />
-      </a>” to access the options available during your stay, including check-in, restaurant and services, room information, reservations and experiences, account and check-out.</>) : (<>Selecciona «<a className={linkClass} href="/login">
-        <UiText text="Gestionar mi estancia" />
-      </a>» para acceder a las opciones disponibles durante tu estancia, como check-in, restaurante y servicios, información de tu habitación, reservas y experiencias, cuenta y check-out.</>);
-    }
-    return en ? (<>Go to “<a className={linkClass} href="/login">
-      <UiText text="Gestionar mi estancia" />
-    </a>” to view the options available for your reservation. If you need assistance with a modification or cancellation, you can contact Reception.</>) : (<>Ingresa a «<a className={linkClass} href="/login">
-      <UiText text="Gestionar mi estancia" />
-    </a>» para consultar las opciones disponibles para tu reserva. Si necesitas asistencia con una modificación o cancelación, puedes contactar a Recepción.</>);
+    if (key === "availability") return en
+      ? <>From <a className={linkClass} href="#inicio">Home</a>, select your arrival date, departure date and number of guests. Then select <a className={linkClass} href="#buscar">Check availability</a> to view the rooms available for your stay.</>
+      : <>Desde <a className={linkClass} href="#inicio">Inicio</a>, selecciona tu fecha de llegada, fecha de salida y número de huéspedes. Luego selecciona <a className={linkClass} href="#buscar">Comprobar disponibilidad</a> para consultar las habitaciones disponibles para tu estancia.</>;
+    if (key === "rooms") return en
+      ? <>Select <a className={linkClass} href="/catalogo">View rooms</a> to browse the Villa Serena catalog. You can explore rooms and filter by category, number of guests, floor and price range.</>
+      : <>Selecciona <a className={linkClass} href="/catalogo">Ver habitaciones</a> para consultar el catálogo de Villa Serena. Puedes explorar las habitaciones y filtrar por categoría, número de huéspedes, piso y rango de precio.</>;
+    if (key === "book") return en
+      ? <>From <a className={linkClass} href="#buscar">Check availability</a>, browse the options for your dates and guests. Choose a room and select “Book room”. Enter your details, review the information and continue to card payment. Once payment is confirmed, select “View my booking” to see its details.</>
+      : <>Desde <a className={linkClass} href="#buscar">Comprobar disponibilidad</a>, consulta las opciones para tus fechas y huéspedes. Elige una habitación y selecciona «Reservar habitación». Completa tus datos, revisa la información y continúa al pago con tarjeta. Cuando el pago esté confirmado, selecciona «Ver mi reserva» para consultar sus detalles.</>;
+    if (key === "services") return en
+      ? <>In <a className={linkClass} href="#servicios">Services and experiences</a> you will find information about the restaurant, spa, gym and pool. Select “View information” for each option to see its features and opening hours.</>
+      : <>En <a className={linkClass} href="#servicios">Servicios y experiencias</a> encontrarás información del restaurante, spa, gimnasio y piscina. Selecciona «Ver información» en cada opción para consultar sus características y horarios.</>;
+    if (key === "stay") return en
+      ? <>Select <a className={linkClass} href="/login">Sign in</a> and enter the email you used to book and your access code. If you do not have a valid code, select <a className={linkClass} href="/login">Request code</a>; if you did not receive it, select <a className={linkClass} href="/login">Resend code</a>. You can also enter through “Access the guest portal” in your booking details. There you can view your stay, complete check-in, request services and review your account, depending on your reservation status.</>
+      : <>Selecciona <a className={linkClass} href="/login">Iniciar sesión</a> e ingresa el correo que utilizaste al reservar y tu código de acceso. Si no tienes un código vigente, selecciona <a className={linkClass} href="/login">Solicitar código</a>; si no lo recibiste, pulsa <a className={linkClass} href="/login">Reenviar código</a>. También puedes entrar desde «Acceder al portal del huésped» en el detalle de tu reserva. Allí podrás consultar tu estancia, completar tu check-in, solicitar servicios y revisar tu cuenta, según el estado de tu reserva.</>;
+    return en
+      ? <>Contact <a className={linkClass} href="#contacto">Reception</a> and provide your reservation code and the change or cancellation you wish to request. Your reservation conditions apply. If you booked through an external platform, cancellation must be handled on that platform.</>
+      : <>Contacta a <a className={linkClass} href="#contacto">Recepción</a> e indica tu código de reserva y la modificación o cancelación que necesitas solicitar. Se aplicarán las condiciones de tu reserva. Si reservaste mediante una plataforma externa, la cancelación debe gestionarse en esa plataforma.</>;
   };
   const { en } = usePublicLanguage();
   return (<>
@@ -830,24 +804,12 @@ function HomeContent() {
               <UiText text="Ayuda" />
             </h3>
             {[
-              ["availability",
-                "¿Cómo comprobar disponibilidad?",
-                "Desde Inicio, selecciona tu fecha de llegada, fecha de salida y número de huéspedes. Luego selecciona «Comprobar disponibilidad» para consultar las habitaciones disponibles para tu estancia."],
-              ["rooms",
-                "¿Dónde puedo ver todas las habitaciones?",
-                "Selecciona «Ver habitaciones» para consultar el catálogo de Villa Serena. Puedes explorar las habitaciones y filtrar por categoría, número de huéspedes, piso y rango de precio."],
-              ["book",
-                "¿Cómo reservar una estancia?",
-                "Comprueba la disponibilidad para tus fechas, elige una habitación disponible y selecciona «Reservar habitación». Completa tus datos, revisa la información de tu estancia, selecciona el método de pago y confirma tu reserva."],
-              ["services",
-                "¿Qué servicios y experiencias ofrece el hotel?",
-                "En «Servicios y experiencias» puedes consultar información sobre Spa, Gimnasio, Piscina y Restaurante, incluyendo los detalles y horarios disponibles de cada servicio."],
-              ["stay",
-                "¿Cómo gestiono mi estancia?",
-                "Selecciona «Gestionar mi estancia» para acceder a las opciones disponibles durante tu estancia, como check-in, restaurante y servicios, información de tu habitación, reservas y experiencias, cuenta y check-out."],
-              ["changes",
-                "¿Cómo modifico o cancelo una reserva?",
-                "Ingresa a «Gestionar mi estancia» para consultar las opciones disponibles para tu reserva. Si necesitas asistencia con una modificación o cancelación, puedes contactar a Recepción."],
+              ["availability", "¿Cómo comprobar disponibilidad?"],
+              ["rooms", "¿Dónde puedo ver todas las habitaciones?"],
+              ["book", "¿Cómo reservar una estancia?"],
+              ["services", "¿Qué servicios y experiencias ofrece el hotel?"],
+              ["stay", "¿Cómo gestiono mi estancia?"],
+              ["changes", "¿Cómo modifico o cancelo una reserva?"],
             ].map(([k, t]) => (<article key={k}>
               <button onClick={() => setHelpOpen(helpOpen === k ? null : k)}>
                 <HelpCircle />
