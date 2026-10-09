@@ -1,0 +1,19 @@
+# Lista blanca: se ignora todo y solo se permite lo que el build de Next.js
+# necesita. Evita que node_modules, .next, .env, .data, .git, docs, tests y
+# scripts lleguen al daemon o invaliden la caché de capas.
+*
+
+# Manifiestos de dependencias (capa de pnpm install)
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+
+# Configuración de Next.js / TypeScript / Tailwind
+!next.config.ts
+!next-env.d.ts
+!tsconfig.json
+!postcss.config.mjs
+
+# Código y recursos estáticos
+!src/
+!public/
