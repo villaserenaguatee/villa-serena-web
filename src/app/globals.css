@@ -7765,14 +7765,16 @@ html,body,button,input,select,textarea {
 .guest-reservation-item { display:grid; gap:4px; padding:12px; margin:8px 0; border:1px solid #e5e0d8; border-radius:8px; }
 .guest-code-login { padding:24px 16px; }
 .guest-code-login button.floating-back { border:0; padding:0; background:transparent; cursor:pointer; }
-.guest-code-login .floating-login-card { height:auto; min-height:0; padding:24px; }
-.guest-code-login .floating-login-card>.villa-logo-link { margin:0 auto 8px; }
+.guest-code-login .floating-login-card { height:auto; min-height:0; padding:20px; }
+.guest-code-login .floating-login-card>.villa-logo-link { margin:0 auto 4px; }
 .guest-code-login .floating-login-card>.villa-logo-link .villa-logo-image { width:190px!important; height:90px!important; }
-.guest-code-login .floating-login-card h1 { margin:0 0 6px; }
-.guest-code-login form { gap:12px; }
+.guest-code-login .floating-login-card h1 { margin:0 0 2px; }
+.guest-code-login form { gap:9px; }
+.guest-code-login .input-icon { height:46px; box-sizing:border-box; }
+.guest-code-login .floating-login-card label { gap:4px; }
 .guest-code-login form>p { margin:0 0 2px; }
 .guest-code-login .input-icon input { flex:1; width:100%; min-width:0; border:0; background:transparent; outline:none; padding:0; box-shadow:none; height:44px; }
-.guest-code-login .floating-login-card .login-submit { height:48px!important; min-height:48px!important; padding:10px 20px!important; margin:0; }
+.guest-code-login .floating-login-card .login-submit { height:46px!important; min-height:46px!important; padding:8px 20px!important; margin:0; }
 .guest-code-links { display:flex; justify-content:center; gap:20px; flex-wrap:wrap; }
 .guest-code-resend { display:flex; justify-content:center; align-items:baseline; gap:4px; white-space:nowrap; font-size:14px; }
 .guest-code-resend .forgot-link { font-size:inherit; text-decoration:underline; padding:0; }
@@ -10278,3 +10280,9 @@ body > * {
 .help-accordion article>button .help-chevron.open {
   transform:rotate(180deg)
 }
+
+.login-access-tabs { display:flex; width:fit-content; max-width:100%; gap:4px; padding:3px; border-radius:10px; background:#f5f0e7; margin:0 auto 8px; }
+.login-access-tabs button { height:36px; box-sizing:border-box; flex:0 1 auto; border:0; border-radius:7px; padding:6px 20px; background:transparent; color:#18345c; cursor:pointer; font:inherit; }
+.login-access-tabs button[aria-selected="true"] { background:white; font-weight:600; box-shadow:0 1px 4px #18345c18; }
+
+.guest-code-login .floating-login-card form>.login-submit { margin-top:11px; }
