@@ -1,3 +1,5 @@
+import { validGuatemalaNit } from '@/lib/pms/nit';
+export { validGuatemalaNit } from '@/lib/pms/nit';
 // OBJ-4C: datos de prueba aislados. No representan reservas ni pagos del servidor.
 export const DEMO_RESERVATION_CODE = 'VS-DEMO-4C';
 export const DEMO_ACCOUNT_KEY = 'vs-demo-cuenta-obj4c';
@@ -50,15 +52,6 @@ export function accountTotals(account: DemoAccount) {
   const charges = account.charges.filter(c => c.status === 'VIGENTE').reduce((sum, c) => sum + chargeCents(c), 0);
   const payments = account.payments.filter(p => p.status === 'APROBADO').reduce((sum, p) => sum + p.cents, 0);
   return { charges, payments, balance: charges - payments };
-}
-export function validGuatemalaNit(input: string) {
-  const value = input.trim().toUpperCase().replace(/-/g, '');
-  if (value.length > 12 || !/^\d+[\dK]$/.test(value)) return false;
-  const digits = value.slice(0, -1);
-  if (!/[1-9]/.test(digits)) return false;
-  const sum = [...digits].reverse().reduce((total, digit, i) => total + Number(digit) * (i + 2), 0);
-  const check = (11 - sum % 11) % 11;
-  return value.at(-1) === (check === 10 ? 'K' : String(check));
 }
 export function addDemoCharge(account: DemoAccount, input: { concept: string; quantity: number; unitCents: number }, id: string, date: string): DemoAccount {
   if (account.status !== 'ABIERTA' || account.reservation !== 'EN_ESTADIA') throw new Error('Solo se agregan cargos durante la estadía y con la cuenta abierta.');

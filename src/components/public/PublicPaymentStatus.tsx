@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
@@ -11,115 +10,56 @@ import type { PublicStatusDto } from '@/lib/bff/contracts/public';
 
 export default function PublicPaymentStatus({ code }: { code: string }) {
   const { en } = usePublicLanguage();
-
   const [result, setResult] = useState<PublicStatusDto | null>(null);
   const [view, setView] = useState<PaymentView | null>(null);
-
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [consulting, setConsulting] = useState(false);
+  const [feedback, setFeedback] = useState('');
+  useEffect(() => { setResult(null); setView(null); }, [code]);
 
   useEffect(() => {
     const controller = new AbortController();
     const deadline = Date.now() + 60000;
-
     let timer: ReturnType<typeof setTimeout> | undefined;
-
-    setResult(null);
-    setView(null);
-    setError('');
-
+    setError(''); setConsulting(true); setFeedback('');
     async function check() {
       try {
         const value = await getPublicStatus(code, controller.signal);
-
-        const next = paymentView(
-          value,
-          code,
-          Date.now() >= deadline
-        );
-
+        const next = paymentView(value, code);
         if (controller.signal.aborted) return;
-
-        setResult(value);
-        setView(next);
-
-        if (next === 'processing') {
-          timer = setTimeout(
-            check,
-            Math.min(
-              3000,
-              Math.max(0, deadline - Date.now())
-            )
-          );
+        setResult(value); setView(next); setConsulting(false);
+        if (reload > 0) setFeedback(en ? 'Status updated.' : 'Estado actualizado.');
+        if (next === 'processing' && Date.now() < deadline) {
+          timer = setTimeout(check, Math.min(3000, Math.max(0, deadline - Date.now())));
         }
       } catch (e) {
         if (!controller.signal.aborted) {
-          setError(
-            e instanceof Error
-              ? e.message
-              : 'No se pudo consultar el estado.'
-          );
+          setConsulting(false);
+          setError(e instanceof Error ? e.message : 'No se pudo consultar el estado.');
         }
       }
     }
-
     void check();
-
-    return () => {
-      controller.abort();
-      clearTimeout(timer);
-    };
-  }, [code, reload]);
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [code, reload, en]);
 
   async function retry() {
-    if (busy) return;
-
-    setBusy(true);
-    setError('');
-
+    if (busy || consulting) return;
+    setBusy(true); setError(''); setFeedback('');
     try {
       const latest = await getPublicStatus(code);
-
-      const next = paymentView(latest, code, true);
-
-      setResult(latest);
-      setView(next);
-
-      if (
-        latest.estadoReserva !== 'PENDIENTE_PAGO' ||
-        !latest.puedeReintentar
-      ) {
-        return;
-      }
-
+      const next = paymentView(latest, code);
+      setResult(latest); setView(next);
+      if (latest.estadoReserva !== 'PENDIENTE_PAGO' || !latest.puedeReintentar) return;
       const payment = await startPublicPayment(code);
-
-      const target = new URL(
-        payment.urlPago,
-        window.location.origin
-      );
-
-      if (
-        target.origin !== window.location.origin ||
-        target.pathname !== '/reserva/resultado' ||
-        target.searchParams.get('codigo') !== code
-      ) {
-        throw new Error(
-          'La redirección real a Stripe está pendiente de validación.'
-        );
-      }
-
+      const target = new URL(payment.urlPago, window.location.origin);
+      if (target.origin !== window.location.origin || target.pathname !== '/reserva/resultado' || target.searchParams.get('codigo') !== code)
+        throw new Error('La redirección real a Stripe está pendiente de validación.');
       window.location.assign(target.href);
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : 'No se pudo reintentar el pago.'
-      );
-    } finally {
-      setBusy(false);
-    }
+    } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo reintentar el pago.'); }
+    finally { setBusy(false); }
   }
 
   const title =
