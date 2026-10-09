@@ -2,8 +2,9 @@
 
 Snapshot: scripts de `develop` en `2713317`, conservados en la primera etapa
 `e25b7a2`. El snapshot tiene **29 archivos únicos**: 20 utilizan Chromium y nueve
-utilizan VM. La segunda etapa retira los CJS de documentos y apertura de reseña
-tras comprobar equivalencia: quedan 27 CJS en el árbol actual.
+utilizan VM. La segunda etapa retiró documentos y apertura de reseña. La tercera
+retira perfil y experiencias tras comprobar equivalencia: quedan 25 CJS en el
+árbol actual.
 Este inventario clasifica el harness y los escenarios declarados en código;
 no afirma que los 29 scripts hayan sido ejecutados ni que sus expectativas
 continúen vigentes. Los destinos pendientes son propuestas, no suites existentes.
@@ -30,9 +31,9 @@ Spring real. Solo las filas marcadas **migrado** tienen equivalencia validada.
 | `test-cuenta-estancia` | Lógica y extracción AST / VM | Siete saldos, reconstrucción sin mutación, pagos ambiguos, prioridad de estancia y comprobación estática de secciones protegidas. | **Migrado:** `tests/unit/cuenta-estancia.test.ts`. |
 | `test-demo-staff-password-browser` | E2E demo | Personal rechaza `demo123`, acepta `VillaSerena26`, rol y cookies; acceso del huésped en desktop/móvil. | `tests/e2e/login-credentials.spec.ts`, pendiente; el flujo actual del huésped usa código y debe revisarse la expectativa de contraseña. |
 | `test-email-verification` | Componentes con hooks falsos / VM | ES/EN, pendiente/procesando/verificado/inválido/expirado/error, falta de proveedor, bloqueo de botones, reenvío, cambiar/volver y ausencia de verificación falsa. | **Migrado:** `tests/component/email-verification.test.tsx`. |
-| `test-experiences-lifecycle` | Componentes con hooks falsos / VM | Categorías, estados confirmada/en-curso/finalizada/cancelada, propiedad del huésped, recarga, modal obsoleto tras checkout, callbacks sin creación y vínculo explícito de la nueva experiencia. | `tests/component/experiences-lifecycle.test.tsx`, pendiente; guard puro puede ir a unidad. |
+| `test-experiences-lifecycle` | Componentes con hooks falsos / VM | Categorías, estados confirmada/en-curso/finalizada/cancelada, propiedad del huésped, recarga, modal obsoleto tras checkout, callbacks sin creación y vínculo explícito de la nueva experiencia. | **Migrado y CJS retirado:** `tests/component/experiences-lifecycle.test.tsx` y `tests/unit/experience-local.test.ts`. |
 | `test-guest-post-stay` | Extracción AST, rutas y componentes / VM | Navegación según estado, redirects directos, elección de historial, habitación finalizada sin controles, resumen con fotografía y tres acciones que solo navegan, recarga e identidad intacta. | Unidad de selección/navegación + componente de estancia finalizada + prueba de redirects, pendiente; no es browser. |
-| `test-guest-profile` | Componentes y stores con hooks falsos / VM | Clicks/formularios ES/EN, identidad/correo de solo lectura, teléfono persistente, privacidad, metadata de tarjeta sin PAN/CVV, frontera de contraseña sin secretos, foco/Escape/backdrop e historial intacto; validadores de tarjeta. | **Parcial:** validadores en `tests/unit/card-form.test.ts`; componente pendiente y CJS conservado. |
+| `test-guest-profile` | Componentes y stores con hooks falsos / VM | Clicks/formularios ES/EN, identidad/correo de solo lectura, teléfono persistente, privacidad, metadata de tarjeta sin PAN/CVV, frontera de contraseña sin secretos, foco/Escape/backdrop e historial intacto; validadores de tarjeta. | **Migrado y CJS retirado:** `tests/component/guest-profile.test.tsx` y `tests/unit/card-form.test.ts`. |
 | `test-guest-review-click` | Componentes con hooks falsos / VM | Botón real abre/cierra reseña ES/EN, dos campos, apertura sin escritura, apertura solicitada por prop y guard de estancia finalizada. | **Migrado y CJS retirado:** `tests/component/guest-review.test.tsx`; no es browser. |
 | `test-operaciones-browser` | Browser + API HTTP falso + frames STOMP falsos + Next | Pedido/notificación, conflicto y transición, cancelación, reconexión con ticket nuevo, menú agotado, cambios de habitación, límites de foto/upload, incidencia y resolución por técnico propio, desktop/móvil. | `tests/integration/operations-mock.spec.ts`, pendiente; fixtures de API y WebSocket con teardown. |
 | `test-payment-channel-browser` | E2E demo | Cuatro resultados, URL no aprueba pago, reintento, polling y parada, permisos, envío/repetición 201/200, fechas inválidas sin petición, secretos de canal ausentes y sin overflow. | Resultado/polling + `tests/e2e/channel-simulator.spec.ts`, pendiente; expectativas visuales antiguas deben contrastarse con el resultado compacto. |
@@ -86,9 +87,9 @@ Spring real. Solo las filas marcadas **migrado** tienen equivalencia validada.
 1. **Completado:** componentes sin Next para visor de documentos y apertura de
    reseña; validadores de tarjeta en unidad. Los tres CJS de referencia pasaron
    antes de la migración; los reemplazos pasan. Los dos reemplazados por completo
-   se retiraron. El de perfil se conserva por su cobertura restante.
-2. Experiencias, perfil y check-in portal: fixtures de stores y servicios,
-   hooks React reales, restauración por test y guards explícitos.
+   se retiraron en la segunda etapa.
+2. **Perfil y experiencias completados:** stores y hooks React reales,
+   restauración por test y guards explícitos. Check-in portal sigue pendiente.
 3. Ciclo de reservas y estancia finalizada: imports reales y separación de
    guards/handlers; resolver cómo preservar los escenarios que extraían AST.
 4. E2E demo por dominio: recepción, pagos/reserva pública y contexto/portal;
@@ -97,5 +98,5 @@ Spring real. Solo las filas marcadas **migrado** tienen equivalencia validada.
    necesita infraestructura y datos aislados, fuera del gate inicial.
 
 Publicar la rama y ejecutar el workflow en PR draft es una validación adicional
-de la infraestructura; no exige esperar a migrar los otros 26 CJS. El PR parcial
+de la infraestructura; no exige esperar a migrar los CJS pendientes. El PR parcial
 debe describir la etapa y referenciar #48 sin cerrarla.

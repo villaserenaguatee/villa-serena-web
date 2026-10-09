@@ -84,7 +84,7 @@ captura de puntero y `scrollTo`, que jsdom no implementa.
 `tests/unit/card-form.test.ts` extrae la detección de marca y las validaciones
 ES/EN de `test-guest-profile.cjs`, con fecha explícita, sin transpilar ni VM.
 Añade la longitud del CVV de American Express y comprueba ausencia de mutación.
-Son quince casos. El CJS de perfil se conserva porque sus formularios,
+Son quince casos. En esta etapa el CJS de perfil se conservó porque sus formularios,
 persistencia y privacidad siguen pendientes de migración completa.
 
 Totales de Vitest: **25 unidad + 22 componentes**, con un worker. Estos comandos
@@ -92,6 +92,38 @@ no levantan Next ni Chromium y se incluyen en los jobs existentes de CI. La
 [matriz completa](TESTING_CJS_INVENTORY.md) describe los 29 orígenes históricos,
 los 27 CJS que quedan y sus destinos propuestos. No se ejecutó nuevamente el
 E2E en esta segunda etapa.
+
+## Tercera etapa: perfil y experiencias sin Next
+
+`tests/component/guest-profile.test.tsx` migra los formularios de perfil a React
+y DOM reales: diez casos ES/EN de identidad y correo de solo lectura, teléfono
+con validación/persistencia/recarga, privacidad informativa, contraseña sin cambio
+ni secretos persistidos, tarjeta con metadatos permitidos y eliminación, y foco,
+Tab, Escape, X y fondo del modal. Los stores de huéspedes y tarjetas son reales;
+la UUID de tarjeta es fija para que un ID aleatorio que contenga el CVV de prueba
+no provoque un falso positivo en la comprobación de secretos.
+
+`tests/component/experiences-lifecycle.test.tsx` cubre las 21 opciones actuales,
+cuatro estados y dos montajes por estado, propiedad del huésped, historial intacto,
+creación local y pérdida de esa creación al remontar. Relee el store canónico
+antes de abrir, cancelar o confirmar: el checkout bloquea los handlers de botones
+que aún estaban habilitados y las confirmaciones abiertas, aunque exista otra
+estancia activa del mismo huésped. Son ocho casos; los dos recorridos largos
+tienen timeout local de 15 segundos, sin cambiar el timeout del resto.
+
+Para conservar la aserción de IDs internos sin inspeccionar índices de hooks,
+se extrajo `crearExperienciaLocal`, usado por el handler real. Dos pruebas en
+`tests/unit/experience-local.test.ts` comprueban el vínculo explícito a huésped y
+reserva y los datos de coordinación. El estado local pasó de `any[]` al tipo del
+registro; el flujo mantiene su comportamiento.
+
+Ambos CJS pasaron antes y después de la extracción y se retiraron al validar los
+reemplazos. La equivalencia usa eventos DOM y guards reales, en lugar de invocar
+manualmente el handler de un botón deshabilitado. Totales: **27 unidad + 40
+componentes**, con un worker, TypeScript e i18n correctos y JUnit generado con
+`CI=true`. No se levantaron Next ni Chromium ni se repitió E2E. Quedan **25 CJS**
+en el árbol, incluidos los tres migrados de la primera etapa aún conservados.
+El siguiente bloque propuesto es check-in portal y ciclo de reservas.
 
 ## CI
 
@@ -153,7 +185,7 @@ inventario, distingue los híbridos y registra obsolescencias y orden de trabajo
 
 | Grupo previsto | Scripts pendientes |
 | --- | --- |
-| Componentes con RTL | `test-checkin-documentos`, `test-email-verification` (migrado), `test-experiences-lifecycle`, `test-guest-profile`, `test-guest-review-click`, `test-portal-checkin` |
+| Componentes con RTL | `test-checkin-documentos` (migrado y retirado), `test-email-verification` (migrado), `test-experiences-lifecycle` (migrado y retirado), `test-guest-profile` (migrado y retirado), `test-guest-review-click` (migrado y retirado), `test-portal-checkin` |
 | Lógica y portal (revisión híbrida pendiente) | `test-cuenta-estancia` (migrado), `test-reservation-lifecycle`, `test-guest-post-stay` |
 | Browser con API/frames falsos | `test-cuenta-connected`, `test-checkin-room-bff-browser`, `test-operaciones-browser` |
 | Browser demo | `test-booking-context-browser`, `test-selected-public-portal`, `test-calendar-scroll-browser`, `test-channel-cancellation-browser`, `test-cuenta-browser`, `test-demo-staff-password-browser`, `test-payment-channel-browser`, `test-payment-presentation-browser`, `test-payment-results-compact-browser`, `test-payment-valid-flow-browser`, `test-public-booking-browser`, `test-reception-browser`, `test-reception-calendar-browser`, `test-reception-creation-browser`, `test-reception-operations-browser`, `test-room-detail-browser`, `test-staff-session-browser` (migrado) |
