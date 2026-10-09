@@ -7801,7 +7801,7 @@ html,body,button,input,select,textarea {
   .guest-reservation-detail .guest-reservation-room>div { padding:18px; }
   .guest-reservation-detail .guest-reservation-dates { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
-.confirmed-payment-result { padding:24px 16px; min-height:100dvh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px; }
+/* .confirmed-payment-result { padding:24px 16px; min-height:100dvh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px; }
 .confirmed-payment-result .reserve-form-card { width:min(460px,100%); padding:16px 20px; min-height:0!important; height:auto; }
 .confirmed-payment-result .villa-logo-image { width:120px!important; height:64px!important; object-fit:contain; margin:0 auto; }
 .confirmed-payment-icon { display:block; margin:0 auto 4px; color:#B38719; }
@@ -7812,7 +7812,9 @@ html,body,button,input,select,textarea {
 .confirmed-payment-summary>div+div { border-top:1px solid #E5E0D8; }
 .confirmed-payment-result .payment-status-actions { display:flex; flex-direction:column; gap:6px; }
 .confirmed-payment-result .payment-status-actions a { width:100%!important; margin:0; }
-.confirmed-payment-home { display:block; margin-top:8px; font-size:13px; text-decoration:underline; }
+.confirmed-payment-home { display:block; margin-top:8px; font-size:13px; text-decoration:underline; } */
+/* Bloque comentado por merge conflict el 08 de octubre 2026 */
+
 .compact-payment-result {
   padding:24px 16px;
   min-height:100dvh;
