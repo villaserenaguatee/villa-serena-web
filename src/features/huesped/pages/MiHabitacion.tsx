@@ -104,7 +104,7 @@ export default function MiHabitacion({ reserva, onCompartirExperiencia, onReserv
       <section className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-white">
         <div className="grid md:grid-cols-[220px_1fr]">
           <img
-            src="https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=900&h=520&fit=crop&auto=format"
+            src="/images/demo-standard.jpg"
             alt={ui(`Habitación ${habitacion.numero}`)}
             className="h-36 w-full object-cover md:h-full" />
           <div className="p-3.5">

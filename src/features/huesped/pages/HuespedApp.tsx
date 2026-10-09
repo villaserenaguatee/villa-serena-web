@@ -183,6 +183,8 @@ interface Props {
 interface PortalProps extends Props {
   huesped: Huesped;
   reservaInicial: Reserva;
+  reservasAutorizadas?: Reserva[];
+  publicSummary?: { total: number; estadoPago: string | null };
 }
 export function seleccionarEstanciaHuesped(reservas: Reserva[], huespedId: string): Reserva | undefined {
   const prioridad: Record<Reserva['estado'], number> = { 'en-curso': 0, confirmada: 1, pendiente: 2, finalizada: 3, cancelada: 4 };
@@ -224,7 +226,7 @@ export default function HuespedApp(props: Props) {
   return <HuespedPortal key={`${huesped.id}:${reservaInicial.id}`} {...props} huesped={huesped} reservaInicial={reservaInicial} />;
 }
 
-function HuespedPortal({ onCambiarModulo, huesped, reservaInicial }: PortalProps) {
+export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reservasAutorizadas, publicSummary }: PortalProps) {
   const ui = useUiText();
   const { logout } = useAuth();
   const { en, lang } = usePublicLanguage();
@@ -258,7 +260,10 @@ function HuespedPortal({ onCambiarModulo, huesped, reservaInicial }: PortalProps
     };
   },
     []);
-  const [reservasHotel, setReservasHotel] = useState<Reserva[]>(() => leerReservas());
+  const reservasDelPortal = () => reservasAutorizadas
+    ? reservasAutorizadas.map(owned => leerReservas().find(r => r.id === owned.id && r.huespedId === huesped.id) ?? owned)
+    : leerReservas();
+  const [reservasHotel, setReservasHotel] = useState<Reserva[]>(reservasDelPortal);
   const [reserva, setReserva] = useState<Reserva>(reservaInicial);
   const pedidosKey = `vs-pedidos-huesped-${reserva.codigo}`;
   const [menu, setMenu] = useState(() => leerMenu());
@@ -274,7 +279,7 @@ function HuespedPortal({ onCambiarModulo, huesped, reservaInicial }: PortalProps
     []);
   useEffect(() => {
     const sincronizarReservas = () => {
-      const actuales = leerReservas();
+      const actuales = reservasDelPortal();
       setReservasHotel(actuales);
       const sincronizada = actuales.find(r => r.id === reserva.id && r.huespedId === huesped.id);
       if (sincronizada)
@@ -790,6 +795,7 @@ function HuespedPortal({ onCambiarModulo, huesped, reservaInicial }: PortalProps
     mostrarAviso("Check-in enviado. Recepción revisará la información antes de activar tu llave digital.");
   }
   const renderCuenta = () => {
+    if (publicSummary) return <div className="p-6 space-y-4"><h1 className="text-2xl font-semibold text-[#18345C]">Cuenta</h1><p>{reserva.codigo}</p><p>Total original de la reserva: {new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ' }).format(publicSummary.total)}</p><p>Estado del pago: {publicSummary.estadoPago ?? 'Sin iniciar'}</p><Aviso>La cuenta de la estancia todavía no está disponible.</Aviso></div>;
     return (<CuentaHuesped
           abrirResena={abrirResena}
           onResenaAbierta={() => setAbrirResena(false)}
@@ -1253,6 +1259,7 @@ function HuespedPortal({ onCambiarModulo, huesped, reservaInicial }: PortalProps
             {ui(SECCIONES.find((s) => s.id === seccion)?.label ?? "")}
           </p>
           <div className="lg:hidden flex gap-1.5">
+            {reservasAutorizadas && <button type="button" className="text-white text-xs px-2" aria-label={ui("Abrir perfil")} onClick={() => setPerfilAbierto(true)}>Perfil</button>}
             <ModuloSwitcher actual="huesped" onCambiar={onCambiarModulo} variant="inline" />
           </div>
         </div>
@@ -1346,9 +1353,9 @@ function HuespedPortal({ onCambiarModulo, huesped, reservaInicial }: PortalProps
             <UiText text="Cancelar" />
           </button>
           <button
-            onClick={() => {
-              logout();
-              window.location.replace("/");
+            onClick={async () => {
+              try { await logout(); window.location.replace("/"); }
+              catch { setCerrarSesionAbierto(false); mostrarAviso("No se pudo cerrar la sesión. Intenta nuevamente."); }
             }}
             className="bg-[#18345C] text-white rounded-lg py-3 font-semibold">
             <UiText text="Cerrar sesión" />

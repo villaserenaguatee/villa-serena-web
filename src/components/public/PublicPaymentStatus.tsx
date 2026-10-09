@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Check } from 'lucide-react';
 import VillaSerenaLogo from '@/components/common/VillaSerenaLogo';
 import { usePublicLanguage } from '@/components/common/PublicLanguageToggle';
 import { getPublicStatus, startPublicPayment } from '@/lib/api/public';
@@ -124,8 +125,8 @@ export default function PublicPaymentStatus({ code }: { code: string }) {
   const title =
     view === 'confirmed'
       ? en
-        ? 'Payment confirmed'
-        : 'Pago confirmado'
+        ? 'Your booking is confirmed'
+        : 'Tu reserva está confirmada'
       : view === 'processing'
         ? en
           ? 'Payment processing'
@@ -142,6 +143,24 @@ export default function PublicPaymentStatus({ code }: { code: string }) {
               ? 'Checking booking status'
               : 'Consultando estado de reserva';
 
+  if (view === 'confirmed' && result) return (
+    <main className="reserve-public reserve-center public-payment-status confirmed-payment-result">
+      <VillaSerenaLogo />
+      <section className="reserve-form-card reserve-success" aria-live="polite">
+        <Check className="confirmed-payment-icon" size={38} aria-hidden="true" />
+        <h1>{title}</h1>
+        <p>{en ? 'View your booking details and manage your stay.' : 'Consulta los detalles de tu reserva y gestiona tu estancia.'}</p>
+        <div className="confirmed-payment-summary">
+          <div><span>{en ? 'Booking' : 'Reserva'}</span><b>{en ? 'Confirmed' : 'Confirmada'}</b></div>
+          <div><span>{en ? 'Payment' : 'Pago'}</span><b>{en ? 'Approved' : 'Aprobado'}</b></div>
+          <div><span>{en ? 'Code' : 'Código'}</span><b>{result.codigo}</b></div>
+        </div>
+        <div className="payment-status-actions"><Link className="reserve-primary" href={`/reserva/detalle?codigo=${encodeURIComponent(result.codigo)}`}>{en ? 'View my booking' : 'Ver mi reserva'}</Link></div>
+        <Link className="confirmed-payment-home" href="/">{en ? 'Return home' : 'Volver al inicio'}</Link>
+      </section>
+    </main>
+  );
+
   return (
     <main className="reserve-public reserve-center public-payment-status">
       <VillaSerenaLogo />
@@ -150,23 +169,23 @@ export default function PublicPaymentStatus({ code }: { code: string }) {
         className="reserve-form-card reserve-success"
         aria-live="polite"
       >
-        <span className="reserve-kicker">
+        {view !== 'confirmed' && <span className="reserve-kicker">
           {en ? 'TEST PAYMENT' : 'PAGO DE PRUEBA'}
-        </span>
+        </span>}
 
         <h1>{title}</h1>
 
-        <p>
+        {view !== 'confirmed' && <p>
           {en
             ? 'This is a simulation. No charge was made. The real Stripe redirect and payment confirmation are pending.'
             : 'Esta es una simulación. No se realizó ningún cobro. La redirección real a Stripe y la confirmación después del pago están pendientes.'}
-        </p>
+        </p>}
 
         {view === 'confirmed' && (
           <p>
             {en
-              ? 'Your test booking is confirmed. The confirmation email is simulated; no email was sent.'
-              : 'Tu reserva de prueba está confirmada. El correo de confirmación es simulado; no se envió ningún correo.'}
+              ? 'View your booking details and manage your stay.'
+              : 'Consulta los detalles de tu reserva y gestiona tu estancia.'}
           </p>
         )}
 
@@ -239,6 +258,7 @@ export default function PublicPaymentStatus({ code }: { code: string }) {
         {error && <p role="alert">{error}</p>}
 
         <div className="payment-status-actions">
+          {view === 'confirmed' && <Link className="reserve-primary" href={`/reserva/detalle?codigo=${encodeURIComponent(code)}`}>{en ? 'View my booking' : 'Ver mi reserva'}</Link>}
           {result?.estadoReserva === 'PENDIENTE_PAGO' &&
             result.puedeReintentar && (
               <button

@@ -1,4 +1,5 @@
 import { AvailabilityError } from '@/lib/bff/publicAvailability';
+import { creationResponse } from '@/lib/bff/bookingContext';
 import { demoCatalog, demoCreate, demoHotel, demoPayment, demoQuotes, demoStatus, parseContractBooking } from '@/lib/bff/publicContract';
 
 export const runtime = 'nodejs';
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
       let body: unknown;
       try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new AvailabilityError('DATOS_INVALIDOS', 400); }
       // Extensión de la simulación para recuperar un POST incierto; el contrato real no define esta cabecera.
-      return Response.json(demoCreate(parseContractBooking(body), request.headers.get('Idempotency-Key') ?? ''), { status: 201, headers });
+      return creationResponse(demoCreate(parseContractBooking(body), request.headers.get('Idempotency-Key') ?? ''), request);
     }
     if (route.length === 3 && route[0] === 'reservas' && route[2] === 'pago') return Response.json(demoPayment(route[1], new URL(request.url).origin), { headers });
     throw new AvailabilityError('RUTA_NO_ENCONTRADA', 404);

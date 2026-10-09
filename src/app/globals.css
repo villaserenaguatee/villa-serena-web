@@ -7726,6 +7726,91 @@ html,body,button,input,select,textarea {
   display:block
 }
 
+.guest-reservation-page { min-height:100dvh; padding:24px 16px; display:flex; flex-direction:column; align-items:center; gap:10px; background:#f8f6f0; }
+.guest-reservation-page .villa-logo-image { width:160px!important; height:86px!important; object-fit:contain; }
+.guest-reservation-card { width:min(800px,100%); background:white; border:1px solid #e5e0d8; border-radius:14px; padding:20px; color:#18345c; }
+.guest-reservation-card:has(form) { width:min(460px,100%); }
+.guest-reservation-card h1 { font-family:Georgia,serif; font-size:28px; margin:0 0 12px; text-align:center; }
+.guest-reservation-card h2 { font-family:Georgia,serif; font-size:20px; margin:12px 0 6px; }
+.guest-reservation-card p { margin:6px 0 12px; }
+.guest-reservation-heading { display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px; font-size:14px; }
+.guest-reservation-state { color:#386442; background:#edf5ec; border-radius:20px; padding:4px 12px; }
+.guest-reservation-room { display:grid; grid-template-columns:1fr 1fr; align-items:center; background:#f8f6f0; border-radius:10px; overflow:hidden; }
+.guest-reservation-room>div { padding:16px; min-width:0; }
+.guest-reservation-room h2 { margin:0 0 6px; }
+.guest-reservation-room p { margin:0; font-size:15px; line-height:1.45; }
+.guest-reservation-photo { width:100%; height:190px; object-fit:cover; }
+.guest-reservation-dates { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:16px 0; }
+.guest-reservation-dates dt { color:#71808b; font-size:13px; }
+.guest-reservation-dates dd { margin:4px 0 0; font-weight:600; overflow-wrap:anywhere; }
+.guest-reservation-payment { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; padding-top:12px; border-top:1px solid #e5e0d8; font-size:14px; }
+.guest-reservation-manage { width:min(980px,100%); margin-top:6px; padding:24px 32px; border:1px solid #e5e0d8; border-radius:14px; background:#f2eee4; text-align:center; color:#18345c; }
+.guest-reservation-manage h2 { font:24px Georgia,serif; margin:0 0 6px; }
+.guest-reservation-manage p { margin:0 auto 12px; max-width:560px; }
+.guest-reservation-manage .reserve-primary { display:block; width:fit-content; max-width:100%; margin:0 auto; padding:12px 24px; }
+@media(max-width:600px) {
+  .guest-reservation-room { grid-template-columns:1fr; }
+  .guest-reservation-photo { height:160px; }
+  .guest-reservation-dates { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 20px; }
+  .guest-reservation-card,.guest-reservation-manage { padding:16px; }
+}
+.guest-reservation-info { background:#f8f6f0; border:1px solid #e5e0d8; border-radius:8px; padding:6px 12px; margin:12px 0; }
+.guest-reservation-info div { display:flex; justify-content:space-between; gap:12px; padding:6px 0; }
+.guest-reservation-info dd { margin:0; font-weight:600; text-align:right; }
+.guest-reservation-info div+div { border-top:1px solid #e5e0d8; }
+.guest-reservation-card label { display:block; margin:12px 0; }
+.guest-reservation-card input { display:block; width:100%; padding:10px; border:1px solid #d3cfc5; border-radius:6px; }
+.guest-reservation-card .reserve-primary,.guest-reservation-card .reserve-secondary { display:block; width:100%; margin:8px 0; text-align:center; }
+.guest-reservation-link { display:block; margin:12px auto 0; text-align:center; font-size:14px; text-decoration:underline; }
+.guest-reservation-item { display:grid; gap:4px; padding:12px; margin:8px 0; border:1px solid #e5e0d8; border-radius:8px; }
+.guest-code-login { padding:24px 16px; }
+.guest-code-login button.floating-back { border:0; padding:0; background:transparent; cursor:pointer; }
+.guest-code-login .floating-login-card { height:auto; min-height:0; padding:24px; }
+.guest-code-login .floating-login-card>.villa-logo-link { margin:0 auto 8px; }
+.guest-code-login .floating-login-card>.villa-logo-link .villa-logo-image { width:190px!important; height:90px!important; }
+.guest-code-login .floating-login-card h1 { margin:0 0 6px; }
+.guest-code-login form { gap:12px; }
+.guest-code-login form>p { margin:0 0 2px; }
+.guest-code-login .input-icon input { flex:1; width:100%; min-width:0; border:0; background:transparent; outline:none; padding:0; box-shadow:none; height:44px; }
+.guest-code-login .floating-login-card .login-submit { height:48px!important; min-height:48px!important; padding:10px 20px!important; margin:0; }
+.guest-code-links { display:flex; justify-content:center; gap:20px; flex-wrap:wrap; }
+.guest-code-resend { display:flex; justify-content:center; align-items:baseline; gap:4px; white-space:nowrap; font-size:14px; }
+.guest-code-resend .forgot-link { font-size:inherit; text-decoration:underline; padding:0; }
+.guest-code-email { display:grid; gap:4px; color:#102747; overflow-wrap:anywhere; }
+.guest-code-back { position:absolute; top:16px; left:16px; display:grid; place-items:center; width:32px; height:32px; padding:0; border:0; background:transparent; color:#102747; cursor:pointer; }
+.guest-home-code-request { display:flex; justify-content:center; align-items:baseline; gap:4px; white-space:nowrap; font-size:14px; }
+.guest-home-code-request .forgot-link { font-size:inherit; text-decoration:underline; padding:0; }
+@media(max-width:360px) { .guest-home-code-request { font-size:12px; gap:3px; } }
+.guest-code-login .forgot-link { margin:0; }
+.guest-code-login .guest-reservation-link { margin:2px auto 0; }
+.guest-reservation-detail { width:min(980px,100%); padding:32px; box-shadow:0 4px 18px rgb(24 52 92 / 6%); }
+.guest-reservation-detail h1 { text-align:left; font-size:34px; margin-bottom:10px; }
+.guest-reservation-detail .guest-reservation-heading { justify-content:flex-start; margin-bottom:20px; }
+.guest-reservation-detail .guest-reservation-room { grid-template-columns:58% 42%; min-height:220px; }
+.guest-reservation-detail .guest-reservation-photo { height:220px; display:block; }
+.guest-reservation-detail .guest-reservation-room>div { padding:24px; }
+.guest-reservation-detail .guest-reservation-dates { grid-template-columns:repeat(5,minmax(0,1fr)); border-top:1px solid #e5e0d8; padding-top:18px; margin:20px 0; }
+.guest-reservation-detail .guest-reservation-payment { justify-content:flex-start; gap:16px; padding-top:18px; }
+@media(max-width:600px) {
+  .guest-reservation-detail { padding:20px; }
+  .guest-reservation-detail h1 { font-size:30px; }
+  .guest-reservation-detail .guest-reservation-room { grid-template-columns:1fr; }
+  .guest-reservation-detail .guest-reservation-photo { height:200px; }
+  .guest-reservation-detail .guest-reservation-room>div { padding:18px; }
+  .guest-reservation-detail .guest-reservation-dates { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+.confirmed-payment-result { padding:24px 16px; min-height:100dvh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px; }
+.confirmed-payment-result .reserve-form-card { width:min(460px,100%); padding:16px 20px; min-height:0!important; height:auto; }
+.confirmed-payment-result .villa-logo-image { width:120px!important; height:64px!important; object-fit:contain; margin:0 auto; }
+.confirmed-payment-icon { display:block; margin:0 auto 4px; color:#B38719; }
+.confirmed-payment-result h1 { font-size:28px; margin:0 0 4px; }
+.confirmed-payment-result p { margin:4px 0 6px; }
+.confirmed-payment-summary { background:#F8F6F0; border:1px solid #E5E0D8; border-radius:8px; padding:8px 14px; margin:8px 0; }
+.confirmed-payment-summary>div { display:flex; justify-content:space-between; gap:12px; padding:6px 0; font-size:14px; text-align:left; }
+.confirmed-payment-summary>div+div { border-top:1px solid #E5E0D8; }
+.confirmed-payment-result .payment-status-actions { display:flex; flex-direction:column; gap:6px; }
+.confirmed-payment-result .payment-status-actions a { width:100%!important; margin:0; }
+.confirmed-payment-home { display:block; margin-top:8px; font-size:13px; text-decoration:underline; }
 .booking-checkout {
   min-height:100vh;
   background:#f5f6f7
