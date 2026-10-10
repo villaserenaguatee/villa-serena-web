@@ -1,8 +1,7 @@
 import { calcularCuentaEstancia } from '@/lib/pms/cuentaEstancia';
 import type { ReactNode } from 'react';
 import type { EstadoReserva, EstadoHabHotel, EstadoSolicitudHuesped, PrioridadSolicitud, HabitacionHotel, Reserva, } from '@/lib/pms/types';
-import { MONEDA, nochesEntre } from '@/data/pms';
-import { leerTarifas } from '@/store/tarifasStore';
+export { rangosSeSolapan, habitacionTieneConflicto, habitacionesDisponibles } from '../roomAvailability';
 export function dinero(n: number): string {
   return `Q ${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 }
@@ -72,40 +71,6 @@ export function Chip({ cls, children }: {
   return (<span className={`inline-flex h-fit w-fit shrink-0 items-center whitespace-nowrap text-[11px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wide border ${cls}`}>
     {children}
   </span>);
-}
-export function rangosSeSolapan(aIn: string, aOut: string, bIn: string, bOut: string): boolean {
-  return aIn < bOut && bIn < aOut;
-}
-const ESTADOS_BLOQUEANTES: EstadoReserva[] = ['pendiente', 'confirmada', 'en-curso'];
-export function habitacionTieneConflicto(habitacionId: string,
-  entrada: string,
-  salida: string,
-  reservas: Reserva[],
-  ignorarReservaId?: string): boolean {
-  return reservas.some(r => r.id !== ignorarReservaId &&
-    r.habitacionId === habitacionId &&
-    ESTADOS_BLOQUEANTES.includes(r.estado) &&
-    rangosSeSolapan(entrada, salida, r.fechaEntrada, r.fechaSalida));
-}
-export function habitacionesDisponibles(entrada: string,
-  salida: string,
-  habitaciones: HabitacionHotel[],
-  reservas: Reserva[],
-  opciones?: {
-    personas?: number;
-    tipo?: string;
-    ignorarReservaId?: string;
-  }): HabitacionHotel[] {
-  const { personas, tipo, ignorarReservaId } = opciones ?? {};
-  return habitaciones.filter(h => {
-    if (h.estado === 'mantenimiento')
-      return false;
-    if (tipo && h.tipo !== tipo)
-      return false;
-    if (personas && h.capacidad < personas)
-      return false;
-    return !habitacionTieneConflicto(h.id, entrada, salida, reservas, ignorarReservaId);
-  });
 }
 export interface ResumenCuenta {
   noches: number;

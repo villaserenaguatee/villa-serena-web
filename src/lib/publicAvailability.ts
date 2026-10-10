@@ -3,7 +3,7 @@ import type { PublicRoom } from '@/data/publicRooms';
 import { leerReservas, RESERVAS_EVENT } from '@/store/reservationStore';
 import { HABITACIONES_EVENT, leerHabitaciones } from '@/store/roomStore';
 import { tipoPublicoATipoHotel } from '@/store/tarifasStore';
-import { habitacionesDisponibles } from '@/features/recepcion/pages/recUtils';
+import { habitacionesDisponibles } from '@/features/recepcion/roomAvailability';
 import { getPublicAvailability } from '@/lib/api/availability';
 import type { AvailabilityQuery } from '@/lib/bff/contracts/availability';
 import { fechaHotel } from '@/lib/hotel';

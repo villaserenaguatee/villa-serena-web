@@ -4,8 +4,8 @@ Rama de partida: `develop`, commit `2713317` (#53), 09-10-2026.
 Primera etapa: infraestructura y tres casos representativos (`e25b7a2`), sin
 retirar CJS. Segunda etapa: más pruebas de unidad/componentes sin levantar Next.
 
-Estado actual: siete etapas locales validadas y las etapas octava a duodécima implementadas,
-pendientes de validación de navegador en CI. Los nueve CJS de VM están reemplazados;
+Estado actual: siete etapas locales validadas y las etapas octava a decimotercera
+implementadas, pendientes de validación de navegador en CI. Los nueve CJS de VM están reemplazados;
 Recepción, sesión, pagos y reserva/portal usan Playwright Test en bloques separados. Se conservan siete CJS de
 navegador, todos con reemplazos implementados pendientes de validar, además de CI remoto; #48 sigue abierta.
 La issue completa continúa pendiente.
@@ -35,11 +35,18 @@ automática sin alterar el JSX de Next.js. Los componentes se montan con React y
 jsdom; Testing Library limpia DOM y localStorage después de cada prueba. Se usa
 un worker para limitar el número de entornos jsdom simultáneos.
 
-Las 17 suites TS anteriores conservan `node:test` y el loader
-`tests/bff/register.mjs`, mediante `test:bff` y `test:cuenta`. No se incluyen en
-Vitest ni se ejecutan dos veces. El BFF mantiene `--test-isolation=none`, según su
-contrato actual. La retirada del loader requiere una etapa posterior: varias
-pruebas todavía extraen código y ejecutan TSX mediante VM.
+Las 17 suites TS conservan `node:test` y se ejecutan mediante `test:bff` y
+`test:cuenta`. Node 24.16 quita tipos de los módulos directamente; el preload
+`tests/bff/register.mjs` solo resuelve `@/`, imports TS sin extensión y dos
+límites de Next. Ya no transpila los módulos de la app. La opción
+`--experimental-transform-types` soporta propiedades de constructor usadas por
+varias dependencias del código. El BFF mantiene `--test-isolation=none`, según
+su contrato actual. Algunas suites aún extraen TSX como texto y lo transpilan
+explícitamente para VM; no cargan esos componentes como módulos.
+
+El lint de esta etapa cubre los archivos de pruebas y lógica modificados. El lint global
+de Next expuso deuda previa en pantallas ajenas a esta migración y queda fuera del
+alcance; no se silencian esas reglas para hacer pasar el CI.
 
 Playwright Test administra Chromium, página, contexto y servidor Next.js. Usa
 `http://localhost:3048`, un servidor nuevo por ejecución, un worker, sin reintentos,
@@ -211,7 +218,7 @@ nuevos tras comprobar los reemplazos. También se revisaron y ejecutaron otra ve
 los CJS de cuenta y correo, ya migrados en la primera etapa: ambos pasaron y se
 retiraron. Los nueve orígenes VM del inventario están migrados y fuera del árbol.
 Quedan **20 CJS de navegador**; sesión del personal ya tiene reemplazo, los otros
-19 aún requieren migración. El loader de los tests Node BFF existentes se conserva.
+19 aún requieren migración. En esa etapa se conservó el loader Node anterior.
 
 Validación: **67 unidad + 61 componentes = 128 pruebas**, TypeScript e i18n
 correctos y JUnit con `CI=true`, con un worker. No se levantaron Next ni Chromium
@@ -463,8 +470,9 @@ CJS hasta validar este bloque y su equivalencia conjunta con las suites demo.
 Validación ligera: `pnpm check` pasa (TypeScript e i18n, 60 claves),
 `git diff --check` pasa y el YAML de CI se parsea con siete bloques y comandos
 existentes en `package.json`.
-Después de esta implementación, solo operaciones con API/WebSocket falsos carece
-de reemplazo completo; siguen pendientes lint, revisión del loader y CI final.
+Después de esta implementación, solo operaciones con API/WebSocket falsos carecía
+de reemplazo completo. El loader Node y lint se validaron en la etapa siguiente;
+Playwright y CI remoto siguen pendientes.
 
 ## Duodécima etapa: operaciones HTTP/STOMP, pendiente de navegador
 
@@ -517,13 +525,31 @@ del WebSocket real ni de los recorridos de interfaz. También pasan
 `git diff --check` y el parseo del YAML, con siete bloques E2E y cuatro bloques
 mock únicos cuyos comandos existen en `package.json`. Playwright queda pendiente.
 
+## Decimotercera etapa: loader Node y lint
+
+El preload deja que Node 24 quite los tipos de módulos TS y solo resuelve el alias
+`@/`, imports sin extensión y dos límites de Next. Se activa
+`--experimental-transform-types` para las propiedades de constructor presentes en
+el código. La disponibilidad de habitaciones y el modelo del calendario quedaron
+en módulos `.ts` puros para que las suites Node no importen páginas TSX. Las
+interfaces de página conservan sus exports públicos.
+
+Se añade ESLint 8 con `eslint-config-next` 15 y un job separado en CI. `pnpm lint`
+cubre los archivos modificados por esta etapa. El lint global revela errores
+preexistentes fuera del alcance y se deja como trabajo separado.
+
+Validación ligera: `pnpm test:bff` pasa 99/99 en unos siete segundos,
+`pnpm test:cuenta` pasa 1/1, `pnpm check` (TypeScript e i18n) y `pnpm lint` pasan,
+el workflow YAML se parsea y `git diff --check` no encuentra errores. No se
+iniciaron Next ni Chromium. Playwright y CI remoto siguen pendientes.
+
 ## CI
 
 `.github/workflows/web-tests.yml` se ejecuta en PR hacia `develop`/`main`, push a
 `develop` y ejecución manual. Usa permisos de lectura, cancelación por PR/ref,
 Ubuntu 24.04, Node 24.16.0, pnpm 12.0.0 y lockfile congelado con caché pnpm.
 
-Checks separados: `typecheck`, `i18n`, `unit`, `component`, `node-bff`,
+Checks separados: `typecheck`, `lint`, `i18n`, `unit`, `component`, `node-bff`,
 `node-cuenta`, `e2e-demo-reception`, `e2e-demo-staff`, `e2e-demo-payments` y
 `e2e-demo-booking`, `e2e-demo-channels`, `e2e-demo-account`,
 `e2e-demo-reception-api`, `integration-mock-account`,
@@ -588,10 +614,12 @@ inventario, distingue los híbridos y registra obsolescencias y orden de trabajo
 | Browser con API/frames falsos | `test-cuenta-connected`, `test-checkin-room-bff-browser`, `test-operaciones-browser` |
 | Browser demo | `test-booking-context-browser`, `test-selected-public-portal`, `test-calendar-scroll-browser`, `test-channel-cancellation-browser`, `test-cuenta-browser`, `test-demo-staff-password-browser`, `test-payment-channel-browser`, `test-payment-presentation-browser`, `test-payment-results-compact-browser`, `test-payment-valid-flow-browser`, `test-public-booking-browser`, `test-reception-browser`, `test-reception-calendar-browser`, `test-reception-creation-browser`, `test-reception-operations-browser`, `test-room-detail-browser`, `test-staff-session-browser` (migrado) |
 
-Pendiente: lectura y ejecución completa del resto, matriz de aserciones por
-dominio, migración de browser, retirada de CJS y revisión del loader Node, reparación de
-`lint: next lint` con una configuración ESLint acordada, cobertura móvil cuando
-corresponda, fixtures de integración mock y entorno real aislado.
+Pendiente: validar los siete reemplazos E2E, retirar CJS tras comprobar equivalencia
+y ejecutar CI remoto. `pnpm lint` ahora usa ESLint con la configuración de Next 15,
+cubriendo los archivos tocados en esta etapa; el lint global todavía reporta errores
+preexistentes en pantallas ajenas. También se mantiene la revisión de cobertura móvil
+y cualquier integración real aislada que requiera infraestructura; los fixtures mock
+no acreditan Spring real.
 
 El workflow está preparado para GitHub; ejecutar y revisar los status checks y
 artefactos remotos requiere publicar la rama/PR. Esta etapa no cambia rulesets ni

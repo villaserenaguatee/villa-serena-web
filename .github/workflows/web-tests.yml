@@ -31,6 +31,8 @@ jobs:
         include:
           - name: typecheck
             command: pnpm exec tsc --noEmit
+          - name: lint
+            command: pnpm lint
           - name: i18n
             command: pnpm check:i18n
           - name: unit

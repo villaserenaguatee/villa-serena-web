@@ -8,26 +8,8 @@ import type { Reserva, Huesped, HabitacionHotel } from '@/lib/pms/types';
 import { fechaHoyISO } from '@/data/pms';
 import ReceptionTimeline from './ReceptionTimeline';
 import { RESERVA_META } from './recUtils';
-
-export function moveCalendar(date: string, view: 'week' | 'month', direction: number) {
-  const next = new Date(`${date}T12:00:00Z`);
-  if (view === 'week') next.setUTCDate(next.getUTCDate() + direction * 7);
-  else { next.setUTCDate(1); next.setUTCMonth(next.getUTCMonth() + direction); }
-  return next.toISOString().slice(0, 10);
-}
-export function calendarDays(date: string, view: 'week' | 'month') {
-  const start = new Date(`${date}T12:00:00Z`);
-  if (view === 'month') start.setUTCDate(1);
-  else start.setUTCDate(start.getUTCDate() - (start.getUTCDay() + 6) % 7);
-  const count = view === 'week' ? 7 : new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0)).getUTCDate();
-  return Array.from({ length: count }, (_, i) => {
-    const day = new Date(start); day.setUTCDate(start.getUTCDate() + i);
-    return day.toISOString().slice(0, 10);
-  });
-}
-export function visibleReservations(reservations: Reserva[], days: string[]) {
-  return reservations.filter(r => r.estado !== 'cancelada' && r.fechaEntrada <= days.at(-1)! && r.fechaSalida > days[0]);
-}
+import { calendarDays, moveCalendar, visibleReservations } from '../calendarModel';
+export { calendarDays, moveCalendar, visibleReservations } from '../calendarModel';
 type Props = { reservas: Reserva[]; huespedes: Huesped[]; habitaciones: HabitacionHotel[]; onAbrir: (id: string) => void; onNueva: () => void };
 export default function CalendarioReservas({ reservas, huespedes, habitaciones, onAbrir, onNueva }: Props) {
   const [presentation, setPresentation] = useState<'month' | 'rooms'>('month');
@@ -35,7 +17,6 @@ export default function CalendarioReservas({ reservas, huespedes, habitaciones, 
   const [category, setCategory] = useState('');
   const view = 'month' as const;
   const [date, setDate] = useState(fechaHoyISO());
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const days = calendarDays(date, view);
   const [data, setData] = useState<ReceptionCalendar | null>(null);
   const [error, setError] = useState('');
@@ -66,7 +47,6 @@ export default function CalendarioReservas({ reservas, huespedes, habitaciones, 
     {originIcon(r)} {label(r)}<span className="block text-[10px]">{r.codigo}</span>
   </button>;
   const leading = (new Date(`${days[0]}T12:00:00Z`).getUTCDay() + 6) % 7;
-  const selectedReservation = merged.reservas.find(r => r.id === selectedId);
   return <section aria-label="Calendario de reservas" className="rounded-xl border border-[#E5E0D8] bg-white p-4 text-[#18345C]">
     <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
       <h2 className="text-xl font-semibold">Calendario de reservas</h2>
