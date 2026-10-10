@@ -41,7 +41,7 @@ for (const { name, viewport } of viewports) {
       await page.getByLabel('Código de acceso', { exact: true }).fill(code);
       await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
       await expect(page).toHaveURL(/\/portal$/);
-      await expect(page.locator('body')).toContainText('VS-DEMO01');
+      await expect(page.locator('body')).toContainText(/Tu estancia\s*VS-\d{4}-\d+/);
       expect((await context.cookies()).find(cookie => cookie.name === 'vs_guest_access')?.httpOnly).toBe(true);
       expect((await context.cookies()).filter(cookie => cookie.name.startsWith('vs_staff_'))).toHaveLength(0);
       expect(await page.evaluate(() => document.cookie.includes('vs_guest_access='))).toBe(false);

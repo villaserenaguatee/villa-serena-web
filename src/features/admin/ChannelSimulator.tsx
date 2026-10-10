@@ -60,7 +60,7 @@ export default function ChannelSimulator() {
   return <section className="mx-auto min-w-0 max-w-4xl space-y-6 break-words text-[#18345C]">
     <div><h1 className="text-2xl font-semibold">Canal simulado</h1><p className="mt-2">Datos de prueba. No se contacta a ningún canal real ni se envían correos.</p></div>
     <form onSubmit={submit} className="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
-      <label>Canal<select className={control} value={input.canal} onChange={e => setInput(v => ({ ...v, canal: e.target.value as ChannelInput['canal'] }))}><option value="BOOKING">Booking</option><option value="EXPEDIA">Expedia</option></select></label>
+      <label>Canal<select aria-label="Canal" className={control} value={input.canal} onChange={e => setInput(v => ({ ...v, canal: e.target.value as ChannelInput['canal'] }))}><option value="BOOKING">Booking</option><option value="EXPEDIA">Expedia</option></select></label>
       <label>Tipo de habitación<select className={control} disabled={!catalog.length} value={input.reserva.tipoHabitacionId} onChange={e => reservation('tipoHabitacionId', Number(e.target.value))}>{catalog.map(t => <option key={t.id} value={t.id}>{t.nombre} · hasta {t.capacidad} huéspedes</option>)}</select></label>
       <label>Entrada<input required type="date" className={control} value={input.reserva.entrada} onChange={e => reservation('entrada', e.target.value)} /></label>
       <label>Salida<input required type="date" className={control} value={input.reserva.salida} onChange={e => reservation('salida', e.target.value)} /></label>

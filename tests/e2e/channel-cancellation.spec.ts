@@ -39,8 +39,8 @@ for (const { name, viewport } of viewports) {
         await page.reload(); detail = await calendarDetail(page, code, stored.entrada);
         await expect(detail.getByRole('button', { name: 'Cancelar reserva', exact: true })).toHaveCount(canCancel ? 1 : 0);
         const copied = await page.evaluate(code => {
-          const records = JSON.parse(localStorage.getItem('vs-reservas') ?? '[]') as { codigo: string; canal?: string }[];
-          const record = records.find(record => record.codigo === code);
+          const records = JSON.parse(localStorage.getItem('vs-reservas') ?? '[]') as { codigo: string; codigoBff?: string; canal?: string }[];
+          const record = records.find(record => record.codigo === code || record.codigoBff === code);
           if (!record) return false;
           delete record.canal; localStorage.setItem('vs-reservas', JSON.stringify(records)); return true;
         }, code);
