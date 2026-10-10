@@ -4,7 +4,8 @@ Rama de partida: `develop`, commit `2713317` (#53), 09-10-2026.
 Primera etapa: infraestructura y tres casos representativos (`e25b7a2`), sin
 retirar CJS. Segunda etapa: más pruebas de unidad/componentes sin levantar Next.
 
-Estado actual: siete etapas locales. Los nueve CJS de VM están reemplazados;
+Estado actual: siete etapas locales validadas y una octava implementada, pendiente
+de validación de navegador en CI. Los nueve CJS de VM están reemplazados;
 Recepción, sesión, pagos y reserva/portal usan Playwright Test en bloques separados. Quedan siete CJS de
 navegador pendientes y la validación remota de CI; #48 sigue abierta.
 La issue completa continúa pendiente.
@@ -56,11 +57,11 @@ aplican reintentos automáticos. No ejecutar simultáneamente dos E2E en este
 checkout: comparten puerto y `.next-dev`.
 Ejecutar TypeScript después del E2E, no mientras Next regenera `.next-dev/types`.
 
-`pnpm test:e2e` ejecuta Recepción, sesión del personal, pagos y reserva/portal, en cuatro
-procesos Playwright consecutivos con servidores nuevos. `playwright.config.ts`
-selecciona Recepción; los otros tres configs seleccionan explícitamente su bloque. Los
-reportes se guardan por bloque en `test-results/{reception,staff,payments,booking}` y
-`playwright-report/{reception,staff,payments,booking}`, sin sobrescribirse. No iniciar bloques a la vez.
+`pnpm test:e2e` ejecuta Recepción, sesión del personal, pagos, reserva/portal y canales,
+en cinco procesos Playwright consecutivos con servidores nuevos. `playwright.config.ts`
+selecciona Recepción; los otros cuatro configs seleccionan explícitamente su bloque. Los
+reportes se guardan por bloque en `test-results/{reception,staff,payments,booking,channels}` y
+`playwright-report/{reception,staff,payments,booking,channels}`, sin sobrescribirse. No iniciar bloques a la vez.
 
 El servidor E2E limita su heap JavaScript a 1536 MiB mediante `NODE_OPTIONS`.
 Esto no limita toda la RAM del proceso ni la de Chromium. Next en desarrollo
@@ -310,6 +311,43 @@ Se retiran seis CJS tras validar sus reemplazos: quedan siete scripts de navegad
 transportes falsos). Siguen pendientes lint, revisión del loader Node y CI remoto;
 la issue #48 permanece abierta.
 
+## Octava etapa: canales y credenciales, pendiente de navegador
+
+Por decisión del usuario, se posponen las ejecuciones locales de Playwright.
+Esta etapa prepara código y CI; no acredita equivalencia completa ni retira CJS.
+Se conservan los siete scripts anteriores hasta validar sus reemplazos.
+
+| Suite implementada | Escenarios y comprobaciones pendientes de CI |
+| --- | --- |
+| `channel-cancellation.spec.ts` (8 casos) | Booking/Expedia frente a Recepción/web directa; asignación real, detalle y calendario, recarga, copia local sin canal y rechazo BFF 409 sin cancelar. La vista de cuenta actual no ofrece cancelación para ningún canal; los canales directos conservan el botón en detalle/calendario. |
+| `channel-simulator.spec.ts` (2 casos) | Permisos por rol, Booking/Expedia, creación 201, repetición del payload capturado con 200 y mismo código, fechas inválidas sin petición y ausencia de claves de prueba en DOM, almacenamiento y HAR. |
+| `login-credentials.spec.ts` (4 casos) | Personal rechaza `demo123`, acepta `VillaSerena26`, rol y cookies HttpOnly; huésped entra por OTP, sin contraseña ni sesión local de personal. Ambos viewports. |
+| `payment-polling.spec.ts` (1 caso) | Reloj del navegador controlado: consulta a los tres segundos, parada tras un minuto sin convertir pendiente en rechazo y consulta manual posterior. |
+
+`pnpm test:channels:browser` selecciona los primeros 14 casos y tiene servidor,
+JUnit/HTML y job de CI propios. El caso de sondeo pertenece al bloque de pagos,
+que ahora contiene 13 casos. Los resultados de pago incluyen también parámetros
+`success=true` y `estadoPago=APROBADO` para comprobar que la URL no aprueba el pago.
+Los archivos públicos y de Recepción se restauran antes de cada caso de canales;
+la lectura del OTP sigue usando la bandeja temporal del servidor.
+
+El simulador configura únicamente claves ficticias de prueba. Se inspecciona HAR
+porque Chromium puede descartar cuerpos de respuestas al navegar; el contexto
+se cierra antes de leer el archivo. Este artefacto contiene tráfico demo y se
+conserva junto al reporte del bloque, sin incluir archivos `.env` ni `.data`.
+
+La ejecución inicial incompleta pasó cuatro casos de canales externos, pero
+falló en expectativas de cancelación de la vista de cuenta, selector de alerta y
+lectura de cuerpos de respuesta después de navegar. También se interrumpió un
+caso de OTP. Se corrigieron esas implementaciones, pero **los reemplazos finales
+no han vuelto a ejecutarse**. El servidor de esa ejecución se detuvo; no se deja
+Next activo. CI debe validar también pagos y reserva/portal tras los cambios en
+sus fixtures compartidos. Un typecheck correcto no demuestra estos recorridos.
+
+Validación ligera de esta etapa: `pnpm check` pasa (TypeScript e i18n, 60 claves)
+y `git diff --check` no encuentra errores de formato. No se ejecutaron Next,
+Chromium ni el workflow remoto después de las correcciones finales.
+
 ## CI
 
 `.github/workflows/web-tests.yml` se ejecuta en PR hacia `develop`/`main`, push a
@@ -318,7 +356,7 @@ Ubuntu 24.04, Node 24.16.0, pnpm 12.0.0 y lockfile congelado con caché pnpm.
 
 Checks separados: `typecheck`, `i18n`, `unit`, `component`, `node-bff`,
 `node-cuenta`, `e2e-demo-reception`, `e2e-demo-staff`, `e2e-demo-payments` y
-`e2e-demo-booking`. Cada check falla si falla su comando; la matriz no
+`e2e-demo-booking` y `e2e-demo-channels`. Cada check falla si falla su comando; la matriz no
 cancela las otras suites. Vitest escribe JUnit en CI. Playwright escribe JUnit,
 reporte HTML, screenshot y trace de fallos. Solo se suben los directorios de
 resultados, con retención de siete días; `.data` y `.env` no son artefactos.

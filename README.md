@@ -114,6 +114,10 @@ Los detalles de equivalencia y las limitaciones están en
 Reserva pública y portal por código: `pnpm test:booking:browser`. Presentación,
 estados y recuperación del pago: `pnpm test:payments:browser`. Ejecutar en
 secuencia; cada bloque inicia su servidor y usa archivos demo temporales.
+Canales y acceso del personal/huésped: `pnpm test:channels:browser`.
+Este bloque y el nuevo caso de sondeo de pagos están implementados, pendientes
+de validación en CI; por decisión de trabajo, no se ejecutan navegadores locales
+durante esta etapa. `pnpm check` permite comprobar TypeScript e i18n sin Next.
 
 ### Portal del huésped
 

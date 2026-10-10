@@ -5,13 +5,16 @@ import { basename, dirname, join } from 'node:path';
 
 export { hotelDate, viewports } from './reception-fixtures';
 export { expect };
+export async function resetPublicState() {
+  for (const [key, filename] of [['ISSUE48_PUBLIC_CONTRACT_PATH', 'public-contract.json'], ['ISSUE48_BOOKING_STATE_PATH', 'bookings.json']] as const) {
+    const file = process.env[key];
+    if (!file || basename(file) !== filename || !basename(dirname(file)).startsWith('issue48-e2e-')) throw new Error(`Missing isolated ${filename}`);
+    await rm(file, { force: true });
+  }
+}
 export const test = base.extend<{ isolatedPublic: void; browserErrors: string[] }>({
   isolatedPublic: [async ({}, use) => {
-    for (const [key, filename] of [['ISSUE48_PUBLIC_CONTRACT_PATH', 'public-contract.json'], ['ISSUE48_BOOKING_STATE_PATH', 'bookings.json']] as const) {
-      const file = process.env[key];
-      if (!file || basename(file) !== filename || !basename(dirname(file)).startsWith('issue48-e2e-')) throw new Error(`Missing isolated ${filename}`);
-      await rm(file, { force: true });
-    }
+    await resetPublicState();
     await use();
   }, { auto: true }],
   browserErrors: [async ({ page }, use) => {
@@ -51,14 +54,18 @@ export async function enterSelectedPortal(page: Page, code: string, email: strin
   await page.getByRole('button', { name: 'Solicitar código', exact: true }).click();
   expect((await requested).ok()).toBe(true);
   await expect(page.getByLabel('Código de acceso')).toBeVisible();
-  const folder = process.env.ISSUE48_GUEST_OUTBOX_PATH;
-  if (!folder || basename(folder) !== 'guest-outbox' || !basename(dirname(folder)).startsWith('issue48-e2e-')) throw new Error('Missing isolated guest outbox');
-  const outbox = JSON.parse(await readFile(join(folder, `${createHash('sha256').update(email).digest('hex')}.json`), 'utf8')) as { correo: string; codigo: string };
-  expect(outbox.correo).toBe(email);
-  await page.getByLabel('Código de acceso').fill(outbox.codigo);
+  await page.getByLabel('Código de acceso').fill(await readGuestCode(email));
   await page.getByRole('button', { name: 'Verificar código', exact: true }).click();
   await expect(page).toHaveURL(url => url.pathname === '/portal' && url.searchParams.get('codigo') === code);
   await expect(page.getByText('Habitación pendiente de asignación.', { exact: false })).toBeVisible();
   await expect(page.locator('body')).toContainText(code);
   await expect(page.locator('body')).not.toContainText('VS-2026-01042');
+}
+
+export async function readGuestCode(email: string): Promise<string> {
+  const folder = process.env.ISSUE48_GUEST_OUTBOX_PATH;
+  if (!folder || basename(folder) !== 'guest-outbox' || !basename(dirname(folder)).startsWith('issue48-e2e-')) throw new Error('Missing isolated guest outbox');
+  const outbox = JSON.parse(await readFile(join(folder, `${createHash('sha256').update(email).digest('hex')}.json`), 'utf8')) as { correo: string; codigo: string };
+  expect(outbox.correo).toBe(email);
+  return outbox.codigo;
 }

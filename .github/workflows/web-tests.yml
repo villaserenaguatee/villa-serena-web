@@ -76,6 +76,8 @@ jobs:
             command: pnpm test:payments:browser
           - suite: booking
             command: pnpm test:booking:browser
+          - suite: channels
+            command: pnpm test:channels:browser
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4

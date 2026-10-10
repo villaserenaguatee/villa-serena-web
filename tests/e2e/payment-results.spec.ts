@@ -17,7 +17,7 @@ for (const { name, viewport } of viewports) {
         page.on('request', request => {
           if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/publico/reservas') creates.push(request.url());
         });
-        await page.goto(`/reserva/resultado?codigo=${scenario.code}&paid=true`);
+        await page.goto(`/reserva/resultado?codigo=${scenario.code}&paid=true&success=true&estadoPago=APROBADO`);
         await expect(page.getByRole('heading', { name: scenario.title, exact: true })).toBeVisible();
         await expect(page.locator('.payment-result-summary > div')).toHaveCount(3);
         await expect(page.getByRole('button', { name: 'Reintentar pago', exact: true })).toHaveCount(scenario.retry ? 1 : 0);
