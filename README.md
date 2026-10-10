@@ -125,6 +125,9 @@ Cuenta conectada con transporte HTTP falso: `pnpm test:cuenta:connected`, tambi�
 incluido en `pnpm test:integration:mock`. El fixture inicia API falso y Next,
 restaura datos por caso y comprueba el BFF real, sin acreditar Spring real.
 Sus 12 casos están implementados, pendientes de Playwright/CI.
+Guard conectado de Recepción: `pnpm test:reception:api` (6 casos pendientes de CI).
+Usa autenticación demo y bloquea operaciones BFF no conectadas con 503, conservando
+las reservas locales que anuncia el calendario; no prueba Spring real.
 
 ### Portal del huésped
 

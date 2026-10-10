@@ -106,6 +106,8 @@ jobs:
             command: pnpm test:channels:browser
           - suite: account
             command: pnpm test:cuenta:browser
+          - suite: reception-api
+            command: pnpm test:reception:api
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4

@@ -4,7 +4,7 @@ Rama de partida: `develop`, commit `2713317` (#53), 09-10-2026.
 Primera etapa: infraestructura y tres casos representativos (`e25b7a2`), sin
 retirar CJS. Segunda etapa: más pruebas de unidad/componentes sin levantar Next.
 
-Estado actual: siete etapas locales validadas y las etapas octava, novena y décima implementadas,
+Estado actual: siete etapas locales validadas y las etapas octava a undécima implementadas,
 pendientes de validación de navegador en CI. Los nueve CJS de VM están reemplazados;
 Recepción, sesión, pagos y reserva/portal usan Playwright Test en bloques separados. Quedan siete CJS de
 navegador pendientes y la validación remota de CI; #48 sigue abierta.
@@ -57,11 +57,11 @@ aplican reintentos automáticos. No ejecutar simultáneamente dos E2E en este
 checkout: comparten puerto y `.next-dev`.
 Ejecutar TypeScript después del E2E, no mientras Next regenera `.next-dev/types`.
 
-`pnpm test:e2e` ejecuta Recepción, sesión del personal, pagos, reserva/portal, canales y cuenta,
-en seis procesos Playwright consecutivos con servidores nuevos. `playwright.config.ts`
-selecciona Recepción; los otros cinco configs seleccionan explícitamente su bloque. Los
-reportes se guardan por bloque en `test-results/{reception,staff,payments,booking,channels,account}` y
-`playwright-report/{reception,staff,payments,booking,channels,account}`, sin sobrescribirse. No iniciar bloques a la vez.
+`pnpm test:e2e` ejecuta Recepción, sesión del personal, pagos, reserva/portal, canales, cuenta y guard conectado de Recepción,
+en siete procesos Playwright consecutivos con servidores nuevos. `playwright.config.ts`
+selecciona Recepción; los otros seis configs seleccionan explícitamente su bloque. Los
+reportes se guardan por bloque en `test-results/{reception,staff,payments,booking,channels,account,reception-api}` y
+`playwright-report/{reception,staff,payments,booking,channels,account,reception-api}`, sin sobrescribirse. No iniciar bloques a la vez.
 
 El servidor E2E limita su heap JavaScript a 1536 MiB mediante `NODE_OPTIONS`.
 Esto no limita toda la RAM del proceso ni la de Chromium. Next en desarrollo
@@ -431,6 +431,41 @@ fallo sin mutación/cobro, cierre exitoso, saldo cero sin pago adicional y reset
 llamadas/estado. Esto comprueba el fixture, no las interacciones del navegador.
 Playwright y el workflow remoto quedan pendientes por decisión del usuario.
 
+## Undécima etapa: variante conectada de Recepción, pendiente de navegador
+
+`test-reception-browser.cjs` reparte sus escenarios demo entre las suites de
+calendario, creación y check-in ya migradas en la sexta etapa. Se conserva su
+origen hasta validar la variante conectada nueva, sin repetir los recorridos demo
+localmente. Las vistas actuales son Mes/Habitaciones; no hay selector Semana ni
+botón Hoy, y las reservas sin asignar se encuentran por búsqueda/detalle en lugar
+de aparecer en el calendario. Estas obsolescencias no se copian al reemplazo.
+
+`tests/e2e/connected-reception.spec.ts` añade tres escenarios por viewport:
+**6 casos**. `pnpm test:reception:api` inicia Next en un bloque propio con
+`VILLA_SERENA_BFF_MODE=api`, autenticación demo real y sin API externo. Acredita
+el guard de operaciones aún no conectadas; no una conexión Spring funcional.
+El nombre del archivo evita que lo seleccione el glob del bloque demo.
+
+| Escenario | Reemplazo implementado |
+| --- | --- |
+| Calendario conectado pendiente | Alerta explícita de conexión y conservación de reservas locales en ambas vistas, datos intactos tras recarga. La UI actual conserva el calendario, a diferencia de la expectativa antigua. |
+| Creación sin éxito falso | Disponibilidad falla; elegir huésped y revisar no ofrece confirmación ni modifica reservas/habitaciones/huéspedes. |
+| Búsqueda y detalle | Error visible, sin resultados inventados ni mensaje de búsqueda vacía; detalle no ofrece asignación, cancelación, check-in ni cuenta. Reconsultar devuelve 503. |
+| Guard HTTP sin demo de servidor | Consultas de reservas/calendario/disponibilidad/detalle/cancelación/habitaciones y mutaciones de creación/huésped/asignación/cancelación devuelven `API_NOT_READY` 503. Archivo demo del servidor ausente y datos locales intactos. |
+
+No se afirma ausencia de reservas locales: el contrato vigente las conserva y lo
+anuncia explícitamente. El test tampoco acredita sincronización o check-in en
+Spring. CI añade `e2e-demo-reception-api` con servidor/reportes separados, un
+worker y límite de 15 minutos, manteniendo el modo de autenticación demo.
+
+Los seis casos están implementados, **sin ejecutar Playwright**. Se conserva el
+CJS hasta validar este bloque y su equivalencia conjunta con las suites demo.
+Validación ligera: `pnpm check` pasa (TypeScript e i18n, 60 claves),
+`git diff --check` pasa y el YAML de CI se parsea con siete bloques y comandos
+existentes en `package.json`.
+Después de esta implementación, solo operaciones con API/WebSocket falsos carece
+de reemplazo completo; siguen pendientes lint, revisión del loader y CI final.
+
 ## CI
 
 `.github/workflows/web-tests.yml` se ejecuta en PR hacia `develop`/`main`, push a
@@ -439,8 +474,8 @@ Ubuntu 24.04, Node 24.16.0, pnpm 12.0.0 y lockfile congelado con caché pnpm.
 
 Checks separados: `typecheck`, `i18n`, `unit`, `component`, `node-bff`,
 `node-cuenta`, `e2e-demo-reception`, `e2e-demo-staff`, `e2e-demo-payments` y
-`e2e-demo-booking`, `e2e-demo-channels`, `e2e-demo-account` e
-`integration-mock-account`. Cada check falla si falla su comando; la matriz no
+`e2e-demo-booking`, `e2e-demo-channels`, `e2e-demo-account`,
+`e2e-demo-reception-api` e `integration-mock-account`. Cada check falla si falla su comando; la matriz no
 cancela las otras suites. Vitest escribe JUnit en CI. Playwright escribe JUnit,
 reporte HTML, screenshot y trace de fallos. Solo se suben los directorios de
 resultados, con retención de siete días; `.data` y `.env` no son artefactos.
