@@ -62,9 +62,9 @@ for (const { name, viewport } of viewports) {
         expect(sends).toHaveLength(before);
       }
       expect(sends).toHaveLength(4);
-      const browserState = await page.evaluate(() => JSON.stringify({ html: document.documentElement.outerHTML, cookie: document.cookie, local: { ...localStorage }, session: { ...sessionStorage } }));
-      for (const marker of privateMarkers) expect(browserState).not.toContain(marker);
-      expect(browserState).not.toContain('vs_staff_access=');
+      const browserState = await page.evaluate(() => ({ html: document.documentElement.outerHTML, cookie: document.cookie, local: { ...localStorage }, session: { ...sessionStorage } }));
+      for (const marker of privateMarkers) expect(JSON.stringify(browserState)).not.toContain(marker);
+      expect(browserState.cookie).not.toContain('vs_staff_access=');
       await context.close(); // Flush the HAR before inspecting it; fixture closure is idempotent.
       const har = JSON.parse(await readFile(testInfo.outputPath('canal.har'), 'utf8')) as { log: { entries: { request: { url: string; headers: { name: string }[] }; response: { content: { text?: string; encoding?: string } } }[] } };
       expect(har.log.entries.length).toBeGreaterThan(0);
