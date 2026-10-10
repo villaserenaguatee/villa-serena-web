@@ -32,7 +32,7 @@ export function receptionSeed(): ReceptionState {
   const states = { pendiente: 'PENDIENTE_PAGO', confirmada: 'CONFIRMADA', 'en-curso': 'EN_ESTADIA', finalizada: 'FINALIZADA', cancelada: 'CANCELADA' } as const;
   const entries: Entry[] = RESERVAS_INICIALES.map((r, i) => {
     const g = HUESPEDES_INICIALES.find(g => g.id === r.huespedId)!;
-    let room = rooms.find(h => `hh-${h.numero}` === r.habitacionId && h.tipoHabitacion.nombre === r.tipoHabitacion);
+    let room = rooms.find(h => `hh-${h.numero}` === r.habitacionId && (r.estado === 'finalizada' || h.tipoHabitacion.nombre === r.tipoHabitacion));
     if (!room && r.estado === 'en-curso') room = rooms.find(h => h.tipoHabitacion.nombre === r.tipoHabitacion && h.ocupacion === 'LIBRE' && h.condicion === 'LIMPIA');
     if (room && r.estado === 'en-curso') room.ocupacion = 'OCUPADA';
     const noches = (Date.parse(r.fechaSalida) - Date.parse(r.fechaEntrada)) / 86400000;
@@ -70,6 +70,17 @@ export function readReceptionState(): ReceptionState {
       (state.guests !== undefined && (!Array.isArray(state.guests) || state.guests.some(g => !Number.isInteger(g?.id) || g.id < 1 ||
         ['nombreCompleto', 'correo', 'telefono', 'nacionalidad', 'numeroDocumento'].some(k => typeof g[k as keyof typeof g] !== 'string' || !String(g[k as keyof typeof g]).trim()) || !['DPI', 'PASAPORTE'].includes(g.tipoDocumento)) ||
         new Set(state.guests.map(g => g.id)).size !== state.guests.length || new Set(state.guests.map(g => g.correo.toLowerCase())).size !== state.guests.length))) throw new Error('Estado inválido');
+    // Recuperar asociaciones históricas omitidas por versiones anteriores del simulador.
+    // Solo se usan reservas finalizadas originales y nunca se reemplaza una asociación existente.
+    RESERVAS_INICIALES.forEach((original, index) => {
+      if (original.estado !== 'finalizada' || !original.habitacionId) return;
+      const detail = state.entries.find(e => e.detail.codigo === `VS-TEST0${index + 1}`)?.detail;
+      const guest = HUESPEDES_INICIALES.find(g => g.id === original.huespedId);
+      if (!detail || detail.estado !== 'FINALIZADA' || detail.habitacion ||
+        detail.huesped.numeroDocumento !== guest?.documento || detail.tipoHabitacion.nombre !== original.tipoHabitacion) return;
+      const room = state.rooms.find(r => `hh-${r.numero}` === original.habitacionId);
+      if (room) detail.habitacion = reference(room);
+    });
     return state;
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return receptionSeed();

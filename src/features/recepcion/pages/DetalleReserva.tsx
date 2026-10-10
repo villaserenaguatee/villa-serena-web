@@ -1,10 +1,18 @@
+import { ArrowLeft } from 'lucide-react';
+import ReceptionActionDialog from './ReceptionActionDialog';
+import ReceptionCloseButton from './ReceptionCloseButton';
+import ReservationTags from './ReservationTags';
+import { channelLabels } from '@/lib/receptionPresentation';
+import { statusBadge, statusTone } from './statusStyle';
+import { calcularCuentaRecepcion as calcularCuenta } from '../accountTotals';
+
 import { permitsLocalCancellation } from '@/features/recepcion/localCancellation';
 import { checkInRealizado, checkInWebPendiente } from '@/store/reservationStore';
 import { HOTEL } from "@/lib/hotel";
 import { useMemo, useState } from 'react';
 import type { Reserva, Huesped, HabitacionHotel, Acompanante, ServicioAdicional, MetodoPago, Pago, TipoHabitacion, SolicitudHuesped, } from '@/lib/pms/types';
 import { formatoFecha, formatoFechaHora, nochesEntre, } from '@/data/pms';
-import { dinero, Chip, RESERVA_META, calcularCuenta, habitacionesDisponibles, habitacionTieneConflicto, Campo, INPUT_CLS, BedIcon, UserIcon, CalendarIcon, CloseIcon, } from '@/features/recepcion/pages/recUtils';
+import { dinero, Chip, RECEPTION_RESERVA_META, habitacionesDisponibles, habitacionTieneConflicto, Campo, INPUT_CLS, BedIcon, UserIcon, CalendarIcon, } from '@/features/recepcion/pages/recUtils';
 import DocumentosCheckIn from '@/features/recepcion/pages/DocumentosCheckIn';
 import Comprobante from '@/features/recepcion/pages/Comprobante';
 import { publicRooms, publicRoomForHotelType, money } from '@/data/publicRooms';
@@ -48,7 +56,7 @@ interface Props {
   onAgregarAcompanante: (reservaId: string, a: Acompanante) => void;
   onQuitarAcompanante: (reservaId: string, index: number) => void;
   onAgregarServicio: (reservaId: string, s: Omit<ServicioAdicional, 'id' | 'fecha'>) => void;
-  onQuitarServicio: (reservaId: string, servicioId: string) => void;
+  onQuitarServicio: (reservaId: string, servicioId: string, motivo?: string) => void;
   onRegistrarPago: (reservaId: string, datos: {
     monto: number;
     metodo: MetodoPago;
@@ -65,30 +73,26 @@ function LocalDetail(props: Props) {
   const [comprobante, setComprobante] = useState<Pago | null>(null);
   const habitacion = habitaciones.find(h => h.id === reserva.habitacionId) ?? null;
   const cuenta = calcularCuenta(reserva, habitacion);
-  const meta = RESERVA_META[reserva.estado];
+  const meta = RECEPTION_RESERVA_META[reserva.estado];
   const cerrada = reserva.estado === 'finalizada' || reserva.estado === 'cancelada';
   return (<div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4">
     <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
 
-    <div className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-5xl max-h-[88vh] flex flex-col">
+    <div className="reception-compact relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[740px] max-h-[88vh] flex flex-col">
 
       <div className="flex items-start justify-between gap-2 px-4 sm:px-5 py-1.5 border-b border-[#E5E0D8] shrink-0">
-        <div>
+        <button type="button" aria-label="Regresar" onClick={onCerrar} className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[#18345C] hover:bg-[#F8F6F0]"><ArrowLeft size={20} /></button><div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-[24px] font-semibold text-[#18345C] leading-none">
               {reserva.codigo}
             </h2>
-            <Chip cls={meta.chip}>
-              {meta.label}
-            </Chip>
+            <ReservationTags state={reserva.estado} label={meta.label} room={habitacion?.numero} category={reserva.tipoHabitacion} origin={reserva.canal ? channelLabels[reserva.canal] : undefined} />
           </div>
           <p className="text-[13px] text-[#AEBCC1] mt-1">
             {huesped.nombre} · {formatoFecha(reserva.fechaEntrada)} → {formatoFecha(reserva.fechaSalida)}
           </p>
         </div>
-        <button aria-label="Cerrar detalle de reserva" onClick={onCerrar} className="text-[#AEBCC1] hover:text-[#1F2933] p-1 shrink-0">
-          <CloseIcon />
-        </button>
+        <ReceptionCloseButton onClick={onCerrar} />
       </div>
 
       <div className="flex gap-1 px-3 sm:px-4 pt-1 border-b border-[#E5E0D8] shrink-0 overflow-x-auto">
@@ -146,7 +150,7 @@ function TabActividad({ reserva, huesped, reservas, solicitudes }: Props) {
         id: `res-${r.id}`,
         fecha: r.creadoEn,
         titulo: 'Reserva creada',
-        detalle: `${r.codigo} · ${formatoFecha(r.fechaEntrada)} → ${formatoFecha(r.fechaSalida)} · ${RESERVA_META[r.estado].label}`,
+        detalle: `${r.codigo} · ${formatoFecha(r.fechaEntrada)} → ${formatoFecha(r.fechaSalida)} · ${RECEPTION_RESERVA_META[r.estado].label}`,
         tipo: 'Reserva'
       });
       if (r.checkInWeb?.enviadoEn)
@@ -263,10 +267,15 @@ function TabActividad({ reserva, huesped, reservas, solicitudes }: Props) {
     </div>
   </div>;
 }
-function TabResumen({ bffAction, reserva, huesped, habitacion, habitaciones, reservas, onAsignarHabitacion, onCheckIn, onValidarCheckInWeb, onRechazarCheckInWeb, onCheckOut, onCancelar, }: Props & {
+function TabResumen({ accountOnly = false, bffAction, reserva, huesped, habitacion, habitaciones, reservas, onAsignarHabitacion, onCheckIn, onValidarCheckInWeb, onRechazarCheckInWeb, onCheckOut, onCancelar, }: Props & {
   habitacion: HabitacionHotel | null;
+  accountOnly?: boolean;
 }) {
+
   const [cancelando, setCancelando] = useState(false);
+  const [asignando, setAsignando] = useState(false);
+  const [habitacionSeleccionada, setHabitacionSeleccionada] = useState('');
+  const [pisoAsignacion, setPisoAsignacion] = useState('');
   const [motivo, setMotivo] = useState('');
   const [errMotivo, setErrMotivo] = useState(false);
   const [rechazandoCheckIn, setRechazandoCheckIn] = useState(false);
@@ -285,6 +294,8 @@ function TabResumen({ bffAction, reserva, huesped, habitacion, habitaciones, res
     onCancelar(reserva.id, motivo.trim());
   }
   return (<div className="space-y-1">
+
+    {!accountOnly && <>
     <div className={`rounded-xl border px-3 py-1 ${reserva.estado === 'cancelada' ? 'border-[#FCA5A5] bg-[#FEF2F2]' : reserva.estado === 'finalizada' ? 'border-[#D1D5DB] bg-[#F8FAFC]' : 'border-[#BFD4EA] bg-[#F5FAFF]'}`}>
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 leading-snug">
         <div>
@@ -297,8 +308,8 @@ function TabResumen({ bffAction, reserva, huesped, habitacion, habitaciones, res
         {descripcionEstado(reserva)}
       </p>
 
-        <Chip cls={RESERVA_META[reserva.estado].chip}>
-          {RESERVA_META[reserva.estado].label}
+        <Chip cls={RECEPTION_RESERVA_META[reserva.estado].chip}>
+          {RECEPTION_RESERVA_META[reserva.estado].label}
         </Chip>
       </div>
      {reserva.estado === 'cancelada' && <p className="mt-2 rounded-lg bg-white px-3 py-2 text-sm text-[#991B1B]">
@@ -337,7 +348,7 @@ function TabResumen({ bffAction, reserva, huesped, habitacion, habitaciones, res
       {habitacion ? ((() => {
         const visual = visualHabitacion(habitacion);
         return <div className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-[#F8F6F0] sm:flex">
-          <img src={visual.image} alt={`Habitación ${habitacion.numero}`} className="h-24 w-full shrink-0 object-cover sm:h-28 sm:w-36" />
+          <img src={visual.image} alt={`Habitación ${habitacion.numero}`} className="h-24 w-full shrink-0 object-cover sm:h-24 sm:w-28" />
           <div className="flex-1 p-3">
             <p className="text-[12px] font-semibold uppercase tracking-[.16em] text-[#B38719]">Piso {habitacion.piso}</p>
             <p className="text-[17px] font-bold text-[#18345C]">Habitación {habitacion.numero}</p>
@@ -355,16 +366,8 @@ function TabResumen({ bffAction, reserva, huesped, habitacion, habitaciones, res
         Sin habitación asignada. Asigna una para poder hacer el check-in.
       </p>)}
 
-      {!bffAction && !cerrada && (<div className="mt-1">
-        <SelectorHabitacion
-          habitaciones={disponiblesParaAsignar}
-          seleccionadaId={reserva.habitacionId ?? ''}
-          onSeleccionar={id => onAsignarHabitacion(reserva.id, id)}
-          titulo={habitacion ? 'Cambiar habitación' : 'Asignar habitación disponible'} />
-        {disponiblesParaAsignar.length === 0 && (<p className="text-[12px] text-[#991B1B] mt-1">
-          No hay habitaciones libres para estas fechas y capacidad.
-        </p>)}
-      </div>)}
+      {!bffAction && ['confirmada', 'pendiente'].includes(reserva.estado) && <button onClick={() => { setHabitacionSeleccionada(''); setPisoAsignacion(''); setAsignando(true); }} className="rounded-lg bg-[#18345C] px-3 py-1.5 text-sm font-semibold text-white">{habitacion ? 'Cambiar habitación' : 'Asignar habitación'}</button>}
+      {asignando && ['confirmada', 'pendiente'].includes(reserva.estado) && <ReceptionActionDialog title={habitacion ? 'Cambiar habitación' : 'Asignar habitación'} onClose={() => setAsignando(false)}><div className="space-y-3"><div className="grid grid-cols-2 gap-3"><label className="block text-sm">Piso<select aria-label="Piso" value={pisoAsignacion} onChange={e => { setPisoAsignacion(e.target.value); setHabitacionSeleccionada(''); }} className={INPUT_CLS}><option value="">Seleccionar</option>{[...new Set(disponiblesParaAsignar.map(h => h.piso))].sort((a, b) => a - b).map(p => <option key={p} value={p}>{p}</option>)}</select></label><label className="block text-sm">Habitación<select aria-label="Habitación" disabled={!pisoAsignacion} value={habitacionSeleccionada} onChange={e => setHabitacionSeleccionada(e.target.value)} className={INPUT_CLS}><option value="">Seleccionar</option>{disponiblesParaAsignar.filter(h => String(h.piso) === pisoAsignacion).map(h => <option key={h.id} value={h.id}>Hab. {h.numero}</option>)}</select></label></div>{!disponiblesParaAsignar.length && <p className="text-sm">No hay habitaciones libres para estas fechas y capacidad.</p>}<div className="flex justify-end gap-2"><button onClick={() => setAsignando(false)} className="rounded-lg border px-4 py-2 text-sm">Cancelar</button><button disabled={!disponiblesParaAsignar.some(h => h.id === habitacionSeleccionada)} onClick={() => { onAsignarHabitacion(reserva.id, habitacionSeleccionada); setAsignando(false); }} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm text-white disabled:opacity-40">Guardar asignación</button></div></div></ReceptionActionDialog>}
     </Seccion>
 
     {reserva.checkInWeb && (<Seccion titulo="Check-in enviado desde el portal">
@@ -374,7 +377,7 @@ function TabResumen({ bffAction, reserva, huesped, habitacion, habitaciones, res
             <p className="font-semibold text-[#18345C]">Evidencias para validación</p>
             <p className="text-xs text-[#71839B]">Enviado {formatoFechaHora(reserva.checkInWeb.enviadoEn)}</p>
           </div>
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${(checkInRealizado(reserva) || reserva.checkInWeb.estado === 'aprobado') ? 'bg-[#DCFCE7] text-[#166534]' : 'bg-[#FFF3D5] text-[#8A6200]'}`}>
+          <span className={`rounded-md border px-3 py-1 text-xs font-semibold ${(checkInRealizado(reserva) || reserva.checkInWeb.estado === 'aprobado') ? statusTone('APROBADO') : statusTone('PENDIENTE')}`}>
             {(checkInRealizado(reserva) || reserva.checkInWeb.estado === 'aprobado') ? 'Validado' : reserva.checkInWeb.estado === 'rechazado' ? 'Corrección solicitada' : 'Pendiente de validar'}
           </span>
         </div>
@@ -446,18 +449,18 @@ function TabResumen({ bffAction, reserva, huesped, habitacion, habitaciones, res
       {puedeCheckOut && (!bffAction || bffAction === 'check-out') && (<button
         onClick={() => setFacturaCheckout(true)}
         className="flex-1 py-2 text-[15px] font-semibold bg-[#166534] text-white rounded-md hover:bg-[#14532D] transition-colors">
-        Revisar factura y check-out
+        Revisar cuenta y check-out
       </button>)}
       {!bffAction && permitsLocalCancellation(reserva) && <button
         onClick={() => setCancelando(true)}
-        className="flex-1 sm:flex-none sm:px-5 py-2 text-[15px] font-semibold border border-[#FCA5A5] text-[#991B1B] rounded-md hover:bg-[#FEF2F2] transition-colors">
+        className="w-fit px-3 py-1.5 text-sm font-semibold border border-[#FCA5A5] text-[#991B1B] rounded-md hover:bg-[#FEF2F2] transition-colors">
         Cancelar reserva
       </button>}
     </div>)}
 
     {!cerrada && !cancelando && !reserva.habitacionId && (reserva.estado === 'confirmada' || reserva.estado === 'pendiente') && (<p className="text-[12px] text-[#9A3412]">Asigna una habitación para habilitar el check-in.</p>)}
 
-    {cancelando && permitsLocalCancellation(reserva) && (<div className="border border-[#FCA5A5] bg-[#FEF2F2] rounded-xl px-4 py-2 space-y-2">
+    {cancelando && permitsLocalCancellation(reserva) && (<ReceptionActionDialog title="Cancelar reserva" onClose={() => setCancelando(false)}><div className="space-y-2">
       <p className="text-[15px] font-semibold text-[#991B1B]">Cancelar {reserva.codigo}</p>
       <p className="text-[13px] text-[#7F1D1D]">
         Selecciona un motivo. La habitación quedará liberada y la reserva no podrá reactivarse.
@@ -494,7 +497,7 @@ function TabResumen({ bffAction, reserva, huesped, habitacion, habitaciones, res
             setErrMotivo(false);
           }}
           className="flex-1 py-2 text-sm border border-[#E5E0D8] text-[#6B7280] rounded-md bg-white hover:bg-[#F8F6F0] transition-colors">
-          Volver
+          Cancelar
         </button>
         <button
           onClick={confirmarCancelacion}
@@ -502,16 +505,18 @@ function TabResumen({ bffAction, reserva, huesped, habitacion, habitaciones, res
           Confirmar cancelación
         </button>
       </div>
-    </div>)}
+    </div></ReceptionActionDialog>)}
 
+    </>}
+    {accountOnly && ['en-curso', 'finalizada'].includes(reserva.estado) && <button onClick={() => setFacturaCheckout(true)} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">{reserva.estado === 'finalizada' ? 'Ver resumen de cuenta' : 'Revisar cuenta y check-out'}</button>}
     {facturaCheckout && <div className="fixed inset-0 z-[70] grid place-items-center bg-[#071D34]/55 p-3" onMouseDown={() => setFacturaCheckout(false)}>
-      <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl" onMouseDown={e => e.stopPropagation()}>
+      <section className="reception-print-document max-h-[90vh] w-full max-w-[680px] overflow-y-auto rounded-2xl bg-white shadow-2xl" onMouseDown={e => e.stopPropagation()}>
         <div className="flex items-start justify-between border-b px-5 py-2">
           <div>
-            <h2 className="text-2xl font-semibold text-[#18345C]">Factura del check-out</h2>
-            <p className="text-sm text-[#71839B]">Revisa la cuenta antes de finalizar la estancia.</p>
+            <h2 className="text-2xl font-semibold text-[#18345C]">Resumen de cuenta</h2>
+            {reserva.estado !== 'finalizada' && <p className="text-sm text-[#71839B]">Revisa la cuenta antes de finalizar la estancia.</p>}
           </div>
-          <button onClick={() => setFacturaCheckout(false)} className="text-2xl text-[#71839B]">×</button>
+          <ReceptionCloseButton onClick={() => setFacturaCheckout(false)} />
         </div>
         <div className="p-3 sm:p-4">
           <div className="grid gap-2 border-b border-[#D8B94E] pb-3 sm:grid-cols-[150px_1fr_1fr]">
@@ -525,8 +530,8 @@ function TabResumen({ bffAction, reserva, huesped, habitacion, habitaciones, res
               <p>Correo: villaserenagt@gmail.com</p>
             </div>
             <div className="text-sm leading-relaxed text-[#18345C] sm:text-right">
-              <h3 className="font-serif text-xl font-bold">FACTURA DE CHECK-OUT</h3>
-              <p className="text-[10px] uppercase tracking-wider text-[#71839B]">Resumen previo a finalizar la estancia</p>
+              <h3 className="font-serif text-xl font-bold">RESUMEN DE CUENTA</h3>
+              {reserva.estado !== 'finalizada' && <p className="text-[10px] uppercase tracking-wider text-[#71839B]">Resumen previo a finalizar la estancia</p>}
               <p className="mt-2">
                 <b>Reserva:</b>
                 {reserva.codigo}
@@ -547,7 +552,7 @@ function TabResumen({ bffAction, reserva, huesped, habitacion, habitaciones, res
             <FilaCuenta k="Subtotal" v={dinero(cuentaCheckout.subtotal)} />
             <FilaCuenta k="Descuento" v={`- ${dinero(cuentaCheckout.descuento)}`} />
             <FilaCuenta k="Total" v={dinero(cuentaCheckout.total)} fuerte />
-            <FilaCuenta k="Pagado" v={dinero(cuentaCheckout.pagado)} />
+            <FilaCuenta k="Pagos registrados" v={dinero(reserva.pagos.reduce((total, p) => total + p.monto, 0))} />
             <div className={`flex items-center justify-between px-4 py-2 font-bold ${cuentaCheckout.saldo <= 0 ? 'bg-[#EAF6EC] text-[#166534]' : 'bg-[#FFF3D5] text-[#8A6200]'}`}>
               <span>Saldo pendiente</span>
               <span className="text-xl">
@@ -557,36 +562,37 @@ function TabResumen({ bffAction, reserva, huesped, habitacion, habitaciones, res
           </div>
           {cuentaCheckout.saldo > 0 && <p className="mt-2 rounded-lg border border-[#F6C453] bg-[#FFF9E8] px-4 py-2 text-sm text-[#78450A]">Para finalizar el check-out primero debe registrarse el pago completo en “Cuenta y pagos”.</p>}
           <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <button onClick={() => window.print()} className="rounded-lg border border-[#18345C] px-4 py-2 text-sm font-semibold text-[#18345C]">Imprimir factura</button>
-            <button
-              onClick={() => window.alert(`La factura se enviará a ${huesped.correo}.`)}
-              className="rounded-lg border border-[#18345C] px-4 py-2 text-sm font-semibold text-[#18345C]">Enviar por correo</button>
-            <button
+            <button onClick={() => window.print()} className="rounded-lg border border-[#18345C] px-4 py-2 text-sm font-semibold text-[#18345C]">Imprimir resumen</button>
+            <button disabled title="El envío por correo no está disponible" className="rounded-lg border border-[#E5E0D8] px-4 py-2 text-sm text-[#71839B] disabled:cursor-not-allowed">Enviar por correo</button><p className="w-full text-right text-xs text-[#71839B]">El envío por correo no está disponible.</p>
+            {reserva.estado === 'en-curso' && <button
               disabled={cuentaCheckout.saldo > 0}
               onClick={() => {
                 onCheckOut(reserva.id);
                 setFacturaCheckout(false);
               }}
-              className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9AA9BB]">Finalizar check-out</button>
+              className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9AA9BB]">Finalizar check-out</button>}
           </div>
         </div>
       </section>
     </div>}
   </div>);
 }
-function TabCuenta({ reserva, habitacion, onRegistrarPago, onAplicarDescuento, onVerComprobante, onPagoRegistrado, }: Props & {
+function TabCuenta(props: Props & {
   habitacion: HabitacionHotel | null;
   onVerComprobante: (p: Pago) => void;
   onPagoRegistrado: (p: Pago) => void;
 }) {
+  const { reserva, habitacion, onRegistrarPago, onAplicarDescuento, onVerComprobante, onPagoRegistrado } = props;
   const cuenta = calcularCuenta(reserva, habitacion);
-  const cerrada = reserva.estado === 'cancelada';
+  const cerrada = reserva.estado === 'cancelada' || reserva.estado === 'finalizada';
+  const puedeCobrar = !cerrada && cuenta.saldo > 0;
   const [pagando, setPagando] = useState(false);
   const [monto, setMonto] = useState('');
   const [metodo, setMetodo] = useState<MetodoPago>('efectivo');
   const [errPago, setErrPago] = useState('');
   const [descMonto, setDescMonto] = useState(String(reserva.descuento || ''));
   function registrar() {
+    if (!puedeCobrar) return;
     const n = Number(monto);
     if (!n || n <= 0) {
       setErrPago('Ingresa un monto válido.');
@@ -603,21 +609,19 @@ function TabCuenta({ reserva, habitacion, onRegistrarPago, onAplicarDescuento, o
     setErrPago('');
     onPagoRegistrado(pago);
   }
-  return (<div className="space-y-2">
+  return (<div className="space-y-3">
+    <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold">Resumen de movimientos</span><span className={statusBadge(cerrada ? 'CUENTA_CERRADA' : 'CUENTA_ABIERTA')}>{cerrada ? 'Cuenta cerrada' : 'Cuenta abierta'}</span></div>
+    <section className="rounded-xl border border-[#E5E0D8] p-3"><h4 className="mb-2 font-semibold">Cargos adicionales</h4><TabServicios {...props} cuentaMode /></section>
 
-    <div className="border border-[#E5E0D8] rounded-xl overflow-hidden">
+    <div className="account-summary border border-[#E5E0D8] rounded-xl overflow-hidden">
       <FilaCuenta
         k={`Alojamiento · ${cuenta.noches} noche${cuenta.noches !== 1 ? 's' : ''} × ${dinero(cuenta.precioNoche)}`}
         v={dinero(cuenta.alojamiento)} />
-      {reserva.servicios.map(s => (<FilaCuenta
-        key={s.id}
-        k={`${s.tipo} · ${s.descripcion} (${s.cantidad} × ${dinero(s.precioUnitario)})`}
-        v={dinero(s.cantidad * s.precioUnitario)}
-        sub />))}
+      {cuenta.servicios > 0 && <FilaCuenta k="Cargos adicionales" v={dinero(cuenta.servicios)} sub />}
       <FilaCuenta k="Subtotal" v={dinero(cuenta.subtotal)} />
       <FilaCuenta k="Descuento" v={cuenta.descuento > 0 ? `- ${dinero(cuenta.descuento)}` : dinero(0)} />
       <FilaCuenta k="Total de la cuenta" v={dinero(cuenta.total)} fuerte />
-      <FilaCuenta k="Pagado" v={dinero(cuenta.pagado)} />
+      <FilaCuenta k="Pagos registrados" v={dinero(reserva.pagos.reduce((total, p) => total + p.monto, 0))} />
       <div className="flex items-center justify-between px-4 py-2 bg-[#18345C]">
         <span className="text-[13px] font-semibold text-white uppercase tracking-wide">Saldo pendiente</span>
         <span className="text-[20px] font-bold text-white">
@@ -626,7 +630,7 @@ function TabCuenta({ reserva, habitacion, onRegistrarPago, onAplicarDescuento, o
       </div>
     </div>
 
-    {!cerrada && (<div className="flex flex-wrap gap-2">
+    {puedeCobrar && (<div className="flex flex-wrap gap-2">
       <button
         onClick={() => {
           setPagando(v => !v);
@@ -637,8 +641,8 @@ function TabCuenta({ reserva, habitacion, onRegistrarPago, onAplicarDescuento, o
       </button>
     </div>)}
 
-    {!cerrada && (<div className="rounded-xl border border-[#E5E0D8] bg-[#FCFBF8] p-3">
-      <p className="mb-2 text-[14px] font-semibold text-[#18345C]">Descuento autorizado</p>
+    {!cerrada && cuenta.pagado < cuenta.total && (<details className="rounded-xl border border-[#E5E0D8] bg-[#FCFBF8] p-3"><summary className="cursor-pointer text-sm font-semibold">Descuento autorizado</summary>
+
       <div className="flex items-end gap-2">
         <div className="flex-1">
           <Campo label="Monto de descuento">
@@ -652,19 +656,19 @@ function TabCuenta({ reserva, habitacion, onRegistrarPago, onAplicarDescuento, o
         </button>
       </div>
       <p className="mt-2 text-xs text-[#71839B]">El descuento queda registrado antes de cobrar el saldo.</p>
-    </div>)}
+    </details>)}
 
-    {pagando && !cerrada && (<div className="border border-[#E5E0D8] rounded-xl p-3 space-y-2">
+    {pagando && puedeCobrar && (<div className="border border-[#E5E0D8] rounded-xl p-3 space-y-2">
       <p className="text-[14px] font-semibold text-[#18345C]">Registrar pago</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <Campo label="Monto" error={errPago}>
-          <input type="number" min="0" value={monto} onChange={e => {
+          <input aria-label="Monto del pago" type="number" min="0" value={monto} onChange={e => {
             setMonto(e.target.value);
             setErrPago('');
           }} className={INPUT_CLS} />
         </Campo>
         <Campo label="Método de pago">
-          <select value={metodo} onChange={e => setMetodo(e.target.value as MetodoPago)} className={INPUT_CLS}>
+          <select aria-label="Método de pago" value={metodo} onChange={e => setMetodo(e.target.value as MetodoPago)} className={INPUT_CLS}>
             <option value="efectivo">Efectivo</option>
             <option value="tarjeta">Tarjeta de crédito o débito</option>
           </select>
@@ -703,10 +707,13 @@ function TabCuenta({ reserva, habitacion, onRegistrarPago, onAplicarDescuento, o
         </div>))}
       </div>)}
     </div>
+    <div className="border-t border-[#E5E0D8] pt-3"><TabResumen {...props} habitacion={habitacion} accountOnly /></div>
   </div>);
 }
-function TabServicios({ reserva, onAgregarServicio, onQuitarServicio }: Props) {
-  const cerrada = reserva.estado === 'finalizada' || reserva.estado === 'cancelada';
+function TabServicios({ reserva, onAgregarServicio, onQuitarServicio, cuentaMode = false }: Props & { cuentaMode?: boolean }) {
+  const [anularId, setAnularId] = useState<string | null>(null);
+  const [motivoAnulacion, setMotivoAnulacion] = useState('');
+  const cerrada = reserva.estado !== 'en-curso';
   const catalogo: Record<string, {
     nombre: string;
     precio: number;
@@ -751,6 +758,8 @@ function TabServicios({ reserva, onAgregarServicio, onQuitarServicio }: Props) {
     setAgregandoServicio(false);
   }
   return <div className="space-y-2">
+    {cuentaMode && reserva.cargosAnulados?.map(c => <div key={c.id} className="rounded-lg bg-[#F8F6F0] px-3 py-2 text-sm"><p className="line-through">{c.tipo} · {c.descripcion} · {dinero(c.cantidad * c.precioUnitario)}</p><p>Anulado: {c.motivo} · {formatoFechaHora(c.fechaAnulacion)}</p></div>)}
+    {anularId && <form className="space-y-2 rounded-lg border border-[#E5E0D8] p-3" onSubmit={e => { e.preventDefault(); if (!motivoAnulacion.trim() || cerrada) return; onQuitarServicio(reserva.id, anularId, motivoAnulacion.trim()); setAnularId(null); }}><Campo label="Motivo de anulación"><input aria-label="Motivo de anulación" required maxLength={500} value={motivoAnulacion} onChange={e => setMotivoAnulacion(e.target.value)} className={INPUT_CLS} /></Campo><div className="flex gap-2"><button className="rounded-md bg-[#18345C] px-3 py-2 text-white" disabled={!motivoAnulacion.trim()}>Confirmar anulación</button><button type="button" onClick={() => setAnularId(null)} className="px-3 py-2">Volver</button></div></form>}
     {(reserva.actividadPortal?.length ?? 0) > 0 && <section>
       <p className="mb-2 text-[10px] uppercase tracking-widest text-[#AEBCC1]">Actividad realizada por el huésped</p>
       <div className="divide-y divide-[#F0EBE3] rounded-xl border border-[#E5E0D8]">
@@ -774,17 +783,17 @@ function TabServicios({ reserva, onAgregarServicio, onQuitarServicio }: Props) {
           <p className="text-[14px] font-medium">{s.tipo} · {s.descripcion}</p>
           <p className="text-[12px] text-[#AEBCC1]">{s.cantidad} × {dinero(s.precioUnitario)} = {dinero(s.cantidad * s.precioUnitario)}</p>
         </div>
-        {!cerrada && <button onClick={() => onQuitarServicio(reserva.id, s.id)} className="text-[13px] font-semibold text-[#991B1B]">Quitar</button>}
+        {!cerrada && <button onClick={() => { if (cuentaMode) { setAnularId(s.id); setMotivoAnulacion(''); } else onQuitarServicio(reserva.id, s.id); }} className="text-[13px] font-semibold text-[#991B1B]">{cuentaMode ? 'Anular' : 'Quitar'}</button>}
       </div>)}
     </div>}
     {!cerrada && <div className="flex justify-end">
-      <button onClick={() => setAgregandoServicio(true)} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#102747]">+ Agregar servicio</button>
+      <button onClick={() => setAgregandoServicio(true)} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#102747]">{cuentaMode ? '+ Agregar cargo' : '+ Agregar servicio'}</button>
     </div>}
     {agregandoServicio && <div
       className="fixed inset-0 z-[70] grid place-items-center bg-[#071D34]/45 p-3"
       onMouseDown={e => e.target === e.currentTarget && setAgregandoServicio(false)}>
       <section className="relative w-full max-w-lg rounded-2xl bg-white p-3 shadow-2xl sm:p-5">
-        <button aria-label="Cerrar" onClick={() => setAgregandoServicio(false)} className="absolute right-4 top-3 text-2xl text-[#71839B]">×</button>
+        <ReceptionCloseButton onClick={() => setAgregandoServicio(false)} className="absolute right-3 top-2" />
         <h3 className="pr-8 text-lg font-semibold text-[#18345C]">Agregar servicio</h3>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           <Campo label="Servicio">
@@ -885,7 +894,7 @@ function TabHuespedes({ reserva, huesped, onAgregarAcompanante, onQuitarAcompana
       className="fixed inset-0 z-[70] grid place-items-center bg-[#071D34]/45 p-3"
       onMouseDown={e => e.target === e.currentTarget && setRegistrandoHuesped(false)}>
       <section className="relative w-full max-w-lg rounded-2xl bg-white p-3 shadow-2xl sm:p-5">
-        <button aria-label="Cerrar" onClick={() => setRegistrandoHuesped(false)} className="absolute right-4 top-3 text-2xl text-[#71839B]">×</button>
+        <ReceptionCloseButton onClick={() => setRegistrandoHuesped(false)} className="absolute right-3 top-2" />
         <h3 className="pr-8 text-lg font-semibold text-[#18345C]">Registrar huésped adicional</h3>
         <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Campo label="Nombre completo">

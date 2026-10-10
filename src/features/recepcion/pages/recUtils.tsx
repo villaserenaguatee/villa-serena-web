@@ -1,3 +1,4 @@
+import { statusBadge, statusTone } from './statusStyle';
 import { calcularCuentaEstancia } from '@/lib/pms/cuentaEstancia';
 import type { ReactNode } from 'react';
 import type { EstadoReserva, EstadoHabHotel, EstadoSolicitudHuesped, PrioridadSolicitud, HabitacionHotel, Reserva, } from '@/lib/pms/types';
@@ -16,16 +17,17 @@ export const RESERVA_META: Record<EstadoReserva, {
   'finalizada': { label: 'Finalizada', chip: 'bg-[#F1F5F9] text-[#475569] border-[#CBD5E1]' },
   'cancelada': { label: 'Cancelada', chip: 'bg-[#FEF2F2] text-[#991B1B] border-[#FCA5A5]' },
 };
+export const RECEPTION_RESERVA_META = Object.fromEntries(Object.entries(RESERVA_META).map(([key, value]) => [key, { ...value, chip: statusTone(key) }])) as typeof RESERVA_META;
 export const HAB_META: Record<EstadoHabHotel, {
   label: string;
   chip: string;
   dot: string;
 }> = {
-  'disponible': { label: 'Disponible', chip: 'bg-[#F0FAF4] text-[#166534] border-[#86EFAC]', dot: '#22C55E' },
-  'ocupada': { label: 'Ocupada', chip: 'bg-[#FEF2F2] text-[#991B1B] border-[#FCA5A5]', dot: '#EF4444' },
-  'reservada': { label: 'Reservada', chip: 'bg-[#EFF6FF] text-[#1E40AF] border-[#93C5FD]', dot: '#3B82F6' },
-  'en-limpieza': { label: 'En limpieza', chip: 'bg-[#FFF7ED] text-[#9A3412] border-[#FDBA74]', dot: '#FB923C' },
-  'mantenimiento': { label: 'En mantenimiento', chip: 'bg-[#F1F5F9] text-[#475569] border-[#CBD5E1]', dot: '#94A3B8' },
+  'disponible': { label: 'Disponible', chip: statusTone("disponible"), dot: '#22C55E' },
+  'ocupada': { label: 'Ocupada', chip: statusTone("ocupada"), dot: '#EF4444' },
+  'reservada': { label: 'Reservada', chip: statusTone("reservada"), dot: '#3B82F6' },
+  'en-limpieza': { label: 'En limpieza', chip: statusTone("en-limpieza"), dot: '#FB923C' },
+  'mantenimiento': { label: 'En mantenimiento', chip: statusTone("mantenimiento"), dot: '#94A3B8' },
 };
 export const HAB_TRANSICIONES: Record<EstadoHabHotel, EstadoHabHotel[]> = {
   'disponible': ['reservada', 'mantenimiento', 'en-limpieza'],
@@ -52,9 +54,9 @@ export const SOLICITUD_META: Record<EstadoSolicitudHuesped, {
   label: string;
   chip: string;
 }> = {
-  'pendiente': { label: 'Pendiente', chip: 'bg-[#FFFBEF] text-[#78450A] border-[#F3D98B]' },
-  'en-proceso': { label: 'En proceso', chip: 'bg-[#EFF6FF] text-[#1E40AF] border-[#93C5FD]' },
-  'atendida': { label: 'Atendida', chip: 'bg-[#F0FAF4] text-[#166534] border-[#86EFAC]' },
+  'pendiente': { label: 'Pendiente', chip: statusTone('pendiente') },
+  'en-proceso': { label: 'En proceso', chip: statusTone("en-proceso") },
+  'atendida': { label: 'Atendida', chip: statusTone("atendida") },
 };
 export const PRIORIDAD_META: Record<PrioridadSolicitud, {
   label: string;

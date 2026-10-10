@@ -3,7 +3,7 @@ import { fechaHotel } from "@/lib/hotel";
 import { useMemo } from 'react';
 import type { Reserva, Huesped, HabitacionHotel, SeccionRecepcion } from '@/lib/pms/types';
 import { fechaHoyISO, fechaRelativaISO, formatoFecha } from '@/data/pms';
-import { Chip, RESERVA_META, habitacionesDisponibles, BedIcon, CalendarIcon } from '@/features/recepcion/pages/recUtils';
+import { Chip, RECEPTION_RESERVA_META, habitacionesDisponibles, BedIcon, CalendarIcon } from '@/features/recepcion/pages/recUtils';
 import { publicRoomForHotelType } from '@/data/publicRooms';
 interface Props {
   reservas: Reserva[];
@@ -88,8 +88,8 @@ export default function DiaRecepcion({ reservas, huespedes, habitaciones, onAbri
                   {r.codigo} · {formatoFecha(r.fechaEntrada)} → {formatoFecha(r.fechaSalida)} · {r.tipoHabitacion}
                 </p>
               </div>
-              <Chip cls={RESERVA_META[r.estado].chip}>
-                {RESERVA_META[r.estado].label}
+              <Chip cls={RECEPTION_RESERVA_META[r.estado].chip}>
+                {RECEPTION_RESERVA_META[r.estado].label}
               </Chip>
             </button>);
           })}
@@ -155,8 +155,8 @@ function Bloque({ titulo, vacio, items, huespedDe, habitaciones, onAbrirReserva,
                 ? <Chip cls="bg-[#F3F4F6] text-[#374151] border-[#D1D5DB]">CHECK-OUT WEB REALIZADO</Chip>
                 : r.checkInEn?.slice(0, 10) === fechaHotel()
                   ? <Chip cls="bg-[#DCFCE7] text-[#166534] border-[#86EFAC]">CHECK-IN {r.origenCheckIn === 'portal' ? 'WEB ' : ''}REALIZADO</Chip>
-                  : <Chip cls={RESERVA_META[r.estado].chip}>
-                    {RESERVA_META[r.estado].label}
+                  : <Chip cls={RECEPTION_RESERVA_META[r.estado].chip}>
+                    {RECEPTION_RESERVA_META[r.estado].label}
                   </Chip>}
           <span className="ml-auto shrink-0 text-xs font-semibold text-[#18345C]">Ver detalle ›</span>
         </button>);

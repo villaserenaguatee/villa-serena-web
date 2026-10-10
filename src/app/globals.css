@@ -10365,3 +10365,26 @@ body > * {
 .login-access-tabs button[aria-selected="true"] { background:white; font-weight:600; box-shadow:0 1px 4px #18345c18; }
 
 .guest-code-login .floating-login-card form>.login-submit { margin-top:11px; }
+/* Ajustes visuales exclusivos de formularios y detalles de Recepción. */
+.reception-compact .p-6 { padding:20px; }
+.reception-compact .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top:16px; }
+.reception-compact .gap-6 { gap:16px; }
+.reception-compact input:not([type=checkbox]):not([type=radio]):not([type=file]),
+.reception-compact select { min-height:40px; max-width:100%; }
+.reception-compact label { line-height:1.3; }
+.reception-compact form { min-width:0; }
+@media (max-width:640px) {
+  .reception-compact .p-6 { padding:16px; }
+  .reception-compact .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top:12px; }
+}
+.reception-compact .account-summary { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+.reception-compact .account-summary > div { min-width:0; padding:8px 12px; }
+.reception-compact .account-summary > div:last-child { grid-column:1 / -1; }
+@media (max-width:480px) { .reception-compact .account-summary { grid-template-columns:1fr; } }
+@media print {
+  body:has(.reception-print-document) * { visibility:hidden !important; }
+  body:has(.reception-print-document) .reception-print-document,
+  body:has(.reception-print-document) .reception-print-document * { visibility:visible !important; }
+  .reception-print-document { position:absolute !important; inset:0 auto auto 0 !important; width:100% !important; max-width:none !important; height:auto !important; max-height:none !important; overflow:visible !important; box-shadow:none !important; border:0 !important; }
+  .reception-print-document button { display:none !important; }
+}

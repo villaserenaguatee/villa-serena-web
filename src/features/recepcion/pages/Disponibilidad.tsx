@@ -36,8 +36,10 @@ export default function Disponibilidad({ habitaciones, reservas, onReservar }: P
     [rangoValido, entrada, salida, habitaciones, reservas, nPersonas, tipo]);
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
     <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
-      <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Consultar disponibilidad</h1>
-      <p className="text-[15px] text-[#AEBCC1] mt-1">Habitaciones libres para un rango de fechas</p>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Consultar disponibilidad</h1>
+        {rangoValido && <p role="status" className="text-[14px] text-[#6B7280]">{resultados.length} {resultados.length === 1 ? 'habitación disponible' : 'habitaciones disponibles'}</p>}
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.2fr_1fr] gap-3 mt-4 items-end">
         <Campo label="Entrada">
@@ -93,9 +95,6 @@ export default function Disponibilidad({ habitaciones, reservas, onReservar }: P
 
     <div className="px-4 sm:px-6 py-5">
       {!rangoValido ? (<p className="text-[14px] text-[#991B1B]">La fecha de salida debe ser posterior a la de entrada.</p>) : (<>
-        <p className="text-[14px] text-[#6B7280] mb-4">
-          {resultados.length} habitación(es) disponible(s) · {noches} noche{noches !== 1 ? 's' : ''}
-        </p>
         {resultados.length === 0 ? (<div className="bg-white border border-[#E5E0D8] rounded-xl p-6 text-center">
           <p className="text-[15px] text-[#AEBCC1]">No hay habitaciones libres con esos criterios.</p>
         </div>) : (<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
