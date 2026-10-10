@@ -61,9 +61,17 @@ jobs:
           if-no-files-found: ignore
 
   e2e-demo:
-    name: e2e-demo
+    name: e2e-demo-${{ matrix.suite }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: reception
+            command: pnpm test:reception:browser
+          - suite: staff
+            command: pnpm test:staff:browser
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
@@ -75,11 +83,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
+      - run: ${{ matrix.command }}
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: e2e-demo-results
+          name: e2e-demo-${{ matrix.suite }}-results
           path: |
             playwright-report/
             test-results/

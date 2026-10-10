@@ -104,11 +104,12 @@ navegador siguen siendo locales: el contrato no contempla importarlas con su có
 anterior y no se recrean automáticamente. Si se pierde una respuesta de creación,
 se pide consultar la búsqueda antes de crear otra reserva.
 
-Prueba de creación con y sin habitación, búsqueda, detalle y recarga en computadora
-y móvil: `node scripts/test-reception-creation-browser.cjs` con la web de prueba en
-`RECEPTION_TEST_URL` (por defecto `http://localhost:3025`).
-La prueba guarda reservas: al repetirla puede usarse `RECEPTION_TEST_OFFSET` para
-elegir otro día de entrada (días desde hoy; por defecto 5), sin vaciar el inventario.
+Pruebas de calendario, creación con/sin habitación, búsqueda, detalle, cancelación,
+habitaciones y check-in en computadora y móvil: `pnpm test:reception:browser`.
+Playwright inicia y detiene Next/Chromium, usa fechas relativas al día del hotel
+y restaura datos demo aislados antes de cada caso. No requiere iniciar `pnpm dev`.
+Los detalles de equivalencia y las limitaciones están en
+[la migración de #48](docs/TESTING_ISSUE48.md).
 
 ### Portal del huésped
 

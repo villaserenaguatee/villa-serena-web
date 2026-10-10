@@ -71,16 +71,16 @@ del navegador personal:
 
 ```powershell
 pnpm exec playwright install chromium
-pnpm dev --port 3017
-# En otra terminal:
 pnpm test:reception:browser
 ```
 
-`RECEPTION_TEST_URL` permite cambiar el puerto de prueba. La comprobación usa
-Chromium en escritorio y móvil, con zona UTC para verificar las fechas del hotel.
-Comprueba navegación, creación con y sin habitación visible en Gantt sin pagos, check-in con habitación
-limpia, recarga y rechazo por habitación no lista. Todo esto es demo local;
-las pruebas del transporte simulan respuestas del API.
+Playwright administra un servidor nuevo en `localhost:3048`, Chromium y un archivo
+demo temporal restaurado por test, con zona `America/Guatemala`. Comprueba
+mes/habitaciones, creación con/sin habitación, búsqueda/detalle, cancelaciones demo,
+habitaciones, check-in limpio y rechazo por condición sucia o consulta BFF fallida.
+Las reservas sin habitación se consultan en búsqueda/detalle y no aparecen como
+eventos del calendario. La aceptación del check-in persiste en la copia local;
+no acredita una transición remota en Spring. La caída 503 se inyecta en el transporte.
 Con `VILLA_SERENA_BFF_MODE=api`, Recepción muestra el bloqueo de conexión y no
 permite operar con reservas demo. Se comprobó también con el build de producción
 y `node scripts/test-reception-browser.cjs --api` contra ese servidor.

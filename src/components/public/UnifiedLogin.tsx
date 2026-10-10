@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { staffHome } from '@/lib/auth/staff-contract';
 import { usePublicLanguage } from '@/components/common/PublicLanguageToggle';
 function StaffForm() {
-  const { login } = useAuth(), router = useRouter(), { en } = usePublicLanguage();
+  const { login, loading } = useAuth(), router = useRouter(), { en } = usePublicLanguage();
   const [email, setEmail] = useState(''), [password, setPassword] = useState('');
   const [show, setShow] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('');
   async function submit(event: FormEvent) {
@@ -20,7 +20,7 @@ function StaffForm() {
     <label>{en ? 'Email' : 'Correo electrónico'}<div className="input-icon"><Mail size={17} /><input type="email" autoComplete="username" required value={email} onChange={e => setEmail(e.target.value)} /></div></label>
     <label>{en ? 'Password' : 'Contraseña'}<div className="input-icon"><LockKeyhole size={17} /><input type={show ? 'text' : 'password'} autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /><button type="button" aria-label={show ? (en ? 'Hide password' : 'Ocultar contraseña') : (en ? 'Show password' : 'Mostrar contraseña')} onClick={() => setShow(!show)}>{show ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></label>
     {error && <div className="login-error" role="alert">{error}</div>}
-    <button className="login-submit" disabled={busy}>{busy ? (en ? 'Signing in…' : 'Iniciando sesión…') : (en ? 'Sign in' : 'Iniciar sesión')}</button>
+    <button className="login-submit" disabled={busy || loading}>{busy ? (en ? 'Signing in…' : 'Iniciando sesión…') : (en ? 'Sign in' : 'Iniciar sesión')}</button>
   </form>;
 }
 export default function UnifiedLogin({ initialStaff = false }: { initialStaff?: boolean }) {

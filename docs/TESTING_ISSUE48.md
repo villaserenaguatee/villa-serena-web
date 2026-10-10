@@ -1,8 +1,12 @@
-# Pruebas: primera etapa de #48
+# Migración de pruebas por etapas: #48
 
 Rama de partida: `develop`, commit `2713317` (#53), 09-10-2026.
 Primera etapa: infraestructura y tres casos representativos (`e25b7a2`), sin
 retirar CJS. Segunda etapa: más pruebas de unidad/componentes sin levantar Next.
+
+Estado actual: seis etapas locales. Los nueve CJS de VM están reemplazados;
+Recepción y sesión usan Playwright Test en bloques separados. Quedan 13 CJS de
+navegador pendientes y la validación remota de CI; #48 sigue abierta.
 La issue completa continúa pendiente.
 
 ## Ejecutar localmente
@@ -41,13 +45,22 @@ Playwright Test administra Chromium, página, contexto y servidor Next.js. Usa
 idioma español y zona horaria `America/Guatemala`. No se necesita iniciar `pnpm dev`.
 El servidor fuerza `STAFF_AUTH_MODE=demo`, `VILLA_SERENA_BFF_MODE=demo`, vacía
 `API_URL`, `NEXT_PUBLIC_WS_URL` y `DEEPL_API_KEY`, y usa
-`.data/issue48/reception.json` para recepción. No necesita Spring ni secretos.
+un archivo temporal único `issue48-e2e-*/reception.json` para recepción. Cada
+prueba de Recepción restaura la semilla del BFF eliminando únicamente ese archivo;
+el teardown elimina su directorio. No necesita Spring ni secretos.
 
 El proveedor demo de autenticación vive en memoria y se reinicia con Next. La
 prueba cambia la contraseña de la cuenta temporal: repetirla dentro del mismo
 servidor cambiaría sus precondiciones. Por eso no se reutilizan servidores ni se
 aplican reintentos automáticos. No ejecutar simultáneamente dos E2E en este
 checkout: comparten puerto y `.next-dev`.
+Ejecutar TypeScript después del E2E, no mientras Next regenera `.next-dev/types`.
+
+`pnpm test:e2e` ejecuta primero Recepción y después sesión del personal, en dos
+procesos Playwright consecutivos con servidores nuevos. `playwright.config.ts`
+excluye sesión; `playwright.staff.config.ts` la selecciona explícitamente. Los
+reportes se guardan por bloque en `test-results/{reception,staff}` y
+`playwright-report/{reception,staff}`, sin sobrescribirse. No iniciar ambos a la vez.
 
 El servidor E2E limita su heap JavaScript a 1536 MiB mediante `NODE_OPTIONS`.
 Esto no limita toda la RAM del proceso ni la de Chromium. Next en desarrollo
@@ -203,6 +216,50 @@ Validación: **67 unidad + 61 componentes = 128 pruebas**, TypeScript e i18n
 correctos y JUnit con `CI=true`, con un worker. No se levantaron Next ni Chromium
 ni se repitió E2E. El siguiente bloque es E2E de Recepción, que sí requiere ambos.
 
+## Sexta etapa: E2E de Recepción
+
+`pnpm test:reception:browser` administra Next y Chromium para las seis suites
+de Recepción; `pnpm test:e2e` incluye también sesión del personal. Las pruebas
+usan el BFF demo real, fechas relativas al día del hotel, contextos nuevos y una
+semilla de servidor restaurada antes de cada test. Un contexto de navegador nuevo
+por sí solo no aísla las reservas o habitaciones del servidor. El archivo temporal
+se comparte únicamente entre los workers y Next de la misma ejecución; no se
+añadió una ruta HTTP de reset ni se toca `.data/reception-demo.json`.
+
+| Origen CJS | Reemplazo | Cobertura y adaptación al contrato actual |
+| --- | --- | --- |
+| `test-reception-calendar-browser` | `reception-calendar.spec.ts` + creación | Mes/habitaciones con códigos del BFF, agrupación por piso, encabezados de día, filtros por piso/categoría conservados entre vistas, detalle, nombres de meses y períodos. Creación y navegador nuevo comprueban ambas vistas; sin habitación no hay eventos, pero sí búsqueda y detalle. Cada botón representa una noche, no una reserva distinta. |
+| `test-calendar-scroll-browser` | `reception-calendar-layout.spec.ts` | Desktop, móvil y móvil horizontal: alineación, controles externos, modal, scroll vertical/horizontal interno, encabezados y primera columna fijos, sin overflow. El enlace de cuenta comprueba `/panel/recepcion/cuenta`. Guarda geometría y screenshots en `testInfo.outputPath`; el JSON opcional de una ejecución ajena deja de ser precondición. |
+| `test-reception-creation-browser` | `reception-creation.spec.ts` | Con/sin habitación, POST único, saldo completo sin pagos, detalle/búsqueda por huésped y código, recarga y recuperación sin copia local; puente de cuenta sin duplicar huésped/estancia, huésped nuevo y respuesta de creación perdida tras doble clic sin repetir POST. |
+| `test-reception-operations-browser` | `reception-operations.spec.ts` | Validaciones sin peticiones, filtros y atajos, canal externo/BFF 409, cuenta, historial, acciones por estado, asignación persistida, tres resultados de cancelación demo, habitaciones/condición/filtros, HttpOnly y denegación por rol. Los escenarios mutados se repiten con la misma semilla en desktop/móvil. |
+| `test-checkin-room-bff-browser` | `reception-checkin.spec.ts` | Consulta 503 sin fallback ni escrituras, entrada con habitación limpia, persistencia local tras recarga; habitación ensuciada en el BFF después de abrir el detalle bloquea el check-in sin mutaciones. Tras recargar, el detalle BFF bloquea la acción por condición sucia. El check-in aceptado sigue siendo local; no se afirma persistencia de `EN_ESTADIA` en Spring/BFF. No se incorpora `--reproduce` al gate. |
+| `test-room-detail-browser` | `room-detail.spec.ts` + permisos de operaciones | Imagen/título abre habitación, identidad y reserva completa, reapertura en la misma URL, otra reserva, recarga, habitación sin estancia, marcar sucia y filtro de condición; permisos 403 en habitaciones, búsqueda y detalle. |
+
+Los scripts antiguos usan etiquetas o credenciales anteriores a #53. La
+equivalencia se revisó contra sus escenarios y la UI vigente; esta etapa no afirma
+que los CJS completos hayan pasado sin modificaciones. `test-reception-browser`
+se conserva por su variante `--api`, aún pendiente: Mes/Semana/Hoy y el Gantt
+antiguo ya no describen el calendario actual. Cancelación por canales conserva
+su script específico hasta cubrir Booking/Expedia y las copias locales antiguas.
+
+La primera ejecución en frío reveló una carrera real: `/api/auth/yo` sin sesión
+podía terminar después del login y borrar sus cookies. El botón de personal ahora
+espera a que termine la consulta inicial. Un test retiene esa respuesta, verifica
+el bloqueo del botón y después completa el login. Los helpers esperan también
+la consulta inicial. No se amplían timeouts para compensar elementos ausentes.
+
+Al ejecutar los 24 casos con un único Next, pasaron los 23 de Recepción, pero Next
+reinició por su umbral de memoria al comenzar sesión del personal. Por eso ambos
+bloques tienen servidores separados y jobs de CI independientes. Se mantiene el
+heap de 1536 MiB y un worker; no se oculta el reinicio mediante reintentos.
+
+Validación final local: `CI=true pnpm test:reception:browser` pasó los **23 casos**
+en 7,6 minutos; `CI=true pnpm test:staff:browser` pasó el recorrido de siete pasos
+en 1,5 minutos. Ambos escriben JUnit/HTML en su carpeta propia. TypeScript e i18n
+pasan con `pnpm check`; el descubrimiento selecciona 23 casos y uno, respectivamente.
+Se retiraron **siete CJS** (seis de Recepción y sesión del personal): quedan
+**13 scripts de navegador** pendientes. No se ejecutó el workflow remoto.
+
 ## CI
 
 `.github/workflows/web-tests.yml` se ejecuta en PR hacia `develop`/`main`, push a
@@ -210,7 +267,7 @@ ni se repitió E2E. El siguiente bloque es E2E de Recepción, que sí requiere a
 Ubuntu 24.04, Node 24.16.0, pnpm 12.0.0 y lockfile congelado con caché pnpm.
 
 Checks separados: `typecheck`, `i18n`, `unit`, `component`, `node-bff`,
-`node-cuenta` y `e2e-demo`. Cada check falla si falla su comando; la matriz no
+`node-cuenta`, `e2e-demo-reception` y `e2e-demo-staff`. Cada check falla si falla su comando; la matriz no
 cancela las otras suites. Vitest escribe JUnit en CI. Playwright escribe JUnit,
 reporte HTML, screenshot y trace de fallos. Solo se suben los directorios de
 resultados, con retención de siete días; `.data` y `.env` no son artefactos.
@@ -219,11 +276,12 @@ Los contratos contra transportes falsos dentro de BFF y los scripts híbridos
 no acreditan integración real con Spring. No se configura `integration:real` ni
 un gate basado en ejecutar todos los CJS por glob.
 
-Si falla el navegador, revisar `playwright-report/index.html` con
-`pnpm exec playwright show-report` o el trace con
+Si falla el navegador, revisar `playwright-report/<bloque>/index.html` con
+`pnpm exec playwright show-report playwright-report/<bloque>` o el trace con
 `pnpm exec playwright show-trace <archivo.zip>`. Si el puerto está ocupado,
 detener el servidor que lo usa. `pnpm exec playwright test --list` comprueba el
-descubrimiento sin levantar el servidor. Mantener `playwright` y
+descubrimiento de Recepción sin levantar el servidor; para sesión, usar
+`pnpm test:staff:browser --list`. Mantener `playwright` y
 `@playwright/test` en la misma versión; versiones diferentes pueden provocar
 `Playwright Test did not expect test() to be called here`.
 
