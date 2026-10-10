@@ -455,9 +455,8 @@ El nombre del archivo evita que lo seleccione el glob del bloque demo.
 
 | Escenario | Reemplazo implementado |
 | --- | --- |
-| Calendario conectado pendiente | Alerta explícita de conexión y conservación de reservas locales en ambas vistas, datos intactos tras recarga. La UI actual conserva el calendario, a diferencia de la expectativa antigua. |
-| Creación sin éxito falso | Disponibilidad falla; elegir huésped y revisar no ofrece confirmación ni modifica reservas/habitaciones/huéspedes. |
-| Búsqueda y detalle | Error visible, sin resultados inventados ni mensaje de búsqueda vacía; detalle no ofrece asignación, cancelación, check-in ni cuenta. Reconsultar devuelve 503. |
+| Módulo de Recepción conectado pendiente | El layout muestra `Recepción pendiente de conexión` y no monta calendario ni acciones; se verifica en recepción y búsqueda, sin alterar los datos locales ni crear el archivo demo del servidor. |
+| Búsqueda y detalle | Las rutas conservan el guard explícito mientras los servicios aún no están conectados; las consultas y mutaciones se cubren por HTTP en el caso siguiente. |
 | Guard HTTP sin demo de servidor | Consultas de reservas/calendario/disponibilidad/detalle/cancelación/habitaciones y mutaciones de creación/huésped/asignación/cancelación devuelven `API_NOT_READY` 503. Archivo demo del servidor ausente y datos locales intactos. |
 
 No se afirma ausencia de reservas locales: el contrato vigente las conserva y lo
