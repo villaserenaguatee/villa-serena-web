@@ -17,6 +17,7 @@ export function reporters(suite: string): ReporterDescription[] {
 
 export default defineConfig({
   testDir: './tests/e2e',
+  testMatch: ['**/reception-*.spec.ts', '**/room-detail.spec.ts'],
   testIgnore: '**/staff-session.spec.ts',
   outputDir: 'test-results/reception',
   globalTeardown: './tests/e2e/teardown.ts',

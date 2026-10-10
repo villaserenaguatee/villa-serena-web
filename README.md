@@ -111,6 +111,10 @@ y restaura datos demo aislados antes de cada caso. No requiere iniciar `pnpm dev
 Los detalles de equivalencia y las limitaciones están en
 [la migración de #48](docs/TESTING_ISSUE48.md).
 
+Reserva pública y portal por código: `pnpm test:booking:browser`. Presentación,
+estados y recuperación del pago: `pnpm test:payments:browser`. Ejecutar en
+secuencia; cada bloque inicia su servidor y usa archivos demo temporales.
+
 ### Portal del huésped
 
 Permite consultar la estancia, realizar check-in web, reservar otra estancia, solicitar servicios, consultar cuenta, utilizar el chat y reservar experiencias. Comparte reservas, habitaciones, menú, pedidos, cargos y mensajes con los módulos internos correspondientes.

@@ -72,6 +72,10 @@ jobs:
             command: pnpm test:reception:browser
           - suite: staff
             command: pnpm test:staff:browser
+          - suite: payments
+            command: pnpm test:payments:browser
+          - suite: booking
+            command: pnpm test:booking:browser
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4

@@ -6,7 +6,8 @@ utilizan VM. La segunda etapa retiró documentos y apertura de reseña; la terce
 perfil y experiencias. La cuarta sustituyó check-in portal. La quinta retira
 ciclo de reservas, estancia finalizada y los dos CJS de unidad/componentes ya
 migrados en la primera etapa. La sexta reemplaza seis scripts de Recepción y
-retira también sesión del personal, ya migrado: quedan **13 CJS, todos de
+retira también sesión del personal, ya migrado. La séptima reemplaza seis scripts
+de reserva pública, pagos y portal: quedan **siete CJS, todos de
 navegador**, en el árbol.
 Este inventario clasifica el harness y los escenarios declarados en código;
 no afirma que los 29 scripts hayan sido ejecutados ni que sus expectativas
@@ -24,7 +25,7 @@ Spring real. Solo las filas marcadas **migrado** tienen equivalencia validada.
 
 | Origen | Harness actual | Escenarios que debe conservar el reemplazo | Destino / estado |
 | --- | --- | --- | --- |
-| `test-booking-context-browser` | E2E demo | Contexto HttpOnly, rechazo de código ajeno y navegador externo, total original, resumen sin OTP, recarga, OTP y acceso a la estancia seleccionada, desktop/móvil. | `tests/e2e/booking-context.spec.ts`, pendiente. |
+| `test-booking-context-browser` | E2E demo | Contexto HttpOnly, rechazo de código ajeno y navegador externo, total original, resumen sin OTP, recarga, OTP y acceso a la estancia seleccionada, desktop/móvil. | **Migrado y CJS retirado:** `tests/e2e/booking-context.spec.ts`. Bandeja OTP temporal exclusiva del servidor; contextos ajenos cerrados en finally. |
 | `test-calendar-scroll-browser` | E2E demo | Mes/habitaciones, período siguiente/anterior, posiciones del encabezado, modal de creación, scroll vertical/horizontal, encabezados y primera columna fijos, controles externos y tres viewports. | **Migrado y CJS retirado:** `tests/e2e/reception-calendar-layout.spec.ts`. Geometría y screenshots propios; baseline opcional ajeno deja de ser precondición; enlace canónico actual. |
 | `test-channel-cancellation-browser` | E2E demo | Booking/Expedia no cancelables en detalle/cuenta/calendario, recarga y copia local antigua sin canal; BFF 409; canales directos siguen cancelables. | `tests/e2e/channel-cancellation.spec.ts`, pendiente; excluir modo `--reproduce` del gate. |
 | `test-checkin-documentos` | Componentes con hooks falsos / VM | Miniaturas DPI frente/reverso y pasaporte, persistencia JSON, visor, proporciones, zoom/arrastre, navegación, X/Escape, bloqueo de scroll, restauración de foco y reenvío de una imagen fallida. | **Migrado y CJS retirado:** `tests/component/checkin-documentos.test.tsx`. |
@@ -40,18 +41,18 @@ Spring real. Solo las filas marcadas **migrado** tienen equivalencia validada.
 | `test-guest-review-click` | Componentes con hooks falsos / VM | Botón real abre/cierra reseña ES/EN, dos campos, apertura sin escritura, apertura solicitada por prop y guard de estancia finalizada. | **Migrado y CJS retirado:** `tests/component/guest-review.test.tsx`; no es browser. |
 | `test-operaciones-browser` | Browser + API HTTP falso + frames STOMP falsos + Next | Pedido/notificación, conflicto y transición, cancelación, reconexión con ticket nuevo, menú agotado, cambios de habitación, límites de foto/upload, incidencia y resolución por técnico propio, desktop/móvil. | `tests/integration/operations-mock.spec.ts`, pendiente; fixtures de API y WebSocket con teardown. |
 | `test-payment-channel-browser` | E2E demo | Cuatro resultados, URL no aprueba pago, reintento, polling y parada, permisos, envío/repetición 201/200, fechas inválidas sin petición, secretos de canal ausentes y sin overflow. | Resultado/polling + `tests/e2e/channel-simulator.spec.ts`, pendiente; expectativas visuales antiguas deben contrastarse con el resultado compacto. |
-| `test-payment-presentation-browser` | E2E demo con respuesta de pago 503 | Total único, layout desktop/móvil, condiciones/privacidad, botón sujeto a términos, recuperación del intento guardado sin crear otra reserva y estado pendiente tras recarga. | `tests/e2e/payment-presentation.spec.ts`, pendiente. |
-| `test-payment-results-compact-browser` | E2E demo con respuestas de estado falsas | Cuatro resultados, acciones/orden, ausencia de overflow, consulta visible, minuto pendiente, reintento del mismo código y estado actualizado que prohíbe enviar pago. | `tests/e2e/payment-results.spec.ts`, pendiente. |
-| `test-payment-valid-flow-browser` | E2E demo | Enlace antiguo sin draft bloqueado, disponibilidad → datos → revisión → pago, términos, total único y responsive. | Escenarios de entrada/revisión en `tests/e2e/public-booking.spec.ts`, pendiente; fechas fijas requieren reloj/fixture. |
+| `test-payment-presentation-browser` | E2E demo con respuesta de pago 503 | Total único, layout desktop/móvil, condiciones/privacidad, botón sujeto a términos, recuperación del intento guardado sin crear otra reserva y estado pendiente tras recarga. | **Migrado y CJS retirado:** `tests/e2e/payment-presentation.spec.ts`. Un archivo BFF restaurado por test; verifica una sola creación tras el 503 y recuperación. |
+| `test-payment-results-compact-browser` | E2E demo con respuestas de estado falsas | Cuatro resultados, acciones/orden, ausencia de overflow, consulta visible, minuto pendiente, reintento del mismo código y estado actualizado que prohíbe enviar pago. | **Migrado y CJS retirado:** `tests/e2e/payment-results.spec.ts`. Confirmada ahora muestra enlace al resumen con su código; pendiente nunca se confirma por `paid=true`; estado actualizado cancelado impide POST. |
+| `test-payment-valid-flow-browser` | E2E demo | Enlace antiguo sin draft bloqueado, disponibilidad → datos → revisión → pago, términos, total único y responsive. | **Migrado y CJS retirado:** caso de entrada/revisión en `tests/e2e/public-booking.spec.ts`, fechas relativas al hotel y artefacto JSON del recorrido. |
 | `test-portal-checkin` | Hooks, handlers, stores y extracción AST / VM | Activación/acceso del huésped, documentos y términos, persistencia, aprobación por Recepción, conservación de datos, reserva sin habitación/pagos, cupo revalidado, fechas y condición de habitación, idempotencia. | **Migrado y CJS retirado:** `tests/unit/portal-checkin.test.ts` (jsdom para stores) y `tests/component/portal-checkin.test.tsx`. Baseline antiguo falla al extraer el handler asíncrono de Recepción; equivalencia por matriz declarada y comportamiento actual, sin afirmar que el CJS completo pasa. |
-| `test-public-booking-browser` | E2E demo | Dos entradas al flujo, catálogo/ofertas, calendario, fechas y datos inválidos sin peticiones, correo/draft, tarjeta/términos, PII fuera de URL, envío y consulta BFF pendientes, desktop/móvil. | `tests/e2e/public-booking.spec.ts`, pendiente; compartir fixture con presentación, conservar casos de entrada distintos. |
+| `test-public-booking-browser` | E2E demo | Dos entradas al flujo, catálogo/ofertas, calendario, fechas y datos inválidos sin peticiones, correo/draft, tarjeta/términos, PII fuera de URL, envío y consulta BFF pendientes, desktop/móvil. | **Migrado y CJS retirado:** `tests/e2e/public-booking.spec.ts`. Ambos recorridos con códigos distintos, payload/POSTs exactos, fallo 503 de estado sin confirmación y textos compactos actuales. |
 | `test-reception-browser` | E2E demo / variante `--api` | Navegación mes/semana/Hoy, creación sin pago, Gantt, check-in limpio, recarga, rechazo por habitación no lista y móvil. | Distribuir en calendario/creación/check-in sin perder escenarios, pendiente; revisar UI y login antiguos antes de retirar. |
 | `test-reception-calendar-browser` | E2E demo | Mes/habitaciones, filtros por piso/tipo, búsqueda por huésped, reservas sin asignar, detalle, creación y persistencia, interacción y viewports. | **Migrado y CJS retirado:** `tests/e2e/reception-calendar.spec.ts` + `reception-creation.spec.ts`. Un botón por noche; reservas sin habitación accesibles por búsqueda/detalle y ausentes de ambas vistas. |
 | `test-reception-creation-browser` | E2E demo | Nueva reserva con/sin habitación, búsqueda/calendario/detalle/recarga, recuperación sin copia local, huésped existente sin duplicar, huésped nuevo, respuesta perdida y doble click. | **Migrado y CJS retirado:** `tests/e2e/reception-creation.spec.ts`. Ambos viewports y ambas vistas del calendario; archivo BFF aislado por ejecución y restaurado por test. |
 | `test-reception-operations-browser` | E2E demo | Filtros, historial, acciones según estado/canal, asignación, cancelación, habitaciones y permisos de página/BFF, desktop/móvil. | **Migrado y CJS retirado:** `tests/e2e/reception-operations.spec.ts`. Ninguna aserción acredita devolución real; incluye regresión de carrera entre consulta inicial de sesión y login. |
 | `test-reservation-lifecycle` | Stores, eventos y extracción AST / VM | Persistencia inmediata de modificación/asignación, selección portal, evento, habitación reservada/ocupada/en limpieza, check-in/out, reconstrucción e idempotencia sin duplicar ni alterar huésped/historial; guards. | **Migrado y CJS retirado:** `tests/unit/reservation-lifecycle.test.ts` (jsdom) y guards del portal real en `tests/component/guest-post-stay.test.tsx`. |
 | `test-room-detail-browser` | E2E demo | Habitación → reserva completa, identidad, reapertura en misma URL, cambio de reserva, recarga, habitación sin reserva, filtro condición, permisos y móvil. | **Migrado y CJS retirado:** `tests/e2e/room-detail.spec.ts`; permisos de API/página en `reception-operations.spec.ts`. |
-| `test-selected-public-portal` | E2E demo | Disponibilidad → datos → pago pendiente → resumen → OTP → portal de código seleccionado; recarga sin mostrar otra estancia, desktop/móvil. | Caso adicional de `tests/e2e/booking-context.spec.ts`, pendiente. |
+| `test-selected-public-portal` | E2E demo | Disponibilidad → datos → pago pendiente → resumen → OTP → portal de código seleccionado; recarga sin mostrar otra estancia, desktop/móvil. | **Migrado y CJS retirado:** segundo caso de `tests/e2e/booking-context.spec.ts`. Datos, BFF y OTP reales en modo demo; no falsifica un pago confirmado. |
 | `test-staff-session-browser` | E2E demo | Público/privado, roles/menús, cookies y respuesta mínima, recarga, denegación, refresh/replay, Origin, cierre y contraseña temporal. | **Migrado y CJS retirado:** `tests/e2e/staff-session.spec.ts`. |
 
 ## Dependencias y obsolescencias
@@ -100,8 +101,11 @@ Spring real. Solo las filas marcadas **migrado** tienen equivalencia validada.
 4. **Recepción completada:** seis suites con estado BFF aislado y login actual,
    desktop/móvil y geometría en tres viewports. Sesión del personal tiene un
    servidor y job separados para evitar acumular compilaciones sobre el límite
-   de heap. Pendientes pagos/reserva pública, canales y contexto/portal.
-5. Integración browser mock: API HTTP/STOMP como fixtures dedicados. Spring real
+   de heap.
+5. **Reserva pública, pagos y contexto/portal completados:** cuatro suites y dos
+   bloques de servidor; archivos BFF y bandeja OTP aislados. Seis CJS retirados;
+   canales, credenciales y cuenta de navegador siguen pendientes.
+6. Integración browser mock: API HTTP/STOMP como fixtures dedicados. Spring real
    necesita infraestructura y datos aislados, fuera del gate inicial.
 
 Publicar la rama y ejecutar el workflow en PR draft es una validación adicional

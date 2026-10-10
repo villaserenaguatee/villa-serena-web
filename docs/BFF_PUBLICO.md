@@ -102,10 +102,13 @@ repetido, respuesta perdida, cupo, vencimiento y consulta sin confirmación fals
 además de las pruebas existentes. `pnpm check` y `pnpm build` comprueban tipos,
 traducciones y compilación de producción.
 
-Para probar las pantallas, inicia `pnpm dev --port 3005` y ejecuta
-`node scripts/test-public-booking-browser.cjs`. Puede usarse otro origen con
-`PUBLIC_TEST_BASE_URL`. El script usa Chromium en 1440×1000 y 390×844: inicio,
-catálogo, búsqueda, datos, resumen, pago de prueba, regreso, errores de consulta,
+Para probar las pantallas, ejecuta `pnpm test:booking:browser` y
+`pnpm test:payments:browser`, uno después del otro. Playwright administra Next
+y Chromium en 1440×1000 y 390×844: inicio, catálogo, búsqueda, datos, resumen,
+pago pendiente, regreso, errores de consulta, recuperación sin duplicados,
 validación sin peticiones, ausencia de desbordamiento y tarjeta como única opción.
-Guarda capturas en `.next-dev/public-booking-evidence` (ignorado por Git).
+El bloque de reserva incluye el contexto HttpOnly y acceso OTP al portal de la
+reserva elegida. Usa archivos demo y bandeja OTP temporales; no requiere `pnpm dev`.
+Las capturas y reportes se guardan en `test-results/{booking,payments}` y
+`playwright-report/{booking,payments}` (ignorados por Git).
 Estas comprobaciones son **simuladas**, no una validación de Spring ni Stripe.

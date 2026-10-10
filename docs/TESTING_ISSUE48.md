@@ -4,8 +4,8 @@ Rama de partida: `develop`, commit `2713317` (#53), 09-10-2026.
 Primera etapa: infraestructura y tres casos representativos (`e25b7a2`), sin
 retirar CJS. Segunda etapa: más pruebas de unidad/componentes sin levantar Next.
 
-Estado actual: seis etapas locales. Los nueve CJS de VM están reemplazados;
-Recepción y sesión usan Playwright Test en bloques separados. Quedan 13 CJS de
+Estado actual: siete etapas locales. Los nueve CJS de VM están reemplazados;
+Recepción, sesión, pagos y reserva/portal usan Playwright Test en bloques separados. Quedan siete CJS de
 navegador pendientes y la validación remota de CI; #48 sigue abierta.
 La issue completa continúa pendiente.
 
@@ -56,11 +56,11 @@ aplican reintentos automáticos. No ejecutar simultáneamente dos E2E en este
 checkout: comparten puerto y `.next-dev`.
 Ejecutar TypeScript después del E2E, no mientras Next regenera `.next-dev/types`.
 
-`pnpm test:e2e` ejecuta primero Recepción y después sesión del personal, en dos
+`pnpm test:e2e` ejecuta Recepción, sesión del personal, pagos y reserva/portal, en cuatro
 procesos Playwright consecutivos con servidores nuevos. `playwright.config.ts`
-excluye sesión; `playwright.staff.config.ts` la selecciona explícitamente. Los
-reportes se guardan por bloque en `test-results/{reception,staff}` y
-`playwright-report/{reception,staff}`, sin sobrescribirse. No iniciar ambos a la vez.
+selecciona Recepción; los otros tres configs seleccionan explícitamente su bloque. Los
+reportes se guardan por bloque en `test-results/{reception,staff,payments,booking}` y
+`playwright-report/{reception,staff,payments,booking}`, sin sobrescribirse. No iniciar bloques a la vez.
 
 El servidor E2E limita su heap JavaScript a 1536 MiB mediante `NODE_OPTIONS`.
 Esto no limita toda la RAM del proceso ni la de Chromium. Next en desarrollo
@@ -81,7 +81,7 @@ El script de sesión quedó obsoleto en #53: espera `Correo` y la bienvenida
 módulo del rol directamente. El reemplazo comprueba los destinos actuales y
 consulta los menús en la página de cambio de contraseña del panel, que conserva
 el layout con enlaces autorizados. El cierre también se comprueba en ese layout.
-`pnpm test:staff:browser` apunta al reemplazo; el CJS sigue disponible como referencia.
+`pnpm test:staff:browser` apunta al reemplazo; el CJS se retiró en la sexta etapa.
 
 ## Segunda etapa: componentes y unidad sin Next
 
@@ -260,6 +260,56 @@ pasan con `pnpm check`; el descubrimiento selecciona 23 casos y uno, respectivam
 Se retiraron **siete CJS** (seis de Recepción y sesión del personal): quedan
 **13 scripts de navegador** pendientes. No se ejecutó el workflow remoto.
 
+## Séptima etapa: reserva pública, pagos y portal por código
+
+Cuatro suites sustituyen seis scripts de navegador. `pnpm test:payments:browser`
+selecciona 12 casos y `pnpm test:booking:browser` ocho; ambos prueban computadora
+y móvil. Los bloques usan servidores nuevos y jobs separados de CI, conservando
+un worker, cero reintentos y el heap de Next de 1536 MiB.
+
+| Suite | Escenarios conservados |
+| --- | --- |
+| `payment-presentation.spec.ts` | Total único, proporciones/orden del layout, condiciones/privacidad, términos, ancho del botón, pago 503, intento guardado, recuperación con el mismo código, una sola creación y pendiente tras recarga. |
+| `payment-results.spec.ts` | Cuatro resultados del BFF, orden de acciones, consulta manual visible y feedback, pendiente al minuto, reintento con el mismo código sin nueva reserva, estado actualizado que impide cobrar y fallo sin acusar rechazo bancario. |
+| `public-booking.spec.ts` | Entrada desde catálogo/calendario y desde resultados, 15 ofertas, datos/fechas/capacidad inválidos sin petición, tarjeta y términos, datos personales fuera de URL, contrato y número de POSTs, consulta 503 sin confirmación falsa, enlace antiguo sin borrador y recorrido válido hasta pago. |
+| `booking-context.spec.ts` | Cookie HttpOnly, código ajeno/navegador externo rechazados, resumen sin OTP, total original, recarga, OTP, sesión válida y portal de la reserva elegida sin mostrar otra estancia. Incluye creación HTTP y recorrido completo desde disponibilidad. |
+
+`public-contract.json` y `bookings.json` viven en el directorio temporal propio
+de la ejecución y se eliminan antes de cada caso. La bandeja OTP se dirige a
+ese mismo directorio mediante `VILLA_SERENA_GUEST_OUTBOX_PATH`; la variable solo
+configura el servidor y mantiene el directorio habitual como valor por defecto.
+El test Node de OTP también usa una bandeja temporal y restaura su variable al
+terminar. El código se lee desde el proceso de pruebas, nunca desde una respuesta
+HTTP del navegador. El teardown elimina el directorio completo de esta ejecución.
+
+Obsolescencias explícitas: la reserva confirmada ahora muestra `Ver mi reserva`
+con el código correcto; el CJS compacto esperaba su ausencia. El flujo público
+usa `Continuar pago →` y `Consultar estado`, sin el banner anterior `PAGO DE
+PRUEBA`. Se conservan las comprobaciones de estado BFF pendiente, consultas
+fallidas y parámetros de URL que no pueden confirmar un pago. Las fechas fijas
+de los recorridos anteriores se sustituyen por fechas relativas al día del hotel.
+No se ejecutaron los CJS antiguos sin cambios ni se presenta esto como validación
+de Spring, Stripe, webhook o correo real.
+
+Durante la primera ejecución de reserva, siete casos pasaron y el último falló
+por `Unexpected end of JSON input` en `next/dist/server/load-manifest.external.js`.
+El trace sitúa el fallo en la lectura del manifiesto de desarrollo de Next, antes
+de montar la página. No se filtra ese error ni se habilitan reintentos automáticos;
+la validación se repite con otro servidor completo. Este fallo de desarrollo se
+registra como limitación, sin atribuirle una corrección que no se ha realizado.
+La repetición completa sin cambios en las aserciones pasó **8/8 en 2,2 minutos**.
+
+Validación final: pagos **12/12 en 57 segundos**, reserva/portal **8/8**, BFF
+**99/99**, TypeScript e i18n (60 claves). Los XML JUnit de ambos bloques nuevos
+registran cero errores/fallos; el YAML de CI se parseó y el descubrimiento de los
+bloques existentes sigue seleccionando 23 casos de Recepción y uno de sesión.
+No se repitieron esos recorridos existentes ni unidad/componentes en esta etapa.
+
+Se retiran seis CJS tras validar sus reemplazos: quedan siete scripts de navegador
+(canales, credenciales, cuenta, Recepción con variante API y dos integraciones con
+transportes falsos). Siguen pendientes lint, revisión del loader Node y CI remoto;
+la issue #48 permanece abierta.
+
 ## CI
 
 `.github/workflows/web-tests.yml` se ejecuta en PR hacia `develop`/`main`, push a
@@ -267,7 +317,8 @@ Se retiraron **siete CJS** (seis de Recepción y sesión del personal): quedan
 Ubuntu 24.04, Node 24.16.0, pnpm 12.0.0 y lockfile congelado con caché pnpm.
 
 Checks separados: `typecheck`, `i18n`, `unit`, `component`, `node-bff`,
-`node-cuenta`, `e2e-demo-reception` y `e2e-demo-staff`. Cada check falla si falla su comando; la matriz no
+`node-cuenta`, `e2e-demo-reception`, `e2e-demo-staff`, `e2e-demo-payments` y
+`e2e-demo-booking`. Cada check falla si falla su comando; la matriz no
 cancela las otras suites. Vitest escribe JUnit en CI. Playwright escribe JUnit,
 reporte HTML, screenshot y trace de fallos. Solo se suben los directorios de
 resultados, con retención de siete días; `.data` y `.env` no son artefactos.
