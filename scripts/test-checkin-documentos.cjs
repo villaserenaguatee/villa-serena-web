@@ -136,7 +136,7 @@ tree = render();
 assert.equal(tree.filter(n => n.type === 'img').length, 1);
 assert.ok(tree.some(n => text(n) === 'Pasaporte'));
 click('Ver Pasaporte');
-click('Cerrar visor');
+click('Cerrar');
 components.clear();
 props = { tipoDocumento: 'DPI', checkInWeb: { documento: front } };
 assert.equal(render().filter(n => n.type === 'img').length, 1);
