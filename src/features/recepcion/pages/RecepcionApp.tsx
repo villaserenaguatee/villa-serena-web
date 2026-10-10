@@ -1,3 +1,6 @@
+import ReceptionCloseButton from './ReceptionCloseButton';
+import { calcularCuentaRecepcion as calcularCuenta } from '../accountTotals';
+import ReceptionNotice from './ReceptionNotice';
 import { needsReservationChannel, permitsLocalCancellation } from '@/features/recepcion/localCancellation';
 import CalendarioReservas from './CalendarioReservas';
 import { requireReadyCheckInRoom } from '@/features/recepcion/checkInRoom';
@@ -8,7 +11,7 @@ import { usePathname } from 'next/navigation';
 import { prepareExistingReceptionScreen } from '@/features/recepcion/receptionLegacyLink';
 import type { ReservationDetail } from '@/lib/bff/contracts/reception';
 import type { ExistingAction } from './ReceptionDetailBff';
-import Link from 'next/link';
+
 import { useAuth } from '@/hooks/useAuth';
 import type { Modulo, SeccionRecepcion, Huesped, Reserva, HabitacionHotel, SolicitudHuesped, EstadoHabHotel, EstadoSolicitudHuesped, MetodoPago, Pago, Acompanante, ServicioAdicional, TipoHabitacion, ObjetoOlvidado, Incidencia, } from '@/lib/pms/types';
 import { HUESPEDES_INICIALES, EMPLEADOS_INICIALES, generarId, ahoraISO, siguienteCodigoReserva, siguienteComprobante, fechaHoyISO, nochesEntre, } from '@/data/pms';
@@ -19,13 +22,11 @@ import Reservas from '@/features/recepcion/pages/Reservas';
 import Disponibilidad from '@/features/recepcion/pages/Disponibilidad';
 import HabitacionesRecepcion from '@/features/recepcion/pages/HabitacionesRecepcion';
 import Huespedes from '@/features/recepcion/pages/Huespedes';
-import SolicitudesRecepcion from '@/features/recepcion/pages/SolicitudesRecepcion';
 import DetalleReserva from '@/features/recepcion/pages/DetalleReserva';
 import NuevaReservaModal from '@/features/recepcion/pages/NuevaReservaModal';
 import ChatRecepcion from '@/features/recepcion/pages/ChatRecepcion';
 import ObjetosRecepcion from '@/features/recepcion/pages/ObjetosRecepcion';
-import ReportesRecepcion from '@/features/recepcion/pages/ReportesRecepcion';
-import IncidenciasArea from '@/components/common/IncidenciasArea';
+import IncidenciasRecepcion from './IncidenciasRecepcion';
 import StaffProfileModal from '@/components/common/StaffProfileModal';
 import { leerEmpleados } from '@/store/employeeStore';
 import { guardarHuespedes, leerHuespedes, upsertHuesped, HUESPEDES_EVENT } from '@/store/guestStore';
@@ -44,9 +45,7 @@ const SECCIONES: {
     { id: 'disponibilidad', label: 'Disponibilidad', corto: 'Disponib.' },
     { id: 'habitaciones', label: 'Habitaciones', corto: 'Habs.' },
     { id: 'huespedes', label: 'Huéspedes', corto: 'Huésped.' },
-    { id: 'solicitudes', label: 'Solicitudes', corto: 'Solicit.' },
     { id: 'incidencias', label: 'Incidencias', corto: 'Incid.' },
-    { id: 'reportes', label: 'Reportes', corto: 'Reportes' },
     { id: 'objetos', label: 'Objetos olvidados', corto: 'Objetos' },
     { id: 'chat', label: 'Chat con huéspedes', corto: 'Chat' },
   ];
@@ -119,6 +118,7 @@ interface Props {
   onCambiarModulo: (m: Modulo) => void;
 }
 export default function RecepcionApp({ onCambiarModulo }: Props) {
+ const [checkInNotice, setCheckInNotice] = useState('');
   const { user } = useAuth();
   const [huespedes, setHuespedes] = useState<Huesped[]>(() => leerHuespedes());
   useEffect(() => guardarHuespedes(huespedes), [huespedes]);
@@ -276,20 +276,20 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       if (parts[2]?.startsWith('VS-')) setBffCode(decodeURIComponent(parts[2]));
     } else if (parts[1] === 'habitaciones') setSeccion('habitaciones');
   }, [pathname]);
-  
+
   function abrirReserva(id: string) {
     const reservation = reservas.find(r => r.id === id);
     setLegacyAction(undefined);
-    
+
 //     if (reservation && needsReservationChannel(reservation)) {
 //       setReservaAbiertaId(null); setBffCode(reservation.codigo);
 //     } else { setBffCode(null); setReservaAbiertaId(id); }
-    
+
     const code = reservas.find(r => r.id === id)?.codigoBff ?? (id.startsWith('bff-reservation-') ? id.slice('bff-reservation-'.length) : undefined);
     if (code) { setReservaAbiertaId(null); setBffCode(code); }
     else { setReservaAbiertaId(id); setBffCode(null);}
   } //07-oct-26 conflict resolved by Alexander
-  
+
   function existingAction(detail: ReservationDetail, action: ExistingAction) {
     setLegacyAction(action);
     const id = prepareExistingReceptionScreen(detail);
@@ -426,7 +426,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       setReservas(leerReservas());
       setHabitaciones(aplicarTarifasHabitaciones(leerHabitaciones()));
     } catch (e) {
-      window.alert(e instanceof Error ? e.message : 'No se pudo consultar el estado de la habitación. No se realizó el check-in.');
+      setCheckInNotice(e instanceof Error ? e.message : 'No se pudo consultar el estado de la habitación. No se realizó el check-in.');
     } finally { checkInPending.current.delete(reservaId); }
   }
   function checkIn(reservaId: string) { void checkedCheckIn(reservaId, 'recepcion'); }
@@ -470,17 +470,27 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
   }
   function agregarServicio(reservaId: string,
     s: Omit<ServicioAdicional, 'id' | 'fecha'>) {
+    if (reservas.find(r => r.id === reservaId)?.estado !== 'en-curso') return;
     const servicio: ServicioAdicional = { ...s, id: generarId(), fecha: ahoraISO() };
     setReservas(rs => rs.map(x => (x.id === reservaId ? { ...x, servicios: [...x.servicios, servicio] } : x)));
   }
-  function quitarServicio(reservaId: string, servicioId: string) {
-    setReservas(rs => rs.map(x => (x.id === reservaId ? { ...x, servicios: x.servicios.filter(s => s.id !== servicioId) } : x)));
+  function quitarServicio(reservaId: string, servicioId: string, motivo?: string) {
+    setReservas(rs => rs.map(x => {
+      if (x.id !== reservaId || ['finalizada', 'cancelada'].includes(x.estado) || (motivo !== undefined && (x.estado !== 'en-curso' || !motivo.trim()))) return x;
+      const cargo = x.servicios.find(s => s.id === servicioId);
+      if (!cargo) return x;
+      return { ...x, servicios: x.servicios.filter(s => s.id !== servicioId), ...(motivo ? { cargosAnulados: [...(x.cargosAnulados ?? []), { ...cargo, motivo: motivo.trim(), fechaAnulacion: ahoraISO() }] } : {}) };
+    }));
   }
   function registrarPago(reservaId: string,
     datos: {
       monto: number;
       metodo: MetodoPago;
     }): Pago {
+    const selected = reservas.find(r => r.id === reservaId);
+    if (!selected || ['finalizada', 'cancelada'].includes(selected.estado)) throw new Error('La cuenta está cerrada.');
+    const saldo = calcularCuenta(selected, habitaciones.find(h => h.id === selected.habitacionId) ?? null).saldo;
+    if (saldo <= 0 || Math.abs(datos.monto - saldo) > 0.01) throw new Error('Registra únicamente el saldo completo de esta reserva.');
     const pago: Pago = {
       destino: 'consumos',
       id: generarId(),
@@ -493,7 +503,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
     return pago;
   }
   function aplicarDescuento(reservaId: string, monto: number) {
-    setReservas(rs => rs.map(x => (x.id === reservaId ? { ...x, descuento: monto } : x)));
+    setReservas(rs => rs.map(x => (x.id === reservaId && !['finalizada', 'cancelada'].includes(x.estado) ? { ...x, descuento: monto } : x)));
   }
   function registrarSolicitud(s: Omit<SolicitudHuesped, 'id' | 'fecha' | 'estado'>) {
     setSolicitudes(prev => [{ ...s, id: generarId(), fecha: ahoraISO(), estado: 'pendiente' }, ...prev]);
@@ -528,11 +538,9 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
           onVerReservaBff={codigo => {
             setLegacyAction(undefined);
             setReservaAbiertaId(null);
-            setSeccion('reservas');
             setBffCode(codigo);
           }}
           onVerReserva={id => {
-            setSeccion('reservas');
             abrirReserva(id);
           }} />);
       case 'huespedes':
@@ -543,28 +551,12 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
           onRegistrar={crearHuesped}
           onActualizar={actualizarHuesped}
           onAbrirReserva={id => {
-            setSeccion('reservas');
             abrirReserva(id);
           }} />);
       case 'solicitudes':
-        return (<SolicitudesRecepcion
-          solicitudes={solicitudes}
-          huespedes={huespedes}
-          reservas={reservas}
-          habitaciones={habitaciones}
-          onRegistrar={registrarSolicitud}
-          onCambiarEstado={cambiarEstadoSolicitud} />);
-      case 'incidencias':
-        return <IncidenciasArea
-          areaReporta="Recepción"
-          incidencias={incidencias}
-          habitaciones={habitaciones}
-          onRegistrar={inc => {
-            reportarIncidenciaMantenimiento(inc);
-            setIncidencias(leerIncidenciasMantenimiento());
-          }} />;
       case 'reportes':
-        return <ReportesRecepcion habitaciones={habitaciones} reservas={reservas} huespedes={huespedes} />;
+      case 'incidencias':
+        return <IncidenciasRecepcion />;
       case 'chat':
         return <ChatRecepcion huespedes={huespedes} reservas={reservas} habitaciones={habitaciones} />;
       case 'objetos':
@@ -580,10 +572,11 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
 
     <div className="flex-1 flex overflow-hidden">
 
-      <nav className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
+      {checkInNotice && <ReceptionNotice title="No se pudo iniciar la estancia" message={checkInNotice} onClose={() => setCheckInNotice('')} />}
+<nav className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
         <div className="px-5 pt-5 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
           <img src="/villa-serena-logo.png" alt="Villa Serena Hotel" className="w-32 max-h-24 object-contain mx-auto" />
-          <p className="text-xs mt-2" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>Recepción</p>
+          <p className="mt-2 text-xl font-semibold leading-6" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>Recepción</p>
         </div>
 
         <div className="vs-scroll-clean flex-1 py-3 overflow-y-auto">
@@ -609,10 +602,10 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
           })}
         </div>
 
-        <div className="px-4 py-4 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
+        <div className="px-4 py-2 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
           <button
             onClick={() => setPerfilAbierto(true)}
-            className="w-full flex items-center gap-3 rounded-lg p-2 text-left hover:bg-[#18345C] transition-colors"
+            className="w-full min-h-16 flex items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-[#18345C] transition-colors"
             title="Abrir mi perfil">
             {perfil.foto ? <img src={perfil.foto} alt={perfil.nombre} className="w-9 h-9 rounded-full object-cover shrink-0" /> : <div
               className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
@@ -624,7 +617,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
                 {perfil.nombre}
               </p>
               <p className="text-[10px] truncate" style={{ color: '#AEBCC1' }}>Recepción · turno de día</p>
-              <p className="text-[9px] mt-0.5" style={{ color: '#D8B94E' }}>Perfil</p>
+              <p className="text-[14px] leading-5 no-underline" style={{ color: '#D8B94E' }}>Perfil</p>
             </div>
           </button>
         </div>
@@ -641,7 +634,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
         </div>
 
         <div className="flex-1 flex overflow-hidden relative">
-          {seccion === 'dia' ? <div className="flex-1 overflow-y-auto"><div className="p-4"><Link href="/panel/recepcion/cuenta" className="mb-3 inline-block text-sm font-semibold text-[#18345C] underline">Cuenta, check-out y factura</Link><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={abrirReserva} onNueva={() => setNuevaReserva({ open: true })} /></div>{contenido}</div> : contenido}
+          {seccion === 'dia' ? <div className="flex-1 overflow-y-auto"><div className="p-4"><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={abrirReserva} onNueva={() => setNuevaReserva({ open: true })} /></div>{contenido}</div> : contenido}
         </div>
 
         <div className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
@@ -803,7 +796,7 @@ function PerfilRecepcionModal({ perfil, onGuardar, onCerrar }: {
     setNueva('');
     setConfirmar('');
     setClaveAbierta(false);
-    setMensaje('Solicitud de cambio de contraseña preparada para validación con el servidor.');
+    setMensaje('Solicitud de cambio de contraseña preparada.');
   }
   const fila = (campo: 'nombre' | 'telefono' | 'correo',
     titulo: string) => <div className="border border-[#E5E0D8] rounded-xl px-4 py-3 flex items-center gap-3">
@@ -839,13 +832,13 @@ function PerfilRecepcionModal({ perfil, onGuardar, onCerrar }: {
       if (e.target === e.currentTarget)
         onCerrar();
     }}>
-    <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
+    <div className="reception-compact bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
       <div className="px-6 py-5 border-b flex items-center justify-between">
         <div>
           <p className="text-xs tracking-[.18em] text-[#B38719] uppercase">Mi perfil</p>
           <h2 className="text-2xl font-semibold text-[#102747]">Información de recepción</h2>
         </div>
-        <button onClick={onCerrar} className="text-2xl text-[#102747]">×</button>
+        <ReceptionCloseButton onClick={onCerrar} />
       </div>
       <div className="p-6 max-h-[76vh] overflow-y-auto space-y-6">
         <div className="flex items-center gap-5">
@@ -937,7 +930,7 @@ function PerfilRecepcionModal({ perfil, onGuardar, onCerrar }: {
             <path d="M15 12H3" />
             <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
           </svg>Cerrar sesión</button>
-        <button onClick={onCerrar} className="px-5 py-2 border rounded-lg">Cerrar</button>
+
       </div>
     </div>
   </div>;

@@ -3,11 +3,12 @@ import { useEffect, useState } from 'react';
 import { getCalendar } from '@/lib/api/reception';
 import type { ReceptionCalendar } from '@/lib/bff/contracts/reception';
 import { calendarWithBff } from '@/features/recepcion/receptionCalendarLink';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { BedDouble, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Reserva, Huesped, HabitacionHotel } from '@/lib/pms/types';
 import { fechaHoyISO } from '@/data/pms';
 import ReceptionTimeline from './ReceptionTimeline';
-import { RESERVA_META } from './recUtils';
+import { CALENDAR_STATUS as RESERVA_META } from '../calendarStatus';
+import ReceptionCloseButton from './ReceptionCloseButton';
 
 export function moveCalendar(date: string, view: 'week' | 'month', direction: number) {
   const next = new Date(`${date}T12:00:00Z`);
@@ -28,6 +29,19 @@ export function calendarDays(date: string, view: 'week' | 'month') {
 export function visibleReservations(reservations: Reserva[], days: string[]) {
   return reservations.filter(r => r.estado !== 'cancelada' && r.fechaEntrada <= days.at(-1)! && r.fechaSalida > days[0]);
 }
+export function monthWeekSegments(week: (string | null)[], reservations: Reserva[]) {
+  const segments = reservations.flatMap(reserva => {
+    const occupied = week.flatMap((day, column) => day && reserva.fechaEntrada <= day && reserva.fechaSalida > day ? [column] : []);
+    return occupied.length ? [{ reserva, start: occupied[0], end: occupied.at(-1)! + 1, lane: 0 }] : [];
+  }).sort((a, b) => a.start - b.start || b.end - a.end || a.reserva.codigo.localeCompare(b.reserva.codigo));
+  const laneEnds: number[] = [];
+  for (const segment of segments) {
+    const available = laneEnds.findIndex(end => end <= segment.start);
+    segment.lane = available < 0 ? laneEnds.length : available;
+    laneEnds[segment.lane] = segment.end;
+  }
+  return segments;
+}
 type Props = { reservas: Reserva[]; huespedes: Huesped[]; habitaciones: HabitacionHotel[]; onAbrir: (id: string) => void; onNueva: () => void };
 export default function CalendarioReservas({ reservas, huespedes, habitaciones, onAbrir, onNueva }: Props) {
   const [presentation, setPresentation] = useState<'month' | 'rooms'>('month');
@@ -35,7 +49,14 @@ export default function CalendarioReservas({ reservas, huespedes, habitaciones, 
   const [category, setCategory] = useState('');
   const view = 'month' as const;
   const [date, setDate] = useState(fechaHoyISO());
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  useEffect(() => { setSelectedDay(null); }, [date, floor, category, presentation]);
+  useEffect(() => {
+    if (!selectedDay) return;
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setSelectedDay(null); };
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, [selectedDay]);
   const days = calendarDays(date, view);
   const [data, setData] = useState<ReceptionCalendar | null>(null);
   const [error, setError] = useState('');
@@ -58,15 +79,17 @@ export default function CalendarioReservas({ reservas, huespedes, habitaciones, 
   const visible = visibleReservations(merged.reservas, days).filter(r =>
     (!category || r.tipoHabitacion === category) && (!r.habitacionId || filteredRooms.some(h => h.id === r.habitacionId)));
   const assigned = visible.filter(r => r.habitacionId);
-  const label = (r: Reserva) => `${rooms.find(h => h.id === r.habitacionId)?.numero ?? 'Sin asignar'} · ${merged.huespedes.find(h => h.id === r.huespedId)?.nombre ?? 'Huésped'}`;
-  const originIcon = (r: Reserva) => ['BOOKING', 'EXPEDIA'].includes(data?.reservas.find(b => b.codigo === r.codigo)?.canal ?? '') ? '🔗' : r.origenReserva === 'publica' ? '🌐' : '🏨';
-  const reservationButton = (r: Reserva) => <button key={r.id} data-reservation-code={r.codigo} onClick={() => onAbrir(r.id)}
+  const label = (r: Reserva) => `${r.habitacionId ? `Hab. ${rooms.find(h => h.id === r.habitacionId)?.numero ?? '—'}` : 'Sin asignar'} · ${merged.huespedes.find(h => h.id === r.huespedId)?.nombre ?? 'Huésped'}`;
+  const reservationButton = (r: Reserva) => <button key={r.id} data-reservation-code={r.codigo} onClick={() => { setSelectedDay(null); onAbrir(r.id); }}
     aria-label={`${r.codigo}, ${RESERVA_META[r.estado].label}`} title={`${label(r)} · ${r.codigo}`}
-    className={`w-full rounded px-2 py-1 text-left text-xs break-words ${RESERVA_META[r.estado].chip}`}>
-    {originIcon(r)} {label(r)}<span className="block text-[10px]">{r.codigo}</span>
+    className={`h-9 w-full shrink-0 truncate rounded border px-2 py-1 text-left text-xs ${RESERVA_META[r.estado].chip}`}>
+    <BedDouble size={14} aria-hidden="true" className="mr-1 inline-block align-middle" /> {label(r)}
   </button>;
   const leading = (new Date(`${days[0]}T12:00:00Z`).getUTCDay() + 6) % 7;
-  const selectedReservation = merged.reservas.find(r => r.id === selectedId);
+  const monthSlots: (string | null)[] = [...Array<string | null>(leading).fill(null), ...days];
+  while (monthSlots.length % 7) monthSlots.push(null);
+  const weeks = Array.from({ length: monthSlots.length / 7 }, (_, i) => monthSlots.slice(i * 7, i * 7 + 7));
+  const reservationsOnDay = (day: string) => assigned.filter(r => r.fechaEntrada <= day && r.fechaSalida > day);
   return <section aria-label="Calendario de reservas" className="rounded-xl border border-[#E5E0D8] bg-white p-4 text-[#18345C]">
     <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
       <h2 className="text-xl font-semibold">Calendario de reservas</h2>
@@ -93,12 +116,30 @@ export default function CalendarioReservas({ reservas, huespedes, habitaciones, 
       aria-label={presentation === 'month' ? 'Vista mensual' : 'Vista por habitaciones'}>
       {presentation === 'month' ? <div className="min-w-[700px]">
         <div className="grid grid-cols-7 bg-[#F8F6F0] text-center text-sm">{['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map(d => <div key={d} className="p-2">{d}</div>)}</div>
-        <div className="grid grid-cols-7 border-l border-t border-[#E5E0D8]">{Array.from({length: leading}, (_,i) => <div key={`empty-${i}`} className="border-b border-r bg-[#F8F6F0]" />)}{days.map(day => <div key={day} aria-label={`Día ${day}`} className="min-h-28 space-y-1 border-b border-r border-[#E5E0D8] p-1">
-          <p className={`text-sm font-semibold ${day === fechaHoyISO() ? 'text-[#B38719]' : ''}`}>{Number(day.slice(-2))}</p>
-          {assigned.filter(r => r.fechaEntrada <= day && r.fechaSalida > day).map(reservationButton)}
-        </div>)}</div>
+        <div className="border-l border-t border-[#E5E0D8]">{weeks.map((week, index) => {
+          const segments = monthWeekSegments(week, assigned);
+          return <div key={index} data-month-week={index} className="relative h-[136px]">
+            <div className="grid h-full grid-cols-7">{week.map((day, column) => {
+              const hidden = segments.filter(s => s.lane >= 3 && s.start <= column && s.end > column).length;
+              return <div key={day ?? `empty-${column}`} aria-label={day ? `Día ${day}` : undefined} className={`relative min-w-0 border-b border-r border-[#E5E0D8] p-1 ${day ? '' : 'bg-[#F8F6F0]'}`}>
+                {day && <><p className={`text-sm font-semibold ${day === fechaHoyISO() ? 'text-[#B38719]' : ''}`}>{Number(day.slice(-2))}</p>
+                {hidden > 0 && <button onClick={() => setSelectedDay(day)} aria-label={`Ver todas las reservas del ${day}`} className="absolute bottom-1 left-1 rounded px-1 text-xs font-semibold text-[#18345C] hover:bg-[#F8F6F0]">+ {hidden} más</button>}</>}
+              </div>;
+            })}</div>
+            {segments.filter(s => s.lane < 3).map(({ reserva: r, start, end, lane }) => <button key={r.id} data-reservation-code={r.codigo} data-start-column={start} data-end-column={end} data-lane={lane}
+              onClick={() => onAbrir(r.id)} aria-label={`${r.codigo}, ${RESERVA_META[r.estado].label}`} title={`${label(r)} · ${r.codigo}`}
+              style={{ left: `calc(${start * 100 / 7}% + 3px)`, width: `calc(${(end - start) * 100 / 7}% - 6px)`, top: 28 + lane * 27 }}
+              className={`absolute h-6 truncate rounded border px-2 text-left text-xs ${RESERVA_META[r.estado].chip}`}><BedDouble size={14} aria-hidden="true" className="mr-1 inline-block align-middle" /> {label(r)}</button>)}
+          </div>;
+        })}</div>
       </div> : <ReceptionTimeline days={days} groupByFloor={!floor} reservas={assigned} huespedes={merged.huespedes} habitaciones={filteredRooms} onSelect={r => onAbrir(r.id)} />}
     </div>
-    <div className="mt-3 flex flex-wrap gap-2 text-xs">{Object.entries(RESERVA_META).filter(([key]) => key !== 'cancelada').map(([key, meta]) => <span key={key} className={`rounded px-2 py-1 ${meta.chip}`}>{meta.label}</span>)}</div>
+    <div aria-label="Leyenda de estados" className="mt-2 flex flex-wrap gap-1.5 text-[11px]">{Object.entries(RESERVA_META).map(([key, meta]) => <span key={key} className={`rounded border px-2 py-0.5 ${meta.chip}`}>{meta.label}</span>)}</div>
+    {selectedDay && <div className="fixed inset-0 z-50 grid place-items-center bg-[#071D34]/45 p-4" onClick={() => setSelectedDay(null)}>
+      <section role="dialog" aria-modal="true" aria-label="Reservas del día" onClick={e => e.stopPropagation()} className="flex max-h-[80dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        <header className="flex shrink-0 items-center justify-between gap-2 border-b border-[#E5E0D8] px-4 py-2"><h3 className="text-lg font-semibold">Reservas del {new Intl.DateTimeFormat('es-GT', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${selectedDay}T12:00:00Z`))}</h3><ReceptionCloseButton autoFocus onClick={() => setSelectedDay(null)} /></header>
+        <div className="min-h-0 space-y-2 overflow-y-auto p-3">{reservationsOnDay(selectedDay).map(reservationButton)}</div>
+      </section>
+    </div>}
   </section>;
 }

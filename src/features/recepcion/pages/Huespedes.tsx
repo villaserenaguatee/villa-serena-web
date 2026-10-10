@@ -1,8 +1,9 @@
+import ReceptionCloseButton from './ReceptionCloseButton';
 import { useMemo, useState } from 'react';
 import type { Huesped, Reserva, HabitacionHotel, TipoDocumento } from '@/lib/pms/types';
 import { formatoFecha } from '@/data/pms';
 import { publicRoomForHotelType } from '@/data/publicRooms';
-import { dinero, Chip, RESERVA_META, calcularCuenta, Campo, INPUT_CLS, SearchIcon, PlusIcon, CloseIcon, UserIcon, } from '@/features/recepcion/pages/recUtils';
+import { dinero, Chip, RECEPTION_RESERVA_META, calcularCuenta, Campo, INPUT_CLS, SearchIcon, PlusIcon, UserIcon, } from '@/features/recepcion/pages/recUtils';
 interface Props {
   huespedes: Huesped[];
   reservas: Reserva[];
@@ -40,8 +41,9 @@ export default function Huespedes({ huespedes, reservas, habitaciones, onRegistr
   const [errores, setErrores] = useState<Partial<Record<keyof Form, string>>>({});
   const filtrados = useMemo(() => {
     const t = q.trim().toLowerCase();
+    const documento = t.replace(/\s/g, '');
     return [...huespedes]
-      .filter(h => !t || h.nombre.toLowerCase().includes(t))
+      .filter(h => !t || h.nombre.toLowerCase().includes(t) || h.documento.toLowerCase().replace(/\s/g, '').includes(documento))
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
   },
     [huespedes, q]);
@@ -101,16 +103,18 @@ export default function Huespedes({ huespedes, reservas, habitaciones, onRegistr
         </button>
       </div>
 
-      <div className="relative">
+      <label htmlFor="buscar-huesped" className="mb-1 block text-sm font-medium text-[#18345C]">Buscar huésped</label>
+      <div className="relative w-full max-w-md">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#AEBCC1]">
           <SearchIcon size={15} />
         </span>
         <input
+          id="buscar-huesped"
           type="text"
           value={q}
           onChange={e => setQ(e.target.value)}
-          placeholder="Buscar por nombre completo…"
-          className="w-full border border-[#E5E0D8] rounded-md pl-9 pr-3 py-2.5 text-sm bg-white" />
+          placeholder="Nombre o documento…"
+          className="h-10 w-full border border-[#E5E0D8] rounded-md pl-9 pr-3 text-sm bg-white" />
       </div>
     </div>
 
@@ -130,17 +134,17 @@ export default function Huespedes({ huespedes, reservas, habitaciones, onRegistr
                 <p className="text-[16px] font-semibold text-[#18345C] truncate">
                   {h.nombre}
                 </p>
-                <p className="text-[12px] text-[#AEBCC1]">{h.tipoDocumento} •••• {h.documento.slice(-4)}</p>
+                <p className="text-[12px] text-[#AEBCC1]">{h.tipoDocumento}: •••• {h.documento.slice(-4)}</p>
               </div>
             </div>
             <div className="mt-3 pt-3 border-t border-[#F0EBE3] text-[13px] text-[#6B7280] space-y-0.5">
               <p>
-                {h.telefono.replace(/\d(?=.*\d{2})/g, '•')}
+                Teléfono: {h.telefono.replace(/\d(?=.*\d{2})/g, '•')}
               </p>
               <p className="truncate">
-                {h.correo.replace(/^(.{2}).*(@.*)$/, '$1••••••$2')}
+                Correo: {h.correo.replace(/^(.{2}).*(@.*)$/, '$1••••••$2')}
               </p>
-              <p className="text-[#AEBCC1]">{h.nacionalidad} · {estancias} reserva(s)</p>
+              <p className="text-[#AEBCC1]">Nacionalidad: {h.nacionalidad} · Reservas: {estancias}</p>
             </div>
           </button>);
         })}
@@ -160,10 +164,10 @@ export default function Huespedes({ huespedes, reservas, habitaciones, onRegistr
               {revisando ? 'Revisar datos' : 'Registrar huésped'}
             </h2>
           </div>
-          <button onClick={() => {
+          <ReceptionCloseButton onClick={() => {
             setRegistrando(false);
             setRevisando(false);
-          }} className="text-2xl text-[#AEBCC1]">×</button>
+          }} />
         </div>
         {!revisando ? <><div className="p-6 grid sm:grid-cols-2 gap-4">
           <Campo label="Nombre" error={errores.nombre}>
@@ -262,10 +266,10 @@ function PerfilHuesped({ huesped, reservas, habitaciones, onCerrar, onActualizar
     correo: huesped.correo,
     nacionalidad: huesped.nacionalidad
   });
-  return (<div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4">
+  return (<div className="fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-4">
     <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
-    <div className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-3xl max-h-[92vh] overflow-y-auto">
-      <div className="flex items-start justify-between gap-3 px-5 sm:px-6 py-4 border-b border-[#E5E0D8] sticky top-0 bg-white">
+    <div role="dialog" aria-modal="true" aria-label="Detalle del huésped" className="reception-compact relative z-10 flex max-h-[90dvh] w-full max-w-[760px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className="flex items-start justify-between gap-3 shrink-0 px-4 py-3 border-b border-[#E5E0D8] bg-white">
         <div className="flex items-center gap-3">
           {huesped.foto ? <img src={huesped.foto} alt={huesped.nombre} className="h-12 w-12 shrink-0 rounded-full object-cover" /> : <span className="w-12 h-12 rounded-full bg-[#EFF6FF] text-[#1E40AF] flex items-center justify-center shrink-0 text-sm font-bold">
             {iniciales(huesped.nombre)}
@@ -280,13 +284,11 @@ function PerfilHuesped({ huesped, reservas, habitaciones, onCerrar, onActualizar
             </p>
           </div>
         </div>
-        <button onClick={onCerrar} className="text-[#AEBCC1] hover:text-[#1F2933] p-1 shrink-0">
-          <CloseIcon />
-        </button>
+        <ReceptionCloseButton onClick={onCerrar} />
       </div>
 
-      <div className="px-5 sm:px-6 py-5 space-y-5">
-        {!editando ? <><div className="grid gap-3 rounded-xl border border-[#E5E0D8] bg-[#FCFBF8] p-4 text-[13px] sm:grid-cols-2 lg:grid-cols-3">
+      <div className="min-h-0 overflow-y-auto px-4 py-3 space-y-3">
+        {!editando ? <><div className="grid gap-2 rounded-xl border border-[#E5E0D8] bg-[#FCFBF8] p-3 text-[13px] sm:grid-cols-2 lg:grid-cols-3">
           <Dato k="Nombre completo" v={huesped.nombre} />
           <Dato k="Documento" v={`${huesped.tipoDocumento} · ${huesped.documento}`} />
           <Dato k="Teléfono" v={huesped.telefono} />
@@ -294,9 +296,9 @@ function PerfilHuesped({ huesped, reservas, habitaciones, onCerrar, onActualizar
           <Dato k="Nacionalidad" v={huesped.nacionalidad} />
           <Dato k="Reservas registradas" v={String(reservas.length)} />
           <Dato k="Huésped desde" v={formatoFecha(huesped.creadoEn)} />
-        </div><button onClick={() => setEditando(true)} className="px-4 py-2 border border-[#18345C] text-[#18345C] rounded-md text-sm font-semibold">Editar datos</button></> : <div className="rounded-xl border border-[#E5E0D8] p-4">
-          <h3 className="mb-4 font-semibold text-[#18345C]">Editar datos del huésped</h3>
-          <div className="grid gap-3 sm:grid-cols-2">
+        </div><button onClick={() => setEditando(true)} className="px-4 py-2 border border-[#18345C] text-[#18345C] rounded-md text-sm font-semibold">Editar datos</button></> : <div className="rounded-xl border border-[#E5E0D8] p-3">
+          <h3 className="mb-2 font-semibold text-[#18345C]">Editar datos del huésped</h3>
+          <div className="grid gap-2 sm:grid-cols-2">
             <Campo label="Nombre">
               <input value={ed.nombre} onChange={e => setEd({ ...ed, nombre: e.target.value })} className={INPUT_CLS} />
             </Campo>
@@ -340,7 +342,7 @@ function PerfilHuesped({ huesped, reservas, habitaciones, onCerrar, onActualizar
               <input value={ed.nacionalidad} onChange={e => setEd({ ...ed, nacionalidad: e.target.value })} className={INPUT_CLS} />
             </Campo>
           </div>
-          <div className="mt-4 flex justify-end gap-2">
+          <div className="mt-3 flex justify-end gap-2">
             <button onClick={() => setEditando(false)} className="px-5 py-2.5 border rounded-md text-sm">Cancelar</button>
             <button
               disabled={!ed.nombre.trim() || !ed.apellidos.trim() || !ed.documento.trim() || !ed.correo.trim() || !ed.telefono.trim()}
@@ -360,7 +362,7 @@ function PerfilHuesped({ huesped, reservas, habitaciones, onCerrar, onActualizar
           </div>
         </div>}
 
-        <div className="rounded-xl border border-[#BFD4EA] bg-[#F5FAFF] p-4">
+        {!editando && <><div className="rounded-xl border border-[#BFD4EA] bg-[#F5FAFF] p-3">
           <p className="text-[10px] uppercase tracking-widest text-[#71839B]">Cuenta del huésped</p>
           <div className="mt-1 flex items-center justify-between gap-4">
             <div>
@@ -381,12 +383,12 @@ function PerfilHuesped({ huesped, reservas, habitaciones, onCerrar, onActualizar
             {ordenadas.map(r => {
               const hab = habitaciones.find(h => h.id === r.habitacionId) ?? null;
               const cuenta = calcularCuenta(r, hab);
-              const meta = RESERVA_META[r.estado];
-              return (<button key={r.id} onClick={() => onAbrirReserva(r.id)} className="w-full text-left px-4 py-3 hover:bg-[#F8F6F0] transition-colors">
-                <div className="flex gap-4">
+              const meta = RECEPTION_RESERVA_META[r.estado];
+              return (<button key={r.id} onClick={() => onAbrirReserva(r.id)} className="w-full text-left px-3 py-2 hover:bg-[#F8F6F0] transition-colors">
+                <div className="flex gap-3">
                   {(() => {
                     const visual = publicRoomForHotelType(hab?.tipo ?? 'Standard');
-                    return <img src={visual.image} alt={`Habitación ${hab?.numero || ''}`} className="w-28 h-20 object-cover rounded-lg shrink-0" />;
+                    return <img src={visual.image} alt={`Habitación ${hab?.numero || ''}`} className="w-20 h-16 object-cover rounded-lg shrink-0" />;
                   })()}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -413,7 +415,7 @@ function PerfilHuesped({ huesped, reservas, habitaciones, onCerrar, onActualizar
               </button>);
             })}
           </div>)}
-        </div>
+        </div></>}
       </div>
     </div>
   </div>);

@@ -1,3 +1,4 @@
+import { estanciaHabilitaChat } from '@/lib/pms/chatAccess';
 import { calcularCuentaEstancia } from "@/lib/pms/cuentaEstancia";
 import { useAuth } from "@/hooks/useAuth";
 import { UiText, useUiText } from "@/i18n/UiText";
@@ -535,7 +536,12 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
     };
   },
     []);
+  const chatHabilitado = estanciaHabilitaChat(reserva);
+  function puedeEnviarChat() {
+    return estanciaHabilitaChat(leerReservas().find(r => r.id === reserva.id && r.huespedId === huesped.id));
+  }
   async function enviarMensaje(texto: string) {
+    if (!puedeEnviarChat()) { setAviso("El chat requiere check-in realizado y una estancia activa."); return; }
     const valor = texto.trim();
     if (!valor)
       return;
@@ -558,6 +564,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
     }
     catch {
     }
+    if (!puedeEnviarChat()) { setAviso("El chat requiere check-in realizado y una estancia activa."); return; }
     setMensajes((actuales) => {
       const globales = leerMensajesChat([]);
       const siguientes = [...globales, mensaje];
@@ -1125,7 +1132,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
           onIrCuenta={() => setSeccion("cuenta")}
           modo="servicios" />);
       case "chat":
-        return <ChatHuesped key={huesped.id} nombreHuesped={huesped.nombre} mensajes={mensajes} onEnviar={enviarMensaje} onEditar={editarMensaje} onEliminar={eliminarMensaje} />;
+        return <ChatHuesped habilitado={chatHabilitado} key={huesped.id} nombreHuesped={huesped.nombre} mensajes={mensajes} onEnviar={enviarMensaje} onEditar={editarMensaje} onEliminar={eliminarMensaje} />;
       case "experiencias":
         return (<ReservasExperiencias
           reserva={reserva}

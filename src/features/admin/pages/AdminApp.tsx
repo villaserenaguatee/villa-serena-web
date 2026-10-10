@@ -316,7 +316,7 @@ export default function AdminApp({ onCambiarModulo }: Props) {
         <div className="px-5 pt-5 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
           <img src="/villa-serena-logo.png" alt="Villa Serena" className="mx-auto w-32 h-auto object-contain mb-2" />
           <p className="text-white text-xl font-bold leading-tight" style={{ letterSpacing: '0.02em' }}>Villa Serena</p>
-          <p className="text-xs mt-1" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>Administración</p>
+          <p className="mt-2 text-xl font-semibold leading-6" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>Administración</p>
         </div>
 
         <div className="vs-scroll-clean flex-1 py-3 overflow-y-auto">
@@ -344,8 +344,8 @@ export default function AdminApp({ onCambiarModulo }: Props) {
 
         <ModuloSwitcher actual="admin" onCambiar={onCambiarModulo} />
 
-        <div className="px-5 py-4 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
-          <div className="flex items-center gap-3">
+        <div className="px-4 py-2 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
+          <button onClick={() => setPerfilAbierto(true)} title="Abrir mi perfil" className="w-full min-h-16 flex items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-[#18345C] transition-colors">
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
               style={{ backgroundColor: '#D8B94E', color: '#102747' }}>
@@ -356,9 +356,9 @@ export default function AdminApp({ onCambiarModulo }: Props) {
                 {adminActual?.nombre || 'Administración'}
               </p>
               <p className="text-[10px] truncate" style={{ color: '#AEBCC1' }}>Administradora</p>
-              <button onClick={() => setPerfilAbierto(true)} className="block mt-1 text-[11px] font-semibold text-[#D8B94E]">Perfil</button>
+              <p className="text-[14px] leading-5 no-underline text-[#D8B94E]">Perfil</p>
             </div>
-          </div>
+          </button>
         </div>
       </nav>
 

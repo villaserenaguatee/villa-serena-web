@@ -1,3 +1,4 @@
+import ReceptionCloseButton from './ReceptionCloseButton';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { DocumentoCargado, Huesped, Reserva } from '@/lib/pms/types';
@@ -98,7 +99,7 @@ function VisorDocumento({ documentos, etiquetas, inicial, onCerrar }: {
             <span className="w-12 text-center text-xs">{Math.round(zoom * 100)}%</span>
             <button type="button" aria-label="Acercar imagen" disabled={zoom >= 4} onClick={() => setZoom(z => Math.min(4, z + 0.5))} className="h-8 w-8 rounded-md border disabled:opacity-40">+</button>
           </>}
-          <button type="button" onClick={onCerrar} aria-label="Cerrar visor" className="h-8 w-8 rounded-md text-2xl">×</button>
+          <ReceptionCloseButton type="button" onClick={onCerrar} />
         </div>
       </div>
       <div ref={area} className={`min-h-0 flex-1 overflow-auto bg-[#F8F6F0] ${zoom > 1 ? 'cursor-grab active:cursor-grabbing touch-none' : ''}`}

@@ -109,8 +109,8 @@ function Sidebar({ pantalla, setPantalla, solPendientes, incPendientes, onCambia
       <p className="text-white text-xl font-bold leading-tight" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif', letterSpacing: '0.02em' }}>
         Villa Serena
       </p>
-      <p className="text-xs mt-1" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>
-        Módulo de Limpieza
+      <p className="mt-2 text-xl font-semibold leading-6" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>
+        Limpieza
       </p>
     </div>
 
@@ -140,10 +140,10 @@ function Sidebar({ pantalla, setPantalla, solPendientes, incPendientes, onCambia
       })}
     </div>
 
-    <div className="px-4 py-4 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
+    <div className="px-4 py-2 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
       <button
         onClick={onEditarPerfil}
-        className="w-full flex items-center gap-3 rounded-lg p-2 text-left hover:bg-[#18345C] transition-colors"
+        className="w-full min-h-16 flex items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-[#18345C] transition-colors"
         title="Abrir mi perfil">
         {perfil.foto ? <img src={perfil.foto} alt={perfil.nombre} className="h-9 w-9 shrink-0 rounded-full object-cover" /> : <div
           className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
@@ -155,7 +155,7 @@ function Sidebar({ pantalla, setPantalla, solPendientes, incPendientes, onCambia
             {perfil.nombre}
           </p>
           <p className="text-[10px] truncate" style={{ color: '#AEBCC1' }}>Limpieza · turno {empleadoLimpieza?.turno ?? '—'}</p>
-          <p className="text-[9px] mt-0.5" style={{ color: '#D8B94E' }}>Perfil</p>
+          <p className="text-[14px] leading-5 no-underline" style={{ color: '#D8B94E' }}>Perfil</p>
         </div>
       </button>
     </div>

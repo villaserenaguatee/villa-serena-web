@@ -33,6 +33,13 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/features/recepcion/pa
   require(name) {
     if (name === 'react') return hooks;
     if (name === 'react-dom') return { createPortal: element => element };
+    if (name === './ReceptionCloseButton') {
+      const close = { exports: {} };
+      vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/features/recepcion/pages/ReceptionCloseButton.tsx', 'utf8'), {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 },
+      }).outputText, { module: close, exports: close.exports, require });
+      return close.exports;
+    }
     return require(name);
   } });
 const Gallery = result.exports.default;
@@ -107,7 +114,7 @@ assert.equal(document.body.style.overflow, 'auto');
 assert.ok(restored > 0);
 components.clear();
 click('Ver Reverso del DPI');
-click('Cerrar visor');
+click('Cerrar');
 assert.equal(render().some(n => n.props?.role === 'dialog'), false);
 
 components.clear();
