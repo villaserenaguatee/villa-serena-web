@@ -121,6 +121,10 @@ durante esta etapa. `pnpm check` permite comprobar TypeScript e i18n sin Next.
 Cuenta demo, check-out y factura: `pnpm test:cuenta:browser` (12 casos,
 computadora/móvil, PDF ticket/carta). También está pendiente de validación en CI;
 no cubre la cuenta conectada a Spring.
+Cuenta conectada con transporte HTTP falso: `pnpm test:cuenta:connected`, también
+incluido en `pnpm test:integration:mock`. El fixture inicia API falso y Next,
+restaura datos por caso y comprueba el BFF real, sin acreditar Spring real.
+Sus 12 casos están implementados, pendientes de Playwright/CI.
 
 ### Portal del huésped
 

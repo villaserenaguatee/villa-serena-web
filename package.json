@@ -12,7 +12,7 @@
     "test:bff": "node --import ./tests/bff/register.mjs --test --test-isolation=none tests/bff/*.test.ts",
     "test:reception:browser": "playwright test reception- room-detail",
     "test:cuenta": "node --import ./tests/bff/register.mjs --test tests/panel/*.test.ts",
-    "test:cuenta:connected": "node scripts/test-cuenta-connected.cjs",
+    "test:cuenta:connected": "playwright test --config playwright.account-mock.config.ts",
     "test:cuenta:browser": "playwright test --config playwright.account.config.ts",
     "test:staff:browser": "playwright test --config playwright.staff.config.ts",
     "test:payments:browser": "playwright test --config playwright.payments.config.ts",
@@ -24,7 +24,8 @@
     "test:unit": "vitest run --project unit",
     "test:component": "vitest run --project component",
     "test:e2e": "pnpm test:reception:browser && pnpm test:staff:browser && pnpm test:payments:browser && pnpm test:booking:browser && pnpm test:channels:browser && pnpm test:cuenta:browser",
-    "test:ci": "pnpm check && pnpm test:bff && pnpm test:cuenta && pnpm test:unit && pnpm test:component && pnpm test:e2e"
+    "test:integration:mock": "pnpm test:cuenta:connected",
+    "test:ci": "pnpm check && pnpm test:bff && pnpm test:cuenta && pnpm test:unit && pnpm test:component && pnpm test:e2e && pnpm test:integration:mock"
   },
   "dependencies": {
     "@event-calendar/core": "^5.15.0",

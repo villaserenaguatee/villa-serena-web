@@ -4,7 +4,7 @@ Rama de partida: `develop`, commit `2713317` (#53), 09-10-2026.
 Primera etapa: infraestructura y tres casos representativos (`e25b7a2`), sin
 retirar CJS. Segunda etapa: más pruebas de unidad/componentes sin levantar Next.
 
-Estado actual: siete etapas locales validadas y las etapas octava y novena implementadas,
+Estado actual: siete etapas locales validadas y las etapas octava, novena y décima implementadas,
 pendientes de validación de navegador en CI. Los nueve CJS de VM están reemplazados;
 Recepción, sesión, pagos y reserva/portal usan Playwright Test en bloques separados. Quedan siete CJS de
 navegador pendientes y la validación remota de CI; #48 sigue abierta.
@@ -376,15 +376,60 @@ fixture de Recepción. No se modificó código de producto.
 La variante `--api` del origen esperaba `Cuenta pendiente de conexión` para el
 código demo. El contrato actual selecciona `AccountConnected` con
 `STAFF_AUTH_MODE=spring` y rechaza códigos que no cumplan `VS-[A-Z0-9]{6}`.
-Esa expectativa antigua no se copia al bloque demo: su sustitución y ausencia de
-fallback local deben comprobarse en la etapa de cuenta con API falsa. Por ello
-**el origen sigue conservado y su migración completa sigue pendiente**.
+Esa expectativa antigua no se copia al bloque demo: la décima etapa implementa
+su sustitución y ausencia de fallback local con API falsa. El origen se conserva
+hasta validar ambos bloques de cuenta en navegador.
 
 Los doce casos y PDFs están implementados, sin evidencia de ejecución todavía.
 Validación ligera: `pnpm check` pasa (TypeScript e i18n, 60 claves),
 `git diff --check` pasa y el YAML de CI se parsea con seis bloques E2E únicos y
 comandos existentes en `package.json`. CI deberá acreditar los recorridos antes
 de retirar el script.
+
+## Décima etapa: cuenta con API falsa, pendiente de navegador
+
+`tests/integration/account-mock.spec.ts` reemplaza el recorrido híbrido de
+`test-cuenta-connected.cjs` y cubre la variante API de `test-cuenta-browser.cjs`.
+Son seis escenarios en computadora y móvil: **12 casos**. Ambos CJS se conservan
+hasta validar los reemplazos; siguen existiendo siete CJS, y los únicos orígenes
+sin reemplazo completo implementado son Recepción con variante API y operaciones.
+
+`pnpm test:cuenta:connected` usa `playwright.account-mock.config.ts`;
+`pnpm test:integration:mock` lo incluye separado del E2E demo. Playwright administra
+un servidor HTTP falso en `127.0.0.1:3049` y Next en `localhost:3048`, con
+`STAFF_AUTH_MODE=spring` y `API_URL` apuntando exclusivamente al transporte falso.
+No se necesita Spring ni credenciales reales. Cada bloque requiere puerto y
+checkout exclusivos; no ejecutarlo en paralelo con otros bloques locales.
+
+El fixture restaura cuenta, factura, llamadas, errores y opciones antes de cada
+caso. Sus controles existen únicamente en el proceso de pruebas, no en la app,
+y requieren un token aleatorio de la ejecución. El servidor escucha solo en
+loopback y cierra conexiones en SIGTERM/SIGINT. Next y Chromium se administran por
+Playwright, sin spawn manual ni carpetas globales de evidencia. El launcher usa
+el soporte nativo de TypeScript de Node 24; no añade dependencias ni usa el loader
+BFF anterior.
+
+| Escenario conservado | Reemplazo implementado |
+| --- | --- |
+| Cargos y anulación | Web → BFF → HTTP falso, saldo 125 → 175 → 125, payload de cantidad/precio y motivo/historial. |
+| Bloqueos y NIT | Preview actualizado al abrir, pedido en camino y NIT `14-1` impiden confirmar, sin POST ni cambios en cuenta. |
+| Fallo de factura y doble envío | HTTP 409 deja cuenta/pagos/factura intactos; reintento con doble clic hace un solo POST exitoso y un pago por 125. Contrato no envía monto. |
+| Saldo cero | Omite pago y método, conserva pagos previos y permite factura. La semilla de pagos es coherente con su total aprobado. |
+| Factura y persistencia | Razón social, dirección, NIT, correo y teléfono provienen del API; solo cargos vigentes/pagos aprobados, recarga intacta y sin cuenta demo en localStorage. |
+| Impresión | Ticket/carta, main oculto, sin botones en papel, montos dentro del ancho, ticket de 72 mm imprimibles y PDF/screenshot por caso. |
+| Cuenta demo en modo Spring y fallo HTTP | Código demo devuelve 404 sin llamadas de cuenta ni fallback; cuenta válida con 503 no muestra saldo ni check-out ni escribe datos demo. Sustituye la pantalla obsoleta de `--api`. |
+| Permisos y Origin | Administración recibe 403 sin llamadas de dominio en el API; cuenta/factura muestran acceso denegado. Origin ajeno no confirma aunque la sesión sea Recepción. |
+
+CI añade `integration-mock-account`, con VM propia, límite de 15 minutos y
+artefactos separados en `test-results/account-mock` y
+`playwright-report/account-mock`. Este transporte falso **no acredita integración
+real con Spring**. No se retiran CJS ni se da por validado el recorrido del BFF.
+
+Validación ligera: TypeScript/i18n pasan (60 claves); el launcher pasa `node --check`.
+Se importó el modelo con Node 24 sin abrir sockets y se comprobó en memoria:
+fallo sin mutación/cobro, cierre exitoso, saldo cero sin pago adicional y reset de
+llamadas/estado. Esto comprueba el fixture, no las interacciones del navegador.
+Playwright y el workflow remoto quedan pendientes por decisión del usuario.
 
 ## CI
 
@@ -394,12 +439,13 @@ Ubuntu 24.04, Node 24.16.0, pnpm 12.0.0 y lockfile congelado con caché pnpm.
 
 Checks separados: `typecheck`, `i18n`, `unit`, `component`, `node-bff`,
 `node-cuenta`, `e2e-demo-reception`, `e2e-demo-staff`, `e2e-demo-payments` y
-`e2e-demo-booking`, `e2e-demo-channels` y `e2e-demo-account`. Cada check falla si falla su comando; la matriz no
+`e2e-demo-booking`, `e2e-demo-channels`, `e2e-demo-account` e
+`integration-mock-account`. Cada check falla si falla su comando; la matriz no
 cancela las otras suites. Vitest escribe JUnit en CI. Playwright escribe JUnit,
 reporte HTML, screenshot y trace de fallos. Solo se suben los directorios de
 resultados, con retención de siete días; `.data` y `.env` no son artefactos.
 
-Los contratos contra transportes falsos dentro de BFF y los scripts híbridos
+Los contratos contra transportes falsos dentro de BFF y el bloque de cuenta mock
 no acreditan integración real con Spring. No se configura `integration:real` ni
 un gate basado en ejecutar todos los CJS por glob.
 
