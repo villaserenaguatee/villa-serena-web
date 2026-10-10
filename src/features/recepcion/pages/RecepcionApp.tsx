@@ -1,6 +1,6 @@
 import { needsReservationChannel, permitsLocalCancellation } from '@/features/recepcion/localCancellation';
 import CalendarioReservas from './CalendarioReservas';
-import { requireReadyCheckInRoom } from '@/features/recepcion/checkInRoom';
+import { activarCheckInConHabitacionLista, rechazarCheckInPortal, reconciliarHabitacionesReservadas } from '@/store/portalCheckIn';
 import { asignarHabitacionReserva } from '@/store/reservationAssignment';
 import { createReservation, registerGuest, getRooms } from '@/lib/api/reception';
 import { useEffect, useRef, useState } from 'react';
@@ -32,7 +32,7 @@ import { guardarHuespedes, leerHuespedes, upsertHuesped, HUESPEDES_EVENT } from 
 import { guardarReservas, leerReservas, RESERVAS_EVENT, upsertReserva } from '@/store/reservationStore';
 import { guardarHabitaciones, leerHabitaciones, HABITACIONES_EVENT } from '@/store/roomStore';
 import { EVENTO_INCIDENCIAS_MANTENIMIENTO, leerIncidenciasMantenimiento, reportarIncidenciaMantenimiento } from '@/store/maintenanceEvents';
-import { completarCheckInReserva, completarCheckOutReserva, errorActivacionCheckInPortal, errorCheckInRecepcion } from '@/store/reservationStore';
+import { completarCheckOutReserva } from '@/store/reservationStore';
 import { actualizarObjetoOlvidado, CLAVE_OBJETOS_OLVIDADOS, guardarObjetosOlvidados, leerObjetosOlvidados } from '@/store/lostFoundEvents';
 const SECCIONES: {
   id: SeccionRecepcion;
@@ -208,20 +208,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
   },
     []);
   useEffect(() => {
-    setHabitaciones(actuales => {
-      let cambio = false;
-      const siguientes = actuales.map(h => {
-        if (h.estado === 'mantenimiento' || h.estado === 'en-limpieza')
-          return h;
-        const asignadas = reservas.filter(r => r.habitacionId === h.id && (r.estado === 'en-curso' || r.estado === 'confirmada' || r.estado === 'pendiente'));
-        const estado: EstadoHabHotel = asignadas.some(r => r.estado === 'en-curso') ? 'ocupada' : asignadas.length ? 'reservada' : 'disponible';
-        if (estado === h.estado)
-          return h;
-        cambio = true;
-        return { ...h, estado };
-      });
-      return cambio ? siguientes : actuales;
-    });
+    setHabitaciones(actuales => reconciliarHabitacionesReservadas(actuales, reservas));
   },
     [reservas]);
   const [seccion, setSeccion] = useState<SeccionRecepcion>('dia');
@@ -409,20 +396,8 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
   async function checkedCheckIn(reservaId: string, origin: 'recepcion' | 'portal') {
     if (checkInPending.current.has(reservaId)) return;
     checkInPending.current.add(reservaId);
-    const validate = origin === 'recepcion' ? errorCheckInRecepcion : errorActivacionCheckInPortal;
     try {
-      const error = validate(reservaId);
-      if (error) throw new Error(error);
-      const reservation = leerReservas().find(r => r.id === reservaId)!;
-      const room = leerHabitaciones().find(r => r.id === reservation.habitacionId)!;
-      await requireReadyCheckInRoom(room.numero);
-      // Revalidar después de la consulta: otra acción pudo cambiar la reserva.
-      const currentError = validate(reservaId);
-      if (currentError) throw new Error(currentError);
-      if (leerReservas().find(r => r.id === reservaId)?.habitacionId !== reservation.habitacionId) {
-        throw new Error('La habitación asignada cambió. Revisa la reserva antes del check-in.');
-      }
-      completarCheckInReserva(reservaId, origin);
+      await activarCheckInConHabitacionLista(reservaId, origin);
       setReservas(leerReservas());
       setHabitaciones(aplicarTarifasHabitaciones(leerHabitaciones()));
     } catch (e) {
@@ -433,12 +408,8 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
   function validarCheckInWeb(reservaId: string) { void checkedCheckIn(reservaId, 'portal'); }
   function rechazarCheckInWeb(reservaId: string,
     motivo: string) {
-    const r = leerReservas().find(x => x.id === reservaId);
-    const h = r ? huespedes.find(x => x.id === r.huespedId) : null;
-    if (!r || !h || r.estado !== 'confirmada' || r.checkInWeb?.estado !== 'pendiente')
-      return;
-    const rechazada: Reserva = { ...r, estado: 'confirmada', checkInWeb: { ...r.checkInWeb, estado: 'rechazado', revisadoEn: ahoraISO(), motivoRevision: motivo } };
-    upsertReserva(rechazada);
+    const rechazada = rechazarCheckInPortal(reservaId, motivo, huespedes);
+    if (!rechazada) return;
     setReservas(rs => rs.map(x => x.id === reservaId ? rechazada : x));
   }
   function checkOut(reservaId: string) {

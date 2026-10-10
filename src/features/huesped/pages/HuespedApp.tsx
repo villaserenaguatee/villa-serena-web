@@ -11,6 +11,7 @@ import { actualizarHuespedCentral } from "@/store/guestStore";
 import { leerHabitaciones, HABITACIONES_EVENT } from "@/store/roomStore";
 import { MENU_EVENT, leerMenu } from "@/store/menuStore";
 import { leerReservas, RESERVAS_EVENT, upsertReserva } from "@/store/reservationStore";
+import { enviarCheckInPortal } from "@/store/portalCheckIn";
 import { aplicarTarifasHabitaciones, leerTarifas, TARIFAS_EVENT } from "@/store/tarifasStore";
 import { Aviso, pedidoActivo, totalCargos, puntosDeMonto, } from "@/features/huesped/pages/huespedUtils";
 import ModuloSwitcher from "@/components/common/ModuloSwitcher";
@@ -774,23 +775,8 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
     peticiones: string[];
     notaPeticiones: string;
   }) {
-    const canonica = leerReservas().find(r => r.id === reserva.id && r.huespedId === huesped.id);
-    if (!canonica || canonica.estado !== 'confirmada' || canonica.checkInEn || canonica.checkInWeb?.estado === 'pendiente' || canonica.checkInWeb?.estado === 'aprobado') return;
-    const enviadoEn = ahoraISO();
-    const actualizada: Reserva = {
-      ...canonica,
-      estado: 'confirmada',
-      checkInWeb: {
-        estado: 'pendiente',
-        documento: datos.documento,
-        documentos: datos.documentos,
-        terminosAceptados: true,
-        peticiones: datos.peticiones,
-        notaPeticiones: datos.notaPeticiones,
-        enviadoEn,
-      },
-    };
-    upsertReserva(actualizada);
+    const actualizada = enviarCheckInPortal(reserva.id, huesped.id, datos);
+    if (!actualizada) return;
     setReserva(actualizada);
     mostrarAviso("Check-in enviado. Recepción revisará la información antes de activar tu llave digital.");
   }

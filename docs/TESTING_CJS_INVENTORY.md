@@ -2,8 +2,8 @@
 
 Snapshot: scripts de `develop` en `2713317`, conservados en la primera etapa
 `e25b7a2`. El snapshot tiene **29 archivos únicos**: 20 utilizan Chromium y nueve
-utilizan VM. La segunda etapa retiró documentos y apertura de reseña. La tercera
-retira perfil y experiencias tras comprobar equivalencia: quedan 25 CJS en el
+utilizan VM. La segunda etapa retiró documentos y apertura de reseña; la tercera,
+perfil y experiencias. La cuarta sustituye check-in portal: quedan 24 CJS en el
 árbol actual.
 Este inventario clasifica el harness y los escenarios declarados en código;
 no afirma que los 29 scripts hayan sido ejecutados ni que sus expectativas
@@ -40,7 +40,7 @@ Spring real. Solo las filas marcadas **migrado** tienen equivalencia validada.
 | `test-payment-presentation-browser` | E2E demo con respuesta de pago 503 | Total único, layout desktop/móvil, condiciones/privacidad, botón sujeto a términos, recuperación del intento guardado sin crear otra reserva y estado pendiente tras recarga. | `tests/e2e/payment-presentation.spec.ts`, pendiente. |
 | `test-payment-results-compact-browser` | E2E demo con respuestas de estado falsas | Cuatro resultados, acciones/orden, ausencia de overflow, consulta visible, minuto pendiente, reintento del mismo código y estado actualizado que prohíbe enviar pago. | `tests/e2e/payment-results.spec.ts`, pendiente. |
 | `test-payment-valid-flow-browser` | E2E demo | Enlace antiguo sin draft bloqueado, disponibilidad → datos → revisión → pago, términos, total único y responsive. | Escenarios de entrada/revisión en `tests/e2e/public-booking.spec.ts`, pendiente; fechas fijas requieren reloj/fixture. |
-| `test-portal-checkin` | Hooks, handlers, stores y extracción AST / VM | Activación/acceso del huésped, documentos y términos, persistencia, aprobación por Recepción, conservación de datos, reserva sin habitación/pagos, cupo revalidado, fechas y condición de habitación, idempotencia. | Componentes de check-in y pruebas de stores/handlers separados, pendiente; descomponer los 260 renglones por responsabilidad. |
+| `test-portal-checkin` | Hooks, handlers, stores y extracción AST / VM | Activación/acceso del huésped, documentos y términos, persistencia, aprobación por Recepción, conservación de datos, reserva sin habitación/pagos, cupo revalidado, fechas y condición de habitación, idempotencia. | **Migrado y CJS retirado:** `tests/unit/portal-checkin.test.ts` (jsdom para stores) y `tests/component/portal-checkin.test.tsx`. Baseline antiguo falla al extraer el handler asíncrono de Recepción; equivalencia por matriz declarada y comportamiento actual, sin afirmar que el CJS completo pasa. |
 | `test-public-booking-browser` | E2E demo | Dos entradas al flujo, catálogo/ofertas, calendario, fechas y datos inválidos sin peticiones, correo/draft, tarjeta/términos, PII fuera de URL, envío y consulta BFF pendientes, desktop/móvil. | `tests/e2e/public-booking.spec.ts`, pendiente; compartir fixture con presentación, conservar casos de entrada distintos. |
 | `test-reception-browser` | E2E demo / variante `--api` | Navegación mes/semana/Hoy, creación sin pago, Gantt, check-in limpio, recarga, rechazo por habitación no lista y móvil. | Distribuir en calendario/creación/check-in sin perder escenarios, pendiente; revisar UI y login antiguos antes de retirar. |
 | `test-reception-calendar-browser` | E2E demo | Mes/habitaciones, filtros por piso/tipo/huésped, reservas sin asignar, detalle, creación y persistencia, interacción y viewports. | `tests/e2e/reception-calendar.spec.ts`, pendiente; compartir datos con creación y layout. |
@@ -88,8 +88,9 @@ Spring real. Solo las filas marcadas **migrado** tienen equivalencia validada.
    reseña; validadores de tarjeta en unidad. Los tres CJS de referencia pasaron
    antes de la migración; los reemplazos pasan. Los dos reemplazados por completo
    se retiraron en la segunda etapa.
-2. **Perfil y experiencias completados:** stores y hooks React reales,
-   restauración por test y guards explícitos. Check-in portal sigue pendiente.
+2. **Perfil, experiencias y check-in portal completados:** stores y hooks React
+   reales, restauración por test y guards explícitos. Portal usa el cliente HTTP
+   real con respuestas simuladas para consultar la condición de habitación.
 3. Ciclo de reservas y estancia finalizada: imports reales y separación de
    guards/handlers; resolver cómo preservar los escenarios que extraían AST.
 4. E2E demo por dominio: recepción, pagos/reserva pública y contexto/portal;

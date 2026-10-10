@@ -125,6 +125,44 @@ componentes**, con un worker, TypeScript e i18n correctos y JUnit generado con
 en el árbol, incluidos los tres migrados de la primera etapa aún conservados.
 El siguiente bloque propuesto es check-in portal y ciclo de reservas.
 
+## Cuarta etapa: check-in portal sin Next
+
+El baseline `node scripts/test-portal-checkin.cjs` falla con `ReferenceError:
+checkedCheckIn is not defined`: extrae `validarCheckInWeb` por AST sin su
+coordinación asíncrona actual. No se afirma que el CJS completo haya pasado.
+Sus escenarios declarados se sustituyen con imports reales y pruebas por
+responsabilidad; el CJS se retira tras validar los reemplazos.
+
+Se extrajeron los handlers de envío, rechazo y activación, y la reconciliación de
+habitaciones a `src/store/portalCheckIn.ts`, que usan los componentes de huésped y
+Recepción. Los estados React se actualizan después de persistir, se mantiene el
+bloqueo de solicitudes duplicadas de Recepción y la activación sigue consultando
+la condición BFF y revalidando reserva/habitación después del await.
+
+| Escenarios del CJS | Reemplazo comprobado |
+| --- | --- |
+| Activación, habitación ocupada, evento/selector, recarga, conservación de datos e idempotencia | `tests/unit/portal-checkin.test.ts`: stores reales, selector importado y evento DOM real. |
+| Términos, envío, evidencias, habitación asignada/lista y DPI frente/reverso | Guards de stores sin escritura en rechazo; formulario real bloquea avance antes de ambos lados y aceptación. |
+| Aprobación/rechazo de Recepción y prioridad de habitación ocupada sobre reserva futura | Coordinación importada, botón real de `DetalleReserva`, rechazo con motivo/evidencias y reconciliación importada. |
+| Carga base64, envío/reenviado persistente y error de cuota | FileReader real con pasaporte/DPI, stores reales, remontaje pendiente y error/reintento sin anunciar éxito. |
+| Acceso y login del huésped tras activar; cuenta ajena/activación inválida | Store real de acceso y `loginLocal`; cubre la identidad demo local, no autenticación del servidor ni OTP. |
+| Reserva confirmada sin habitación/pagos, cupo revalidado y códigos únicos al releer | `crearReservaRecepcionDemo` real con fixtures completos y fechas controladas. |
+| Check-in de Recepción, fechas y condición local de habitación | Casos de hoy, entrada futura, salida de hoy, limpieza/mantenimiento/ocupación y conservación de acompañantes. |
+
+Además se comprueban respuesta BFF de habitación sucia/ocupada, fallo HTTP 503 sin
+fallback, y reserva o habitación cambiada mientras se consulta. Solo se simula
+`fetch`: el cliente HTTP y `requireReadyCheckInRoom` son reales. No se acredita
+integración con Spring ni se prueba en navegador el bloqueo de solicitudes
+duplicadas del componente de Recepción.
+
+Son **27 casos nuevos de unidad** con entorno jsdom por archivo para los stores
+y **9 de componentes**. Los casos de unidad fijan Date y restauran reloj/storage
+por test; los componentes ejecutan hooks, eventos y lectura de archivos reales.
+Se incluyen automáticamente en los jobs existentes de CI, sin nueva dependencia.
+Totales locales: **54 unidad + 49 componentes = 103 pruebas**, TypeScript e i18n
+correctos y JUnit generado con `CI=true`. No se levantaron Next ni Chromium.
+Quedan **24 CJS**; el siguiente bloque es ciclo de reservas y estancia finalizada.
+
 ## CI
 
 `.github/workflows/web-tests.yml` se ejecuta en PR hacia `develop`/`main`, push a
@@ -185,7 +223,7 @@ inventario, distingue los híbridos y registra obsolescencias y orden de trabajo
 
 | Grupo previsto | Scripts pendientes |
 | --- | --- |
-| Componentes con RTL | `test-checkin-documentos` (migrado y retirado), `test-email-verification` (migrado), `test-experiences-lifecycle` (migrado y retirado), `test-guest-profile` (migrado y retirado), `test-guest-review-click` (migrado y retirado), `test-portal-checkin` |
+| Componentes con RTL | `test-checkin-documentos` (migrado y retirado), `test-email-verification` (migrado), `test-experiences-lifecycle` (migrado y retirado), `test-guest-profile` (migrado y retirado), `test-guest-review-click` (migrado y retirado), `test-portal-checkin` (migrado y retirado) |
 | Lógica y portal (revisión híbrida pendiente) | `test-cuenta-estancia` (migrado), `test-reservation-lifecycle`, `test-guest-post-stay` |
 | Browser con API/frames falsos | `test-cuenta-connected`, `test-checkin-room-bff-browser`, `test-operaciones-browser` |
 | Browser demo | `test-booking-context-browser`, `test-selected-public-portal`, `test-calendar-scroll-browser`, `test-channel-cancellation-browser`, `test-cuenta-browser`, `test-demo-staff-password-browser`, `test-payment-channel-browser`, `test-payment-presentation-browser`, `test-payment-results-compact-browser`, `test-payment-valid-flow-browser`, `test-public-booking-browser`, `test-reception-browser`, `test-reception-calendar-browser`, `test-reception-creation-browser`, `test-reception-operations-browser`, `test-room-detail-browser`, `test-staff-session-browser` (migrado) |
