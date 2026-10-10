@@ -60,7 +60,8 @@ pnpm test:bff
 pnpm exec vitest run --project unit tests/unit/portal-checkin.test.ts
 pnpm exec vitest run --project component tests/component/portal-checkin.test.tsx
 pnpm exec vitest run --project component tests/component/checkin-documentos.test.tsx
-node scripts/test-reservation-lifecycle.cjs
+pnpm exec vitest run --project unit tests/unit/reservation-lifecycle.test.ts
+pnpm exec vitest run --project component tests/component/guest-post-stay.test.tsx
 pnpm check
 pnpm build
 ```

@@ -2,6 +2,7 @@ import { needsReservationChannel, permitsLocalCancellation } from '@/features/re
 import CalendarioReservas from './CalendarioReservas';
 import { activarCheckInConHabitacionLista, rechazarCheckInPortal, reconciliarHabitacionesReservadas } from '@/store/portalCheckIn';
 import { asignarHabitacionReserva } from '@/store/reservationAssignment';
+import { modificarReservaRecepcion } from '@/store/reservationModification';
 import { createReservation, registerGuest, getRooms } from '@/lib/api/reception';
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -379,13 +380,9 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       ninos: number;
       habitacionId: string | null;
     }) {
-    const r = leerReservas().find(x => x.id === reservaId);
-    if (!r || r.estado === 'finalizada' || r.estado === 'cancelada') return;
-    const prev = r.habitacionId ?? null;
-    let estado = r.estado;
-    if (c.habitacionId && estado === 'pendiente') estado = 'confirmada';
-    if (!c.habitacionId && estado === 'confirmada') estado = 'pendiente';
-    upsertReserva({ ...r, ...c, estado });
+    const modificada = modificarReservaRecepcion(reservaId, c);
+    if (!modificada) return;
+    const prev = modificada.habitacionAnterior;
     setReservas(leerReservas());
     if (prev && prev !== c.habitacionId)
       libera(prev);

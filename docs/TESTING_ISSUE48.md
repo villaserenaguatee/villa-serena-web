@@ -163,6 +163,46 @@ Totales locales: **54 unidad + 49 componentes = 103 pruebas**, TypeScript e i18n
 correctos y JUnit generado con `CI=true`. No se levantaron Next ni Chromium.
 Quedan **24 CJS**; el siguiente bloque es ciclo de reservas y estancia finalizada.
 
+## Quinta etapa: ciclo de reservas y estancia finalizada
+
+Los CJS de ciclo de reservas y estancia finalizada pasaron antes de migrar.
+Se extrajo `modificarReservaRecepcion` a `src/store/reservationModification.ts`,
+usado por el handler de Recepción: persiste antes de actualizar React y conserva
+la habitación anterior para la liberación/asignación que ya realizaba el handler.
+El cambio no modifica el flujo BFF ni acredita persistencia en Spring.
+
+| Escenarios originales | Reemplazo comprobado |
+| --- | --- |
+| Modificación inmediata y estado pendiente/confirmado | `tests/unit/reservation-lifecycle.test.ts`: helper importado y store real, con asignación y retirada de habitación. |
+| Asignación → check-in → checkout, eventos, reconstrucción e idempotencia | Store real y eventos DOM; habitaciones reservada/ocupada/en limpieza, tarea de limpieza única, reserva/huésped/historial intactos y sin duplicados. |
+| Guards de habitación y estancia activa | `tests/component/guest-post-stay.test.tsx`: portal completo con React, eventos reales y navegación en estado pendiente, asignado, activo y finalizado. |
+| Navegación finalizada y elección de historial al releer | `tests/unit/guest-post-stay.test.ts`: funciones importadas, prioridad de estado, historial más reciente y exclusión de canceladas/ajenas sin mutación. |
+| Rutas directas de menú/servicios/check-in/habitación | Páginas importadas, con `next/navigation.redirect` simulado como límite de Next; se comprueba destino y salida de la función, no navegación HTTP. |
+| Habitación histórica sin controles, fotografía y tres acciones | `MiHabitacion` real ES/EN; callbacks de operaciones no invocados, sin botones/inputs en fallback cerrado y solo tres acciones en resumen finalizado. |
+| Recarga por URL y acciones a reseña/reserva nueva/cuenta final | Portal completo ES/EN, URL real de jsdom, desmontaje/remontaje y clics reales; reserva e identidad persisten sin reactivarse. |
+
+También se verifica que una copia antigua no reactive un checkout persistido y
+que finalizar mientras están abiertas Mi estancia, Check-in, Menú o Servicios
+sustituya la operación por la cuenta final. Las reservas cerradas/canceladas no
+se modifican ni asignan y no emiten escrituras/eventos.
+
+Las pruebas del portal usan `AuthContext.Provider` con una sesión de prueba y
+`NextIntlClientProvider` con mensajes reales; no simulan hooks ni `UiText`.
+La fecha se controla dentro del plazo de acceso de 24 horas para no probar
+accidentalmente la expulsión por caducidad. jsdom muestra ambos menús adaptables:
+se pulsa el primero, sin afirmar cobertura de geometría ni viewport móvil.
+
+Se añaden **13 casos de unidad y 12 de componentes**. Se retiraron los dos CJS
+nuevos tras comprobar los reemplazos. También se revisaron y ejecutaron otra vez
+los CJS de cuenta y correo, ya migrados en la primera etapa: ambos pasaron y se
+retiraron. Los nueve orígenes VM del inventario están migrados y fuera del árbol.
+Quedan **20 CJS de navegador**; sesión del personal ya tiene reemplazo, los otros
+19 aún requieren migración. El loader de los tests Node BFF existentes se conserva.
+
+Validación: **67 unidad + 61 componentes = 128 pruebas**, TypeScript e i18n
+correctos y JUnit con `CI=true`, con un worker. No se levantaron Next ni Chromium
+ni se repitió E2E. El siguiente bloque es E2E de Recepción, que sí requiere ambos.
+
 ## CI
 
 `.github/workflows/web-tests.yml` se ejecuta en PR hacia `develop`/`main`, push a
@@ -210,8 +250,9 @@ También se verificó la generación de JUnit de Vitest con `CI=true`, y los fal
 del navegador generaron screenshot y trace. El YAML del workflow se parseó
 localmente; aún no hay evidencia de ejecución remota en GitHub Actions.
 
-Los CJS representativos de cuenta y correo pasan y conservan sus aserciones en
-las suites nuevas. Su retirada se deja para la siguiente etapa, tras revisión.
+Los CJS representativos de cuenta y correo pasaron y conservaron sus aserciones
+en las suites nuevas. Permanecieron para revisión hasta su retirada en la quinta
+etapa.
 
 Inventario al comenzar: **29 CJS**, no los 27 de la auditoría inicial. Se añadieron
 `test-booking-context-browser.cjs` y `test-selected-public-portal.cjs`.
@@ -223,13 +264,13 @@ inventario, distingue los híbridos y registra obsolescencias y orden de trabajo
 
 | Grupo previsto | Scripts pendientes |
 | --- | --- |
-| Componentes con RTL | `test-checkin-documentos` (migrado y retirado), `test-email-verification` (migrado), `test-experiences-lifecycle` (migrado y retirado), `test-guest-profile` (migrado y retirado), `test-guest-review-click` (migrado y retirado), `test-portal-checkin` (migrado y retirado) |
-| Lógica y portal (revisión híbrida pendiente) | `test-cuenta-estancia` (migrado), `test-reservation-lifecycle`, `test-guest-post-stay` |
+| Componentes con RTL | `test-checkin-documentos` (migrado y retirado), `test-email-verification` (migrado y retirado), `test-experiences-lifecycle` (migrado y retirado), `test-guest-profile` (migrado y retirado), `test-guest-review-click` (migrado y retirado), `test-portal-checkin` (migrado y retirado) |
+| Lógica y portal | `test-cuenta-estancia`, `test-reservation-lifecycle`, `test-guest-post-stay` (todos migrados y retirados) |
 | Browser con API/frames falsos | `test-cuenta-connected`, `test-checkin-room-bff-browser`, `test-operaciones-browser` |
 | Browser demo | `test-booking-context-browser`, `test-selected-public-portal`, `test-calendar-scroll-browser`, `test-channel-cancellation-browser`, `test-cuenta-browser`, `test-demo-staff-password-browser`, `test-payment-channel-browser`, `test-payment-presentation-browser`, `test-payment-results-compact-browser`, `test-payment-valid-flow-browser`, `test-public-booking-browser`, `test-reception-browser`, `test-reception-calendar-browser`, `test-reception-creation-browser`, `test-reception-operations-browser`, `test-room-detail-browser`, `test-staff-session-browser` (migrado) |
 
 Pendiente: lectura y ejecución completa del resto, matriz de aserciones por
-dominio, migración incremental, retirada de VM/loader, reparación de
+dominio, migración de browser, retirada de CJS y revisión del loader Node, reparación de
 `lint: next lint` con una configuración ESLint acordada, cobertura móvil cuando
 corresponda, fixtures de integración mock y entorno real aislado.
 

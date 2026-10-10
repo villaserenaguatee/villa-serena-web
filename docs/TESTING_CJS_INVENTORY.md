@@ -3,8 +3,9 @@
 Snapshot: scripts de `develop` en `2713317`, conservados en la primera etapa
 `e25b7a2`. El snapshot tiene **29 archivos únicos**: 20 utilizan Chromium y nueve
 utilizan VM. La segunda etapa retiró documentos y apertura de reseña; la tercera,
-perfil y experiencias. La cuarta sustituye check-in portal: quedan 24 CJS en el
-árbol actual.
+perfil y experiencias. La cuarta sustituyó check-in portal. La quinta retira
+ciclo de reservas, estancia finalizada y los dos CJS de unidad/componentes ya
+migrados en la primera etapa: quedan **20 CJS, todos de navegador**, en el árbol.
 Este inventario clasifica el harness y los escenarios declarados en código;
 no afirma que los 29 scripts hayan sido ejecutados ni que sus expectativas
 continúen vigentes. Los destinos pendientes son propuestas, no suites existentes.
@@ -28,11 +29,11 @@ Spring real. Solo las filas marcadas **migrado** tienen equivalencia validada.
 | `test-checkin-room-bff-browser` | Browser demo con fallo de transporte inyectado | Habitación sucia rechazada, consulta 503 sin fallback ni mutación local, habitación limpia aceptada, recarga y móvil. | `tests/e2e/checkin-room.spec.ts`, pendiente; no levanta Spring ni un API HTTP falso propio. |
 | `test-cuenta-browser` | E2E demo / variante `--api` | Cargos/anulación, saldo, NIT inválido/CF/K, pago único, entrega en camino, saldo cero, persistencia, error de almacenamiento, factura e impresión 80 mm/carta, móvil y permisos. | `tests/e2e/account-demo.spec.ts`, pendiente; revisar login, enlace y expectativas del modo API. |
 | `test-cuenta-connected` | Browser + servidor HTTP falso + Next | Contrato de cargos/anulación/checkout, bloqueos, error de factura sin pago, doble envío, saldo cero, datos fiscales del servidor, impresión, ausencia de cuenta demo local y denegación sin llamadas al API. | `tests/integration/account-mock.spec.ts`, pendiente; requiere fixture propio de API y servidor. |
-| `test-cuenta-estancia` | Lógica y extracción AST / VM | Siete saldos, reconstrucción sin mutación, pagos ambiguos, prioridad de estancia y comprobación estática de secciones protegidas. | **Migrado:** `tests/unit/cuenta-estancia.test.ts`. |
+| `test-cuenta-estancia` | Lógica y extracción AST / VM | Siete saldos, reconstrucción sin mutación, pagos ambiguos, prioridad de estancia y comprobación estática de secciones protegidas. | **Migrado y CJS retirado:** `tests/unit/cuenta-estancia.test.ts`; guards adicionales con portal real en `tests/component/guest-post-stay.test.tsx`. |
 | `test-demo-staff-password-browser` | E2E demo | Personal rechaza `demo123`, acepta `VillaSerena26`, rol y cookies; acceso del huésped en desktop/móvil. | `tests/e2e/login-credentials.spec.ts`, pendiente; el flujo actual del huésped usa código y debe revisarse la expectativa de contraseña. |
-| `test-email-verification` | Componentes con hooks falsos / VM | ES/EN, pendiente/procesando/verificado/inválido/expirado/error, falta de proveedor, bloqueo de botones, reenvío, cambiar/volver y ausencia de verificación falsa. | **Migrado:** `tests/component/email-verification.test.tsx`. |
+| `test-email-verification` | Componentes con hooks falsos / VM | ES/EN, pendiente/procesando/verificado/inválido/expirado/error, falta de proveedor, bloqueo de botones, reenvío, cambiar/volver y ausencia de verificación falsa. | **Migrado y CJS retirado:** `tests/component/email-verification.test.tsx`. |
 | `test-experiences-lifecycle` | Componentes con hooks falsos / VM | Categorías, estados confirmada/en-curso/finalizada/cancelada, propiedad del huésped, recarga, modal obsoleto tras checkout, callbacks sin creación y vínculo explícito de la nueva experiencia. | **Migrado y CJS retirado:** `tests/component/experiences-lifecycle.test.tsx` y `tests/unit/experience-local.test.ts`. |
-| `test-guest-post-stay` | Extracción AST, rutas y componentes / VM | Navegación según estado, redirects directos, elección de historial, habitación finalizada sin controles, resumen con fotografía y tres acciones que solo navegan, recarga e identidad intacta. | Unidad de selección/navegación + componente de estancia finalizada + prueba de redirects, pendiente; no es browser. |
+| `test-guest-post-stay` | Extracción AST, rutas y componentes / VM | Navegación según estado, redirects directos, elección de historial, habitación finalizada sin controles, resumen con fotografía y tres acciones que solo navegan, recarga e identidad intacta. | **Migrado y CJS retirado:** `tests/unit/guest-post-stay.test.ts` y `tests/component/guest-post-stay.test.tsx`; rutas importadas con redirect simulado, portal con React real. |
 | `test-guest-profile` | Componentes y stores con hooks falsos / VM | Clicks/formularios ES/EN, identidad/correo de solo lectura, teléfono persistente, privacidad, metadata de tarjeta sin PAN/CVV, frontera de contraseña sin secretos, foco/Escape/backdrop e historial intacto; validadores de tarjeta. | **Migrado y CJS retirado:** `tests/component/guest-profile.test.tsx` y `tests/unit/card-form.test.ts`. |
 | `test-guest-review-click` | Componentes con hooks falsos / VM | Botón real abre/cierra reseña ES/EN, dos campos, apertura sin escritura, apertura solicitada por prop y guard de estancia finalizada. | **Migrado y CJS retirado:** `tests/component/guest-review.test.tsx`; no es browser. |
 | `test-operaciones-browser` | Browser + API HTTP falso + frames STOMP falsos + Next | Pedido/notificación, conflicto y transición, cancelación, reconexión con ticket nuevo, menú agotado, cambios de habitación, límites de foto/upload, incidencia y resolución por técnico propio, desktop/móvil. | `tests/integration/operations-mock.spec.ts`, pendiente; fixtures de API y WebSocket con teardown. |
@@ -46,7 +47,7 @@ Spring real. Solo las filas marcadas **migrado** tienen equivalencia validada.
 | `test-reception-calendar-browser` | E2E demo | Mes/habitaciones, filtros por piso/tipo/huésped, reservas sin asignar, detalle, creación y persistencia, interacción y viewports. | `tests/e2e/reception-calendar.spec.ts`, pendiente; compartir datos con creación y layout. |
 | `test-reception-creation-browser` | E2E demo | Nueva reserva con/sin habitación, búsqueda/calendario/detalle/recarga, recuperación sin copia local, huésped existente sin duplicar, huésped nuevo, respuesta perdida y doble click. | `tests/e2e/reception-creation.spec.ts`, pendiente. |
 | `test-reception-operations-browser` | E2E demo | Filtros, historial, acciones según estado/canal, asignación, cancelación, habitaciones y permisos de página/BFF, desktop/móvil. | `tests/e2e/reception-operations.spec.ts`, pendiente; ninguna aserción acredita devolución real. |
-| `test-reservation-lifecycle` | Stores, eventos y extracción AST / VM | Persistencia inmediata de modificación/asignación, selección portal, evento, habitación reservada/ocupada/en limpieza, check-in/out, reconstrucción e idempotencia sin duplicar ni alterar huésped/historial; guards. | `tests/unit/reservation-lifecycle.test.ts` con entorno jsdom para stores + componentes de guards, pendiente. |
+| `test-reservation-lifecycle` | Stores, eventos y extracción AST / VM | Persistencia inmediata de modificación/asignación, selección portal, evento, habitación reservada/ocupada/en limpieza, check-in/out, reconstrucción e idempotencia sin duplicar ni alterar huésped/historial; guards. | **Migrado y CJS retirado:** `tests/unit/reservation-lifecycle.test.ts` (jsdom) y guards del portal real en `tests/component/guest-post-stay.test.tsx`. |
 | `test-room-detail-browser` | E2E demo | Habitación → reserva completa, identidad, reapertura en misma URL, cambio de reserva, recarga, habitación sin reserva, filtro condición, permisos y móvil. | `tests/e2e/room-detail.spec.ts`, pendiente. |
 | `test-selected-public-portal` | E2E demo | Disponibilidad → datos → pago pendiente → resumen → OTP → portal de código seleccionado; recarga sin mostrar otra estancia, desktop/móvil. | Caso adicional de `tests/e2e/booking-context.spec.ts`, pendiente. |
 | `test-staff-session-browser` | E2E demo | Público/privado, roles/menús, cookies y respuesta mínima, recarga, denegación, refresh/replay, Origin, cierre y contraseña temporal. | **Migrado:** `tests/e2e/staff-session.spec.ts`. |
@@ -91,8 +92,9 @@ Spring real. Solo las filas marcadas **migrado** tienen equivalencia validada.
 2. **Perfil, experiencias y check-in portal completados:** stores y hooks React
    reales, restauración por test y guards explícitos. Portal usa el cliente HTTP
    real con respuestas simuladas para consultar la condición de habitación.
-3. Ciclo de reservas y estancia finalizada: imports reales y separación de
-   guards/handlers; resolver cómo preservar los escenarios que extraían AST.
+3. **Ciclo de reservas y estancia finalizada completados:** imports/stores reales,
+   modificación extraída, eventos DOM, guards y acciones del portal con React.
+   Los nueve orígenes VM ya están reemplazados y retirados.
 4. E2E demo por dominio: recepción, pagos/reserva pública y contexto/portal;
    estabilizar datos, reloj, login y móvil antes de añadirlos al gate.
 5. Integración browser mock: API HTTP/STOMP como fixtures dedicados. Spring real
