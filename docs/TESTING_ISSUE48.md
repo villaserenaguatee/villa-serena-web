@@ -4,10 +4,10 @@ Rama de partida: `develop`, commit `2713317` (#53), 09-10-2026.
 Primera etapa: infraestructura y tres casos representativos (`e25b7a2`), sin
 retirar CJS. Segunda etapa: más pruebas de unidad/componentes sin levantar Next.
 
-Estado actual: siete etapas locales validadas y las etapas octava a undécima implementadas,
+Estado actual: siete etapas locales validadas y las etapas octava a duodécima implementadas,
 pendientes de validación de navegador en CI. Los nueve CJS de VM están reemplazados;
-Recepción, sesión, pagos y reserva/portal usan Playwright Test en bloques separados. Quedan siete CJS de
-navegador pendientes y la validación remota de CI; #48 sigue abierta.
+Recepción, sesión, pagos y reserva/portal usan Playwright Test en bloques separados. Se conservan siete CJS de
+navegador, todos con reemplazos implementados pendientes de validar, además de CI remoto; #48 sigue abierta.
 La issue completa continúa pendiente.
 
 ## Ejecutar localmente
@@ -466,6 +466,57 @@ existentes en `package.json`.
 Después de esta implementación, solo operaciones con API/WebSocket falsos carece
 de reemplazo completo; siguen pendientes lint, revisión del loader y CI final.
 
+## Duodécima etapa: operaciones HTTP/STOMP, pendiente de navegador
+
+`test-operaciones-browser.cjs` tiene reemplazo implementado en tres suites:
+`operations-orders.spec.ts`, `operations-rooms.spec.ts` y
+`operations-maintenance.spec.ts`, dos casos por suite (computadora/móvil),
+**6 casos** en total. Se conserva el CJS hasta validar equivalencia. Ya no queda
+ningún origen de navegador sin reemplazo implementado; esto no significa que los
+siete CJS pendientes puedan retirarse ni que #48 esté completa.
+
+`pnpm test:operaciones:browser` ejecuta los tres bloques consecutivamente, cada uno
+con Next y API falso nuevos. Se pueden seleccionar con `test:operaciones:orders`,
+`test:operaciones:rooms` y `test:operaciones:maintenance`. Sus configs comparten
+`operationsConfig`, pero guardan JUnit/HTML/traces/screenshots en carpetas propias.
+`test:integration:mock` ejecuta cuenta conectada y luego estos tres bloques.
+Los cuatro tienen jobs de CI en VM separadas, con 15 minutos por job y sin
+cancelarse entre sí al fallar. No ejecutarlos simultáneamente en el checkout local.
+
+El servidor HTTP falso escucha exclusivamente en loopback (`127.0.0.1:3049`).
+Next usa `STAFF_AUTH_MODE=spring`, API falso y URL WebSocket de prueba. La sesión
+se obtiene por el BFF real con credenciales ficticias; los destinos de rol actuales
+sustituyen el login/encabezado obsoletos del CJS. No se necesita Spring ni app móvil.
+Un token aleatorio protege los controles del fixture; cuenta, pedidos, habitaciones,
+incidencias, llamadas, tickets, errores y contadores se restauran por caso según
+el bloque correspondiente. Los launchers usan TypeScript nativo de Node 24,
+sin ampliar el loader anterior ni añadir dependencias.
+
+| Escenarios del origen | Reemplazo implementado |
+| --- | --- |
+| Pedido y notificación | Suscripción STOMP `/topic/pedidos`, mensaje con pedido del API falso, aviso y apertura real del detalle. Ticket público contiene solo `ticket`/`expiraEn`. |
+| Conflicto, transición y cancelación | 409 conserva NUEVO y muestra recarga; reintento pasa a EN_PREPARACION; cancelación guarda motivo y cierra detalle. |
+| Reconexión | Cierre simulado del WebSocket y nueva conexión con ticket distinto; CONNECT no transmite Bearer ni token de acceso. Esperas por condición, sin bucles de sleeps. |
+| Menú agotado | Cambio en API falso, desaparece botón de agotar y no ofrece reactivar; comprobación de estado del servidor. |
+| Habitación actualizada | Cambio EN_LIMPIEZA/LIMPIA en HTTP falso y evento `/topic/habitaciones` actualizan tarjeta 204. |
+| Foto y reporte | Archivo de 6 MiB supera el límite de 5 MB y no sube/reportar; PNG válido produce un upload multipart con uso INCIDENCIA, clave y POST de reporte con ID real 4. |
+| Técnico y resolución | Tomar asigna técnico 5; técnico 99 oculta Resolver sin llamada; actualización con técnico 5 permite guardar solución y retira incidencia resuelta. |
+
+`operations-fixtures.ts` administra rutas WebSocket de Playwright y frames
+CONNECT/CONNECTED/SUBSCRIBE/MESSAGE/UNSUBSCRIBE. Cada test tiene sus sockets,
+suscripciones y tickets; el fixture cierra la página al terminar el recorrido de
+tiempo real y registra errores del protocolo y JavaScript. El HTTP falso captura
+llamadas y errores, y se cierra al recibir SIGTERM/SIGINT. Los eventos STOMP son
+simulados; no se afirma validación de un broker ni de Spring real.
+
+Validación ligera: TypeScript/i18n pasan (60 claves) y el launcher pasa
+`node --check`. El modelo importado con Node nativo, sin sockets, comprueba
+conflicto sin transición, transición/cancelación, tickets únicos, toma/resolución
+y reset de datos/contadores/llamadas. Es una comprobación del fixture, no del BFF,
+del WebSocket real ni de los recorridos de interfaz. También pasan
+`git diff --check` y el parseo del YAML, con siete bloques E2E y cuatro bloques
+mock únicos cuyos comandos existen en `package.json`. Playwright queda pendiente.
+
 ## CI
 
 `.github/workflows/web-tests.yml` se ejecuta en PR hacia `develop`/`main`, push a
@@ -475,12 +526,14 @@ Ubuntu 24.04, Node 24.16.0, pnpm 12.0.0 y lockfile congelado con caché pnpm.
 Checks separados: `typecheck`, `i18n`, `unit`, `component`, `node-bff`,
 `node-cuenta`, `e2e-demo-reception`, `e2e-demo-staff`, `e2e-demo-payments` y
 `e2e-demo-booking`, `e2e-demo-channels`, `e2e-demo-account`,
-`e2e-demo-reception-api` e `integration-mock-account`. Cada check falla si falla su comando; la matriz no
+`e2e-demo-reception-api`, `integration-mock-account`,
+`integration-mock-operations-orders`, `integration-mock-operations-rooms` y
+`integration-mock-operations-maintenance`. Cada check falla si falla su comando; la matriz no
 cancela las otras suites. Vitest escribe JUnit en CI. Playwright escribe JUnit,
 reporte HTML, screenshot y trace de fallos. Solo se suben los directorios de
 resultados, con retención de siete días; `.data` y `.env` no son artefactos.
 
-Los contratos contra transportes falsos dentro de BFF y el bloque de cuenta mock
+Los contratos contra transportes falsos dentro de BFF y los bloques de cuenta/operaciones mock
 no acreditan integración real con Spring. No se configura `integration:real` ni
 un gate basado en ejecutar todos los CJS por glob.
 

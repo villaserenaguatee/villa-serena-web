@@ -61,9 +61,21 @@ jobs:
           if-no-files-found: ignore
 
   integration-mock:
-    name: integration-mock-account
+    name: integration-mock-${{ matrix.suite }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: account
+            command: pnpm test:cuenta:connected
+          - suite: operations-orders
+            command: pnpm test:operaciones:orders
+          - suite: operations-rooms
+            command: pnpm test:operaciones:rooms
+          - suite: operations-maintenance
+            command: pnpm test:operaciones:maintenance
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
@@ -75,14 +87,14 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:integration:mock
+      - run: ${{ matrix.command }}
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: integration-mock-account-results
+          name: integration-mock-${{ matrix.suite }}-results
           path: |
-            playwright-report/account-mock/
-            test-results/account-mock/
+            playwright-report/
+            test-results/
           retention-days: 7
           if-no-files-found: ignore
 

@@ -128,6 +128,9 @@ Sus 12 casos están implementados, pendientes de Playwright/CI.
 Guard conectado de Recepción: `pnpm test:reception:api` (6 casos pendientes de CI).
 Usa autenticación demo y bloquea operaciones BFF no conectadas con 503, conservando
 las reservas locales que anuncia el calendario; no prueba Spring real.
+Operaciones con API y frames STOMP falsos: `pnpm test:operaciones:browser`
+(6 casos pendientes de CI). Room Service, habitaciones/reportes y Mantenimiento
+usan servidores nuevos y reportes separados; CI ejecuta cada bloque en su VM.
 
 ### Portal del huésped
 

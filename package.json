@@ -19,13 +19,16 @@
     "test:payments:browser": "playwright test --config playwright.payments.config.ts",
     "test:booking:browser": "playwright test --config playwright.booking.config.ts",
     "test:channels:browser": "playwright test --config playwright.channels.config.ts",
-    "test:operaciones:browser": "node scripts/test-operaciones-browser.cjs",
+    "test:operaciones:browser": "pnpm test:operaciones:orders && pnpm test:operaciones:rooms && pnpm test:operaciones:maintenance",
+    "test:operaciones:orders": "playwright test --config playwright.operations.config.ts",
+    "test:operaciones:rooms": "playwright test --config playwright.operations-rooms.config.ts",
+    "test:operaciones:maintenance": "playwright test --config playwright.operations-maintenance.config.ts",
     "generate:api": "openapi-typescript openapi.yaml -o src/lib/api/schema.d.ts",
     "check": "tsc --noEmit && node scripts/check-i18n.mjs",
     "test:unit": "vitest run --project unit",
     "test:component": "vitest run --project component",
     "test:e2e": "pnpm test:reception:browser && pnpm test:staff:browser && pnpm test:payments:browser && pnpm test:booking:browser && pnpm test:channels:browser && pnpm test:cuenta:browser && pnpm test:reception:api",
-    "test:integration:mock": "pnpm test:cuenta:connected",
+    "test:integration:mock": "pnpm test:cuenta:connected && pnpm test:operaciones:browser",
     "test:ci": "pnpm check && pnpm test:bff && pnpm test:cuenta && pnpm test:unit && pnpm test:component && pnpm test:e2e && pnpm test:integration:mock"
   },
   "dependencies": {

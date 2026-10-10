@@ -11,9 +11,11 @@ de reserva pública, pagos y portal: quedan **siete CJS, todos de
 navegador**, en el árbol.
 Este inventario clasifica el harness y los escenarios declarados en código;
 no afirma que los 29 scripts hayan sido ejecutados ni que sus expectativas
-continúen vigentes. Los destinos pendientes son propuestas salvo los reemplazos de canales/credenciales, cuenta demo y cuenta mock
-implementados en las etapas octava a undécima, aún sin validación completa en CI.
-Solo operaciones carece de reemplazo completo implementado; los siete CJS se conservan hasta validar.
+continúen vigentes. Los destinos pendientes son propuestas salvo los reemplazos de
+canales/credenciales, cuenta, Recepción conectada y operaciones
+implementados en las etapas octava a duodécima, aún sin validación completa en CI.
+Todos los orígenes de navegador tienen reemplazo implementado; los siete CJS se
+conservan hasta validar. Lint, revisión del loader y CI remoto siguen pendientes.
 
 Los casos híbridos tienen una sola fila para evitar doble migración. Las
 comprobaciones puras de un script de componentes pueden extraerse a unidad,
@@ -41,7 +43,7 @@ Spring real. Solo las filas marcadas **migrado** tienen equivalencia validada.
 | `test-guest-post-stay` | Extracción AST, rutas y componentes / VM | Navegación según estado, redirects directos, elección de historial, habitación finalizada sin controles, resumen con fotografía y tres acciones que solo navegan, recarga e identidad intacta. | **Migrado y CJS retirado:** `tests/unit/guest-post-stay.test.ts` y `tests/component/guest-post-stay.test.tsx`; rutas importadas con redirect simulado, portal con React real. |
 | `test-guest-profile` | Componentes y stores con hooks falsos / VM | Clicks/formularios ES/EN, identidad/correo de solo lectura, teléfono persistente, privacidad, metadata de tarjeta sin PAN/CVV, frontera de contraseña sin secretos, foco/Escape/backdrop e historial intacto; validadores de tarjeta. | **Migrado y CJS retirado:** `tests/component/guest-profile.test.tsx` y `tests/unit/card-form.test.ts`. |
 | `test-guest-review-click` | Componentes con hooks falsos / VM | Botón real abre/cierra reseña ES/EN, dos campos, apertura sin escritura, apertura solicitada por prop y guard de estancia finalizada. | **Migrado y CJS retirado:** `tests/component/guest-review.test.tsx`; no es browser. |
-| `test-operaciones-browser` | Browser + API HTTP falso + frames STOMP falsos + Next | Pedido/notificación, conflicto y transición, cancelación, reconexión con ticket nuevo, menú agotado, cambios de habitación, límites de foto/upload, incidencia y resolución por técnico propio, desktop/móvil. | `tests/integration/operations-mock.spec.ts`, pendiente; fixtures de API y WebSocket con teardown. |
+| `test-operaciones-browser` | Browser + API HTTP falso + frames STOMP falsos + Next | Pedido/notificación, conflicto y transición, cancelación, reconexión con ticket nuevo, menú agotado, cambios de habitación, límites de foto/upload, incidencia y resolución por técnico propio, desktop/móvil. | **Implementado, pendiente de CI; CJS conservado:** `tests/integration/operations-{orders,rooms,maintenance}.spec.ts` (6 casos). API HTTP y rutas/frames STOMP como fixtures, reset por caso y servidores/jobs/reportes por rol. No acredita Spring ni broker reales. |
 | `test-payment-channel-browser` | E2E demo | Cuatro resultados, URL no aprueba pago, reintento, polling y parada, permisos, envío/repetición 201/200, fechas inválidas sin petición, secretos de canal ausentes y sin overflow. | **Implementado, pendiente de CI; CJS conservado:** `payment-results.spec.ts`, `payment-polling.spec.ts` y `channel-simulator.spec.ts`. Pendiente no pasa a rechazo al minuto; HAR inspecciona cuerpos y claves ficticias. |
 | `test-payment-presentation-browser` | E2E demo con respuesta de pago 503 | Total único, layout desktop/móvil, condiciones/privacidad, botón sujeto a términos, recuperación del intento guardado sin crear otra reserva y estado pendiente tras recarga. | **Migrado y CJS retirado:** `tests/e2e/payment-presentation.spec.ts`. Un archivo BFF restaurado por test; verifica una sola creación tras el 503 y recuperación. |
 | `test-payment-results-compact-browser` | E2E demo con respuestas de estado falsas | Cuatro resultados, acciones/orden, ausencia de overflow, consulta visible, minuto pendiente, reintento del mismo código y estado actualizado que prohíbe enviar pago. | **Migrado y CJS retirado:** `tests/e2e/payment-results.spec.ts`. Confirmada ahora muestra enlace al resumen con su código; pendiente nunca se confirma por `paid=true`; estado actualizado cancelado impide POST. |
