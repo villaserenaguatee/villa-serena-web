@@ -11,8 +11,8 @@ de reserva pública, pagos y portal: quedan **siete CJS, todos de
 navegador**, en el árbol.
 Este inventario clasifica el harness y los escenarios declarados en código;
 no afirma que los 29 scripts hayan sido ejecutados ni que sus expectativas
-continúen vigentes. Los destinos pendientes son propuestas salvo los tres reemplazos de canales y
-credenciales implementados en la octava etapa, aún sin validación completa en CI.
+continúen vigentes. Los destinos pendientes son propuestas salvo los reemplazos de canales/credenciales y cuenta demo implementados en
+las etapas octava y novena, aún sin validación completa en CI.
 
 Los casos híbridos tienen una sola fila para evitar doble migración. Las
 comprobaciones puras de un script de componentes pueden extraerse a unidad,
@@ -31,7 +31,7 @@ Spring real. Solo las filas marcadas **migrado** tienen equivalencia validada.
 | `test-channel-cancellation-browser` | E2E demo | Booking/Expedia no cancelables en detalle/cuenta/calendario, recarga y copia local antigua sin canal; BFF 409; canales directos siguen cancelables. | **Implementado, pendiente de CI; CJS conservado:** `tests/e2e/channel-cancellation.spec.ts` (8 casos). Cuenta no ofrece cancelación en el contrato actual; detalle/calendario mantienen el permiso por canal. Sin `--reproduce` en el gate. |
 | `test-checkin-documentos` | Componentes con hooks falsos / VM | Miniaturas DPI frente/reverso y pasaporte, persistencia JSON, visor, proporciones, zoom/arrastre, navegación, X/Escape, bloqueo de scroll, restauración de foco y reenvío de una imagen fallida. | **Migrado y CJS retirado:** `tests/component/checkin-documentos.test.tsx`. |
 | `test-checkin-room-bff-browser` | Browser demo con fallo de transporte inyectado | Habitación sucia rechazada, consulta 503 sin fallback ni mutación local, habitación limpia aceptada, recarga y móvil. | **Migrado y CJS retirado:** `tests/e2e/reception-checkin.spec.ts`. Habitación ensuciada en BFF después de abrir el detalle; bloqueo tras recarga. La entrada aceptada persiste localmente; no acredita Spring. |
-| `test-cuenta-browser` | E2E demo / variante `--api` | Cargos/anulación, saldo, NIT inválido/CF/K, pago único, entrega en camino, saldo cero, persistencia, error de almacenamiento, factura e impresión 80 mm/carta, móvil y permisos. | `tests/e2e/account-demo.spec.ts`, pendiente; revisar login, enlace y expectativas del modo API. |
+| `test-cuenta-browser` | E2E demo / variante `--api` | Cargos/anulación, saldo, NIT inválido/CF/K, pago único, entrega en camino, saldo cero, persistencia, error de almacenamiento, factura e impresión 80 mm/carta, móvil y permisos. | **Demo implementado, pendiente de CI; CJS conservado:** `tests/e2e/account-demo.spec.ts` (12 casos). Variante `--api` pendiente con cuenta mock: contrato actual rechaza el código demo en modo Spring, sin la pantalla antigua. |
 | `test-cuenta-connected` | Browser + servidor HTTP falso + Next | Contrato de cargos/anulación/checkout, bloqueos, error de factura sin pago, doble envío, saldo cero, datos fiscales del servidor, impresión, ausencia de cuenta demo local y denegación sin llamadas al API. | `tests/integration/account-mock.spec.ts`, pendiente; requiere fixture propio de API y servidor. |
 | `test-cuenta-estancia` | Lógica y extracción AST / VM | Siete saldos, reconstrucción sin mutación, pagos ambiguos, prioridad de estancia y comprobación estática de secciones protegidas. | **Migrado y CJS retirado:** `tests/unit/cuenta-estancia.test.ts`; guards adicionales con portal real en `tests/component/guest-post-stay.test.tsx`. |
 | `test-demo-staff-password-browser` | E2E demo | Personal rechaza `demo123`, acepta `VillaSerena26`, rol y cookies; acceso del huésped en desktop/móvil. | **Implementado, pendiente de CI; CJS conservado:** `tests/e2e/login-credentials.spec.ts` (4 casos). Huésped usa OTP y no contraseña. |

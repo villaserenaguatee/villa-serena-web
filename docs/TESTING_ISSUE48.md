@@ -4,8 +4,8 @@ Rama de partida: `develop`, commit `2713317` (#53), 09-10-2026.
 Primera etapa: infraestructura y tres casos representativos (`e25b7a2`), sin
 retirar CJS. Segunda etapa: más pruebas de unidad/componentes sin levantar Next.
 
-Estado actual: siete etapas locales validadas y una octava implementada, pendiente
-de validación de navegador en CI. Los nueve CJS de VM están reemplazados;
+Estado actual: siete etapas locales validadas y las etapas octava y novena implementadas,
+pendientes de validación de navegador en CI. Los nueve CJS de VM están reemplazados;
 Recepción, sesión, pagos y reserva/portal usan Playwright Test en bloques separados. Quedan siete CJS de
 navegador pendientes y la validación remota de CI; #48 sigue abierta.
 La issue completa continúa pendiente.
@@ -57,11 +57,11 @@ aplican reintentos automáticos. No ejecutar simultáneamente dos E2E en este
 checkout: comparten puerto y `.next-dev`.
 Ejecutar TypeScript después del E2E, no mientras Next regenera `.next-dev/types`.
 
-`pnpm test:e2e` ejecuta Recepción, sesión del personal, pagos, reserva/portal y canales,
-en cinco procesos Playwright consecutivos con servidores nuevos. `playwright.config.ts`
-selecciona Recepción; los otros cuatro configs seleccionan explícitamente su bloque. Los
-reportes se guardan por bloque en `test-results/{reception,staff,payments,booking,channels}` y
-`playwright-report/{reception,staff,payments,booking,channels}`, sin sobrescribirse. No iniciar bloques a la vez.
+`pnpm test:e2e` ejecuta Recepción, sesión del personal, pagos, reserva/portal, canales y cuenta,
+en seis procesos Playwright consecutivos con servidores nuevos. `playwright.config.ts`
+selecciona Recepción; los otros cinco configs seleccionan explícitamente su bloque. Los
+reportes se guardan por bloque en `test-results/{reception,staff,payments,booking,channels,account}` y
+`playwright-report/{reception,staff,payments,booking,channels,account}`, sin sobrescribirse. No iniciar bloques a la vez.
 
 El servidor E2E limita su heap JavaScript a 1536 MiB mediante `NODE_OPTIONS`.
 Esto no limita toda la RAM del proceso ni la de Chromium. Next en desarrollo
@@ -348,6 +348,44 @@ Validación ligera de esta etapa: `pnpm check` pasa (TypeScript e i18n, 60 clave
 y `git diff --check` no encuentra errores de formato. No se ejecutaron Next,
 Chromium ni el workflow remoto después de las correcciones finales.
 
+## Novena etapa: cuenta demo, pendiente de navegador
+
+Se implementa `tests/e2e/account-demo.spec.ts`: seis escenarios en computadora y
+móvil, **12 casos** en total. `pnpm test:cuenta:browser` apunta al reemplazo;
+`playwright.account.config.ts` inicia su propio servidor demo y guarda reportes
+JUnit/HTML en el bloque `account`. Se añade un job independiente de CI.
+No se ejecutan Playwright, Next ni Chromium localmente en esta etapa.
+
+| Escenario del origen | Reemplazo implementado |
+| --- | --- |
+| Cargo y anulación con historial | Saldo 125 → 175 → 125, cantidad/precio y motivo persistidos, cargo anulado conservado. |
+| NIT inválido y CF, pago único | NIT `14-1` bloquea sin mutación; CF registra solo 12500 centavos, referencia, cierre, habitación sucia y cancelación de pedidos/solicitudes. Recarga no duplica el pago. |
+| Factura no emitida | Sin artículo ni botón de impresión; conserva la cuenta y permite volver. |
+| Factura persistida e impresión | Solo cargos vigentes, total 192500 centavos, CF y referencia; ticket/carta con menús ocultos, montos dentro del ancho, ticket de 72 mm imprimibles y PDFs propios. Recarga no cambia la cuenta. |
+| Pedido en camino | Botón de check-out bloqueado, motivo visible y cuenta intacta. |
+| Saldo cero/NIT con K | No ofrece método ni añade pago, acepta `6-K` y emite factura con ese NIT. |
+| Error de almacenamiento | Falla únicamente la escritura de esta cuenta; alerta en diálogo, saldo y datos intactos, sin factura y persistencia original tras recarga. |
+| Móvil y permisos | Cuenta sin overflow, artefactos por viewport; sin sesión redirige al login. Mantenimiento recibe acceso denegado en cuenta/factura, sin saldo, controles ni datos demo guardados. |
+
+Los escenarios usan una semilla local explícita del contexto de prueba y el login
+actual `/panel/login`; no dependen del enlace antiguo de demostración. El acceso
+por rol actual muestra `Acceso denegado`, en lugar de redirigir una sesión válida
+al login como esperaba el CJS. Se mantiene la captura de errores JavaScript del
+fixture de Recepción. No se modificó código de producto.
+
+La variante `--api` del origen esperaba `Cuenta pendiente de conexión` para el
+código demo. El contrato actual selecciona `AccountConnected` con
+`STAFF_AUTH_MODE=spring` y rechaza códigos que no cumplan `VS-[A-Z0-9]{6}`.
+Esa expectativa antigua no se copia al bloque demo: su sustitución y ausencia de
+fallback local deben comprobarse en la etapa de cuenta con API falsa. Por ello
+**el origen sigue conservado y su migración completa sigue pendiente**.
+
+Los doce casos y PDFs están implementados, sin evidencia de ejecución todavía.
+Validación ligera: `pnpm check` pasa (TypeScript e i18n, 60 claves),
+`git diff --check` pasa y el YAML de CI se parsea con seis bloques E2E únicos y
+comandos existentes en `package.json`. CI deberá acreditar los recorridos antes
+de retirar el script.
+
 ## CI
 
 `.github/workflows/web-tests.yml` se ejecuta en PR hacia `develop`/`main`, push a
@@ -356,7 +394,7 @@ Ubuntu 24.04, Node 24.16.0, pnpm 12.0.0 y lockfile congelado con caché pnpm.
 
 Checks separados: `typecheck`, `i18n`, `unit`, `component`, `node-bff`,
 `node-cuenta`, `e2e-demo-reception`, `e2e-demo-staff`, `e2e-demo-payments` y
-`e2e-demo-booking` y `e2e-demo-channels`. Cada check falla si falla su comando; la matriz no
+`e2e-demo-booking`, `e2e-demo-channels` y `e2e-demo-account`. Cada check falla si falla su comando; la matriz no
 cancela las otras suites. Vitest escribe JUnit en CI. Playwright escribe JUnit,
 reporte HTML, screenshot y trace de fallos. Solo se suben los directorios de
 resultados, con retención de siete días; `.data` y `.env` no son artefactos.
