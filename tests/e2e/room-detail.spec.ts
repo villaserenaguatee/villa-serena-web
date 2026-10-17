@@ -24,7 +24,11 @@ for (const { name, viewport } of viewports) {
         await roomsMenu().click(); await page.getByRole('button', { name: `Abrir detalle de habitación ${number}`, exact: true }).click();
         await page.getByRole('dialog', { name: `Detalle de habitación ${number}`, exact: true }).getByRole('link', { name: 'Ver reserva completa' }).click();
         await expect(detail.getByRole('heading', { name: code, exact: true })).toBeVisible();
-        if (code !== 'VS-TEST01') { await expect(detail).toContainText('Deluxe · Habitación 105'); await expect(detail.getByRole('heading', { name: 'VS-TEST01', exact: true })).toHaveCount(0); }
+        if (code !== 'VS-TEST01') {
+          await expect(detail.getByText('Deluxe', { exact: true })).toBeVisible();
+          await expect(detail.getByText('Hab. 105', { exact: true })).toBeVisible();
+          await expect(detail.getByRole('heading', { name: 'VS-TEST01', exact: true })).toHaveCount(0);
+        }
       }
       await page.goto('/recepcion/habitaciones');
       await page.getByRole('button', { name: 'Abrir detalle de habitación 103', exact: true }).click();

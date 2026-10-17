@@ -84,11 +84,23 @@ export async function confirmCreation(page: Page, form: Locator): Promise<Reserv
 }
 
 export async function expectCalendarReservation(region: Locator, detail: ReservationDetail) {
-  // Both presentations render one button per occupied night in the selected month.
+  // Room view shows occupied nights; month view groups them into weekly bars.
   const days = [];
   for (let time = Date.parse(detail.entrada); time < Date.parse(detail.salida); time += 86400000) {
     const day = new Date(time).toISOString().slice(0, 10);
     if (day.slice(0, 7) === detail.entrada.slice(0, 7)) days.push(day);
   }
-  await expect(region.locator(`[data-reservation-code="${detail.codigo}"]`)).toHaveCount(detail.habitacion ? days.length : 0);
+  const events = region.locator(`[data-reservation-code="${detail.codigo}"]`);
+  const monthly = await region.getByRole('button', { name: 'Mes', exact: true }).getAttribute('aria-pressed') === 'true';
+  const weeks = new Set(days.map(day => {
+    const date = new Date(`${day}T12:00:00Z`);
+    date.setUTCDate(date.getUTCDate() - (date.getUTCDay() + 6) % 7);
+    return date.toISOString().slice(0, 10);
+  }));
+  await expect(events).toHaveCount(detail.habitacion ? monthly ? weeks.size : days.length : 0);
+  if (detail.habitacion && monthly) {
+    // Weekly bars must still cover every occupied night, excluding checkout.
+    await expect.poll(() => events.evaluateAll(elements => elements.reduce((nights, element) =>
+      nights + Number(element.getAttribute('data-end-column')) - Number(element.getAttribute('data-start-column')), 0))).toBe(days.length);
+  }
 }
