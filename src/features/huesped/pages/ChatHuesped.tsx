@@ -21,7 +21,7 @@ const PREGUNTAS_EN = [
   "I have another question",
 ];
 function Icono({ tipo, size = 28, }: {
-  tipo: "recepcion" | "clip" | "imagen" | "enviar";
+  tipo: "recepcion" | "enviar";
   size?: number;
 }) {
   const p = {
@@ -34,18 +34,6 @@ function Icono({ tipo, size = 28, }: {
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
   };
-  if (tipo === "clip") {
-    return (<svg {...p}>
-      <path d="m21.4 11.6-8.8 8.8a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5" />
-    </svg>);
-  }
-  if (tipo === "imagen") {
-    return (<svg {...p}>
-      <rect x="3" y="4" width="18" height="16" rx="2" />
-      <circle cx="8.5" cy="9" r="1.4" />
-      <path d="m21 16-5-5-7 7" />
-    </svg>);
-  }
   if (tipo === "enviar") {
     return (<svg {...p}>
       <path d="m22 2-7 20-4-9-9-4Z" />
@@ -58,7 +46,8 @@ function Icono({ tipo, size = 28, }: {
     <path d="M9 19h6" stroke="white" />
   </svg>);
 }
-export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEditar, onEliminar, }: {
+export default function ChatHuesped({ habilitado, nombreHuesped, mensajes, onEnviar, onEditar, onEliminar, }: {
+  habilitado: boolean;
   nombreHuesped: string;
   mensajes: MensajeChat[];
   onEnviar: (texto: string) => void | Promise<void>;
@@ -68,7 +57,6 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
   const ui = useUiText();
   const { en } = usePublicLanguage();
   const [texto, setTexto] = useState("");
-  const [archivo, setArchivo] = useState<string | null>(null);
   const [mostrarPreguntas, setMostrarPreguntas] = useState(true);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -76,7 +64,7 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
   const [eliminarId, setEliminarId] = useState<string | null>(null);
   const mensajesVisibles = mensajes.filter((m) => !m.eliminadoPara?.includes("huesped"));
   function enviar(valor = texto.trim()) {
-    if (!valor)
+    if (!habilitado || !valor)
       return;
     void onEnviar(valor);
     setTexto("");
@@ -172,6 +160,7 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
               {(en ? PREGUNTAS_EN : PREGUNTAS_ES).map((pregunta) => (<button
                 key={pregunta}
                 type="button"
+                disabled={!habilitado}
                 onClick={() => enviar(pregunta)}
                 className="flex min-h-10 items-center justify-between rounded-xl border border-[#E1E4E8] bg-white px-3 py-2 text-left text-[12px] font-medium text-[#18345C] shadow-sm transition hover:border-[#B38B2C] hover:bg-[#FFFDF7]">
                 <span>
@@ -280,23 +269,7 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
 
         <footer className="border-t border-[#E5E0D8] bg-white px-4 py-3 sm:px-5">
 
-          {archivo && (<div className="mb-3 rounded-lg bg-[#F8F6F0] px-3 py-2 text-sm text-[#52677F]">
-            {archivo}
-          </div>)}
-
           <div className="flex items-center gap-3">
-
-            <label className="cursor-pointer text-[#18345C]" title={ui("Adjuntar archivo")}>
-              <input type="file" className="hidden" onChange={(e) => setArchivo(e.target.files?.[0]?.name ?? null)} />
-
-              <Icono tipo="clip" size={29} />
-            </label>
-
-            <label className="cursor-pointer text-[#18345C]" title={ui("Adjuntar imagen")}>
-              <input type="file" className="hidden" accept="image/*" onChange={(e) => setArchivo(e.target.files?.[0]?.name ?? null)} />
-
-              <Icono tipo="imagen" size={28} />
-            </label>
 
             <input
               value={texto}
@@ -308,13 +281,14 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
                   enviar();
                 }
               }}
+              disabled={!habilitado}
               placeholder={ui("Escribe un mensaje...")}
               className="min-w-0 flex-1 rounded-xl border border-[#DCDCDC] bg-white px-4 py-3 text-[14px] text-[#18345C] outline-none focus:border-[#18345C]" />
 
             <button
               type="button"
               onClick={() => enviar()}
-              disabled={!texto.trim()}
+              disabled={!habilitado || !texto.trim()}
               className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#18345C] text-white disabled:cursor-not-allowed disabled:opacity-40">
               <Icono tipo="enviar" size={31} />
             </button>

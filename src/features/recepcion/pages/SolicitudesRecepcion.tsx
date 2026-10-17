@@ -1,9 +1,10 @@
+import ReceptionCloseButton from './ReceptionCloseButton';
 import { confirmarTarifaTransporte as confirmarTarifaCanonica, leerTransportes } from "@/store/transportStore";
 import { useEffect, useMemo, useState } from 'react';
 import type { SolicitudHuesped, Huesped, Reserva, EstadoSolicitudHuesped, PrioridadSolicitud, AreaSolicitud, } from '@/lib/pms/types';
 import { formatoFechaHora } from '@/data/pms';
 import { guardarReservas, leerReservas } from '@/store/reservationStore';
-import { Chip, SOLICITUD_META, PRIORIDAD_META, Campo, INPUT_CLS, PlusIcon, CloseIcon, } from '@/features/recepcion/pages/recUtils';
+import { Chip, SOLICITUD_META, PRIORIDAD_META, Campo, INPUT_CLS, PlusIcon, } from '@/features/recepcion/pages/recUtils';
 const PRIORIDADES: PrioridadSolicitud[] = ['alta', 'media', 'baja'];
 const TIPOS_SOLICITUD: {
   nombre: string;
@@ -350,9 +351,7 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
             <h2 className="text-xl font-semibold text-[#18345C]">Solicitud de extensión</h2>
             <p className="text-sm text-[#71839B]">Revisa disponibilidad, fechas e importe.</p>
           </div>
-          <button onClick={() => setDetalleExtension(false)} className="text-[#93A3B3]">
-            <CloseIcon />
-          </button>
+          <ReceptionCloseButton onClick={() => setDetalleExtension(false)} />
         </header>
         <div className="grid gap-3 p-5 sm:grid-cols-2 text-sm">
           <div>
@@ -408,9 +407,7 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
       <div className="relative z-10 bg-[#FFFEFC] rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#E5E0D8] sticky top-0 bg-white">
           <h2 className="text-[22px] font-semibold text-[#18345C]">Nueva solicitud</h2>
-          <button onClick={() => setCreando(false)} className="text-[#AEBCC1] hover:text-[#1F2933] p-1">
-            <CloseIcon />
-          </button>
+          <ReceptionCloseButton onClick={() => setCreando(false)} />
         </div>
 
         <div className="px-5 py-4 space-y-3">

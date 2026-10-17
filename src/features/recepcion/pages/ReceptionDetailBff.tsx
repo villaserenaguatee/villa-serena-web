@@ -1,3 +1,12 @@
+import { ArrowLeft } from 'lucide-react';
+import ReceptionActionDialog from './ReceptionActionDialog';
+import ReceptionCloseButton from './ReceptionCloseButton';
+import DocumentosCheckIn from './DocumentosCheckIn';
+import { leerReservas, RESERVAS_EVENT } from '@/store/reservationStore';
+import { leerHuespedes } from '@/store/guestStore';
+import { RESERVAS_INICIALES } from '@/data/pms';
+import type { Reserva } from '@/lib/pms/types';
+import ReservationTags from './ReservationTags';
 import { useEffect, useState } from 'react';
 import { assignRoom, cancelReservation, getAssignableRooms, getCancellationPreview, getReservation, getRooms } from '@/lib/api/reception';
 import { canAssign, canCancel, channelLabels, isExternal, reservationLabels } from '@/lib/receptionPresentation';
@@ -7,13 +16,33 @@ import type { CancellationPreview, ReservationDetail, RoomReference, RoomState }
 import { publicRoomForHotelType } from '@/data/publicRooms';
 import type { TipoHabitacion } from '@/lib/pms/types';
 const control = 'rounded-md border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#18345C]';
+const compactPrimary = 'rounded-md bg-[#18345C] px-3 py-1.5 text-sm text-white disabled:opacity-50';
+const compactControl = 'rounded-md border border-[#E5E0D8] bg-white px-3 py-1.5 text-sm text-[#18345C]';
 const primary = 'rounded-md bg-[#18345C] px-4 py-2 text-white disabled:opacity-50';
 export type ExistingAction = 'check-in' | 'cuenta' | 'check-out';
 export default function ReceptionDetailBff({ codigo, onCerrar, onExistingAction }: { codigo: string; onCerrar: () => void; onExistingAction: (detail: ReservationDetail, action: ExistingAction) => void }) {
   const [detail, setDetail] = useState<ReservationDetail | null>(null), [rooms, setRooms] = useState<RoomState[]>([]);
   const [error, setError] = useState(''), [busy, setBusy] = useState(false), [notice, setNotice] = useState(''), [reload, setReload] = useState(0);
   const [preview, setPreview] = useState<CancellationPreview | null>(null), [reason, setReason] = useState('');
-  const [options, setOptions] = useState<RoomReference[] | null>(null), [selected, setSelected] = useState('');
+  const [options, setOptions] = useState<RoomReference[] | null>(null), [selected, setSelected] = useState(''), [floor, setFloor] = useState('');
+  const [localCheckIn, setLocalCheckIn] = useState<Reserva['checkInWeb']>();
+  useEffect(() => {
+    const sync = () => {
+      if (!detail) { setLocalCheckIn(undefined); return; }
+      const fixture = /^VS-TEST0([1-8])$/.exec(detail.codigo);
+      const originalId = fixture ? RESERVAS_INICIALES[Number(fixture[1]) - 1]?.id : undefined;
+      const reservation = leerReservas().find(r => r.codigoBff === detail.codigo || r.codigo === detail.codigo)
+        ?? leerReservas().find(r => originalId && r.id === originalId && !r.codigoBff);
+      const guest = reservation && leerHuespedes().find(g => g.id === reservation.huespedId);
+      const sameGuest = guest && guest.documento === detail.huesped.numeroDocumento
+        && (guest.tipoDocumento === 'DPI' ? 'DPI' : 'PASAPORTE') === detail.huesped.tipoDocumento;
+      setLocalCheckIn(sameGuest ? reservation?.checkInWeb : undefined);
+    };
+    sync();
+    window.addEventListener(RESERVAS_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => { window.removeEventListener(RESERVAS_EVENT, sync); window.removeEventListener('storage', sync); };
+  }, [detail]);
   useEffect(() => {
     const controller = new AbortController(); setDetail(null); setError(''); setPreview(null); setOptions(null);
     Promise.all([getReservation(codigo, controller.signal), getRooms(undefined, controller.signal)]).then(([value, list]) => { if (!controller.signal.aborted) { setDetail(value); setRooms(list); } }).catch(e => { if (!controller.signal.aborted) setError(e.message); });
@@ -30,28 +59,39 @@ export default function ReceptionDetailBff({ codigo, onCerrar, onExistingAction 
   const arrivalReason = detail?.estado === 'CONFIRMADA' && !checkIn ? !detail.habitacion ? 'Asigna una habitación antes del check-in.' : detail.entrada > today || today >= detail.salida ? 'El check-in se permite entre la entrada y el día anterior a la salida.' : 'El check-in requiere una habitación libre y limpia.' : '';
   return <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4">
     <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
-    <section role="dialog" aria-modal="true" aria-label="Detalle de reserva" className="relative flex max-h-[90vh] w-full flex-col rounded-t-2xl bg-white text-[#18345C] shadow-2xl sm:max-w-5xl sm:rounded-2xl">
-      <header className="flex items-center justify-between gap-3 border-b border-[#E5E0D8] px-5 py-3"><div><h2 className="text-2xl font-semibold">{codigo}</h2><p className="text-sm">Detalle de reserva · datos de prueba del BFF</p></div><button className={control} aria-label="Cerrar detalle de reserva" onClick={onCerrar}>Cerrar</button></header>
-      <div className="space-y-5 overflow-y-auto p-4 sm:p-5">
+    <section role="dialog" aria-modal="true" aria-label="Detalle de reserva" className="reception-compact relative flex max-h-[90vh] w-full flex-col rounded-t-2xl bg-white text-[#18345C] shadow-2xl sm:max-w-[740px] sm:rounded-2xl">
+      <header className="flex items-center justify-between gap-3 border-b border-[#E5E0D8] px-5 py-3"><button type="button" aria-label="Regresar" onClick={onCerrar} className="grid h-11 w-11 shrink-0 place-items-center rounded-md hover:bg-[#F8F6F0]"><ArrowLeft size={20} /></button><div className="flex-1"><h2 className="text-2xl font-semibold">{codigo}</h2><p className="text-sm">Detalle de reserva</p></div><ReceptionCloseButton  onClick={onCerrar} /></header>
+      <div className="space-y-3 overflow-y-auto p-4">
         {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-800">{error}</p>}{notice && <p role="status" className="rounded-lg bg-green-50 p-3">{notice}</p>}
         <button className={control} disabled={busy} onClick={() => setReload(n => n + 1)}>Consultar estado otra vez</button>
         {!detail && !error && <p>Consultando detalle…</p>}
         {detail && <>
-          <div className="grid gap-4 rounded-xl bg-[#F8F6F0] p-4 sm:grid-cols-2"><img className="h-40 w-full rounded-xl object-cover" src={publicRoomForHotelType(detail.tipoHabitacion.nombre as TipoHabitacion).image} alt={detail.tipoHabitacion.nombre} /><div className="space-y-1 break-words"><h3 className="text-xl font-semibold">{detail.huesped.nombreCompleto}</h3><p>{reservationLabels[detail.estado]}</p><p>{formatoFecha(detail.entrada)} → {formatoFecha(detail.salida)} · {detail.noches} noches · {detail.numeroHuespedes} huéspedes</p><p>{detail.tipoHabitacion.nombre} · {detail.habitacion ? `Habitación ${detail.habitacion.numero}` : 'Sin asignar'}</p><p>Canal: {channelLabels[detail.canal]}</p>{detail.identificadorExterno && <p className="break-all">Identificador externo: {detail.identificadorExterno}</p>}<p>Total: Q {detail.total.toFixed(2)} · Saldo pendiente: Q {detail.saldoPendiente.toFixed(2)}</p></div></div>
+          <div className="grid gap-3 rounded-xl bg-[#F8F6F0] p-3 sm:grid-cols-[160px_minmax(0,1fr)]"><img className="h-24 w-full rounded-xl object-cover" src={publicRoomForHotelType(detail.tipoHabitacion.nombre as TipoHabitacion).image} alt={detail.tipoHabitacion.nombre} /><div className="space-y-1 break-words"><h3 className="text-xl font-semibold">{detail.huesped.nombreCompleto}</h3><ReservationTags state={detail.estado} label={reservationLabels[detail.estado]} room={detail.habitacion?.numero} category={detail.tipoHabitacion.nombre} origin={channelLabels[detail.canal]} /><p>{formatoFecha(detail.entrada)} → {formatoFecha(detail.salida)} · {detail.noches} noches · {detail.numeroHuespedes} huéspedes</p>{detail.identificadorExterno && <p className="break-all">Identificador externo: {detail.identificadorExterno}</p>}<p>Total: Q {detail.total.toFixed(2)} · Saldo pendiente: Q {detail.saldoPendiente.toFixed(2)}</p></div></div>
           <section className="rounded-xl border border-[#E5E0D8] p-4"><h3 className="text-lg font-semibold">Datos del huésped</h3><p className="break-all">{detail.huesped.correo} · {detail.huesped.telefono}</p><p>{detail.huesped.nacionalidad} · {detail.huesped.tipoDocumento} {detail.huesped.numeroDocumento}</p><h4 className="mt-3 font-semibold">Huéspedes adicionales</h4>{detail.huespedesAdicionales.length ? detail.huespedesAdicionales.map(g => <p key={g.id}>{g.nombreCompleto} · {g.tipoDocumento} {g.numeroDocumento} · {g.nacionalidad}</p>) : <p>No hay huéspedes adicionales registrados.</p>}</section>
           {isExternal(detail) && <p className="rounded-lg bg-[#FFF9E8] p-3">Las reservas de canal no se cancelan desde el sistema.</p>}
+          {localCheckIn && (localCheckIn.documentos?.length || localCheckIn.documento) && <section className="rounded-xl border border-[#E5E0D8] p-3"><h3 className="mb-2 text-lg font-semibold">Documentos del check-in</h3><DocumentosCheckIn checkInWeb={localCheckIn} tipoDocumento={detail.huesped.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte'} /></section>}
           {detail.estado === 'EN_ESTADIA' && <p>No se puede cambiar la habitación durante la estadía.</p>}
           {arrivalReason && <p>{arrivalReason}</p>}
           <div className="flex flex-wrap gap-2">
-            {canAssign(detail) && <button className={primary} disabled={busy} onClick={() => void run(async () => { setOptions(await getAssignableRooms(detail)); setSelected(''); setPreview(null); })}>{detail.habitacion ? 'Cambiar habitación' : 'Asignar habitación'}</button>}
-            {canCancel(detail) && <button className={control} disabled={busy} onClick={() => void run(async () => { setPreview(await getCancellationPreview(detail.codigo)); setOptions(null); })}>Cancelar reserva</button>}
+            {canAssign(detail) && <button className={compactPrimary} disabled={busy} onClick={() => void run(async () => { setOptions(await getAssignableRooms(detail)); setSelected(''); setFloor(''); setPreview(null); })}>{detail.habitacion ? 'Cambiar habitación' : 'Asignar habitación'}</button>}
+            {canCancel(detail) && <button className={compactControl} disabled={busy} onClick={() => void run(async () => { setPreview(await getCancellationPreview(detail.codigo)); setOptions(null); })}>Cancelar reserva</button>}
             {checkIn && <button className={primary} disabled={busy} onClick={() => onExistingAction(detail, 'check-in')}>Ir a check-in</button>}
-            {['CONFIRMADA', 'EN_ESTADIA', 'FINALIZADA'].includes(detail.estado) && <button className={control} disabled={busy} onClick={() => onExistingAction(detail, 'cuenta')}>Ver cuenta</button>}
+            {['CONFIRMADA', 'EN_ESTADIA', 'FINALIZADA'].includes(detail.estado) && <button className={compactPrimary} disabled={busy} onClick={() => onExistingAction(detail, 'cuenta')}>Ver cuenta</button>}
             {detail.estado === 'EN_ESTADIA' && <button className={primary} disabled={busy} onClick={() => onExistingAction(detail, 'check-out')}>Ir a check-out</button>}
           </div>
-          {detail.estado === 'FINALIZADA' && <p className="text-sm">La consulta e impresión de una factura emitida está pendiente de integración.</p>}
-          {options && <form className="space-y-3 rounded-xl border border-[#E5E0D8] p-4" onSubmit={e => { e.preventDefault(); void run(async () => { setDetail(await assignRoom(codigo, Number(selected))); setOptions(null); setNotice('Habitación asignada en la simulación.'); }); }}><h3 className="font-semibold">Habitaciones permitidas por el BFF</h3><p className="text-sm">Mismo tipo, sin traslapes y sin estar fuera de servicio. No se exige limpieza para asignar.</p>{options.length ? <><label className="block">Habitación<select aria-label="Habitación" required className={`${control} ml-2`} value={selected} onChange={e => setSelected(e.target.value)}><option value="">Seleccionar</option>{options.map(r => <option key={r.id} value={r.id}>{r.numero} · piso {r.piso}</option>)}</select></label><button className={primary} disabled={busy || !selected}>Guardar asignación</button></> : <p>No hay habitaciones permitidas para esta reserva.</p>}</form>}
-          {preview && <form className="space-y-3 rounded-xl border border-[#E5E0D8] p-4" onSubmit={e => { e.preventDefault(); if (!reason.trim()) { setError('Escribe el motivo de cancelación.'); return; } void run(async () => { setDetail(await cancelReservation(codigo, reason)); setPreview(null); setNotice('Reserva cancelada en la simulación. No se devolvió dinero real.'); }); }}><h3 className="font-semibold">Antes de confirmar la cancelación</h3><p>{preview.resultado === 'REEMBOLSO_TOTAL' ? `Corresponde un reembolso total de prueba de Q ${preview.montoReembolso.toFixed(2)} (48 horas o más antes de las 15:00 de llegada).` : preview.resultado === 'SIN_REEMBOLSO' ? 'No corresponde reembolso: faltan menos de 48 horas para las 15:00 de llegada.' : 'Esta reserva no tiene pagos; no hay dinero que reembolsar.'}</p><p>Resultado calculado por el BFF. Esta prueba no devuelve dinero realmente.</p><label className="block">Motivo de cancelación<textarea required maxLength={500} className={`${control} mt-1 w-full`} value={reason} onChange={e => setReason(e.target.value)} /></label><button className={primary} disabled={busy}>Confirmar cancelación de prueba</button><button type="button" className={`${control} ml-2`} disabled={busy} onClick={() => setPreview(null)}>Volver</button></form>}
+          {detail.estado === 'FINALIZADA' && <p className="text-sm">La factura emitida no está disponible para consultar o imprimir.</p>}
+          {options && <ReceptionActionDialog title={detail.habitacion ? 'Cambiar habitación' : 'Asignar habitación'} busy={busy} onClose={() => { setOptions(null); setError(''); }}>
+            <form className="space-y-3" onSubmit={e => { e.preventDefault(); if (!options.some(r => String(r.id) === selected && String(r.piso) === floor)) return; void run(async () => { setDetail(await assignRoom(codigo, Number(selected))); setOptions(null); setNotice('Habitación asignada.'); }); }}>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">Piso<select aria-label="Piso" required className={`${control} mt-1 w-full`} value={floor} onChange={e => { setFloor(e.target.value); setSelected(''); }}><option value="">Seleccionar</option>{[...new Set(options.map(r => r.piso))].sort((a, b) => a - b).map(p => <option key={p} value={p}>{p}</option>)}</select></label>
+                <label className="block">Habitación<select aria-label="Habitación" required disabled={!floor} className={`${control} mt-1 w-full`} value={selected} onChange={e => setSelected(e.target.value)}><option value="">Seleccionar</option>{options.filter(r => String(r.piso) === floor).map(r => <option key={r.id} value={r.id}>{r.numero}</option>)}</select></label>
+              </div>
+              {!options.length && <p>No hay habitaciones permitidas para esta reserva.</p>}
+              <button className={primary} disabled={busy || !selected}>Guardar asignación</button><button type="button" className={control} disabled={busy} onClick={() => { setOptions(null); setError(''); }}>Cancelar</button>
+              {error && <p role="alert" className="text-sm text-red-800">{error}</p>}
+            </form>
+          </ReceptionActionDialog>}
+          {preview && <ReceptionActionDialog title="Cancelar reserva" busy={busy} onClose={() => { setPreview(null); setError(''); }}><form className="space-y-3" onSubmit={e => { e.preventDefault(); if (!reason.trim()) { setError('Escribe el motivo de cancelación.'); return; } void run(async () => { setDetail(await cancelReservation(codigo, reason)); setPreview(null); setNotice('Reserva cancelada.'); }); }}><p>{preview.resultado === 'REEMBOLSO_TOTAL' ? `Corresponde un reembolso total de Q ${preview.montoReembolso.toFixed(2)} (48 horas o más antes de las 15:00 de llegada).` : preview.resultado === 'SIN_REEMBOLSO' ? 'No corresponde reembolso: faltan menos de 48 horas para las 15:00 de llegada.' : 'Esta reserva no tiene pagos; no hay dinero que reembolsar.'}</p><label className="block">Motivo de cancelación<textarea required maxLength={500} className={`${control} mt-1 w-full`} value={reason} onChange={e => setReason(e.target.value)} /></label><button className={primary} disabled={busy}>Confirmar cancelación</button><button type="button" className={`${control} ml-2`} disabled={busy} onClick={() => { setPreview(null); setError(''); }}>Cancelar</button>{error && <p role="alert" className="text-sm text-red-800">{error}</p>}</form></ReceptionActionDialog>}
           <section className="rounded-xl border border-[#E5E0D8] p-4"><h3 className="mb-3 text-lg font-semibold">Historial de estados</h3><ol className="space-y-3">{detail.historial.map((h, i) => <li key={i} className="border-l-2 border-[#D6B96A] pl-3"><p>{h.estadoAnterior ? reservationLabels[h.estadoAnterior] : 'Creación'} → {reservationLabels[h.estadoNuevo]}</p><p className="text-sm">{new Intl.DateTimeFormat('es-GT', { timeZone: 'America/Guatemala', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(h.fechaHora))} · {h.responsable}</p>{h.motivo && <p className="break-words">{h.motivo}</p>}</li>)}</ol></section>
         </>}
       </div>

@@ -193,6 +193,7 @@ export interface Reserva {
   estado: EstadoReserva;
   acompanantes: Acompanante[];
   servicios: ServicioAdicional[];
+  cargosAnulados?: (ServicioAdicional & { motivo: string; fechaAnulacion: string })[];
   pagos: Pago[];
   descuento: number;
   checkInEn?: string;

@@ -26,22 +26,22 @@ for (const { name, viewport } of viewports) {
           await expect(dialog).toContainText(detail.huesped.nombreCompleto); await expect(dialog).toContainText(detail.tipoHabitacion.nombre);
           await expect(dialog).toContainText(detail.habitacion?.numero ?? 'Sin asignar');
           expect(await (await context.request.get(`/api/reservas/${detail.codigo}`)).json()).toEqual(detail);
-          await dialog.getByRole('button', { name: 'Cerrar detalle de reserva', exact: true }).click();
+          await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
           const region = await calendar(page, detail.entrada);
           const event = region.locator(`[data-reservation-code="${detail.codigo}"]`);
           await expectCalendarReservation(region, detail);
           if (assigned) {
             await event.first().click(); await expect(dialog).toContainText(detail.codigo);
-            await dialog.getByRole('button', { name: 'Cerrar detalle de reserva' }).click();
+            await dialog.getByRole('button', { name: 'Cerrar' }).click();
           }
           await region.getByRole('button', { name: 'Habitaciones', exact: true }).click();
           await expectCalendarReservation(region, detail);
           await page.goto('/recepcion/reservas');
-          for (const [field, value] of [['Nombre o documento', 'Ana'], ['Código de reserva', detail.codigo]]) {
-            await page.getByLabel('Nombre o documento', { exact: true }).fill(field === 'Nombre o documento' ? value : '');
+          for (const [field, value] of [['Buscar por nombre o documento', 'Ana'], ['Código de reserva', detail.codigo]]) {
+            await page.getByLabel('Buscar por nombre o documento', { exact: true }).fill(field === 'Buscar por nombre o documento' ? value : '');
             await page.getByLabel('Código de reserva', { exact: true }).fill(field === 'Código de reserva' ? value : '');
             const search = page.waitForResponse(r => new URL(r.url()).pathname === '/api/reservas' && r.request().method() === 'GET' &&
-              new URL(r.url()).searchParams.get(field === 'Nombre o documento' ? 'texto' : 'codigo') === value);
+              new URL(r.url()).searchParams.get(field === 'Buscar por nombre o documento' ? 'texto' : 'codigo') === value);
             await page.getByRole('button', { name: 'Buscar', exact: true }).click();
             const result: ReservationPage = await (await search).json(); expect(result.contenido.filter(r => r.codigo === detail.codigo)).toHaveLength(1);
             await expect(page.getByRole('button').filter({ hasText: detail.codigo })).toBeVisible();

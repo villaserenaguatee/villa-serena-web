@@ -1,3 +1,4 @@
+import ReceptionCloseButton from './ReceptionCloseButton';
 import { useMemo, useState } from 'react';
 import type { HabitacionHotel, Huesped, Reserva } from '@/lib/pms/types';
 type Area = 'Limpieza' | 'Room Service' | 'Mantenimiento';
@@ -102,7 +103,7 @@ export default function ReportesRecepcion({ habitaciones, reservas, huespedes }:
       <section className="w-full max-w-lg rounded-2xl border border-[#E1DDD4] bg-white shadow-2xl">
         <header className="flex justify-between border-b px-4 py-3">
           <h2 className="text-xl font-semibold text-[#18345C]">Nuevo reporte</h2>
-          <button onClick={() => setAbierto(false)} aria-label="Cerrar nuevo reporte">×</button>
+          <ReceptionCloseButton onClick={() => setAbierto(false)} />
         </header>
         <div className="grid gap-3 p-4 sm:grid-cols-2">
           <label>Piso<select

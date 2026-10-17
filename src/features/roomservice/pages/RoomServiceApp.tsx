@@ -461,7 +461,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
         <div className="px-4 pt-5 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
           <img src="/villa-serena-logo.png" alt="Villa Serena" className="h-32 w-44 object-contain mx-auto mb-2" />
           <p className="text-white text-xl font-bold leading-tight" style={{ letterSpacing: '0.02em' }}>Villa Serena</p>
-          <p className="text-xs mt-1" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>
+          <p className="mt-2 text-xl font-semibold leading-6" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>
             Room Service
           </p>
         </div>
@@ -489,10 +489,10 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
           })}
         </div>
 
-        <div className="mt-auto px-4 py-5 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
+        <div className="mt-auto px-4 py-2 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
           <button
             onClick={() => setPerfilAbierto(true)}
-            className="w-full flex items-center gap-3 rounded-lg p-2 text-left hover:bg-[#18345C] transition-colors"
+            className="w-full min-h-16 flex items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-[#18345C] transition-colors"
             title="Abrir mi perfil">
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
@@ -502,7 +502,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
                 {encargadoRS}
               </p>
               <p className="text-[10px] truncate" style={{ color: '#AEBCC1' }}>Room Service · turno de {turno}</p>
-              <p className="text-[10px] mt-0.5" style={{ color: '#D8B94E' }}>Abrir perfil</p>
+              <p className="text-[14px] leading-5 no-underline" style={{ color: '#D8B94E' }}>Perfil</p>
             </div>
           </button>
         </div>
