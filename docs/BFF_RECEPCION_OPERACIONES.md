@@ -60,15 +60,13 @@ Los cambios propios de esta rama corresponden únicamente a #8.
 
 Pruebas del servidor/BFF: filtros, contrato, historial, permisos, Origin, límite
 exacto de 48 horas, cancelación, rechazo atómico, repetición, asignación y condición.
-El script `scripts/test-reception-operations-browser.cjs` comprueba computadora
+La suite `tests/e2e/reception-operations.spec.ts` comprueba computadora
 (1440 px) y móvil (390 px), incluidas entradas inválidas sin búsqueda, acciones,
 reservas de canal, cancelaciones, asignación y filtros de habitaciones.
-Para repetirlo se necesita un archivo de prueba nuevo al iniciar Next.js, por ejemplo:
+Playwright administra Next y restaura datos demo aislados antes de cada caso:
 
 ```powershell
-$env:VILLA_SERENA_RECEPTION_DEMO_PATH = '.data/issue8-prueba-nueva.json'
-npx.cmd pnpm@12.0.0 dev --port 3008
-node scripts/test-reception-operations-browser.cjs
+pnpm exec playwright test tests/e2e/reception-operations.spec.ts
 ```
 
 ## Pendiente

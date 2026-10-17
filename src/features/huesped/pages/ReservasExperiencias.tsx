@@ -233,6 +233,14 @@ const OPCIONES: Opcion[] = [
 export function puedeCrearExperiencia(reservaId: string, huespedId: string) {
   return leerReservas().some(r => r.id === reservaId && r.huespedId === huespedId && r.estado === "en-curso");
 }
+export function crearExperienciaLocal(id: string, reservaId: string, huespedId: string,
+  opcion: Pick<Opcion, "nombre" | "precio">, fecha: string, hora: string, personas: number) {
+  return {
+    id, reservaId, huespedId, nombre: opcion.nombre,
+    fecha: fecha || "Por coordinar", hora: hora || "Por coordinar",
+    personas, precio: opcion.precio, estado: "Pendiente",
+  };
+}
 export default function ReservasExperiencias({ reserva, huespedId, turnos, reservas, onReservar, onCancelar, onCargoConfirmado, }: {
   reserva: Reserva;
   huespedId: string;
@@ -253,7 +261,7 @@ export default function ReservasExperiencias({ reserva, huespedId, turnos, reser
   const [personas, setPersonas] = useState(1);
   const [nota, setNota] = useState("");
   const [mis, setMis] = useState(!disponible);
-  const [locales, setLocales] = useState<any[]>([]);
+  const [locales, setLocales] = useState<ReturnType<typeof crearExperienciaLocal>[]>([]);
   const lista = OPCIONES.filter((x) => cat === "Todos" || x.categoria === cat);
   const turnosArea = useMemo(() => activo?.area
     ? turnos.filter((t) => t.area === activo.area)
@@ -285,17 +293,7 @@ export default function ReservasExperiencias({ reserva, huespedId, turnos, reser
     }
     else {
       setLocales((v) => [
-        {
-          id,
-          reservaId: reserva.id,
-          huespedId,
-          nombre: activo.nombre,
-          fecha: fecha || "Por coordinar",
-          hora: hora || "Por coordinar",
-          personas,
-          precio: activo.precio,
-          estado: "Pendiente",
-        },
+        crearExperienciaLocal(id, reserva.id, huespedId, activo, fecha, hora, personas),
         ...v,
       ]);
     }

@@ -94,7 +94,7 @@ export async function guestRoute(request: NextRequest, segments: string[]) {
         const codigo = String(randomInt(100000, 1000000));
         store.codes.set(correo, { hash: hash(codigo), expires: now + 600000, failures: previous?.blockedUntil && previous.blockedUntil <= now ? 0 : previous?.failures ?? 0, blockedUntil: 0 });
         // Bandeja de prueba exclusiva del servidor; nunca se devuelve el código al navegador.
-        const folder = resolve(process.cwd(), '.data/guest-outbox'); mkdirSync(folder, { recursive: true });
+        const folder = process.env.VILLA_SERENA_GUEST_OUTBOX_PATH ?? resolve(process.cwd(), '.data/guest-outbox'); mkdirSync(folder, { recursive: true });
         writeFileSync(resolve(folder, `${hash(correo)}.json`), JSON.stringify({ correo, codigo, expiraEn: new Date(now + 600000).toISOString() }), { mode: 0o600 });
       }
       return NextResponse.json({ mensaje: 'Si el correo tiene reservas, recibirás un código para entrar.' }, { headers: { 'Cache-Control': 'no-store' } });

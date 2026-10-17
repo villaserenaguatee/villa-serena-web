@@ -34,11 +34,11 @@ export function LimpiezaRoleApp({ conectado = false }: { conectado?: boolean }) 
 }
 export function AdminRoleApp() {
   return <RoleGuard role="admin">
-    <AdminApp onCambiarModulo={noop} />
+    <ScopedI18nProvider><AdminApp onCambiarModulo={noop} /></ScopedI18nProvider>
   </RoleGuard>;
 }
 export function MantenimientoRoleApp() {
   return <RoleGuard role="mantenimiento">
-    <MantenimientoApp onCambiarModulo={noop} />
+    <ScopedI18nProvider><MantenimientoApp onCambiarModulo={noop} /></ScopedI18nProvider>
   </RoleGuard>;
 }

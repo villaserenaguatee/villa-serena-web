@@ -131,7 +131,7 @@ test('real concurrent Node processes sharing a file do not oversell', async () =
     const childEnv: NodeJS.ProcessEnv = { ...process.env, TEST_BOOKING: JSON.stringify(value) };
     delete childEnv.NODE_TEST_CONTEXT;
     const outputFile = join(directory, `result-${value.requestId}`);
-    const child = spawn(process.execPath, ['--import', './tests/bff/register.mjs', 'tests/bff/fixtures/create-booking.mjs', outputFile],
+    const child = spawn(process.execPath, ['--experimental-transform-types', '--import', './tests/bff/register.mjs', 'tests/bff/fixtures/create-booking.mjs', outputFile],
       { cwd: process.cwd(), env: childEnv });
     let errors = ''; child.stderr.on('data', v => errors += v);
     child.on('error', reject); child.on('close', code => {

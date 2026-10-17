@@ -46,7 +46,8 @@ Las reservas del canal se guardan en el almacenamiento de prueba del BFF públic
 ## Comprobaciones y pendiente
 
 - `node --import ./tests/bff/register.mjs --test --test-isolation=none tests/bff/*.test.ts`: resultados, estados inconsistentes, regreso sin confirmación, reintentos, 201/200, concurrencia, permisos, renovación, Origin, datos inválidos, cupo compartido, almacenamiento corrupto y separación del modo real.
-- `node scripts/test-payment-channel-browser.cjs`: computadora y móvil; vistas, expiración, reintento, límite de consultas, roles, formulario, repetición capturada y ausencia de una clave de prueba en HTML/JS, peticiones, respuestas y almacenamiento. Servidor en puerto 3006; puede cambiarse con `ISSUE6_TEST_URL`. Evidencias locales en `.next-dev/issue6-evidence`.
+- Reemplazo implementado, pendiente de CI: `pnpm test:payments:browser` y `pnpm test:channels:browser` (reportes separados y servidor demo aislado). Se conserva el origen hasta validar equivalencia.
+- Referencia histórica conservada, `node scripts/test-payment-channel-browser.cjs`: computadora y móvil; vistas, expiración, reintento, límite de consultas, roles, formulario, repetición capturada y ausencia de una clave de prueba en HTML/JS, peticiones, respuestas y almacenamiento. Servidor en puerto 3006; puede cambiarse con `ISSUE6_TEST_URL`. Evidencias locales en `.next-dev/issue6-evidence`.
 - El script de reserva pública existente se actualizó al título “Pago en proceso” para comprobar el recorrido completo sin cambiar sus datos ni su comportamiento de tarjeta.
 - Verificación realizada: 67 pruebas del BFF aprobadas, ambos scripts de navegador aprobados en computadora/móvil, TypeScript sin errores, 60 claves de traducción coincidentes y compilación de producción aprobada.
 

@@ -1,16 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { NextRequest } from 'next/server';
 import { guestRoute, guestPortalData, DEMO_GUEST_EMAIL, GUEST_COOKIE } from '@/lib/bff/guestAccess';
 const base = 'http://localhost:3035';
 const digest = (s: string) => createHash('sha256').update(s).digest('hex');
 function post(route: string, input: object) { return guestRoute(new NextRequest(`${base}/api/app/${route}`, { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' }, body: JSON.stringify(input) }), route.split('/')); }
-const outboxCode = () => JSON.parse(readFileSync(`.data/guest-outbox/${digest(DEMO_GUEST_EMAIL)}.json`, 'utf8')).codigo;
+const outboxCode = () => JSON.parse(readFileSync(join(process.env.VILLA_SERENA_GUEST_OUTBOX_PATH!, `${digest(DEMO_GUEST_EMAIL)}.json`), 'utf8')).codigo;
 test('OTP: respuesta genérica, vencimiento, uso único, bloqueo y renovación privada', async () => {
-  const realNow = Date.now; let clock = realNow(); Date.now = () => clock;
+  const realNow = Date.now; let clock = realNow();
+  const originalOutbox = process.env.VILLA_SERENA_GUEST_OUTBOX_PATH;
+  const outbox = mkdtempSync(join(tmpdir(), 'issue48-guest-outbox-'));
+  process.env.VILLA_SERENA_GUEST_OUTBOX_PATH = outbox;
   try {
+    Date.now = () => clock;
     const known = await post('acceso/solicitar-codigo', { correo: DEMO_GUEST_EMAIL });
     const unknown = await post('acceso/solicitar-codigo', { correo: 'sin-reservas@example.com' });
     assert.deepEqual(await known.json(), await unknown.json());
@@ -34,5 +40,10 @@ test('OTP: respuesta genérica, vencimiento, uso único, bloqueo y renovación p
     assert.equal(renewed.status, 200); assert.notEqual(renewed.cookies.get(GUEST_COOKIE)?.value, verify.cookies.get(GUEST_COOKIE)?.value);
     assert.ok(!/accessToken|refreshToken/.test(await renewed.text()));
     assert.equal((await guestRoute(new NextRequest(`${base}/api/app/reservas`, { headers: { Cookie: cookie } }), ['reservas'])).status, 401, 'Refresh anterior revocado');
-  } finally { Date.now = realNow; }
+  } finally {
+    Date.now = realNow;
+    if (originalOutbox === undefined) delete process.env.VILLA_SERENA_GUEST_OUTBOX_PATH;
+    else process.env.VILLA_SERENA_GUEST_OUTBOX_PATH = originalOutbox;
+    rmSync(outbox, { recursive: true, force: true });
+  }
 });

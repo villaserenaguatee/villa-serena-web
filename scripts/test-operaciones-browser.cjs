@@ -22,7 +22,7 @@ async function login(page, name) {
   await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click(); const response = await result;
   assert.equal(response.status(), 200, JSON.stringify(await response.json()));
   // Comprobar cookies/SSR con navegación completa; el login demo tiene su
-  // propio recorrido en test-staff-session-browser.cjs.
+  // propio recorrido en tests/e2e/staff-session.spec.ts.
   await page.goto(`${base}/panel`);
   try { await page.getByRole('heading', { name: 'Panel del personal' }).waitFor(); }
   catch (error) { console.error('Página de prueba:', page.url(), (await page.locator('body').innerText()).slice(0, 1800)); throw error; }

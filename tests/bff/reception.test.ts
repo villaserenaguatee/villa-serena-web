@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createReceptionApi, ReceptionApiError } from '../../src/lib/bff/receptionApi';
-import { calendarDays, moveCalendar, visibleReservations } from '../../src/features/recepcion/pages/CalendarioReservas';
+import { calendarDays, moveCalendar, visibleReservations } from '../../src/features/recepcion/calendarModel';
 import type { Reserva } from '../../src/lib/pms/types';
 
 test('calendario: semanas, meses, año bisiesto y salida exclusiva', () => {

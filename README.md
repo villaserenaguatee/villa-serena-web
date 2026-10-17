@@ -7,6 +7,11 @@ Sistema web para la operación de Villa Serena. El proyecto está construido con
 - Node.js 20 o superior.
 - pnpm.
 
+Para las suites de pruebas y CI: Node 24.16.0 y pnpm 12.0.0.
+Consultar [pruebas y migración de #48](docs/TESTING_ISSUE48.md) para instalación
+de Chromium, comandos `test:unit`, `test:component`, `test:e2e` y `test:ci`,
+reportes y alcance del modo demo.
+
 ## Instalación
 
 ```powershell
@@ -99,11 +104,33 @@ navegador siguen siendo locales: el contrato no contempla importarlas con su có
 anterior y no se recrean automáticamente. Si se pierde una respuesta de creación,
 se pide consultar la búsqueda antes de crear otra reserva.
 
-Prueba de creación con y sin habitación, búsqueda, detalle y recarga en computadora
-y móvil: `node scripts/test-reception-creation-browser.cjs` con la web de prueba en
-`RECEPTION_TEST_URL` (por defecto `http://localhost:3025`).
-La prueba guarda reservas: al repetirla puede usarse `RECEPTION_TEST_OFFSET` para
-elegir otro día de entrada (días desde hoy; por defecto 5), sin vaciar el inventario.
+Pruebas de calendario, creación con/sin habitación, búsqueda, detalle, cancelación,
+habitaciones y check-in en computadora y móvil: `pnpm test:reception:browser`.
+Playwright inicia y detiene Next/Chromium, usa fechas relativas al día del hotel
+y restaura datos demo aislados antes de cada caso. No requiere iniciar `pnpm dev`.
+Los detalles de equivalencia y las limitaciones están en
+[la migración de #48](docs/TESTING_ISSUE48.md).
+
+Reserva pública y portal por código: `pnpm test:booking:browser`. Presentación,
+estados y recuperación del pago: `pnpm test:payments:browser`. Ejecutar en
+secuencia; cada bloque inicia su servidor y usa archivos demo temporales.
+Canales y acceso del personal/huésped: `pnpm test:channels:browser`.
+Este bloque y el nuevo caso de sondeo de pagos están implementados, pendientes
+de validación en CI; por decisión de trabajo, no se ejecutan navegadores locales
+durante esta etapa. `pnpm check` permite comprobar TypeScript e i18n sin Next.
+Cuenta demo, check-out y factura: `pnpm test:cuenta:browser` (12 casos,
+computadora/móvil, PDF ticket/carta). También está pendiente de validación en CI;
+no cubre la cuenta conectada a Spring.
+Cuenta conectada con transporte HTTP falso: `pnpm test:cuenta:connected`, también
+incluido en `pnpm test:integration:mock`. El fixture inicia API falso y Next,
+restaura datos por caso y comprueba el BFF real, sin acreditar Spring real.
+Sus 12 casos están implementados, pendientes de Playwright/CI.
+Guard conectado de Recepción: `pnpm test:reception:api` (6 casos pendientes de CI).
+Usa autenticación demo y bloquea operaciones BFF no conectadas con 503, conservando
+las reservas locales que anuncia el calendario; no prueba Spring real.
+Operaciones con API y frames STOMP falsos: `pnpm test:operaciones:browser`
+(6 casos pendientes de CI). Room Service, habitaciones/reportes y Mantenimiento
+usan servidores nuevos y reportes separados; CI ejecuta cada bloque en su VM.
 
 ### Portal del huésped
 
