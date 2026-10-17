@@ -65,7 +65,6 @@ export default function IncidenciasRecepcion() {
   const input = 'mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#18345C]';
   return <div className="flex-1 overflow-y-auto bg-[#F8F6F0] p-4 sm:p-6">
     <header className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-3xl font-semibold text-[#18345C]">Incidencias</h1><button disabled={loading || !rooms.length} onClick={() => { setOpen(true); setError(''); setSuccess(''); }} className="rounded-lg bg-[#18345C] px-4 py-2 text-white disabled:opacity-40">+ Nueva incidencia</button></header>
-    <p role="status" className="mt-4 text-sm text-[#52677F]">Recepción puede reportar daños. El backend reserva la consulta y resolución de incidencias a Administración y Mantenimiento.</p>
     {loading && <p className="mt-4 text-sm">Consultando habitaciones…</p>}
     {!open && error && <p role="alert" className="mt-4 text-sm text-[#922E2E]">{error}</p>}
     {success && <p role="status" className="mt-4 rounded-lg border border-[#B7DCC2] bg-[#EDF7EF] p-3 text-sm text-[#21603A]">{success}</p>}

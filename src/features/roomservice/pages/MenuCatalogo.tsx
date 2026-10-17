@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ItemMenu, CategoriaMenu } from '@/lib/pms/types';
 const ORDEN_CATEGORIAS: CategoriaMenu[] = [
   'Desayuno',
@@ -10,15 +10,21 @@ const ORDEN_CATEGORIAS: CategoriaMenu[] = [
   'Bebidas con alcohol',
 ];
 interface Props {
+  categoriasReales?: CategoriaMenu[];
+  busy?: boolean;
+  permiteReactivar?: boolean;
+  mostrarPrecios?: boolean;
   menu: ItemMenu[];
   onMarcarAgotado: (id: string) => void;
   onReactivar: (id: string) => void;
 }
-export default function MenuCatalogo({ menu, onMarcarAgotado, onReactivar, }: Props) {
+export default function MenuCatalogo({ menu, onMarcarAgotado, onReactivar, categoriasReales, busy=false, permiteReactivar=true, mostrarPrecios=false, }: Props) {
   const [categoria, setCategoria] = useState<CategoriaMenu>('Desayuno');
   const [subcategoria, setSubcategoria] = useState<string>('Todas');
   const [busqueda, setBusqueda] = useState('');
-  const categorias = ORDEN_CATEGORIAS.filter((categoriaActual) => menu.some((item) => item.categoria === categoriaActual));
+  const categorias = (categoriasReales??ORDEN_CATEGORIAS).filter((categoriaActual) => menu.some((item) => item.categoria === categoriaActual));
+  const categoryKey=categorias.join('|');
+  useEffect(()=>{if(categoriasReales&&!categorias.includes(categoria)){setCategoria(categorias[0]??'Desayuno');setSubcategoria('Todas');}},[categoryKey,categoria]);
   const subcategorias = useMemo(() => {
     const lista = menu
       .filter((item) => item.categoria === categoria &&
@@ -215,10 +221,12 @@ export default function MenuCatalogo({ menu, onMarcarAgotado, onReactivar, }: Pr
             <p className="mt-1 max-w-5xl text-[14px] leading-relaxed text-[#526276]">
               {item.descripcion}
             </p>
+            {mostrarPrecios&&<p className="mt-2 text-sm font-semibold text-[#18345C]">Q {item.precio.toFixed(2)}</p>}
           </div>
 
           <button
             type="button"
+            disabled={busy||(!item.disponible&&!permiteReactivar)}
             onClick={() => cambiarDisponibilidad(item)}
             className={`
                     min-w-[118px]

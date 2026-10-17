@@ -4,7 +4,7 @@ import { getReservation, getRooms, searchReservations } from '@/lib/api/receptio
 import type { Huesped, Reserva, HabitacionHotel, TipoHabitacion, SeccionRecepcion } from '@/lib/pms/types';
 import DiaRecepcion from './DiaRecepcion';
 
-export default function ConnectedReceptionDay({ onAbrirReserva, onIr, refreshTick }: { onAbrirReserva: (code: string) => void; onIr: (section: SeccionRecepcion) => void; refreshTick: number }) {
+export default function ConnectedReceptionDay({ onAbrirReserva, onIr, refreshTick, onVerCalendario }: { onVerCalendario?:()=>void; onAbrirReserva: (code: string) => void; onIr: (section: SeccionRecepcion) => void; refreshTick: number }) {
   const [data, setData] = useState<{ reservas: Reserva[]; huespedes: Huesped[]; habitaciones: HabitacionHotel[] } | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -35,5 +35,5 @@ export default function ConnectedReceptionDay({ onAbrirReserva, onIr, refreshTic
   }, [refreshTick]);
   if (error) return <p role="alert" className="p-4 text-red-800">{error}</p>;
   if (!data) return <p role="status" className="p-4">Consultando reservas del día…</p>;
-  return <DiaRecepcion {...data} onAbrirReserva={onAbrirReserva} onIr={onIr} />;
+  return <DiaRecepcion onVerCalendario={onVerCalendario} {...data} onAbrirReserva={onAbrirReserva} onIr={onIr} />;
 }

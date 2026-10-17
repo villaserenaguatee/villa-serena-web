@@ -4,6 +4,7 @@ import {useEffect,useRef,useState} from 'react';
 import {operacion} from '@/lib/api/operaciones';
 import type {Insumo,MovimientoInsumo,CompraHotel,GastoHotel,Activo,ActivoHotel} from '@/lib/pms/types';
 import CatalogosAdmin from './CatalogosAdmin';
+import ApprovedRoomMapConnected from './ApprovedRoomMapConnected';
 import ReportesConectados from './ReportesConectados';
 import LaboralAdmin from './LaboralAdmin';
 import ComprasInventario from './ComprasInventario';import FinanzasActivos from './FinanzasActivos';import ConsultaAdmin from './ConsultaAdmin';
@@ -13,6 +14,7 @@ export default function GestionAdmin({seccion,personalInitial='catalogo'}:{secci
  useEffect(()=>{if(!['inventario','finanzas'].includes(seccion))return;const c=new AbortController();setLoading(true);setError('');Promise.all([operacion<(Insumo&V)[]>('gestion/insumos','GET',undefined,c.signal),operacion<(MovimientoInsumo&V)[]>('gestion/movimientos','GET',undefined,c.signal),operacion<(CompraHotel&V)[]>('gestion/compras','GET',undefined,c.signal),operacion<(GastoHotel&V)[]>('gestion/gastos','GET',undefined,c.signal),operacion<(Activo&V)[]>('gestion/activos','GET',undefined,c.signal)]).then(([i,m,c,g,a])=>{setInsumos(i);setMovimientos(m);setCompras(c);setGastos(g);setActivos(a);}).catch(e=>{if(!c.signal.aborted)setError(e.message);}).finally(()=>{if(!c.signal.aborted)setLoading(false);});return()=>c.abort();},[seccion,reload]);
  async function save(tipo:string,datos:object){if(lock.current)return false;lock.current=true;setBusy(true);setError('');const key=tipo+JSON.stringify(datos);const id=attempts.current.get(key)??crypto.randomUUID();attempts.current.set(key,id);try{await operacion(`gestion/${tipo}`,'POST',{id,version:0,datos});attempts.current.delete(key);setReload(n=>n+1);return true;}catch(e){setError(e instanceof Error?e.message:'No se pudo guardar.');return false;}finally{lock.current=false;setBusy(false);}}
  const financeAssets:ActivoHotel[]=activos.map(a=>({id:a.id,codigo:a.codigo??'',nombre:a.nombre,categoria:a.categoria,ubicacion:a.ubicacion,fechaCompra:a.instaladoEn,costo:a.costo??0,estado:a.estado==='en-reparacion'?'en reparación':a.estado==='fuera-servicio'?'fuera de servicio':'operativo',vinculadoMantenimiento:true}));
+ if(seccion==='panel')return <ApprovedRoomMapConnected/>;
  if(seccion==='reportes')return <ReportesConectados/>;
  if(seccion==='personal')return <LaboralAdmin initial={personalInitial}/>;
  if(seccion==='tarifas')return <CatalogosAdmin initial="tipos"/>;

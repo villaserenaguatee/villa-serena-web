@@ -48,7 +48,7 @@ export default function Huespedes({ conectado = false, huespedes: localGuests, r
   const huespedes = conectado ? remoteGuests : localGuests;
   useEffect(() => {
     if (!conectado) return;
-    if (q.trim().length < 2) { setRemoteGuests([]); setQueryLoading(false); setQueryError(''); return; }
+    if (q.trim().length === 1) { setQueryLoading(false); return; }
     const controller = new AbortController(); setRemoteGuests([]); setQueryError(''); setQueryLoading(true);
     const timer = setTimeout(() => { searchGuests(q.trim(), controller.signal).then(guests => {
       if (!controller.signal.aborted) setRemoteGuests(guests.map(g => ({ id: String(g.id), nombre: g.nombreCompleto, correo: g.correo, telefono: g.telefono, nacionalidad: g.nacionalidad, tipoDocumento: g.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte', documento: g.numeroDocumento, paisEmisorPasaporte: g.paisEmisorPasaporte, creadoEn: '' })));
@@ -123,7 +123,7 @@ export default function Huespedes({ conectado = false, huespedes: localGuests, r
       <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
         <div>
           <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Huéspedes</h1>
-          <p className="text-[15px] text-[#AEBCC1] mt-1">{huespedes.length} registrados</p>
+          <p className="text-[15px] text-[#AEBCC1] mt-1">{queryLoading ? 'Consultando...' : `${filtrados.length} huéspedes mostrados`}</p>
         </div>
         <button
           disabled={queryLoading}
@@ -155,7 +155,7 @@ export default function Huespedes({ conectado = false, huespedes: localGuests, r
     </div>
 
     <div className="px-4 sm:px-6 py-5">
-      {conectado && q.trim().length < 2 && <p role="status">Escribe al menos dos caracteres para buscar un huésped.</p>}{queryLoading && <p role="status">Consultando huéspedes...</p>}{queryError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-800">{queryError}</p>}
+      {queryLoading && <p role="status">Consultando huéspedes...</p>}{queryError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-800">{queryError}</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtrados.map(h => {
           const estancias = reservas.filter(r => r.huespedId === h.id).length;

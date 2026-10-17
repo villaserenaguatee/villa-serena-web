@@ -328,7 +328,7 @@ export default function AdminApp({ onCambiarModulo }: Props) {
         <div className="px-5 pt-5 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
           <img src="/villa-serena-logo.png" alt="Villa Serena" className="mx-auto w-32 h-auto object-contain mb-2" />
           <p className="text-white text-xl font-bold leading-tight" style={{ letterSpacing: '0.02em' }}>Villa Serena</p>
-          <p className="mt-2 text-xl font-semibold leading-6" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>Administración</p>
+          <p className="text-xs mt-1" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>Administración</p>
         </div>
 
         <div className="vs-scroll-clean flex-1 py-3 overflow-y-auto">

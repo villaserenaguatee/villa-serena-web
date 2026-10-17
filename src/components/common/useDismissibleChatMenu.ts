@@ -1,0 +1,8 @@
+﻿'use client';
+import {useEffect,useRef,useState} from 'react';
+export function useDismissibleChatMenu(open:boolean,onClose:()=>void,width=224,height=150){
+ const trigger=useRef<HTMLElement|null>(null),popup=useRef<HTMLDivElement|null>(null),anchor=useRef({top:0,left:0});const [position,setPosition]=useState({top:0,left:0});
+ function place(element:HTMLElement){trigger.current=element;const r=element.getBoundingClientRect();anchor.current={top:r.top,left:r.left};setPosition({top:r.bottom+height+8<=window.innerHeight?r.bottom+6:Math.max(8,r.top-height-6),left:Math.max(8,Math.min(r.right-width,window.innerWidth-width-8))});}
+ useEffect(()=>{if(!open)return;const outside=(e:PointerEvent)=>{if(e.target instanceof Node&&!popup.current?.contains(e.target)&&!trigger.current?.contains(e.target))onClose();};const escape=(e:KeyboardEvent)=>{if(e.key==='Escape'){e.preventDefault();onClose();trigger.current?.focus();}};const scroll=(e:Event)=>{if(e.target instanceof Node&&popup.current?.contains(e.target))return;const rect=trigger.current?.getBoundingClientRect();if(!rect||Math.abs(rect.top-anchor.current.top)>1||Math.abs(rect.left-anchor.current.left)>1)onClose();};document.addEventListener('pointerdown',outside,true);document.addEventListener('keydown',escape);document.addEventListener('scroll',scroll,true);window.addEventListener('resize',onClose);return()=>{document.removeEventListener('pointerdown',outside,true);document.removeEventListener('keydown',escape);document.removeEventListener('scroll',scroll,true);window.removeEventListener('resize',onClose);};},[open,onClose]);
+ return {trigger,popup,position,place};
+}

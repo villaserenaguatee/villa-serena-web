@@ -23,7 +23,7 @@ const PREGUNTAS_EN = [
   "I have another question",
 ];
 function Icono({ tipo, size = 28, }: {
-  tipo: "recepcion" | "enviar";
+  tipo: "recepcion" | "clip" | "imagen" | "enviar";
   size?: number;
 }) {
   const p = {
@@ -36,6 +36,18 @@ function Icono({ tipo, size = 28, }: {
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
   };
+  if (tipo === "clip") {
+    return (<svg {...p}>
+      <path d="m21.4 11.6-8.8 8.8a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5" />
+    </svg>);
+  }
+  if (tipo === "imagen") {
+    return (<svg {...p}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="8.5" cy="9" r="1.4" />
+      <path d="m21 16-5-5-7 7" />
+    </svg>);
+  }
   if (tipo === "enviar") {
     return (<svg {...p}>
       <path d="m22 2-7 20-4-9-9-4Z" />
@@ -61,6 +73,7 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
   const { en } = usePublicLanguage();
   const [localTexto,setLocalTexto]=useState("");
   const texto=transport?.text??localTexto;const setTexto=transport?.setText??setLocalTexto;
+  const [archivo, setArchivo] = useState<string | null>(null);
   const [mostrarPreguntas, setMostrarPreguntas] = useState(true);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -213,9 +226,9 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
                     </button>
                   </div>
                 </div>) : (<>
-                  <p>
+                  <div>
                     {transport?transport.renderText(m):contenido}
-                  </p>
+                  </div>
 
                   {m.editado && (<span className={`text-[10px] ${mio
                     ? "text-[#C9D8E8]"
@@ -230,7 +243,7 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
                   </p>
                 </>)}
 
-                {mio && !m.eliminadoParaTodos &&
+                {!transport && mio && !m.eliminadoParaTodos &&
                   editandoId !== m.id && (<button
                     type="button"
                     disabled={Boolean(transport)}
@@ -280,7 +293,23 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
         {transport?.blockedReason&&<GuestRestriction reason={transport.blockedReason}/>}
         <footer className="border-t border-[#E5E0D8] bg-white px-4 py-3 sm:px-5">
 
+          {archivo && (<div className="mb-3 rounded-lg bg-[#F8F6F0] px-3 py-2 text-sm text-[#52677F]">
+            {archivo}
+          </div>)}
+
           <div className="flex items-center gap-3">
+
+            <label className={`text-[#18345C] ${transport?"cursor-not-allowed opacity-40":"cursor-pointer"}`} title={transport?(en?"Attachments are not available":"Los adjuntos no est?n disponibles"):ui("Adjuntar archivo")}>
+              <input disabled={Boolean(transport)} type="file" className="hidden" onChange={(e) => setArchivo(e.target.files?.[0]?.name ?? null)} />
+
+              <Icono tipo="clip" size={29} />
+            </label>
+
+            <label className="cursor-pointer text-[#18345C]" title={transport?(en?"Image attachments are not available":"Los adjuntos de imagen no est?n disponibles"):ui("Adjuntar imagen")}>
+              <input disabled={Boolean(transport)} type="file" className="hidden" accept="image/*" onChange={(e) => setArchivo(e.target.files?.[0]?.name ?? null)} />
+
+              <Icono tipo="imagen" size={28} />
+            </label>
 
             <input
               maxLength={2000}

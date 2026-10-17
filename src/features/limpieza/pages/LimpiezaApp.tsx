@@ -1,4 +1,6 @@
 'use client';
+import ApprovedCleaningDetail from './ApprovedCleaningDetail';
+import {useRoomTypeImages} from '@/lib/useRoomTypeImages';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import type { Pantalla, Modulo, Habitacion, Solicitud, Incidencia, ObjetoOlvidado, EntradaHistorial, EstadoHabitacion } from '@/lib/pms/types';
@@ -113,7 +115,7 @@ function Sidebar({ pantalla, setPantalla, solPendientes, incPendientes, onCambia
       <p className="text-white text-xl font-bold leading-tight" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif', letterSpacing: '0.02em' }}>
         Villa Serena
       </p>
-      <p className="mt-2 text-xl font-semibold leading-6" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>
+      <p className="text-xs mt-1" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>
         Limpieza
       </p>
     </div>
@@ -178,6 +180,10 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
   const [modulo, setModulo] = useState<Modulo>('limpieza');
   const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [pantalla, setPantalla] = useState<Pantalla>('inicio');
+  const roomTypeImages=useRoomTypeImages();
+  const [navigationReady,setNavigationReady]=useState(false);
+  useEffect(()=>{const url=new URL(window.location.href);const saved=url.searchParams.get('seccion')??url.pathname.split('/')[2];if(PANTALLAS.includes(saved as Pantalla))setPantalla(saved as Pantalla);setNavigationReady(true);},[]);
+  useEffect(()=>{if(!navigationReady)return;const url=new URL(window.location.href);url.searchParams.set('seccion',pantalla);history.replaceState(null,'',url.pathname+url.search+url.hash);},[pantalla,navigationReady]);
   const [habitaciones, setHabitaciones] = useState<Habitacion[]>(() => conectado ? [] : leerHabitacionesLimpieza());
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [incidencias, setIncidencias] = useState<Incidencia[]>([]);
@@ -439,8 +445,8 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
           busy={remoto.busy} />);
       case 'mapa':
         return (<Mapa
-          habitaciones={conectado ? remoto.mapa.map(h=>({id:String(h.id),numero:h.numero,piso:h.piso,tipo:h.tipo,estado:h.condicion==='FUERA_DE_SERVICIO'?'fuera-servicio':h.condicion==='LIMPIA'?'limpia':h.condicion==='EN_LIMPIEZA'?'en-limpieza':'pendiente',personal:h.responsable,proximaLlegada:null,tareas:[],observaciones:'',foto:'',ocupacion:h.ocupacion,condicionReal:h.condicion,empleadoId:h.empleadoId})) : habitaciones}
-          detalleConectado={conectado ? (h,cerrar)=><div className="absolute inset-0 z-20 flex justify-end bg-black/25"><section className="w-full sm:max-w-lg bg-[#F8F6F0] p-6 overflow-auto"><button onClick={cerrar} className="float-right text-[#18345C]">Cerrar</button><h2 className="text-2xl text-[#18345C]">Habitación {h.numero}</h2><p className="mt-3">{h.tipo} · Piso {h.piso}</p><p className="mt-3">{h.ocupacion==='OCUPADA'?'Ocupada':h.condicionReal==='FUERA_DE_SERVICIO'?'Fuera de servicio':'Libre'} · {h.condicionReal==='LIMPIA'?'Limpia':h.condicionReal==='SUCIA'?'Pendiente':h.condicionReal==='FUERA_DE_SERVICIO'?'Fuera de servicio':'En limpieza'}</p>{h.personal&&<p className="mt-3">Responsable: {h.personal}</p>}<div className="mt-6 flex gap-3 flex-wrap">{h.ocupacion==='LIBRE'&&h.condicionReal==='SUCIA'&&<button disabled={remoto.busy} onClick={()=>void remoto.iniciar(Number(h.id))} className="rounded-lg bg-[#18345C] text-white px-4 py-2">Iniciar limpieza</button>}{h.condicionReal==='EN_LIMPIEZA'&&remoto.estaACargo({id:h.empleadoId??undefined})&&<><button disabled={remoto.busy} onClick={()=>void remoto.interrumpir(Number(h.id))} className="border rounded-lg px-4 py-2">Interrumpir limpieza</button><button disabled={remoto.busy} onClick={()=>void remoto.terminar(Number(h.id))} className="rounded-lg bg-[#18345C] text-white px-4 py-2">Finalizar limpieza</button></>}<button onClick={()=>{cerrar();setPantalla('incidencias');}} className="border border-[#18345C] rounded-lg px-4 py-2">Reportar incidencia</button></div>{remoto.error&&<p role="alert" className="mt-4 text-red-700">{remoto.error}</p>}</section></div> : undefined}
+          habitaciones={conectado ? remoto.mapa.map(h=>({id:String(h.id),numero:h.numero,piso:h.piso,tipo:h.tipo,estado:h.condicion==='FUERA_DE_SERVICIO'?'fuera-servicio':h.condicion==='LIMPIA'?'limpia':h.condicion==='EN_LIMPIEZA'?'en-limpieza':'pendiente',personal:h.responsable,proximaLlegada:null,tareas:[],observaciones:'',foto:roomTypeImages[h.tipo]??'',ocupacion:h.ocupacion,condicionReal:h.condicion,empleadoId:h.empleadoId})) : habitaciones}
+          detalleConectado={conectado ? (h,cerrar)=><ApprovedCleaningDetail hab={h} onClose={cerrar}><p className="mt-3">{h.tipo} · Piso {h.piso}</p><p className="mt-3">{h.ocupacion==='OCUPADA'?'Ocupada':h.condicionReal==='FUERA_DE_SERVICIO'?'Fuera de servicio':'Libre'} · {h.condicionReal==='LIMPIA'?'Limpia':h.condicionReal==='SUCIA'?'Pendiente':h.condicionReal==='FUERA_DE_SERVICIO'?'Fuera de servicio':'En limpieza'}</p>{h.personal&&<p className="mt-3">Responsable: {h.personal}</p>}<div className="mt-6 flex gap-3 flex-wrap">{h.ocupacion==='LIBRE'&&h.condicionReal==='SUCIA'&&<button disabled={remoto.busy} onClick={()=>void remoto.iniciar(Number(h.id))} className="rounded-lg bg-[#18345C] text-white px-4 py-2">Iniciar limpieza</button>}{h.condicionReal==='EN_LIMPIEZA'&&remoto.estaACargo({id:h.empleadoId??undefined})&&<><button disabled={remoto.busy} onClick={()=>void remoto.interrumpir(Number(h.id))} className="border rounded-lg px-4 py-2">Interrumpir limpieza</button><button disabled={remoto.busy} onClick={()=>void remoto.terminar(Number(h.id))} className="rounded-lg bg-[#18345C] text-white px-4 py-2">Finalizar limpieza</button></>}<button onClick={()=>{cerrar();setPantalla('incidencias');}} className="border border-[#18345C] rounded-lg px-4 py-2">Reportar incidencia</button></div>{remoto.error&&<p role="alert" className="mt-4 text-red-700">{remoto.error}</p>}</ApprovedCleaningDetail> : undefined}
           solicitudes={solicitudes}
           onComenzarLimpieza={comenzarLimpieza}
           onFinalizarLimpieza={finalizarLimpieza}
