@@ -49,7 +49,7 @@ test('DPI persistente: visor, zoom, arrastre, navegación, Escape, foco y scroll
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(document.body.style.overflow).toBe(overflow); expect(opener).toHaveFocus();
   await user.click(screen.getByRole('button', { name: 'Ver Reverso del DPI' }));
-  await user.click(within(viewer()).getByRole('button', { name: 'Cerrar visor' }));
+  await user.click(within(viewer()).getByRole('button', { name: 'Cerrar' }));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(JSON.stringify(checkIn())).toBe(saved);
 });
@@ -74,7 +74,7 @@ test('pasaporte único abre/cierra el visor y deshabilita navegación', async ()
   expect(within(viewer()).getByRole('img', { name: 'Pasaporte' })).toHaveAttribute('src', passport.previewUrl);
   expect(within(viewer()).getByRole('button', { name: 'Anterior' })).toBeDisabled();
   expect(within(viewer()).getByRole('button', { name: 'Siguiente' })).toBeDisabled();
-  await user.click(within(viewer()).getByRole('button', { name: 'Cerrar visor' }));
+  await user.click(within(viewer()).getByRole('button', { name: 'Cerrar' }));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 

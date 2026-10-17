@@ -7,7 +7,7 @@ for (const { name, viewport } of [...viewports, { name: 'móvil horizontal', vie
     test('encabezado alineado, modal, scroll interno y encabezados/primera columna fijos', async ({ page }, testInfo) => {
       await login(page); const calendar = calendarRegion(page);
       await expect(page.getByText('Datos de prueba · reservas nuevas mediante el BFF', { exact: true })).toHaveCount(0);
-      await expect(page.getByRole('link', { name: 'Cuenta, check-out y factura', exact: true })).toHaveAttribute('href', '/panel/recepcion/cuenta');
+      await expect(page.getByRole('link', { name: 'Cuenta, check-out y factura', exact: true })).toHaveCount(0);
       const navigation = calendar.getByRole('group', { name: 'Navegación del calendario' });
       for (const view of ['Mes', 'Habitaciones']) {
         await calendar.getByRole('button', { name: view, exact: true }).click();

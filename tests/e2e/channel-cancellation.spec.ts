@@ -21,19 +21,23 @@ for (const { name, viewport } of viewports) {
         await expect(detail.getByRole('button', { name: 'Cancelar reserva', exact: true })).toHaveCount(canCancel ? 1 : 0);
         // These seeded reservations are unassigned. Assign through the real UI to exercise calendar entry.
         await detail.getByRole('button', { name: /Asignar habitación|Cambiar habitación/ }).click();
-        const select = detail.getByLabel('Habitación', { exact: true });
+        const assignment = page.getByRole('dialog', { name: /^(Asignar|Cambiar) habitación$/ });
+        const floor = assignment.getByLabel('Piso', { exact: true });
+        await expect(floor.locator('option').nth(1)).toBeAttached();
+        await floor.selectOption(await floor.locator('option').nth(1).getAttribute('value') as string);
+        const select = assignment.getByLabel('Habitación', { exact: true });
         await expect(select.locator('option').nth(1)).toBeAttached();
         const room = await select.locator('option').nth(1).getAttribute('value');
         expect(room).toBeTruthy(); await select.selectOption(room!);
-        await detail.getByRole('button', { name: 'Guardar asignación', exact: true }).click();
-        await expect(detail.getByRole('status')).toContainText('Habitación asignada en la simulación.');
+        await assignment.getByRole('button', { name: 'Guardar asignación', exact: true }).click();
+        await expect(detail.getByRole('status')).toContainText('Habitación asignada.');
         const response = await context.request.get(`/api/reservas/${code}`); expect(response.status()).toBe(200);
         const stored = await response.json() as ReservationDetail;
         expect(stored.canal).toBe(channel); expect(stored.habitacion).not.toBeNull();
         await detail.getByRole('button', { name: 'Ver cuenta', exact: true }).click();
         await expect(page.getByRole('button', { name: 'Cuenta y pagos', exact: true })).toBeVisible();
         await expect(page.getByRole('button', { name: 'Cancelar reserva', exact: true })).toHaveCount(0);
-        await page.getByRole('button', { name: 'Cerrar detalle de reserva', exact: true }).click();
+        await page.getByRole('button', { name: 'Cerrar', exact: true }).click();
         detail = await calendarDetail(page, code, stored.entrada);
         await expect(detail.getByRole('button', { name: 'Cancelar reserva', exact: true })).toHaveCount(canCancel ? 1 : 0);
         await page.reload(); detail = await calendarDetail(page, code, stored.entrada);

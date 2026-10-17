@@ -16,8 +16,8 @@ for (const { name, viewport } of viewports) {
       await page.goto('/recepcion/reservas'); await expect(page).toHaveURL(/\/panel\/login$/);
       await login(page); await page.goto('/recepcion/reservas');
       await expect(page.getByText('14 reservas', { exact: true })).toBeVisible();
-      await page.getByLabel('Nombre o documento', { exact: true }).fill('Marta');
-      await page.getByLabel('Canal de origen', { exact: true }).selectOption('BOOKING');
+      await page.getByLabel('Buscar por nombre o documento', { exact: true }).fill('Marta');
+      await page.getByLabel('Origen de la reserva', { exact: true }).selectOption('BOOKING');
       const filtered = await search(page, () => page.getByRole('button', { name: 'Buscar', exact: true }).click());
       expect(filtered.totalElementos).toBe(1); expect(filtered.contenido[0].codigo).toBe('VS-CANA01');
       const detail = await openDetail(page, 'VS-CANA01');
@@ -35,12 +35,12 @@ for (const { name, viewport } of viewports) {
       await page.getByRole('button', { name: 'Buscar', exact: true }).click();
       await expect(page.getByRole('alert').filter({ hasText: 'Indica el código completo de reserva' })).toBeVisible(); expect(requests).toBe(0);
       await page.getByLabel('Código de reserva', { exact: true }).fill('');
-      await page.getByLabel('Desde', { exact: true }).fill('2026-11-10'); await page.getByLabel('Hasta', { exact: true }).fill('2026-11-01');
+      await page.getByLabel('Inicio del período de estancia', { exact: true }).fill('2026-11-10'); await page.getByLabel('Fin del período de estancia', { exact: true }).fill('2026-11-01');
       await page.getByRole('button', { name: 'Buscar', exact: true }).click();
       await expect(page.getByRole('alert').filter({ hasText: 'Selecciona un rango de fechas válido.' })).toBeVisible(); expect(requests).toBe(0);
-      await search(page, () => page.getByRole('button', { name: 'Limpiar filtros', exact: true }).click());
-      for (const [label, state] of [['Llegan hoy', 'CONFIRMADA'], ['Salen hoy', 'EN_ESTADIA']]) {
-        const result = await search(page, () => page.getByRole('button', { name: label, exact: true }).click());
+      await search(page, () => page.getByRole('button', { name: 'Restablecer', exact: true }).click());
+      for (const [label, state] of [['LLEGAN_HOY', 'CONFIRMADA'], ['SALEN_HOY', 'EN_ESTADIA']]) {
+        const result = await search(page, () => page.getByLabel('Mostrar reservas', { exact: true }).selectOption(label));
         expect(result.contenido.length).toBeGreaterThan(0); expect(result.contenido.every(r => r.estado === state)).toBe(true);
       }
       expect(await page.evaluate(() => document.cookie.includes('vs_staff_'))).toBe(false);
@@ -53,21 +53,29 @@ for (const { name, viewport } of viewports) {
       detail = await openDetail(page, 'VS-TEST05');
       await expect(detail.getByRole('button', { name: 'Cancelar reserva', exact: true })).toHaveCount(0);
       await detail.getByRole('button', { name: /Asignar habitación|Cambiar habitación/ }).click();
-      const select = detail.getByLabel('Habitación', { exact: true });
+      const assignment = page.getByRole('dialog', { name: /^(Asignar|Cambiar) habitación$/ });
+      const floor = assignment.getByLabel('Piso', { exact: true });
+      await expect(floor.locator('option').nth(1)).toBeAttached();
+      await floor.selectOption(await floor.locator('option').nth(1).getAttribute('value') as string);
+      const select = assignment.getByLabel('Habitación', { exact: true });
       await expect(select.locator('option').nth(1)).toBeAttached();
       const options = await select.locator('option').evaluateAll(elements => elements.map(e => (e as HTMLOptionElement).value).filter(Boolean));
       expect(options.length).toBeGreaterThan(0); await select.selectOption(options[0]);
-      await detail.getByRole('button', { name: 'Guardar asignación', exact: true }).click();
-      await expect(detail.getByRole('status')).toContainText('Habitación asignada en la simulación.');
+      await assignment.getByRole('button', { name: 'Guardar asignación', exact: true }).click();
+      await expect(detail.getByRole('status')).toContainText('Habitación asignada.');
       expect((await (await context.request.get('/api/reservas/VS-TEST05')).json()).habitacion).not.toBeNull();
       for (const [code, preview, rejected] of [['VS-PAGO03', 'Corresponde un reembolso total', true], ['VS-PAGO02', 'No corresponde reembolso', false], ['VS-PAGO01', 'Corresponde un reembolso total', false]] as const) {
         detail = await openDetail(page, code); await detail.getByRole('button', { name: 'Cancelar reserva', exact: true }).click();
-        await expect(detail).toContainText(preview);
-        const reason = `Prueba Issue48 ${code}`; await detail.getByLabel('Motivo de cancelación').fill(reason);
-        await detail.getByRole('button', { name: 'Confirmar cancelación de prueba', exact: true }).click();
-        if (rejected) await expect(detail.getByRole('alert')).toContainText('El reembolso de prueba fue rechazado');
+        const cancellation = page.getByRole('dialog', { name: 'Cancelar reserva', exact: true });
+        await expect(cancellation).toContainText(preview);
+        const reason = `Prueba Issue48 ${code}`; await cancellation.getByLabel('Motivo de cancelación').fill(reason);
+        await cancellation.getByRole('button', { name: 'Confirmar cancelación', exact: true }).click();
+        if (rejected) {
+          await expect(cancellation.getByRole('alert')).toContainText('El reembolso de prueba fue rechazado');
+          await cancellation.getByRole('button', { name: 'Cerrar', exact: true }).click();
+        }
         else {
-          await expect(detail.getByRole('status')).toContainText('Reserva cancelada en la simulación.');
+          await expect(detail.getByRole('status')).toContainText('Reserva cancelada.');
           await expect(detail.getByText(reason, { exact: true })).toBeVisible();
           await expect(detail.getByRole('button', { name: 'Cancelar reserva', exact: true })).toHaveCount(0);
         }
@@ -84,7 +92,7 @@ for (const { name, viewport } of viewports) {
       await expect(page.locator('[data-room="101"]')).toBeVisible();
       for (const number of ['101', '104', '110', '209']) await expect(page.locator(`[data-room="${number}"]`).getByRole('button', { name: 'Marcar sucia', exact: true })).toHaveCount(0);
       const room = page.locator('[data-room="102"]'); await room.getByRole('button', { name: 'Marcar sucia', exact: true }).click();
-      await expect(page.getByRole('status')).toContainText('Habitación 102 marcada sucia en la simulación.');
+      await expect(page.getByRole('status')).toContainText('Habitación 102 marcada sucia.');
       await expect(room).toContainText('Sucia'); await expect(room.getByRole('button', { name: 'Marcar sucia', exact: true })).toHaveCount(0);
       await page.reload(); await expect(room).toContainText('Sucia');
       for (const [label, value] of [['Ocupación', 'LIBRE'], ['Condición', 'SUCIA'], ['Tipo', '1'], ['Piso', '2']]) await page.getByLabel(label, { exact: true }).selectOption(value);
