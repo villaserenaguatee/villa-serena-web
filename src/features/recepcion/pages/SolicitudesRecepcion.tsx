@@ -5,6 +5,8 @@ import type { SolicitudHuesped, Huesped, Reserva, EstadoSolicitudHuesped, Priori
 import { formatoFechaHora } from '@/data/pms';
 import { guardarReservas, leerReservas } from '@/store/reservationStore';
 import { Chip, SOLICITUD_META, PRIORIDAD_META, Campo, INPUT_CLS, PlusIcon, } from '@/features/recepcion/pages/recUtils';
+type ExtensionLocal = { id: string; huesped: string; habitacion: string; salidaActual: string; nuevaSalida: string; noches: number; estimacion: number; motivo?: string; estado: string };
+type CorreccionLocal = { id: string; huesped: string; dato: string; actual: string; nuevo: string; motivo?: string; estado: string };
 const PRIORIDADES: PrioridadSolicitud[] = ['alta', 'media', 'baja'];
 const TIPOS_SOLICITUD: {
   nombre: string;
@@ -45,11 +47,11 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
   const [area, setArea] = useState<AreaSolicitud>('Recepción');
   const [prioridad, setPrioridad] = useState<PrioridadSolicitud>('media');
   const [err, setErr] = useState('');
-  const [solicitudExtension, setSolicitudExtension] = useState<any>(null);
+  const [solicitudExtension, setSolicitudExtension] = useState<ExtensionLocal | null>(null);
   const [detalleExtension, setDetalleExtension] = useState(false);
   const [estadoPortal, setEstadoPortal] = useState<Record<string, EstadoSolicitudHuesped>>({});
-  const [correcciones, setCorrecciones] = useState<any[]>([]);
-  const [transportes, setTransportes] = useState<any[]>([]);
+  const [correcciones, setCorrecciones] = useState<CorreccionLocal[]>([]);
+  const [transportes, setTransportes] = useState<ReturnType<typeof leerTransportes>>([]);
   const [tarifasTransporte, setTarifasTransporte] = useState<Record<string, string>>({});
   useEffect(() => {
     const cargar = () => {

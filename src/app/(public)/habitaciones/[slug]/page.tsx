@@ -10,30 +10,39 @@ import GuestSelector from "@/components/common/GuestSelector";
 import BilingualDateInput from "@/components/common/BilingualDateInput";
 import { money } from "@/data/publicRooms";
 import { usePublicCatalog, usePublicQuotes } from "@/lib/usePublicCatalog";
+import { publicSearchError, validPublicDate } from "@/lib/publicStayValidation";
 import { availableRoom, usePublicAvailability, validGuests, validStay, todayISO } from "@/lib/publicAvailability";
+
+
 export default function RoomDetail() {
-  const { rooms: publicRooms, loading, error: catalogError } = usePublicCatalog();
+  const { rooms: publicRooms, connected, loading, error: catalogError } = usePublicCatalog();
   const sp = useSearchParams();
   const router = useRouter();
-  const fromResults = sp.get("origen") === "disponibilidad";
+  const fromResults = Boolean(sp.get("llegada") || sp.get("entrada") || sp.get("salida"));
   const ui = useUiText();
   const { en } = usePublicLanguage();
   const { slug } = useParams();
   const room = publicRooms.find((r) => r.slug === slug);
   const [open, setOpen] = useState(false),
+    [attempted, setAttempted] = useState(false),
+    [touched, setTouched] = useState({arrival:false,departure:false}),
     [checked, setChecked] = useState(false),
-    [arrival, setArrival] = useState(fromResults ? sp.get("llegada") || "" : ""),
+    [arrival, setArrival] = useState(fromResults ? sp.get("llegada") || sp.get("entrada") || "" : ""),
     [departure, setDeparture] = useState(fromResults ? sp.get("salida") || "" : ""),
     [adults, setAdults] = useState(fromResults ? Number(sp.get("adultos") || sp.get("huespedes") || 2) : 2),
     [children, setChildren] = useState(fromResults ? Number(sp.get("ninos") || 0) : 0),
     [photo, setPhoto] = useState(0);
   const total = adults + children;
-  const inventory = usePublicAvailability({ arrival, departure, adults, children }, room?.capacity ?? 0);
+  const inventory = usePublicAvailability({ arrival, departure, adults, children }, room?.capacity ?? 0, !connected);
   const quoteResult = usePublicQuotes(arrival, departure, adults, children, room?.capacity ?? 0);
-  const quote = quoteResult.quotes.find(q => q.tipoHabitacion.id === room?.apiTypeId);
+  const quote = quoteResult.quotes.find(q => q.ofertaSlug === room?.slug);
   const canCheck = validGuests(adults, children) && validStay(arrival, departure) &&
     total <= Number(room?.capacity || 0);
+  const stayError = publicSearchError(arrival, departure, adults, children, room?.capacity ?? 0);
+  const arrivalError = !validPublicDate(arrival) || arrival < todayISO() ? (en ? "Select a valid arrival date, today or later." : "Selecciona una llegada válida, hoy o posterior.") : null;
+  const departureError = !validPublicDate(departure) || departure <= arrival ? (en ? "Select a departure date after arrival." : "Selecciona una salida posterior a la llegada.") : null;
   const physical = room && canCheck ? availableRoom(room, arrival, departure, total, inventory, fromResults ? sp.get("habitacionId") || undefined : undefined) : undefined;
+  const available = canCheck && Boolean(quote) && (connected || Boolean(physical));
   const reserveHref = useMemo(() => room
     ? `/reservar/datos?${new URLSearchParams({
       habitacion: room.name,
@@ -93,12 +102,13 @@ export default function RoomDetail() {
         <p className="room-detail-desc">
           {ui(room.description)}
         </p>
+        {room.illustrativePhotos && <small>{en ? 'Illustrative images' : 'Imágenes ilustrativas'}</small>}
         <div className="room-detail-meta">
-          <span>
+          {!connected && <span>
             <Maximize2 />
             {room.size}
             <UiText text=" m²" />
-          </span>
+          </span>}
           <span>
             <Users />
             {en ? "Maximum" : "Máximo"}
@@ -106,25 +116,23 @@ export default function RoomDetail() {
             {" "}
             {en ? "guests" : "huéspedes"}
           </span>
-          <span>
-            <BedDouble />
-            {ui(room.beds)}
-          </span>
-          <span>
+          {room.beds && <span><BedDouble />{ui(room.beds)}</span>}
+          {!connected && <span>
             <MapPin />
             {en ? "Floor" : "Piso"}
             {room.floor}
-          </span>
+          </span>}
         </div>
         <h3>
           {en ? "Room features" : "Características de la habitación"}
         </h3>
         <div className="room-feature-list">
-          {room.features.map((f) => (<span key={f}>
+          {(connected ? room.verifiedFeatures ?? [] : room.features).map((f) => (<span key={f}>
             <Check size={16} />
             {ui(f)}
           </span>))}
         </div>
+        {connected && room.inventoryNote && <div role="note"><p>{ui(room.inventoryNote)}</p></div>}
         <div className="room-detail-book">
           <div>
             <small>
@@ -139,10 +147,11 @@ export default function RoomDetail() {
               </em>
             </b>
           </div>
-          {fromResults ? (<button disabled={!physical || !quote} onClick={() => router.push(reserveHref)}>
+          {fromResults ? (<button disabled={!available} onClick={() => router.push(reserveHref)}>
             {en ? "Book room" : "Reservar habitación"}
           </button>) : <button onClick={() => {
             setChecked(false);
+            setAttempted(false);
             setOpen(true);
           }}>
             {en ? "Check availability" : "Consultar disponibilidad"}
@@ -152,8 +161,8 @@ export default function RoomDetail() {
       </div>
     </section>
     {inventory?.error && <p role="alert">{en ? "Availability could not be checked. Try again." : "No se pudo consultar la disponibilidad. Intenta nuevamente."}</p>}
-    {fromResults && quoteResult.error && <p role="alert">{quoteResult.error}</p>}
-    {fromResults && inventory && !inventory.error && !quoteResult.error && !physical && <p role="alert">
+    {fromResults && arrival && departure && quoteResult.error && <p role="alert">{ui(quoteResult.error)}</p>}
+    {fromResults && !quoteResult.loading && !quoteResult.error && !available && <p role="alert">
       {en ? "This room is no longer available for this stay. Return to the results to choose another room." : "Esta habitación ya no está disponible para esta estancia. Vuelve a los resultados para elegir otra habitación."}
     </p>}
     {open && !fromResults && (<div className="booking-modal-backdrop" onMouseDown={() => setOpen(false)}>
@@ -175,10 +184,12 @@ export default function RoomDetail() {
               min={todayISO()}
               onChange={(v) => {
                 setArrival(v);
+                setTouched(t => ({...t,arrival:true}));
                 if (departure && departure <= v)
                   setDeparture("");
                 setChecked(false);
               }} />
+            {(attempted || touched.arrival) && arrivalError && <small role="alert">{arrivalError}</small>}
           </label>
           <label>
             {en ? "Departure" : "Salida"}
@@ -187,15 +198,17 @@ export default function RoomDetail() {
               min={arrival}
               onChange={(v) => {
                 setDeparture(v);
+                setTouched(t => ({...t,departure:true}));
                 setChecked(false);
               }} />
+            {(attempted || touched.departure) && (departureError || (!arrivalError && stayError)) && <small role="alert">{departureError || ui(stayError!)}</small>}
           </label>
         </div>
         <label>
           {en ? "Guests" : "Huéspedes"}
           <GuestSelector
             adults={adults}
-            children={children}
+            childCount={children}
             onAdults={(n) => {
               setAdults(n);
               setChecked(false);
@@ -206,10 +219,10 @@ export default function RoomDetail() {
             }}
             max={room.capacity} />
         </label>
-        {quoteResult.error && <p role="alert">{quoteResult.error}</p>}
-        {!checked ? (<button className="availability-button" disabled={!canCheck || !inventory || inventory.error} onClick={() => canCheck && setChecked(true)}>
+        {!stayError && quoteResult.error && <p role="alert">{ui(quoteResult.error)}</p>}
+        {!checked ? (<button className="availability-button" disabled={quoteResult.loading} onClick={() => {setAttempted(true);if (!stayError && canCheck) setChecked(true);}}>
           {en ? "Check availability" : "Comprobar disponibilidad"}
-        </button>) : physical && quote ? (<div className="availability-result">
+        </button>) : available ? (<div className="availability-result">
           <b>
             {en ? "Available ✓" : "Disponible ✓"}
           </b>
@@ -223,10 +236,10 @@ export default function RoomDetail() {
           </Link>
         </div>) : (<div className="availability-result">
           <b>
-            {!inventory ? (en ? "Loading availability..." : "Cargando disponibilidad...") : inventory.error ? (en ? "Could not check availability" : "No se pudo consultar disponibilidad") : (en ? "Not available" : "No disponible")}
+            {quoteResult.loading ? (en ? "Loading availability..." : "Cargando disponibilidad...") : quoteResult.error || (!connected && inventory?.error) ? (en ? "Could not check availability" : "No se pudo consultar disponibilidad") : (en ? "Not available" : "No disponible")}
           </b>
           <span>
-            {inventory && !inventory.error && (en ? "This room is occupied or unavailable for part of the selected stay." : "Esta habitación está ocupada o no disponible durante parte de las fechas seleccionadas.")}
+            {!quoteResult.loading && !quoteResult.error && (en ? "This room is occupied or unavailable for part of the selected stay." : "Esta habitación está ocupada o no disponible durante parte de las fechas seleccionadas.")}
           </span>
         </div>)}
       </div>

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import VillaSerenaLogo from '@/components/common/VillaSerenaLogo';
-import GuestCodeLogin from './GuestCodeLogin';
+import UnifiedLogin from './UnifiedLogin';
 import type { components } from '@/lib/api/schema';
 type Detail = components['schemas']['ReservaAppDetalle'];
 type Room = components['schemas']['TipoHabitacionPublico'];
@@ -58,7 +58,7 @@ export default function GuestReservationAccess({ code = '', portalAccess = false
   }
   useEffect(() => { const controller = new AbortController(); void load(controller.signal); return () => controller.abort(); }, [code, portalAccess]);
   const selected = detail?.codigo === code ? detail : null;
-  if (needsAccess) return <GuestCodeLogin code={code} />;
+  if (needsAccess) return <UnifiedLogin reservationCode={code} />;
   return <main className="guest-reservation-page"><VillaSerenaLogo />
     <section className={`guest-reservation-card${selected ? ' guest-reservation-detail' : ''}`}>
       <h1>Tu reserva</h1>

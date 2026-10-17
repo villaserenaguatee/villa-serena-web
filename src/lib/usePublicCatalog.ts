@@ -1,24 +1,22 @@
 import { useEffect, useState } from 'react';
 import { publicRooms, type PublicRoom } from '@/data/publicRoomSeed';
 import { tipoPublicoATipoHotel } from '@/store/tarifasStore';
-import { getPublicCatalog, getPublicHotel, getPublicQuotes } from '@/lib/api/public';
+import { getPublicCatalogWithMode, getPublicHotel, getPublicQuotes } from '@/lib/api/public';
 import { publicSearchError } from '@/lib/publicStayValidation';
 import type { HotelDto, QuoteDto, RoomTypeDto } from '@/lib/bff/contracts/public';
 
-export type CatalogRoom = PublicRoom & { apiTypeId: number };
+export type CatalogRoom = PublicRoom & { apiTypeId: number; illustrativePhotos?: boolean; pendingFeatures?:string[]; verifiedFeatures?:string[]; inventoryNote?:string; bookable?:boolean };
 export function usePublicCatalog() {
-  const [catalog, setCatalog] = useState<RoomTypeDto[] | null>(null);
+  const [catalog, setCatalog] = useState<CatalogRoom[] | null>(null);
   const [error, setError] = useState('');
+  const [connectedCatalog, setConnectedCatalog] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
-    getPublicCatalog(controller.signal).then(setCatalog).catch(e => { if (!controller.signal.aborted) setError(e.message); });
+    getPublicCatalogWithMode(controller.signal).then(result => {setConnectedCatalog(result.connected);setCatalog(result.data);}).catch(e => { if (!controller.signal.aborted) setError(e.message); });
     return () => controller.abort();
   }, []);
-  const rooms: CatalogRoom[] = catalog ? publicRooms.flatMap(offer => {
-    const type = catalog.find(t => t.nombre === tipoPublicoATipoHotel(offer.type));
-    return type ? [{ ...offer, price: type.precioBaseNoche, capacity: Math.min(offer.capacity, type.capacidad), apiTypeId: type.id }] : [];
-  }) : [];
-  return { rooms, loading: !catalog && !error, error };
+  const rooms: CatalogRoom[] = catalog ?? [];
+  return { rooms, connected: Boolean(connectedCatalog), loading: !catalog && !error, error };
 }
 export function usePublicHotel() {
   const [hotel, setHotel] = useState<HotelDto | null>(null);
@@ -31,7 +29,7 @@ export function usePublicHotel() {
 }
 export function usePublicQuotes(arrival: string, departure: string, adults: number, children: number, capacity = 5) {
   const key = JSON.stringify([arrival, departure, adults, children, capacity]);
-  const [result, setResult] = useState<{ key: string; quotes: QuoteDto[]; error: string } | null>(null);
+  const [result, setResult] = useState<{ key: string; quotes: (QuoteDto & {ofertaSlug?:string})[]; error: string } | null>(null);
   const validation = publicSearchError(arrival, departure, adults, children, capacity);
   useEffect(() => {
     if (validation) return;

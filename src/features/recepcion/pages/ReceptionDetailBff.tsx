@@ -1,6 +1,8 @@
 import { ArrowLeft } from 'lucide-react';
 import ReceptionActionDialog from './ReceptionActionDialog';
 import ReceptionCloseButton from './ReceptionCloseButton';
+import SolicitudesRecepcion from '@/components/common/SolicitudesRecepcion';
+import EstanciaDocumentos from '@/components/common/EstanciaDocumentos';
 import DocumentosCheckIn from './DocumentosCheckIn';
 import { leerReservas, RESERVAS_EVENT } from '@/store/reservationStore';
 import { leerHuespedes } from '@/store/guestStore';
@@ -8,7 +10,7 @@ import { RESERVAS_INICIALES } from '@/data/pms';
 import type { Reserva } from '@/lib/pms/types';
 import ReservationTags from './ReservationTags';
 import { useEffect, useState } from 'react';
-import { assignRoom, cancelReservation, getAssignableRooms, getCancellationPreview, getReservation, getRooms } from '@/lib/api/reception';
+import { assignRoom, cancelReservation, checkInReservation, addReservationGuest, getAssignableRooms, getCancellationPreview, getReservation, getRooms } from '@/lib/api/reception';
 import { canAssign, canCancel, channelLabels, isExternal, reservationLabels } from '@/lib/receptionPresentation';
 import { fechaHotel } from '@/lib/hotel';
 import { formatoFecha } from '@/data/pms';
@@ -20,14 +22,18 @@ const compactPrimary = 'rounded-md bg-[#18345C] px-3 py-1.5 text-sm text-white d
 const compactControl = 'rounded-md border border-[#E5E0D8] bg-white px-3 py-1.5 text-sm text-[#18345C]';
 const primary = 'rounded-md bg-[#18345C] px-4 py-2 text-white disabled:opacity-50';
 export type ExistingAction = 'check-in' | 'cuenta' | 'check-out';
-export default function ReceptionDetailBff({ codigo, onCerrar, onExistingAction }: { codigo: string; onCerrar: () => void; onExistingAction: (detail: ReservationDetail, action: ExistingAction) => void }) {
+export default function ReceptionDetailBff({ conectado = false, codigo, onCerrar, onExistingAction }: { conectado?: boolean; codigo: string; onCerrar: () => void; onExistingAction: (detail: ReservationDetail, action: ExistingAction) => void }) {
   const [detail, setDetail] = useState<ReservationDetail | null>(null), [rooms, setRooms] = useState<RoomState[]>([]);
   const [error, setError] = useState(''), [busy, setBusy] = useState(false), [notice, setNotice] = useState(''), [reload, setReload] = useState(0);
   const [preview, setPreview] = useState<CancellationPreview | null>(null), [reason, setReason] = useState('');
   const [options, setOptions] = useState<RoomReference[] | null>(null), [selected, setSelected] = useState(''), [floor, setFloor] = useState('');
   const [localCheckIn, setLocalCheckIn] = useState<Reserva['checkInWeb']>();
+  const [addingGuest, setAddingGuest] = useState(false);
+  const [additionalDocType, setAdditionalDocType] = useState('DPI');
+  const [guestDocumentError, setGuestDocumentError] = useState('');
   useEffect(() => {
     const sync = () => {
+      if (conectado) { setLocalCheckIn(undefined); return; }
       if (!detail) { setLocalCheckIn(undefined); return; }
       const fixture = /^VS-TEST0([1-8])$/.exec(detail.codigo);
       const originalId = fixture ? RESERVAS_INICIALES[Number(fixture[1]) - 1]?.id : undefined;
@@ -69,17 +75,36 @@ export default function ReceptionDetailBff({ codigo, onCerrar, onExistingAction 
           <div className="grid gap-3 rounded-xl bg-[#F8F6F0] p-3 sm:grid-cols-[160px_minmax(0,1fr)]"><img className="h-24 w-full rounded-xl object-cover" src={publicRoomForHotelType(detail.tipoHabitacion.nombre as TipoHabitacion).image} alt={detail.tipoHabitacion.nombre} /><div className="space-y-1 break-words"><h3 className="text-xl font-semibold">{detail.huesped.nombreCompleto}</h3><ReservationTags state={detail.estado} label={reservationLabels[detail.estado]} room={detail.habitacion?.numero} category={detail.tipoHabitacion.nombre} origin={channelLabels[detail.canal]} /><p>{formatoFecha(detail.entrada)} → {formatoFecha(detail.salida)} · {detail.noches} noches · {detail.numeroHuespedes} huéspedes</p>{detail.identificadorExterno && <p className="break-all">Identificador externo: {detail.identificadorExterno}</p>}<p>Total: Q {detail.total.toFixed(2)} · Saldo pendiente: Q {detail.saldoPendiente.toFixed(2)}</p></div></div>
           <section className="rounded-xl border border-[#E5E0D8] p-4"><h3 className="text-lg font-semibold">Datos del huésped</h3><p className="break-all">{detail.huesped.correo} · {detail.huesped.telefono}</p><p>{detail.huesped.nacionalidad} · {detail.huesped.tipoDocumento} {detail.huesped.numeroDocumento}</p><h4 className="mt-3 font-semibold">Huéspedes adicionales</h4>{detail.huespedesAdicionales.length ? detail.huespedesAdicionales.map(g => <p key={g.id}>{g.nombreCompleto} · {g.tipoDocumento} {g.numeroDocumento} · {g.nacionalidad}</p>) : <p>No hay huéspedes adicionales registrados.</p>}</section>
           {isExternal(detail) && <p className="rounded-lg bg-[#FFF9E8] p-3">Las reservas de canal no se cancelan desde el sistema.</p>}
+          {conectado && <EstanciaDocumentos code={detail.codigo} staff/>}
+          {conectado&&detail.estado==='EN_ESTADIA'&&<SolicitudesRecepcion code={detail.codigo}/>}
           {localCheckIn && (localCheckIn.documentos?.length || localCheckIn.documento) && <section className="rounded-xl border border-[#E5E0D8] p-3"><h3 className="mb-2 text-lg font-semibold">Documentos del check-in</h3><DocumentosCheckIn checkInWeb={localCheckIn} tipoDocumento={detail.huesped.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte'} /></section>}
           {detail.estado === 'EN_ESTADIA' && <p>No se puede cambiar la habitación durante la estadía.</p>}
           {arrivalReason && <p>{arrivalReason}</p>}
+          {conectado && ['CONFIRMADA', 'EN_ESTADIA'].includes(detail.estado) && <button className={compactControl} disabled={busy} onClick={() => setAddingGuest(true)}>Agregar huésped adicional</button>}
+          {addingGuest && <ReceptionActionDialog title="Agregar huésped adicional" busy={busy} onClose={() => setAddingGuest(false)}>
+            <form className="space-y-3" onSubmit={e => {
+              e.preventDefault(); const form = new FormData(e.currentTarget);
+              void run(async () => {
+                await addReservationGuest(codigo, { nombreCompleto: String(form.get('nombre')).trim(), tipoDocumento: form.get('tipo') === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: String(form.get('documento')).trim(), nacionalidad: String(form.get('nacionalidad')).trim() });
+                setAddingGuest(false); setReload(n => n + 1);
+              });
+            }}>
+              <label className="block">Nombre completo<input required maxLength={150} name="nombre" className={`${control} w-full`} /></label>
+              <label className="block">Tipo de documento<select name="tipo" value={additionalDocType} onChange={e=>{setAdditionalDocType(e.target.value);setGuestDocumentError('');}} className={`${control} w-full`}><option>DPI</option><option value="PASAPORTE">Pasaporte</option></select></label>
+              <label className="block">Documento<input required name="documento" maxLength={additionalDocType==='DPI'?13:30} pattern={additionalDocType==='DPI'?'[0-9]{13}':'[A-Za-z0-9]{3,30}'} inputMode={additionalDocType==='DPI'?'numeric':'text'} onInput={()=>setGuestDocumentError('')} onInvalid={()=>setGuestDocumentError(additionalDocType==='DPI'?'El DPI debe contener exactamente 13 dígitos.':'El pasaporte debe tener entre 3 y 30 letras o números.')} aria-describedby="additional-document-error" aria-invalid={Boolean(guestDocumentError)} className={`${control} w-full`} />{guestDocumentError&&<small id="additional-document-error" role="alert" className="block text-red-800">{guestDocumentError}</small>}</label>
+              <label className="block">Nacionalidad<input required maxLength={60} name="nacionalidad" className={`${control} w-full`} /></label>
+              {error && <p role="alert" className="text-red-800">{error}</p>}
+              <button disabled={busy} className={primary}>Guardar huésped</button>
+            </form>
+          </ReceptionActionDialog>}
           <div className="flex flex-wrap gap-2">
             {canAssign(detail) && <button className={compactPrimary} disabled={busy} onClick={() => void run(async () => { setOptions(await getAssignableRooms(detail)); setSelected(''); setFloor(''); setPreview(null); })}>{detail.habitacion ? 'Cambiar habitación' : 'Asignar habitación'}</button>}
             {canCancel(detail) && <button className={compactControl} disabled={busy} onClick={() => void run(async () => { setPreview(await getCancellationPreview(detail.codigo)); setOptions(null); })}>Cancelar reserva</button>}
-            {checkIn && <button className={primary} disabled={busy} onClick={() => onExistingAction(detail, 'check-in')}>Ir a check-in</button>}
+            {checkIn && <button className={primary} disabled={busy} onClick={() => conectado ? void run(async () => { setDetail(await checkInReservation(codigo)); setReload(n => n + 1); setNotice('Check-in completado.'); }) : onExistingAction(detail, 'check-in')}>Ir a check-in</button>}
             {['CONFIRMADA', 'EN_ESTADIA', 'FINALIZADA'].includes(detail.estado) && <button className={compactPrimary} disabled={busy} onClick={() => onExistingAction(detail, 'cuenta')}>Ver cuenta</button>}
             {detail.estado === 'EN_ESTADIA' && <button className={primary} disabled={busy} onClick={() => onExistingAction(detail, 'check-out')}>Ir a check-out</button>}
           </div>
-          {detail.estado === 'FINALIZADA' && <p className="text-sm">La factura emitida no está disponible para consultar o imprimir.</p>}
+          {detail.estado === 'FINALIZADA' && <p className="text-sm">{conectado ? 'Consulta la factura y su descarga desde Ver cuenta.' : 'La factura emitida no está disponible para consultar o imprimir.'}</p>}
           {options && <ReceptionActionDialog title={detail.habitacion ? 'Cambiar habitación' : 'Asignar habitación'} busy={busy} onClose={() => { setOptions(null); setError(''); }}>
             <form className="space-y-3" onSubmit={e => { e.preventDefault(); if (!options.some(r => String(r.id) === selected && String(r.piso) === floor)) return; void run(async () => { setDetail(await assignRoom(codigo, Number(selected))); setOptions(null); setNotice('Habitación asignada.'); }); }}>
               <div className="grid grid-cols-2 gap-3">

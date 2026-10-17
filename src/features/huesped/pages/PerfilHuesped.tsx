@@ -9,6 +9,7 @@ import VillaSerenaCard from "@/components/common/VillaSerenaCard";
 import { marcaTarjeta, validarTarjeta, type CardForm } from "@/lib/cardForm";
 type Seccion = null | "personal" | "contacto" | "idioma" | "pago" | "privacidad" | "seguridad";
 interface PerfilHuespedProps {
+  connected?:import('@/lib/pms/types').Huesped;
   huespedId: string;
   documento?: string;
   nombre: string;
@@ -24,12 +25,12 @@ interface PerfilHuespedProps {
   onAviso?: (mensaje: string) => void;
   onSolicitarCorreccion?: (datos: unknown) => void;
 }
-export default function PerfilHuesped({ huespedId, nombre, correo, telefono, foto: fotoInicial = null, onVolver, onCerrarSesion, onFoto, onIdioma, onTelefono, }: PerfilHuespedProps) {
+export default function PerfilHuesped({ connected, huespedId, nombre, correo, telefono, foto: fotoInicial = null, onVolver, onCerrarSesion, onFoto, onIdioma, onTelefono, }: PerfilHuespedProps) {
   const { lang } = usePublicLanguage();
   const en = lang === "EN";
   const tr = (es: string, english: string) => en ? english : es;
-  const [tarjetas, setTarjetas] = useState(() => leerTarjetas(huespedId));
-  const [perfil, setPerfil] = useState(() => leerHuespedes().find(h => h.id === huespedId));
+  const [tarjetas, setTarjetas] = useState(() => connected?[]:leerTarjetas(huespedId));
+  const [perfil, setPerfil] = useState(() => connected??leerHuespedes().find(h => h.id === huespedId));
   const [error, setError] = useState("");
   const [estado, setEstado] = useState("");
   const [telefonoEdit, setTelefonoEdit] = useState(telefono);
@@ -38,7 +39,7 @@ export default function PerfilHuesped({ huespedId, nombre, correo, telefono, fot
   const [erroresTarjeta, setErroresTarjeta] = useState<Partial<Record<keyof CardForm, string>>>({});
   function abrir(s: Seccion) {
     setError(""); setEstado(""); setClave({ actual: "", nueva: "", confirmar: "" });
-    const actual = leerHuespedes().find(h => h.id === huespedId);
+    const actual = connected??leerHuespedes().find(h => h.id === huespedId);
     setPerfil(actual);
     setTelefonoEdit(actual?.telefono ?? telefono);
     setTarjeta({ titular: actual?.nombre || nombre, numero: "", cvv: "", vencimiento: "" });
@@ -57,10 +58,10 @@ export default function PerfilHuesped({ huespedId, nombre, correo, telefono, fot
     } catch { setError(tr("No se pudieron guardar los cambios. Intenta nuevamente.", "Changes could not be saved. Please retry.")); }
   }
   function confirmar(e: React.FormEvent) {
-    e.preventDefault(); setError(""); setEstado("");
+    e.preventDefault(); setError('');setEstado('');if(connected){setError(tr('Esta opción no está disponible en línea. Contacta a Recepción.','This option is unavailable online. Contact Reception.'));return;}
     if (seccion === "contacto") {
       if (!/^\+?[\d\s()-]{7,20}$/.test(telefonoEdit.trim()) || telefonoEdit.replace(/\D/g, "").length < 7) return setError(tr("Escribe un teléfono válido.", "Enter a valid phone number."));
-      const actual = leerHuespedes().find(h => h.id === huespedId);
+      const actual = connected??leerHuespedes().find(h => h.id === huespedId);
       if (actual?.telefono === telefonoEdit.trim()) { setEstado(tr("No hay cambios para guardar.", "No changes to save.")); return; }
       guardarTelefono();
     }
@@ -111,7 +112,7 @@ export default function PerfilHuesped({ huespedId, nombre, correo, telefono, fot
     .slice(0, 2)
     .toUpperCase();
   function cargarFoto(file?: File) {
-    if (!file)
+    if (connected || !file)
       return;
     const reader = new FileReader();
     reader.onload = () => {
@@ -155,7 +156,7 @@ export default function PerfilHuesped({ huespedId, nombre, correo, telefono, fot
     {
       key: "seguridad" as const,
       titulo: "Seguridad",
-      sub: "Contraseña",
+      sub: connected?tr('Código de acceso','Access code'):tr('Contraseña','Password'),
       icono: LockKeyhole,
     },
   ];
@@ -170,9 +171,7 @@ export default function PerfilHuesped({ huespedId, nombre, correo, telefono, fot
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-[26px] font-semibold text-[#17365D]">
-            Perfil
-          </h1>
+          <h1 className="text-[26px] font-semibold text-[#17365D]">{tr("Perfil", "Profile")}</h1>
 
           <p className="mt-1 text-sm text-[#72829A]">
             {tr("Administra tus datos, preferencias y seguridad.", "Manage your details, preferences and security.")}
@@ -204,13 +203,13 @@ export default function PerfilHuesped({ huespedId, nombre, correo, telefono, fot
 
           <button
             type="button"
-            onClick={() => inputFoto.current?.click()}
+            disabled={Boolean(connected)} onClick={() => inputFoto.current?.click()}
             className="flex shrink-0 items-center gap-2 rounded-lg border border-[#17365D] px-3 py-2 text-sm font-semibold text-[#17365D] transition hover:bg-[#F8F6F0]">
             <Camera size={17} />
             {tr("Cambiar foto", "Change photo")}
           </button>
 
-          <input ref={inputFoto} type="file" accept="image/*" className="hidden" onChange={(e) => cargarFoto(e.target.files?.[0])} />
+          <input disabled={Boolean(connected)} ref={inputFoto} type="file" accept="image/*" className="hidden" onChange={(e) => cargarFoto(e.target.files?.[0])} />
         </div>
       </div>
 
@@ -248,8 +247,8 @@ export default function PerfilHuesped({ huespedId, nombre, correo, telefono, fot
       </button>
     </aside>
 
-    {seccion && (<Modal key={seccion} titulo={tr(items.find(i => i.key === seccion)?.titulo || "Perfil", ({ personal: "Personal information", contacto: "Contact details", idioma: "Language", pago: "Payment methods", privacidad: "Privacy", seguridad: "Password" })[seccion])} onClose={cerrar} cerrarLabel={tr("Cerrar", "Close")}>
-      <form onSubmit={confirmar} noValidate className="space-y-4">
+    {seccion && (<Modal key={seccion} titulo={tr(items.find(i => i.key === seccion)?.titulo || "Perfil", ({ personal: "Personal information", contacto: "Contact details", idioma: "Language", pago: "Payment methods", privacidad: "Privacy", seguridad: "Security" })[seccion])} onClose={cerrar} cerrarLabel={tr("Cerrar", "Close")}>
+      <form onSubmit={confirmar} noValidate className="space-y-4">{connected&&["contacto","pago","seguridad"].includes(seccion)&&<p className="rounded-lg border border-[#E6E0D7] bg-[#F8F6F0] p-3 text-sm text-[#72829A]">{tr("Esta opción no está disponible en línea. Contacta a Recepción.","This option is unavailable online. Contact Reception.")}</p>}<fieldset className="min-w-0 space-y-4 border-0 p-0" disabled={Boolean(connected)&&["contacto","pago","seguridad"].includes(seccion)}>
         {seccion === "personal" && <>
           <Campo label={tr("Nombre completo", "Full name")} valor={perfil?.nombre || nombre} readOnly />
           <Campo label={tr("Tipo de documento", "Document type")} valor={perfil?.tipoDocumento || ""} readOnly />
@@ -267,7 +266,8 @@ export default function PerfilHuesped({ huespedId, nombre, correo, telefono, fot
           <PrivacyPolicyContent />
           <a href="/privacidad" target="_blank" rel="noopener noreferrer" className="inline-flex rounded-xl border border-[#17365D] px-4 py-2 font-semibold">{tr("Ver política de privacidad", "View privacy policy")}</a>
         </div>}
-        {seccion === "seguridad" && <>
+        {seccion === "seguridad" && connected && <p className="text-sm text-[#72829A]">{tr('Accede con el código temporal enviado a tu correo.', 'Sign in with the temporary code sent to your email.')}</p>}
+        {seccion === "seguridad" && !connected && <>
           <Campo label={tr("Contraseña actual", "Current password")} valor={clave.actual} onChange={v => setClave({ ...clave, actual: v })} type="password" autoComplete="current-password" />
           <Campo label={tr("Nueva contraseña", "New password")} valor={clave.nueva} onChange={v => setClave({ ...clave, nueva: v })} type="password" autoComplete="new-password" />
           <Campo label={tr("Confirmar contraseña", "Confirm password")} valor={clave.confirmar} onChange={v => setClave({ ...clave, confirmar: v })} type="password" autoComplete="new-password" />
@@ -283,9 +283,9 @@ export default function PerfilHuesped({ huespedId, nombre, correo, telefono, fot
         </>}
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         {estado && <p role="status" className="text-sm text-[#17365D]">{estado}</p>}
-        <div className="flex flex-wrap justify-end gap-3 border-t border-[#E6E0D7] pt-4">
+        </fieldset><div className="flex flex-wrap justify-end gap-3 border-t border-[#E6E0D7] pt-4">
           <button type="button" onClick={cerrar} className="rounded-xl border border-[#17365D] px-4 py-2 text-[#17365D]">{tr("Cerrar", "Close")}</button>
-          {(seccion === "contacto" || seccion === "seguridad" || seccion === "pago") && <button type="submit" className="rounded-xl bg-[#17365D] px-4 py-2 font-semibold text-white">{seccion === "seguridad" ? tr("Confirmar", "Confirm") : seccion === "pago" ? tr("Guardar método de pago", "Save payment method") : tr("Guardar cambios", "Save changes")}</button>}
+          {(seccion === "contacto" || seccion === "seguridad" || seccion === "pago") && <button type="submit" disabled={!!connected} className="rounded-xl bg-[#17365D] px-4 py-2 font-semibold text-white">{seccion === "seguridad" ? tr("Confirmar", "Confirm") : seccion === "pago" ? tr("Guardar método de pago", "Save payment method") : tr("Guardar cambios", "Save changes")}</button>}
         </div>
       </form>
     </Modal>)}

@@ -10,11 +10,16 @@ export class OperationError extends Error {
   constructor(message: string, public status: number, public data?: unknown) { super(message); }
 }
 
-export async function operacion<T>(path: string, method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> {
+export async function operacion<T>(path: string, method = 'GET', body?: unknown, signal?: AbortSignal, requestKey?: string): Promise<T> {
   const multipart = body instanceof FormData;
-  const response = await fetch(`/api/${path}`, { method, cache: 'no-store', signal,
-    ...(body === undefined ? {} : multipart ? { body } : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
-  });
+  let response: Response;
+  try { response = await fetch(`/api/${path}`, { method, cache: 'no-store', signal,
+    ...(body === undefined ? {} : multipart ? { body } : { body: JSON.stringify(body) }),
+    headers:{...(body!==undefined&&!multipart?{'Content-Type':'application/json'}:{}),...(requestKey?{'Idempotency-Key':requestKey}:{})},
+  }); } catch (error) {
+    if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error;
+    throw new OperationError('No se pudo contactar al servidor. Conservamos los datos para reintentar.', 502);
+  }
   const value = response.status === 204 ? null : await response.json().catch(() => null);
   if (!response.ok) {
     const errorMsg = value?.mensaje ?? value?.error ?? (typeof value?.motivo === 'string' ? value.motivo : 'No se pudo completar la operación.');

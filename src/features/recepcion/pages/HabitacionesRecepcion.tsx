@@ -53,7 +53,6 @@ export default function HabitacionesRecepcion(_props: Props) {
     const controller = new AbortController();
     setReservations([]); setReservationError(''); setReservationLoading(false);
     if (selected === null) return;
-    if (conectado) { setReservationError('No se pueden consultar las reservas de esta habitación en este momento.'); return; }
     setReservationLoading(true);
     findRoomReservations(selected, controller.signal).then(value => { if (!controller.signal.aborted) setReservations(value); })
       .catch(e => { if (!controller.signal.aborted) setReservationError(e instanceof Error ? e.message : 'No se pudieron consultar las reservas de la habitación.'); })
@@ -68,7 +67,7 @@ export default function HabitacionesRecepcion(_props: Props) {
   }, [selected]);
   const selectedRoom = rooms.find(room => room.id === selected);
   function openRoom(id: number) {
-    setReservations([]); setReservationError(''); setReservationLoading(!conectado); setSelected(id);
+    setReservations([]); setReservationError(''); setReservationLoading(true); setSelected(id);
   }
   async function dirty(room: RoomState) {
     if (busy !== null) return; setBusy(room.id); setError(''); setNotice('');

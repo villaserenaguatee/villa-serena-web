@@ -1,3 +1,4 @@
+import type { SolicitudCorreccion } from '@/store/correctionStore';
 import { useEffect, useMemo, useState } from 'react';
 import type { Empleado, RolPersonal, TurnoPersonal, PermisoModulo, EstadoAsistencia, } from '@/lib/pms/types';
 import { generarId } from '@/data/pms';
@@ -21,7 +22,7 @@ export default function Personal({ empleados, onAgregar, onCambiarAsistencia, on
   const [creando, setCreando] = useState(false);
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
   const [versionFotos, setVersionFotos] = useState(0);
-  const [solicitudes, setSolicitudes] = useState<any[]>([]);
+  const [solicitudes, setSolicitudes] = useState<SolicitudCorreccion[]>([]);
   const [verSolicitudes, setVerSolicitudes] = useState(false);
   useEffect(() => {
     const cargar = () => {
@@ -69,7 +70,7 @@ export default function Personal({ empleados, onAgregar, onCambiarAsistencia, on
         catch { }
       }
     }
-    const next = solicitudes.map(x => x.id === id ? { ...x, estado: aprobar ? 'aprobada' : 'rechazada', resueltaEn: new Date().toISOString() } : x);
+    const next = solicitudes.map(x => x.id === id ? { ...x, estado: (aprobar ? 'aprobada' : 'rechazada') as SolicitudCorreccion['estado'], resueltaEn: new Date().toISOString() } : x);
     localStorage.setItem('vs-correcciones-personal', JSON.stringify(next));
     setSolicitudes(next);
     window.dispatchEvent(new Event('vs-correcciones-personal-updated'));

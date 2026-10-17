@@ -9,6 +9,7 @@ import {
   tomarSolicitud,
   atenderSolicitud,
   OperationError,
+  operacion,
   type HabitacionLimpiezaAPI,
   type SolicitudLimpiezaAPI,
 } from '@/lib/api/operaciones';
@@ -48,6 +49,7 @@ export function useLimpieza(
   avisarNuevaSolicitud?: (aviso: SolicitudAviso) => void
 ) {
   const [habitaciones, setHabitaciones] = useState<HabitacionLimpiezaAPI[]>([]);
+  const [mapa, setMapa] = useState<Array<{id:number;numero:string;piso:number;tipo:string;ocupacion:string;condicion:string;empleadoId:number|null;responsable:string|null}>>([]);
   const [solicitudes, setSolicitudes] = useState<SolicitudLimpiezaAPI[]>([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -63,14 +65,12 @@ export function useLimpieza(
   const recargar = async () => {
     const current = ++version.current;
     try {
-      const [habs, sols] = await Promise.all([
-        habitacionesLimpieza(),
-        colaSolicitudes(),
-      ]);
+      const [habs, sols, catalogo] = await Promise.allSettled([habitacionesLimpieza(), colaSolicitudes(), operacion<typeof mapa>('limpieza/mapa')]);
       if (mounted.current && current === version.current) {
-        setHabitaciones(ordenarHabitaciones(habs.filter(h => (h.condicion as string) !== 'LIMPIA')));
-        setSolicitudes(ordenarSolicitudes(sols.filter(s => s.estado === 'PENDIENTE' || s.estado === 'EN_PROCESO')));
-        setError('');
+        if(catalogo.status==='fulfilled')setMapa(catalogo.value);
+        if(habs.status==='fulfilled')setHabitaciones(ordenarHabitaciones(habs.value.filter(h=>(h.condicion as string)!=='LIMPIA')));
+        if(sols.status==='fulfilled')setSolicitudes(ordenarSolicitudes(sols.value.filter(s=>s.estado==='PENDIENTE'||s.estado==='EN_PROCESO')));
+        setError([habs.status==='rejected'?'Habitaciones: '+String(habs.reason?.message??'No disponibles'):'',sols.status==='rejected'?'Solicitudes: '+String(sols.reason?.message??'No disponibles'):'',catalogo.status==='rejected'?'Mapa: '+String(catalogo.reason?.message??'No disponible'):''].filter(Boolean).join(' · '));
       }
     } catch (e) {
       if (mounted.current && current === version.current) {
@@ -197,6 +197,7 @@ export function useLimpieza(
   };
 
   return {
+    mapa,
     habitaciones,
     solicitudes,
     loading,
@@ -209,8 +210,9 @@ export function useLimpieza(
       ejecutarAccion(
         () => iniciarLimpieza(id),
         'No se pudo iniciar la limpieza.',
-        (data: any) => {
-          const nombre = data?.empleadoACargo?.nombre ?? data?.empleado ?? data?.nombre;
+        (data: unknown) => {
+          const detail = data as { empleadoACargo?: { nombre?: string }; empleado?: string; nombre?: string; motivo?: string; mensaje?: string } | null;
+          const nombre = detail?.empleadoACargo?.nombre ?? detail?.empleado ?? detail?.nombre;
           return nombre ? `La habitación ya está siendo limpiada por ${nombre}. Se recargó su estado actual.` : null;
         }
       ),
@@ -228,8 +230,9 @@ export function useLimpieza(
       ejecutarAccion(
         () => tomarSolicitud(id),
         'No se pudo tomar la solicitud.',
-        (data: any) => {
-          const motivo = data?.motivo ?? data?.mensaje;
+        (data: unknown) => {
+          const detail = data as { empleadoACargo?: { nombre?: string }; empleado?: string; nombre?: string; motivo?: string; mensaje?: string } | null;
+          const motivo = detail?.motivo ?? detail?.mensaje;
           return motivo ? `No se pudo tomar la solicitud: ${motivo}. Se recargó la lista.` : null;
         }
       ),
@@ -237,8 +240,9 @@ export function useLimpieza(
       ejecutarAccion(
         () => atenderSolicitud(id),
         'No se pudo marcar la solicitud como atendida.',
-        (data: any) => {
-          const motivo = data?.motivo ?? data?.mensaje;
+        (data: unknown) => {
+          const detail = data as { empleadoACargo?: { nombre?: string }; empleado?: string; nombre?: string; motivo?: string; mensaje?: string } | null;
+          const motivo = detail?.motivo ?? detail?.mensaje;
           return motivo ? `No se pudo atender la solicitud: ${motivo}. Se recargó la lista.` : null;
         }
       ),

@@ -25,8 +25,8 @@ export function monthWeekSegments(week: (string | null)[], reservations: Reserva
   }
   return segments;
 }
-type Props = { reservas: Reserva[]; huespedes: Huesped[]; habitaciones: HabitacionHotel[]; onAbrir: (id: string) => void; onNueva: () => void };
-export default function CalendarioReservas({ reservas, huespedes, habitaciones, onAbrir, onNueva }: Props) {
+type Props = { conectado?: boolean; reservas: Reserva[]; huespedes: Huesped[]; habitaciones: HabitacionHotel[]; onAbrir: (id: string) => void; onNueva: () => void };
+export default function CalendarioReservas({ conectado = false, reservas, huespedes, habitaciones, onAbrir, onNueva }: Props) {
   const [presentation, setPresentation] = useState<'month' | 'rooms'>('month');
   const [floor, setFloor] = useState('');
   const [category, setCategory] = useState('');
@@ -47,13 +47,13 @@ export default function CalendarioReservas({ reservas, huespedes, habitaciones, 
   const desde = days[0], hasta = days.at(-1)!;
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setError('');
+    setLoading(true); setError(''); if (conectado) setData(null);
     getCalendar(desde, hasta, controller.signal).then(value => { if (!controller.signal.aborted) setData(value); })
       .catch(e => { if (!controller.signal.aborted) { setData(null); setError(e instanceof Error ? e.message : 'No se pudo consultar el calendario.'); } })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [desde, hasta, reservas]);
-  const merged = data ? calendarWithBff(data, reservas, huespedes) : { reservas, huespedes };
+  const merged = data ? calendarWithBff(data, conectado ? [] : reservas, conectado ? [] : huespedes) : { reservas: conectado ? [] : reservas, huespedes: conectado ? [] : huespedes };
   // El contrato agrupa por categoría; el piso viene en cada referencia de habitación.
   const rooms = data ? data.grupos.flatMap(g => g.habitaciones.map(h => ({
     id: `hh-${h.numero}`, numero: h.numero, piso: h.piso, tipo: g.tipoHabitacion.nombre,
@@ -72,14 +72,14 @@ export default function CalendarioReservas({ reservas, huespedes, habitaciones, 
   const monthSlots: (string | null)[] = [...Array<string | null>(leading).fill(null), ...days];
   while (monthSlots.length % 7) monthSlots.push(null);
   const weeks = Array.from({ length: monthSlots.length / 7 }, (_, i) => monthSlots.slice(i * 7, i * 7 + 7));
-  const reservationsOnDay = (day: string) => assigned.filter(r => r.fechaEntrada <= day && r.fechaSalida > day);
-  return <section aria-label="Calendario de reservas" className="rounded-xl border border-[#E5E0D8] bg-white p-4 text-[#18345C]">
-    <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+  const reservationsOnDay = (day: string) => visible.filter(r => r.fechaEntrada <= day && r.fechaSalida > day);
+  return <section aria-label="Calendario de reservas" className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-[#E5E0D8] bg-white p-4 text-[#18345C]">
+    <div className="mb-3 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
       <h2 className="text-xl font-semibold">Calendario de reservas</h2>
       <div aria-hidden="true" className="col-span-2 row-start-2 h-10 w-36 justify-self-center md:col-span-1 md:col-start-2 md:row-start-1" />
       <button onClick={onNueva} className="relative top-1 col-start-2 row-start-1 h-10 justify-self-end whitespace-nowrap rounded-md bg-[#18345C] px-3 text-sm text-white md:col-start-3">+ Nueva reserva</button>
     </div>
-    <div className="relative mb-3 flex flex-wrap items-center gap-3">
+    <div className="relative mb-3 flex shrink-0 flex-wrap items-center gap-3">
       <div role="group" aria-label="Vista del calendario" className="absolute right-0 top-[52px] flex h-10 overflow-hidden rounded-md border border-[#E5E0D8] text-sm md:top-0">
         {([['month', 'Mes'], ['rooms', 'Habitaciones']] as const).map(([value, text]) => <button key={value} aria-pressed={presentation === value} onClick={() => setPresentation(value)} className={`px-3 ${presentation === value ? 'bg-[#18345C] text-white' : ''}`}>{text}</button>)}
       </div>
@@ -92,16 +92,15 @@ export default function CalendarioReservas({ reservas, huespedes, habitaciones, 
       <label className="flex h-10 items-center gap-2 text-sm">Categoría<select aria-label="Categoría del calendario" value={category} onChange={e => setCategory(e.target.value)} className="h-10 max-w-full rounded-md border border-[#E5E0D8] px-2"><option value="">Todas</option>{[...new Set(rooms.map(h => h.tipo))].map(t => <option key={t}>{t}</option>)}</select></label>
     </div>
     {loading && <p role="status" className="mb-2 text-sm">Consultando reservas…</p>}
-    {error && <p role="alert" className="mb-2 text-sm text-red-800">{error} Se conservan las reservas locales.</p>}
-    <div className={presentation === 'month' ? 'max-w-full overflow-x-auto' : 'relative isolate max-w-full overflow-auto overscroll-contain rounded border border-[#E5E0D8]'}
-      style={presentation === 'rooms' ? { height: 'clamp(180px, calc(100dvh - 370px), 640px)' } : undefined}
-      tabIndex={presentation === 'rooms' ? 0 : undefined}
+    {error && <p role="alert" className="mb-2 text-sm text-red-800">{error}{!conectado && " Se conservan las reservas locales."}</p>}
+    <div className={`relative isolate min-h-0 w-full min-w-0 flex-1 overflow-auto overscroll-contain ${presentation === 'rooms' ? 'rounded border border-[#E5E0D8]' : ''}`}
+      tabIndex={0}
       aria-label={presentation === 'month' ? 'Vista mensual' : 'Vista por habitaciones'}>
       {presentation === 'month' ? <div className="min-w-[700px]">
-        <div className="grid grid-cols-7 bg-[#F8F6F0] text-center text-sm">{['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map(d => <div key={d} className="p-2">{d}</div>)}</div>
+        <div className="sticky top-0 z-10 grid grid-cols-7 bg-[#F8F6F0] text-center text-sm">{['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map(d => <div key={d} className="p-2">{d}</div>)}</div>
         <div className="border-l border-t border-[#E5E0D8]">{weeks.map((week, index) => {
-          const segments = monthWeekSegments(week, assigned);
-          return <div key={index} data-month-week={index} className="relative h-[136px]">
+          const segments = monthWeekSegments(week, visible);
+          return <div key={index} data-month-week={index} className="relative h-[112px]">
             <div className="grid h-full grid-cols-7">{week.map((day, column) => {
               const hidden = segments.filter(s => s.lane >= 3 && s.start <= column && s.end > column).length;
               return <div key={day ?? `empty-${column}`} aria-label={day ? `Día ${day}` : undefined} className={`relative min-w-0 border-b border-r border-[#E5E0D8] p-1 ${day ? '' : 'bg-[#F8F6F0]'}`}>
@@ -111,13 +110,13 @@ export default function CalendarioReservas({ reservas, huespedes, habitaciones, 
             })}</div>
             {segments.filter(s => s.lane < 3).map(({ reserva: r, start, end, lane }) => <button key={r.id} data-reservation-code={r.codigo} data-start-column={start} data-end-column={end} data-lane={lane}
               onClick={() => onAbrir(r.id)} aria-label={`${r.codigo}, ${RESERVA_META[r.estado].label}`} title={`${label(r)} · ${r.codigo}`}
-              style={{ left: `calc(${start * 100 / 7}% + 3px)`, width: `calc(${(end - start) * 100 / 7}% - 6px)`, top: 28 + lane * 27 }}
-              className={`absolute h-6 truncate rounded border px-2 text-left text-xs ${RESERVA_META[r.estado].chip}`}><BedDouble size={14} aria-hidden="true" className="mr-1 inline-block align-middle" /> {label(r)}</button>)}
+              style={{ left: `calc(${start * 100 / 7}% + 3px)`, width: `calc(${(end - start) * 100 / 7}% - 6px)`, top: 24 + lane * 22 }}
+              className={`absolute h-5 truncate rounded border px-2 text-left text-xs ${RESERVA_META[r.estado].chip}`}><BedDouble size={14} aria-hidden="true" className="mr-1 inline-block align-middle" /> {label(r)}</button>)}
           </div>;
         })}</div>
       </div> : <ReceptionTimeline days={days} groupByFloor={!floor} reservas={assigned} huespedes={merged.huespedes} habitaciones={filteredRooms} onSelect={r => onAbrir(r.id)} />}
     </div>
-    <div aria-label="Leyenda de estados" className="mt-2 flex flex-wrap gap-1.5 text-[11px]">{Object.entries(RESERVA_META).map(([key, meta]) => <span key={key} className={`rounded border px-2 py-0.5 ${meta.chip}`}>{meta.label}</span>)}</div>
+    <div aria-label="Leyenda de estados" className="mt-2 flex shrink-0 flex-wrap gap-1.5 text-[11px]">{Object.entries(RESERVA_META).map(([key, meta]) => <span key={key} className={`rounded border px-2 py-0.5 ${meta.chip}`}>{meta.label}</span>)}</div>
     {selectedDay && <div className="fixed inset-0 z-50 grid place-items-center bg-[#071D34]/45 p-4" onClick={() => setSelectedDay(null)}>
       <section role="dialog" aria-modal="true" aria-label="Reservas del día" onClick={e => e.stopPropagation()} className="flex max-h-[80dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <header className="flex shrink-0 items-center justify-between gap-2 border-b border-[#E5E0D8] px-4 py-2"><h3 className="text-lg font-semibold">Reservas del {new Intl.DateTimeFormat('es-GT', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${selectedDay}T12:00:00Z`))}</h3><ReceptionCloseButton autoFocus onClick={() => setSelectedDay(null)} /></header>

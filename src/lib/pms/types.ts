@@ -9,7 +9,7 @@ export interface Habitacion {
   id: string;
   numero: string;
   piso: number;
-  tipo: TipoHabitacion;
+  tipo: string;
   estado: EstadoHabitacion;
   personal: string | null;
   proximaLlegada: string | null;
@@ -17,6 +17,9 @@ export interface Habitacion {
   observaciones: string;
   foto: string;
   finalizadaEn?: string;
+  ocupacion?: string;
+  condicionReal?: string;
+  empleadoId?: number | null;
 }
 export type EstadoSolicitud = 'pendiente' | 'en-proceso' | 'en-limpieza' | 'finalizada' | 'entregado';
 export type TipoSolicitud = 'limpieza' | 'articulos';
@@ -143,6 +146,7 @@ export interface Huesped {
   foto?: string;
   tipoDocumento: TipoDocumento;
   documento: string;
+  paisEmisorPasaporte?: string;
   telefono: string;
   correo: string;
   nacionalidad: string;
@@ -407,6 +411,7 @@ export interface Activo {
   estado: EstadoActivo;
 }
 export interface TareaPreventiva {
+  intervaloDias?: number;
   id: string;
   nombre: string;
   activoId: string | null;

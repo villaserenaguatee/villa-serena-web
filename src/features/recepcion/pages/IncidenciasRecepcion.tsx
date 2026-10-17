@@ -4,9 +4,9 @@ import type { RoomState } from '@/lib/bff/contracts/reception';
 import { validarFoto } from '@/lib/incidenciaValidation';
 import ReceptionCloseButton from './ReceptionCloseButton';
 
-async function enviar(ruta: string, body: FormData | object) {
+async function enviar(ruta: string, body: FormData | object, requestKey?: string) {
   const response = await fetch(ruta, { method: 'POST', credentials: 'same-origin',
-    ...(body instanceof FormData ? { body } : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }) });
+    ...(body instanceof FormData ? { body } : { headers: { 'Content-Type': 'application/json',...(requestKey?{'Idempotency-Key':requestKey}:{}) }, body: JSON.stringify(body) }) });
   const value = await response.json().catch(() => null);
   if (!response.ok) throw new Error(value?.mensaje ?? 'No se pudo completar el registro. Intenta nuevamente.');
   return value;
@@ -24,6 +24,7 @@ export default function IncidenciasRecepcion() {
   const [photoKey, setPhotoKey] = useState<string>();
   const [preview, setPreview] = useState('');
   const photoInput = useRef<HTMLInputElement>(null);
+  const requestKey=useRef<string|undefined>(undefined);
   useEffect(() => {
     if (!photo || validarFoto(photo)) { setPreview(''); return; }
     const url = URL.createObjectURL(photo);
@@ -54,9 +55,9 @@ export default function IncidenciasRecepcion() {
         if (typeof uploaded?.clave !== 'string' || !uploaded.clave) throw new Error('No se pudo obtener la fotografía subida.');
         clave = uploaded.clave; setPhotoKey(clave);
       }
-      const result = await enviar('/api/incidencias', { habitacionId: Number(room), descripcion: description.trim(), impideUso: blocking, ...(clave ? { fotoClave: clave } : {}) });
+      const result = await enviar('/api/incidencias', { habitacionId: Number(room), descripcion: description.trim(), impideUso: blocking, ...(clave ? { fotoClave: clave } : {}) },requestKey.current??=crypto.randomUUID());
       if (!Number.isInteger(result?.id) || result?.estado !== 'REPORTADA' || result?.habitacionId !== Number(room)) throw new Error('No se pudo comprobar el registro. Consulta con Mantenimiento antes de repetirlo.');
-      setSuccess(`Incidencia ${result.id} reportada para la habitación ${rooms.find(r => String(r.id) === room)?.numero}.`);
+      requestKey.current=undefined;setSuccess(`Incidencia ${result.id} reportada para la habitación ${rooms.find(r => String(r.id) === room)?.numero}.`);
       setOpen(false); setDescription(''); setBlocking(false); setPhoto(undefined); setPhotoKey(undefined); setRoom(''); setPiso('');
     } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo registrar la incidencia.'); }
     finally { setBusy(false); }
@@ -64,6 +65,7 @@ export default function IncidenciasRecepcion() {
   const input = 'mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#18345C]';
   return <div className="flex-1 overflow-y-auto bg-[#F8F6F0] p-4 sm:p-6">
     <header className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-3xl font-semibold text-[#18345C]">Incidencias</h1><button disabled={loading || !rooms.length} onClick={() => { setOpen(true); setError(''); setSuccess(''); }} className="rounded-lg bg-[#18345C] px-4 py-2 text-white disabled:opacity-40">+ Nueva incidencia</button></header>
+    <p role="status" className="mt-4 text-sm text-[#52677F]">Recepción puede reportar daños. El backend reserva la consulta y resolución de incidencias a Administración y Mantenimiento.</p>
     {loading && <p className="mt-4 text-sm">Consultando habitaciones…</p>}
     {!open && error && <p role="alert" className="mt-4 text-sm text-[#922E2E]">{error}</p>}
     {success && <p role="status" className="mt-4 rounded-lg border border-[#B7DCC2] bg-[#EDF7EF] p-3 text-sm text-[#21603A]">{success}</p>}

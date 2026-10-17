@@ -3,7 +3,7 @@ import type { PublicRoom } from '@/data/publicRooms';
 import { leerReservas, RESERVAS_EVENT } from '@/store/reservationStore';
 import { HABITACIONES_EVENT, leerHabitaciones } from '@/store/roomStore';
 import { tipoPublicoATipoHotel } from '@/store/tarifasStore';
-import { habitacionesDisponibles } from '@/features/recepcion/roomAvailability';
+import { habitacionesDisponibles } from '@/features/recepcion/pages/recUtils';
 import { getPublicAvailability } from '@/lib/api/availability';
 import type { AvailabilityQuery } from '@/lib/bff/contracts/availability';
 import { fechaHotel } from '@/lib/hotel';
@@ -27,10 +27,11 @@ export function readAvailability() {
   return { habitaciones: leerHabitaciones(), reservas: leerReservas() };
 }
 export type PublicAvailability = ReturnType<typeof readAvailability> & { query?: AvailabilityQuery; error?: boolean };
-export function usePublicAvailability(query: AvailabilityQuery, capacity = 5) {
+export function usePublicAvailability(query: AvailabilityQuery, capacity = 5, enabled = true) {
   const { arrival, departure, adults, children } = query;
   const [inventory, setInventory] = useState<PublicAvailability | null>(null);
   useEffect(() => {
+    if (!enabled) return;
     let controller: AbortController | undefined;
     let disposed = false;
     const refresh = () => {
@@ -58,7 +59,7 @@ export function usePublicAvailability(query: AvailabilityQuery, capacity = 5) {
     events.forEach(event => window.addEventListener(event, refresh));
     return () => { disposed = true; controller?.abort(); events.forEach(event => window.removeEventListener(event, refresh)); };
   },
-    [arrival, departure, adults, children, capacity]);
+    [arrival, departure, adults, children, capacity, enabled]);
   return inventory;
 }
 export function availableRoom(room: PublicRoom,

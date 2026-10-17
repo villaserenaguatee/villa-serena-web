@@ -1,3 +1,5 @@
+import type {ReactNode} from 'react';
+import {GuestRestriction} from './GuestRestriction';
 import { UiText, useUiText } from "@/i18n/UiText";
 import { useState } from "react";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
@@ -42,12 +44,13 @@ function Icono({ tipo, size = 28, }: {
   }
   return (<svg {...p}>
     <circle cx="12" cy="12" r="9" fill="currentColor" stroke="none" />
-    <path d="M7 15v-1.5A5 5 0 0 1 17 13.5V15M8.5 12.5V9a3.5 3.5 0 0 1 7 0v3.5M6 16h12" stroke="white" />
-    <path d="M9 19h6" stroke="white" />
+    <path d="M7 15v-1.5A5 5 0 0 1 17 13.5V15M8.5 12.5V9a3.5 3.5 0 0 1 7 0v3.5M6 16h12" stroke="#18345C" />
+    <path d="M9 19h6" stroke="#18345C" />
   </svg>);
 }
-export default function ChatHuesped({ habilitado, nombreHuesped, mensajes, onEnviar, onEditar, onEliminar, }: {
-  habilitado: boolean;
+export default function ChatHuesped({ habilitado=true, transport, nombreHuesped, mensajes, onEnviar, onEditar, onEliminar, }: {
+  habilitado?:boolean;
+  transport?:{text:string;setText:(s:string)=>void;send:(s:string)=>Promise<void>;busy:boolean;loading:boolean;error:string;blockedReason:string;renderText:(m:MensajeChat)=>ReactNode};
   nombreHuesped: string;
   mensajes: MensajeChat[];
   onEnviar: (texto: string) => void | Promise<void>;
@@ -56,7 +59,8 @@ export default function ChatHuesped({ habilitado, nombreHuesped, mensajes, onEnv
 }) {
   const ui = useUiText();
   const { en } = usePublicLanguage();
-  const [texto, setTexto] = useState("");
+  const [localTexto,setLocalTexto]=useState("");
+  const texto=transport?.text??localTexto;const setTexto=transport?.setText??setLocalTexto;
   const [mostrarPreguntas, setMostrarPreguntas] = useState(true);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -64,8 +68,9 @@ export default function ChatHuesped({ habilitado, nombreHuesped, mensajes, onEnv
   const [eliminarId, setEliminarId] = useState<string | null>(null);
   const mensajesVisibles = mensajes.filter((m) => !m.eliminadoPara?.includes("huesped"));
   function enviar(valor = texto.trim()) {
-    if (!habilitado || !valor)
+    if (!habilitado || transport?.busy || !valor)
       return;
+    if(transport){void transport.send(valor);setMostrarPreguntas(false);return;}
     void onEnviar(valor);
     setTexto("");
     setMostrarPreguntas(false);
@@ -83,14 +88,15 @@ export default function ChatHuesped({ habilitado, nombreHuesped, mensajes, onEnv
     setEditandoTexto("");
   }
   return (<div
-    className="flex-1 overflow-hidden bg-[#F8F6F0]"
+    data-guest-reference="chat-38cf2a3"
+    className="flex-1 min-w-0 overflow-y-auto bg-[#F8F6F0]"
     style={{
       fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif',
     }}
     onClick={() => setMenuId(null)}>
     <header className="relative border-b border-[#E5E0D8] bg-white px-6 py-6 sm:px-8">
       <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#B38B2C]">
-        <UiText text="Comunicación durante tu estancia" />
+        {en?'Communication during your stay':'Comunicación durante tu estancia'}
       </p>
 
       <h1 className="mt-1 text-[34px] font-semibold leading-tight text-[#18345C]">
@@ -98,7 +104,7 @@ export default function ChatHuesped({ habilitado, nombreHuesped, mensajes, onEnv
       </h1>
 
       <p className="mt-1 text-[17px] text-[#7890B0]">
-        <UiText text="Comunícate con recepción durante tu estancia." />
+        {en?'Contact Reception during your stay.':'Comunícate con recepción durante tu estancia.'}
       </p>
     </header>
 
@@ -117,8 +123,8 @@ export default function ChatHuesped({ habilitado, nombreHuesped, mensajes, onEnv
               </h2>
 
               <p className="mt-0.5 flex items-center gap-2 text-[14px] text-[#188247]">
-                <span className="h-3 w-3 rounded-full bg-[#159447]" />
-                <UiText text="En línea" />
+                <span className={`h-3 w-3 rounded-full ${transport?"bg-[#AEBCC1]":"bg-[#159447]"}`} />
+                {transport?(en?'Messages about your stay':'Mensajes de tu estancia'):<UiText text="En línea"/>}
               </p>
             </div>
           </div>
@@ -130,7 +136,7 @@ export default function ChatHuesped({ habilitado, nombreHuesped, mensajes, onEnv
             <span className="h-px flex-1 bg-[#E5E0D8]" />
 
             <span className="rounded-full border border-[#E5E0D8] bg-white px-5 py-1.5 text-sm text-[#18345C]">
-              {en ? "Today" : "Hoy"}
+              {transport?(en?'Conversation':'Conversación'):(en?'Today':'Hoy')}
             </span>
 
             <span className="h-px flex-1 bg-[#E5E0D8]" />
@@ -149,7 +155,7 @@ export default function ChatHuesped({ habilitado, nombreHuesped, mensajes, onEnv
               </div>
 
               <p className="mt-1 pl-2 text-[11px] text-[#7890B0]">
-                {horaHotel()}
+                {!transport&&horaHotel()}
               </p>
             </div>
           </div>
@@ -160,7 +166,7 @@ export default function ChatHuesped({ habilitado, nombreHuesped, mensajes, onEnv
               {(en ? PREGUNTAS_EN : PREGUNTAS_ES).map((pregunta) => (<button
                 key={pregunta}
                 type="button"
-                disabled={!habilitado}
+                disabled={!habilitado||transport?.busy}
                 onClick={() => enviar(pregunta)}
                 className="flex min-h-10 items-center justify-between rounded-xl border border-[#E1E4E8] bg-white px-3 py-2 text-left text-[12px] font-medium text-[#18345C] shadow-sm transition hover:border-[#B38B2C] hover:bg-[#FFFDF7]">
                 <span>
@@ -208,7 +214,7 @@ export default function ChatHuesped({ habilitado, nombreHuesped, mensajes, onEnv
                   </div>
                 </div>) : (<>
                   <p>
-                    {contenido}
+                    {transport?transport.renderText(m):contenido}
                   </p>
 
                   {m.editado && (<span className={`text-[10px] ${mio
@@ -227,6 +233,8 @@ export default function ChatHuesped({ habilitado, nombreHuesped, mensajes, onEnv
                 {mio && !m.eliminadoParaTodos &&
                   editandoId !== m.id && (<button
                     type="button"
+                    disabled={Boolean(transport)}
+                    title={transport?(en?'Editing and deleting are not available.':'Editar y eliminar no están disponibles.'):undefined}
                     onClick={(e) => {
                       e.stopPropagation();
                       setMenuId(menuId === m.id ? null : m.id);
@@ -267,11 +275,16 @@ export default function ChatHuesped({ habilitado, nombreHuesped, mensajes, onEnv
           })}
         </div>
 
+        {transport?.loading&&<p role="status" className="px-4 text-sm">{en?'Loading messages…':'Consultando mensajes…'}</p>}
+        {transport?.error&&<p role="alert" className="px-4 text-sm text-red-800">{transport.error}</p>}
+        {transport?.blockedReason&&<GuestRestriction reason={transport.blockedReason}/>}
         <footer className="border-t border-[#E5E0D8] bg-white px-4 py-3 sm:px-5">
 
           <div className="flex items-center gap-3">
 
             <input
+              maxLength={2000}
+              disabled={!habilitado||transport?.busy}
               value={texto}
               onChange={(e) => setTexto(e.target.value)}
               onKeyDown={(e) => {
@@ -281,14 +294,13 @@ export default function ChatHuesped({ habilitado, nombreHuesped, mensajes, onEnv
                   enviar();
                 }
               }}
-              disabled={!habilitado}
               placeholder={ui("Escribe un mensaje...")}
               className="min-w-0 flex-1 rounded-xl border border-[#DCDCDC] bg-white px-4 py-3 text-[14px] text-[#18345C] outline-none focus:border-[#18345C]" />
 
             <button
               type="button"
               onClick={() => enviar()}
-              disabled={!habilitado || !texto.trim()}
+              disabled={!habilitado||transport?.busy||!texto.trim()}
               className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#18345C] text-white disabled:cursor-not-allowed disabled:opacity-40">
               <Icono tipo="enviar" size={31} />
             </button>

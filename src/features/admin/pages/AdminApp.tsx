@@ -1,4 +1,6 @@
+import GestionAdmin from './GestionAdmin';
 import { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Bell, X } from 'lucide-react';
 import StaffProfileModal from '@/components/common/StaffProfileModal';
 import { useAuth } from '@/hooks/useAuth';
@@ -80,10 +82,19 @@ interface Props {
   onCambiarModulo: (m: Modulo) => void;
 }
 export default function AdminApp({ onCambiarModulo }: Props) {
-  const [seccion, setSeccion] = useState<SeccionAdmin>('panel');
+  const pathname = usePathname(), router = useRouter();
+  const fromPath = (path: string): SeccionAdmin => SECCIONES.find(s => path === `/admin/${s.id}`)?.id ?? 'panel';
+  const [seccion, setSeccionActual] = useState<SeccionAdmin>(() => fromPath(pathname));
+  function setSeccion(section: SeccionAdmin) {
+    setSeccionActual(section);
+    const target = section === 'panel' ? '/admin' : `/admin/${section}`;
+    if (pathname !== target) router.push(target);
+  }
+  useEffect(() => { setSeccionActual(fromPath(pathname)); }, [pathname]);
+  const [personalInitial,setPersonalInitial]=useState('catalogo');
   const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [notificacionesAbiertas, setNotificacionesAbiertas] = useState(false);
-  const [correccionesPersonal, setCorreccionesPersonal] = useState<any[]>([]);
+  const [correccionesPersonal, setCorreccionesPersonal] = useState<ReturnType<typeof leerCorrecciones>>([]);
   useEffect(() => {
     const cargar = () => setCorreccionesPersonal(leerCorrecciones());
     cargar();
@@ -136,10 +147,10 @@ export default function AdminApp({ onCambiarModulo }: Props) {
   const [reglas, setReglas] = useState<ReglaTarifa[]>(REGLAS_TARIFA_INICIALES);
   const [promociones, setPromociones] = useState<Promocion[]>(() => leerPromociones());
   useEffect(() => guardarPromociones(promociones), [promociones]);
-  const [empleados, setEmpleados] = useState<Empleado[]>(() => leerEmpleados());
   const { user } = useAuth();
-  const adminActual = empleados.find(e => e.id === user?.id && e.activo);
-  useEffect(() => guardarEmpleados(empleados), [empleados]);
+  const [empleados, setEmpleados] = useState<Empleado[]>(() => user?.staff ? [] : leerEmpleados());
+  const adminActual = user?.staff ?? empleados.find(e => e.id === user?.id && e.activo);
+  useEffect(() => { if (!user?.staff) guardarEmpleados(empleados); }, [empleados, user?.staff]);
   const [insumos, setInsumos] = useState<Insumo[]>(() => leerInsumosAdmin());
   const [movimientos, setMovimientos] = useState<MovimientoInsumo[]>(() => leerMovimientosAdmin());
   const [compras, setCompras] = useState<CompraHotel[]>(() => leerComprasAdmin());
@@ -154,8 +165,8 @@ export default function AdminApp({ onCambiarModulo }: Props) {
     ? Math.round((habitaciones.filter(h => h.estado === 'ocupada').length / habitaciones.length) * 100)
     : 0;
   const hoy = fechaHoyISO();
-  const badgePanel = reservas.filter(r => r.fechaEntrada === hoy && (r.estado === 'pendiente' || r.estado === 'confirmada') && !r.habitacionId).length;
-  const badgeInventario = insumos.filter(i => i.stock <= i.stockMinimo).length;
+  const badgePanel = user?.staff ? 0 : reservas.filter(r => r.fechaEntrada === hoy && (r.estado === 'pendiente' || r.estado === 'confirmada') && !r.habitacionId).length;
+  const badgeInventario = user?.staff ? 0 : insumos.filter(i => i.stock <= i.stockMinimo).length;
   function cambiarEstadoHab(habId: string,
     nuevo: EstadoHabHotel) {
     setHabitaciones(hs => hs.map(h => {
@@ -259,6 +270,7 @@ export default function AdminApp({ onCambiarModulo }: Props) {
     ...prev]);
   }
   const contenido = (() => {
+    if(user?.staff)return <GestionAdmin key={seccion+personalInitial} seccion={seccion} personalInitial={personalInitial}/>;
     switch (seccion) {
       case 'panel':
         return (<PanelHabitaciones habitaciones={habitaciones} reservas={reservas} huespedes={huespedes} onCambiarEstadoHab={cambiarEstadoHab} />);
@@ -370,23 +382,26 @@ export default function AdminApp({ onCambiarModulo }: Props) {
             {SECCIONES.find(s => s.id === seccion)?.label}
           </p>
           <button
+            title={user?.staff ? 'Solicitudes de corrección del personal' : 'Notificaciones'}
             onClick={() => {
+              if(user?.staff){setPersonalInitial('correcciones');setSeccion('personal');return;}
               setNotificacionesAbiertas(true);
               guardarCorrecciones(leerCorrecciones().map(n => ({ ...n, leidaAdmin: true })));
             }}
             className="relative grid h-9 w-9 place-items-center rounded-full border border-[#365270] text-white"
             aria-label="Notificaciones">
             <Bell size={18} />
-            {correccionesPersonal.filter(n => n.estado === 'pendiente' && !n.leidaAdmin).length > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#D8B94E] px-1 text-[9px] font-bold text-[#102747]">
+            {!user?.staff && correccionesPersonal.filter(n => n.estado === 'pendiente' && !n.leidaAdmin).length > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#D8B94E] px-1 text-[9px] font-bold text-[#102747]">
               {correccionesPersonal.filter(n => n.estado === 'pendiente' && !n.leidaAdmin).length}
             </span>}
           </button>
           <div className="lg:hidden flex gap-1.5">
+            <button className="text-xs text-white" onClick={() => setPerfilAbierto(true)}>Mi perfil</button>
             <ModuloSwitcher actual="admin" onCambiar={onCambiarModulo} variant="inline" />
           </div>
         </div>
 
-        <div className="flex-1 flex overflow-hidden relative">
+        <div className="min-w-0 flex-1 flex overflow-hidden relative">
           {contenido}
         </div>
 

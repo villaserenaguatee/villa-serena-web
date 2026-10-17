@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react';
+import { getReceptionAvailability, getAvailableRoomReferences, getRooms } from '@/lib/api/reception';
+import { useEffect, useMemo, useState } from 'react';
 import { Minus, Plus, Users } from 'lucide-react';
 import type { HabitacionHotel, Reserva, TipoHabitacion } from '@/lib/pms/types';
 import { fechaHoyISO, fechaRelativaISO, nochesEntre } from '@/data/pms';
 import { Campo, INPUT_CLS, habitacionesDisponibles } from '@/features/recepcion/pages/recUtils';
 import { publicRoomForHotelType, money } from '@/data/publicRooms';
 interface Props {
+  conectado?: boolean;
   habitaciones: HabitacionHotel[];
   reservas: Reserva[];
   onReservar: (preset: {
@@ -17,28 +19,56 @@ interface Props {
   }) => void;
 }
 const TIPOS: (TipoHabitacion | 'Todos')[] = ['Todos', 'Standard', 'Superior', 'Deluxe', 'Suite Deluxe', 'Suite'];
-export default function Disponibilidad({ habitaciones, reservas, onReservar }: Props) {
+export default function Disponibilidad({ conectado = false, habitaciones, reservas, onReservar }: Props) {
   const [entrada, setEntrada] = useState(fechaHoyISO());
   const [salida, setSalida] = useState(fechaRelativaISO(2));
   const [adultos, setAdultos] = useState('1');
   const [ninos, setNinos] = useState('0');
   const [huespedesAbierto, setHuespedesAbierto] = useState(false);
   const [tipo, setTipo] = useState<TipoHabitacion | 'Todos'>('Todos');
+  const [catalogo, setCatalogo] = useState<{id:number;nombre:string}[]>([]);
+  const [remoteTypeId, setRemoteTypeId] = useState('');
+  const [catalogoError, setCatalogoError] = useState('');
+  useEffect(() => {
+    if (!conectado) return;
+    const controller = new AbortController();
+    getRooms(new URLSearchParams(), controller.signal).then(rooms => setCatalogo([...new Map(rooms.map(r => [r.tipoHabitacion.id, r.tipoHabitacion])).values()]))
+      .catch(e => { if (!controller.signal.aborted) setCatalogoError(e.message); });
+    return () => controller.abort();
+  }, [conectado]);
+  const tipos = conectado ? ['Todos', ...catalogo.map(t => t.nombre)] : TIPOS;
+  const tipoId = remoteTypeId ? Number(remoteTypeId) : undefined;
   const nPersonas = Math.max(1, (Number(adultos) || 0) + (Number(ninos) || 0));
   const rangoValido = entrada < salida;
   const noches = rangoValido ? nochesEntre(entrada, salida) : 0;
-  const resultados = useMemo(() => rangoValido
+  const [remote, setRemote] = useState<HabitacionHotel[]>([]);
+  const [loading, setLoading] = useState(false), [error, setError] = useState('');
+  useEffect(() => {
+    if (!conectado) return;
+    const controller = new AbortController(); setRemote([]); setError(''); setLoading(rangoValido);
+    if (!rangoValido) return () => controller.abort();
+    getReceptionAvailability(entrada, salida, nPersonas, controller.signal).then(async options => {
+      const groups = await Promise.all(options.filter(o => o.habitacionesDisponibles > 0 && (tipo === 'Todos' || o.tipoHabitacion.id === tipoId)).map(async o => {
+        const refs = await getAvailableRoomReferences(o.tipoHabitacion.id, entrada, salida, controller.signal);
+        return refs.map(r => ({ id: 'hh-' + r.numero, numero: r.numero, piso: r.piso, tipo: o.tipoHabitacion.nombre as TipoHabitacion, capacidad: o.capacidad, precioNoche: o.total / o.noches, estado: 'disponible' as const }));
+      }));
+      if (!controller.signal.aborted) setRemote(groups.flat());
+    }).catch(e => { if (!controller.signal.aborted) setError(e.message); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [conectado, entrada, salida, nPersonas, tipo, tipoId, rangoValido]);
+  const locales = useMemo(() => rangoValido
     ? habitacionesDisponibles(entrada, salida, habitaciones, reservas, {
       personas: nPersonas,
       tipo: tipo === 'Todos' ? undefined : tipo,
     }).sort((a, b) => a.numero.localeCompare(b.numero))
     : [],
     [rangoValido, entrada, salida, habitaciones, reservas, nPersonas, tipo]);
+  const resultados = conectado ? remote : locales;
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
     <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Consultar disponibilidad</h1>
-        {rangoValido && <p role="status" className="text-[14px] text-[#6B7280]">{resultados.length} {resultados.length === 1 ? 'habitación disponible' : 'habitaciones disponibles'}</p>}
+        {rangoValido && !loading && !error && <p role="status" className="text-[14px] text-[#6B7280]">{resultados.length} {resultados.length === 1 ? 'habitación disponible' : 'habitaciones disponibles'}</p>}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.2fr_1fr] gap-3 mt-4 items-end">
@@ -55,7 +85,7 @@ export default function Disponibilidad({ habitaciones, reservas, onReservar }: P
               <span>{nPersonas} huésped{nPersonas === 1 ? '' : 'es'}</span>
             </button>
             {huespedesAbierto && <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-[310px] bg-white rounded-xl shadow-2xl border border-[#EEE7DA] p-4 text-[#102747]">
-              {[['Adultos', adultos, setAdultos, 1], ['Niños', ninos, setNinos, 0]].map(([etiqueta, valor, setter, min]: any) => <div key={etiqueta} className="flex items-center justify-between py-3">
+              {([['Adultos', adultos, setAdultos, 1], ['Niños', ninos, setNinos, 0]] as const).map(([etiqueta, valor, setter, min]) => <div key={etiqueta} className="flex items-center justify-between py-3">
                 <span className="text-[17px]">
                   {etiqueta}
                 </span>
@@ -84,8 +114,8 @@ export default function Disponibilidad({ habitaciones, reservas, onReservar }: P
           </div>
         </Campo>
         <Campo label="Categoría">
-          <select value={tipo} onChange={e => setTipo(e.target.value as TipoHabitacion | 'Todos')} className={INPUT_CLS}>
-            {TIPOS.map(t => (<option key={t} value={t}>
+          <select value={conectado ? remoteTypeId : tipo} onChange={e => {if (conectado) {setRemoteTypeId(e.target.value);setTipo((catalogo.find(t => t.id === Number(e.target.value))?.nombre ?? 'Todos') as TipoHabitacion | 'Todos');} else setTipo(e.target.value as TipoHabitacion | 'Todos');}} className={INPUT_CLS}>
+            {conectado ? <><option value="">Todas</option>{catalogo.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}</> : tipos.map(t => (<option key={t} value={t}>
               {t === 'Todos' ? 'Todas' : t}
             </option>))}
           </select>
@@ -94,8 +124,9 @@ export default function Disponibilidad({ habitaciones, reservas, onReservar }: P
     </div>
 
     <div className="px-4 sm:px-6 py-5">
+      {loading && <p role="status">Consultando disponibilidad…</p>}{(error || catalogoError) && <p role="alert" className="text-red-800">{error || catalogoError}</p>}
       {!rangoValido ? (<p className="text-[14px] text-[#991B1B]">La fecha de salida debe ser posterior a la de entrada.</p>) : (<>
-        {resultados.length === 0 ? (<div className="bg-white border border-[#E5E0D8] rounded-xl p-6 text-center">
+        {resultados.length === 0 && !loading && !error ? (<div className="bg-white border border-[#E5E0D8] rounded-xl p-6 text-center">
           <p className="text-[15px] text-[#AEBCC1]">No hay habitaciones libres con esos criterios.</p>
         </div>) : (<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {resultados.map(h => {
@@ -123,10 +154,10 @@ export default function Disponibilidad({ habitaciones, reservas, onReservar }: P
                 <div className="flex items-end justify-between mt-3 pt-3 border-t border-[#F0EBE3]">
                   <div>
                     <p className="text-[18px] font-bold text-[#18345C]">
-                      {money(visual.price)}
+                      {money(conectado ? h.precioNoche : visual.price)}
                       <span className="text-[12px] font-normal text-[#AEBCC1]">/ noche</span>
                     </p>
-                    <p className="text-[12px] text-[#AEBCC1]">{money(visual.price * noches)} por {noches} noche{noches !== 1 ? 's' : ''}</p>
+                    <p className="text-[12px] text-[#AEBCC1]">{money((conectado ? h.precioNoche : visual.price) * noches)} por {noches} noche{noches !== 1 ? 's' : ''}</p>
                   </div>
                   <button
                     onClick={() => onReservar({ entrada, salida, tipo: h.tipo, habitacionId: h.id, adultos: Number(adultos), ninos: Number(ninos) })}

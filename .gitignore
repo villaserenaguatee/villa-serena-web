@@ -8,3 +8,18 @@ node_modules
 .data/
 test-results/
 playwright-report/
+
+# Private runtime and generated artifacts
+.env
+.env.*
+!.env.example
+.next/
+.next-dev/
+*.tsbuildinfo
+.data/
+.local/
+.worktrees/
+ops/**/.local/
+playwright-report/
+test-results/
+*.log

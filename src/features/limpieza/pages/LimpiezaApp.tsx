@@ -8,7 +8,10 @@ import Inicio from '@/features/limpieza/pages/InicioLimpieza';
 import Mapa from '@/features/limpieza/pages/MapaHabitaciones';
 import Solicitudes from '@/features/limpieza/pages/SolicitudesLimpieza';
 import Incidencias from '@/features/limpieza/pages/IncidenciasLimpieza';
+import IncidenciasConectadas from '@/features/mantenimiento/pages/IncidenciasConectadas';
 import Objetos from '@/features/limpieza/pages/ObjetosOlvidados';
+import ObjetosLimpiezaConectados from './ObjetosLimpiezaConectados';
+import HistorialSolicitudesConectado from './HistorialSolicitudesConectado';
 import Historial from '@/features/limpieza/pages/HistorialLimpieza';
 import RoomServiceApp from '@/features/roomservice/pages/RoomServiceApp';
 import RecepcionApp from '@/features/recepcion/pages/RecepcionApp';
@@ -78,12 +81,13 @@ function Sidebar({ pantalla, setPantalla, solPendientes, incPendientes, onCambia
   onEditarPerfil: () => void;
 }) {
   const { user } = useAuth();
-  const empleadosActuales = leerEmpleados();
+  const empleadosActuales = user?.staff ? [] : leerEmpleados();
   const empleadoLimpieza = empleadosActuales.find(e => e.id === user?.id && e.activo);
-  const nombreLimpieza = empleadoLimpieza?.nombre ?? 'Limpieza';
+  const nombreLimpieza = user?.staff?.nombre ?? empleadoLimpieza?.nombre ?? 'Limpieza';
   const perfilKey = empleadoLimpieza?.correo ? `vs-perfil-personal-${empleadoLimpieza.correo.toLowerCase()}` : '';
   const [perfil, setPerfil] = useState({ nombre: nombreLimpieza, foto: empleadoLimpieza?.foto || '' });
   useEffect(() => {
+    if(user?.staff){setPerfil({nombre:nombreLimpieza,foto:''});return;}
     const cargar = () => {
       try {
         const p = JSON.parse(localStorage.getItem(perfilKey) || '{}');
@@ -100,7 +104,7 @@ function Sidebar({ pantalla, setPantalla, solPendientes, incPendientes, onCambia
     window.addEventListener('vs-profile-updated', actualizar);
     return () => window.removeEventListener('vs-profile-updated', actualizar);
   },
-    [perfilKey]);
+    [perfilKey,nombreLimpieza,user?.staff]);
   const iniciales = perfil.nombre.split(/\s+/).filter(Boolean).map(x => x[0]).slice(0, 2).join('').toUpperCase();
   return (<nav className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
 
@@ -167,7 +171,7 @@ interface Props {
 }
 export default function App({ onCambiarModulo, conectado = false }: Props = {}) {
   const { user } = useAuth();
-  const empleadosActuales = leerEmpleados();
+  const empleadosActuales = user?.staff ? [] : leerEmpleados();
   const empleadoLimpieza = empleadosActuales.find(e => e.id === user?.id && e.activo);
   const nombreLimpieza = user?.name ?? empleadoLimpieza?.nombre ?? 'Limpieza';
   const perfilKey = empleadoLimpieza?.correo ? `vs-perfil-personal-${empleadoLimpieza.correo.toLowerCase()}` : '';
@@ -192,15 +196,17 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
       window.setTimeout(() => setToasts(prev => prev.filter(t => t.id !== aviso.id)), 8000);
     }
   );
-  useEffect(() => { guardarEstadoLimpieza(habitaciones); }, [habitaciones]);
+  useEffect(() => { if(!conectado)guardarEstadoLimpieza(habitaciones); }, [habitaciones,conectado]);
   useEffect(() => {
+    if(conectado)return;
     const sincronizarHabitaciones = () => setHabitaciones(leerHabitacionesLimpieza());
     window.addEventListener(HABITACIONES_EVENT, sincronizarHabitaciones);
     return () => window.removeEventListener(HABITACIONES_EVENT, sincronizarHabitaciones);
   },
-    []);
+    [conectado]);
   useEffect(() => {
     const cargarPerfil = () => {
+      if(conectado){setUsuarioActual(nombreLimpieza);return;}
       try {
         const perfil = perfilKey ? JSON.parse(localStorage.getItem(perfilKey) || '{}') : {};
         setUsuarioActual(perfil.nombre || nombreLimpieza);
@@ -221,6 +227,7 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
     [perfilKey, nombreLimpieza, empleadoLimpieza?.correo]);
   useEffect(() => {
     const incorporar = () => {
+      if(conectado)return;
       const automaticas = leerTareasLimpiezaSalida();
       if (!automaticas.length)
         return;
@@ -432,7 +439,8 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
           busy={remoto.busy} />);
       case 'mapa':
         return (<Mapa
-          habitaciones={habitaciones}
+          habitaciones={conectado ? remoto.mapa.map(h=>({id:String(h.id),numero:h.numero,piso:h.piso,tipo:h.tipo,estado:h.condicion==='FUERA_DE_SERVICIO'?'fuera-servicio':h.condicion==='LIMPIA'?'limpia':h.condicion==='EN_LIMPIEZA'?'en-limpieza':'pendiente',personal:h.responsable,proximaLlegada:null,tareas:[],observaciones:'',foto:'',ocupacion:h.ocupacion,condicionReal:h.condicion,empleadoId:h.empleadoId})) : habitaciones}
+          detalleConectado={conectado ? (h,cerrar)=><div className="absolute inset-0 z-20 flex justify-end bg-black/25"><section className="w-full sm:max-w-lg bg-[#F8F6F0] p-6 overflow-auto"><button onClick={cerrar} className="float-right text-[#18345C]">Cerrar</button><h2 className="text-2xl text-[#18345C]">Habitación {h.numero}</h2><p className="mt-3">{h.tipo} · Piso {h.piso}</p><p className="mt-3">{h.ocupacion==='OCUPADA'?'Ocupada':h.condicionReal==='FUERA_DE_SERVICIO'?'Fuera de servicio':'Libre'} · {h.condicionReal==='LIMPIA'?'Limpia':h.condicionReal==='SUCIA'?'Pendiente':h.condicionReal==='FUERA_DE_SERVICIO'?'Fuera de servicio':'En limpieza'}</p>{h.personal&&<p className="mt-3">Responsable: {h.personal}</p>}<div className="mt-6 flex gap-3 flex-wrap">{h.ocupacion==='LIBRE'&&h.condicionReal==='SUCIA'&&<button disabled={remoto.busy} onClick={()=>void remoto.iniciar(Number(h.id))} className="rounded-lg bg-[#18345C] text-white px-4 py-2">Iniciar limpieza</button>}{h.condicionReal==='EN_LIMPIEZA'&&remoto.estaACargo({id:h.empleadoId??undefined})&&<><button disabled={remoto.busy} onClick={()=>void remoto.interrumpir(Number(h.id))} className="border rounded-lg px-4 py-2">Interrumpir limpieza</button><button disabled={remoto.busy} onClick={()=>void remoto.terminar(Number(h.id))} className="rounded-lg bg-[#18345C] text-white px-4 py-2">Finalizar limpieza</button></>}<button onClick={()=>{cerrar();setPantalla('incidencias');}} className="border border-[#18345C] rounded-lg px-4 py-2">Reportar incidencia</button></div>{remoto.error&&<p role="alert" className="mt-4 text-red-700">{remoto.error}</p>}</section></div> : undefined}
           solicitudes={solicitudes}
           onComenzarLimpieza={comenzarLimpieza}
           onFinalizarLimpieza={finalizarLimpieza}
@@ -455,9 +463,9 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
           onAtenderSolicitud={id => void remoto.atender(id)}
           estaACargo={remoto.estaACargo}
           busy={remoto.busy} />);
-      case 'incidencias': return <Incidencias incidencias={incidencias} habitaciones={habitaciones} onRegistrar={registrarIncidencia} />;
-      case 'objetos': return <Objetos objetos={objetos} habitaciones={habitaciones} onRegistrar={registrarObjeto} />;
-      case 'historial': return <Historial historial={historial} habitaciones={habitaciones} usuarioActual={usuarioActual} />;
+      case 'incidencias': return conectado ? <IncidenciasConectadas soloReportar/> : <Incidencias incidencias={incidencias} habitaciones={habitaciones} onRegistrar={registrarIncidencia} />;
+      case 'objetos': return conectado ? <ObjetosLimpiezaConectados/> : <Objetos objetos={objetos} habitaciones={habitaciones} onRegistrar={registrarObjeto} />;
+      case 'historial': if(conectado)return <HistorialSolicitudesConectado/>;return <Historial historial={historial} habitaciones={habitaciones} usuarioActual={usuarioActual} />;
     }
   })();
   if (modulo === 'roomservice') {
@@ -506,6 +514,7 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
             {NAV_LABELS_SIDEBAR[pantalla]}
           </p>
           <div className="flex gap-1.5 shrink-0">
+            <button className="text-xs text-white" onClick={() => setPerfilAbierto(true)}>Mi perfil</button>
             <ModuloSwitcher actual="limpieza" onCambiar={setModulo} variant="inline" />
           </div>
           {(solPendientes + incPendientes) > 0 && (<span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: '#D8B94E', color: '#102747' }}>

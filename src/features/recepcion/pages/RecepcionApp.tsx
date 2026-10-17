@@ -3,12 +3,11 @@ import { calcularCuentaRecepcion as calcularCuenta } from '../accountTotals';
 import ReceptionNotice from './ReceptionNotice';
 import { needsReservationChannel, permitsLocalCancellation } from '@/features/recepcion/localCancellation';
 import CalendarioReservas from './CalendarioReservas';
-import { activarCheckInConHabitacionLista, rechazarCheckInPortal, reconciliarHabitacionesReservadas } from '@/store/portalCheckIn';
+import { requireReadyCheckInRoom } from '@/features/recepcion/checkInRoom';
 import { asignarHabitacionReserva } from '@/store/reservationAssignment';
-import { modificarReservaRecepcion } from '@/store/reservationModification';
 import { createReservation, registerGuest, getRooms } from '@/lib/api/reception';
 import { useEffect, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { prepareExistingReceptionScreen } from '@/features/recepcion/receptionLegacyLink';
 import type { ReservationDetail } from '@/lib/bff/contracts/reception';
 import type { ExistingAction } from './ReceptionDetailBff';
@@ -26,7 +25,10 @@ import Huespedes from '@/features/recepcion/pages/Huespedes';
 import DetalleReserva from '@/features/recepcion/pages/DetalleReserva';
 import NuevaReservaModal from '@/features/recepcion/pages/NuevaReservaModal';
 import ChatRecepcion from '@/features/recepcion/pages/ChatRecepcion';
+import ConnectedReceptionChat from './ConnectedReceptionChat';
+import ConnectedReceptionDay from './ConnectedReceptionDay';
 import ObjetosRecepcion from '@/features/recepcion/pages/ObjetosRecepcion';
+import ObjetosEncontradosConectados from './ObjetosEncontradosConectados';
 import IncidenciasRecepcion from './IncidenciasRecepcion';
 import StaffProfileModal from '@/components/common/StaffProfileModal';
 import { leerEmpleados } from '@/store/employeeStore';
@@ -34,8 +36,11 @@ import { guardarHuespedes, leerHuespedes, upsertHuesped, HUESPEDES_EVENT } from 
 import { guardarReservas, leerReservas, RESERVAS_EVENT, upsertReserva } from '@/store/reservationStore';
 import { guardarHabitaciones, leerHabitaciones, HABITACIONES_EVENT } from '@/store/roomStore';
 import { EVENTO_INCIDENCIAS_MANTENIMIENTO, leerIncidenciasMantenimiento, reportarIncidenciaMantenimiento } from '@/store/maintenanceEvents';
-import { completarCheckOutReserva } from '@/store/reservationStore';
+import { completarCheckInReserva, completarCheckOutReserva, errorActivacionCheckInPortal, errorCheckInRecepcion } from '@/store/reservationStore';
 import { actualizarObjetoOlvidado, CLAVE_OBJETOS_OLVIDADOS, guardarObjetosOlvidados, leerObjetosOlvidados } from '@/store/lostFoundEvents';
+const EMPTY_RESERVATIONS: Reserva[] = [];
+const EMPTY_GUESTS: Huesped[] = [];
+const EMPTY_ROOMS: HabitacionHotel[] = [];
 const SECCIONES: {
   id: SeccionRecepcion;
   label: string;
@@ -50,6 +55,16 @@ const SECCIONES: {
     { id: 'objetos', label: 'Objetos olvidados', corto: 'Objetos' },
     { id: 'chat', label: 'Chat con huéspedes', corto: 'Chat' },
   ];
+function seccionDesdeRuta(pathname: string): SeccionRecepcion {
+  const section = pathname.split('/')[2];
+  // La ruta histórica de solicitudes utiliza la pantalla de incidencias.
+  if (section === 'solicitudes') return 'incidencias';
+  return SECCIONES.find(s => s.id === section)?.id ?? 'dia';
+}
+function codigoDesdeRuta(pathname: string): string | null {
+  const parts = pathname.split('/');
+  return parts[2] === 'reservas' && /^VS-[A-Z0-9]{6}$/.test(parts[3] ?? '') ? parts[3] : null;
+}
 function SeccionIcon({ id, size = 18 }: {
   id: SeccionRecepcion;
   size?: number;
@@ -116,14 +131,18 @@ function SeccionIcon({ id, size = 18 }: {
   }
 }
 interface Props {
+  conectado?: boolean;
   onCambiarModulo: (m: Modulo) => void;
 }
-export default function RecepcionApp({ onCambiarModulo }: Props) {
+export default function RecepcionApp({ onCambiarModulo, conectado = false }: Props) {
+  const pathname = usePathname();
+  const router = useRouter();
  const [checkInNotice, setCheckInNotice] = useState('');
   const { user } = useAuth();
-  const [huespedes, setHuespedes] = useState<Huesped[]>(() => leerHuespedes());
-  useEffect(() => guardarHuespedes(huespedes), [huespedes]);
+  const [huespedes, setHuespedes] = useState<Huesped[]>(() => conectado ? [] : leerHuespedes());
+  useEffect(() => { if (!conectado) guardarHuespedes(huespedes); }, [huespedes, conectado]);
   useEffect(() => {
+    if (conectado) return;
     const sync = () => setHuespedes(actuales => {
       const next = leerHuespedes();
       return JSON.stringify(actuales) === JSON.stringify(next) ? actuales : next;
@@ -140,11 +159,12 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
     };
   },
     []);
-  const [reservas, setReservas] = useState<Reserva[]>(() => leerReservas());
-  useEffect(() => guardarReservas(reservas), [reservas]);
-  const [habitaciones, setHabitaciones] = useState<HabitacionHotel[]>(() => aplicarTarifasHabitaciones(leerHabitaciones()));
-  useEffect(() => guardarHabitaciones(habitaciones), [habitaciones]);
+  const [reservas, setReservas] = useState<Reserva[]>(() => conectado ? [] : leerReservas());
+  useEffect(() => { if (!conectado) guardarReservas(reservas); }, [reservas, conectado]);
+  const [habitaciones, setHabitaciones] = useState<HabitacionHotel[]>(() => conectado ? [] : aplicarTarifasHabitaciones(leerHabitaciones()));
+  useEffect(() => { if (!conectado) guardarHabitaciones(habitaciones); }, [habitaciones, conectado]);
   useEffect(() => {
+    if (conectado) return;
     const sync = () => setHabitaciones(actuales => {
       const next = aplicarTarifasHabitaciones(leerHabitaciones());
       return JSON.stringify(actuales) === JSON.stringify(next) ? actuales : next;
@@ -159,8 +179,9 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
     []);
   const [solicitudes, setSolicitudes] = useState<SolicitudHuesped[]>([]);
   const [objetos, setObjetos] = useState<ObjetoOlvidado[]>([]);
-  const [incidencias, setIncidencias] = useState<Incidencia[]>(() => leerIncidenciasMantenimiento());
+  const [incidencias, setIncidencias] = useState<Incidencia[]>(() => conectado ? [] : leerIncidenciasMantenimiento());
   useEffect(() => {
+    if (conectado) return;
     const sync = () => setReservas(actuales => {
       const next = leerReservas();
       return JSON.stringify(actuales) === JSON.stringify(next) ? actuales : next;
@@ -178,6 +199,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
   },
     []);
   useEffect(() => {
+    if (conectado) return;
     const sincronizarTarifas = () => setHabitaciones(actuales => aplicarTarifasHabitaciones(actuales));
     window.addEventListener(TARIFAS_EVENT, sincronizarTarifas);
     window.addEventListener('storage', sincronizarTarifas);
@@ -188,12 +210,14 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
   },
     []);
   useEffect(() => {
+    if (conectado) return;
     const sincronizar = () => setIncidencias(leerIncidenciasMantenimiento());
     window.addEventListener(EVENTO_INCIDENCIAS_MANTENIMIENTO, sincronizar);
     return () => window.removeEventListener(EVENTO_INCIDENCIAS_MANTENIMIENTO, sincronizar);
   },
     []);
   useEffect(() => {
+    if (conectado) return;
     const sincronizar = () => setObjetos(leerObjetosOlvidados().filter(o => o.origen === 'limpieza'));
     sincronizar();
     const storage = (e: StorageEvent) => {
@@ -209,12 +233,34 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
   },
     []);
   useEffect(() => {
-    setHabitaciones(actuales => reconciliarHabitacionesReservadas(actuales, reservas));
+    if (conectado) return;
+    setHabitaciones(actuales => {
+      let cambio = false;
+      const siguientes = actuales.map(h => {
+        if (h.estado === 'mantenimiento' || h.estado === 'en-limpieza')
+          return h;
+        const asignadas = reservas.filter(r => r.habitacionId === h.id && (r.estado === 'en-curso' || r.estado === 'confirmada' || r.estado === 'pendiente'));
+        const estado: EstadoHabHotel = asignadas.some(r => r.estado === 'en-curso') ? 'ocupada' : asignadas.length ? 'reservada' : 'disponible';
+        if (estado === h.estado)
+          return h;
+        cambio = true;
+        return { ...h, estado };
+      });
+      return cambio ? siguientes : actuales;
+    });
   },
     [reservas]);
-  const [seccion, setSeccion] = useState<SeccionRecepcion>('dia');
+  const [seccion, setSeccionActual] = useState<SeccionRecepcion>(() => seccionDesdeRuta(pathname));
+  function setSeccion(section: SeccionRecepcion) {
+    setSeccionActual(section);
+    setBffCodeActual(null);
+    if (!conectado) return;
+    const target = section === 'dia' ? '/recepcion' : `/recepcion/${section}`;
+    if (pathname !== target) router.push(target);
+  }
   const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [perfil, setPerfil] = useState(() => {
+    if (conectado) return { nombre: user?.name ?? "Recepción", correo: user?.email ?? "", telefono: "", foto: "" };
     const empleado = leerEmpleados().find(e => e.id === user?.id && e.activo);
     const base = { nombre: empleado?.nombre ?? 'Recepción', correo: empleado?.correo ?? '', telefono: empleado?.telefono ?? '', foto: empleado?.foto ?? '' };
     if (typeof window === 'undefined')
@@ -227,6 +273,10 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
     }
   });
   useEffect(() => {
+    if (conectado) {
+      setPerfil({ nombre: user?.name ?? 'Recepción', correo: user?.email ?? '', telefono: '', foto: '' });
+      return;
+    }
     if (!user)
       return;
     const empleado = leerEmpleados().find(e => e.id === user.id && e.activo);
@@ -241,7 +291,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       setPerfil(base);
     }
   },
-    [user]);
+    [user, conectado]);
   const inicialesPerfil = perfil.nombre.split(/\s+/).filter(Boolean).slice(0, 2).map((n: string) => n[0]?.toUpperCase()).join('') || 'R';
   const guardarPerfil = (p: typeof perfil) => {
     setPerfil(p);
@@ -251,18 +301,24 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
     catch { }
   };
   const [reservaAbiertaId, setReservaAbiertaId] = useState<string | null>(null);
-  const [bffCode, setBffCode] = useState<string | null>(null);
+  const [bffCode, setBffCodeActual] = useState<string | null>(() => codigoDesdeRuta(pathname));
+  function setBffCode(code: string | null) {
+    setBffCodeActual(code);
+    if (!conectado) return;
+    if (code) {
+      const target = `/recepcion/reservas/${encodeURIComponent(code)}`;
+      if (pathname !== target) router.push(target);
+    } else if (codigoDesdeRuta(pathname)) {
+      router.push('/recepcion/reservas');
+    }
+  }
   const [bffRefresh, setBffRefresh] = useState(0);
   const [legacyAction, setLegacyAction] = useState<ExistingAction | undefined>();
   const [legacyTab, setLegacyTab] = useState<'resumen' | 'cuenta'>('resumen');
-  const pathname = usePathname();
   useEffect(() => {
-    const parts = pathname.split('/').filter(Boolean);
-    if (parts[0] !== 'recepcion') return;
-    if (parts[1] === 'reservas') {
-      setSeccion('reservas');
-      if (parts[2]?.startsWith('VS-')) setBffCode(decodeURIComponent(parts[2]));
-    } else if (parts[1] === 'habitaciones') setSeccion('habitaciones');
+    setSeccionActual(seccionDesdeRuta(pathname));
+    setBffCodeActual(codigoDesdeRuta(pathname));
+    setReservaAbiertaId(null);
   }, [pathname]);
 
   function abrirReserva(id: string) {
@@ -340,9 +396,19 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
     setHuespedes(leerHuespedes());
     return nuevo;
   }
+  const connectedGuests = useRef(new Map<string, Huesped>());
+  async function registrarHuespedConectado(datos: Omit<Huesped, 'id' | 'creadoEn'>): Promise<Huesped> {
+    const { huesped: g } = await registerGuest({ nombreCompleto: datos.nombre, correo: datos.correo, telefono: datos.telefono, nacionalidad: datos.nacionalidad, tipoDocumento: datos.tipoDocumento === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: datos.documento, paisEmisorPasaporte: datos.paisEmisorPasaporte });
+    const value: Huesped = { ...datos, id: String(g.id), nombre: g.nombreCompleto, creadoEn: '' };
+    connectedGuests.current.set(value.id, value);
+    setHuespedes(prev => [...prev.filter(h => h.id !== value.id), value]);
+    return value;
+  }
   async function crearReserva(d: {
     huespedId: string;
     tipoHabitacion: TipoHabitacion;
+    tipoHabitacionId?: number;
+    solicitudId?: string;
     fechaEntrada: string;
     fechaSalida: string;
     personas: number;
@@ -351,16 +417,20 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
     habitacionId: string | null;
     descuento?: number;
   }): Promise<Reserva> {
-    const guest = leerHuespedes().find(h => h.id === d.huespedId);
-    if (!guest) throw new Error('Selecciona un huésped registrado.');
-    const registered = await registerGuest({ nombreCompleto: guest.nombre, correo: guest.correo, telefono: guest.telefono,
-      nacionalidad: guest.nacionalidad, tipoDocumento: guest.tipoDocumento === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: guest.documento });
+    const guest = conectado ? connectedGuests.current.get(d.huespedId) : leerHuespedes().find(h => h.id === d.huespedId);
+    if (!guest && !conectado) throw new Error('Selecciona un huésped registrado.');
+    const registered = conectado ? { huesped: { id: Number(d.huespedId) } } : await registerGuest({ nombreCompleto: guest!.nombre, correo: guest!.correo, telefono: guest!.telefono,
+      nacionalidad: guest!.nacionalidad, tipoDocumento: guest!.tipoDocumento === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: guest!.documento });
     const rooms = await getRooms();
-    const type = rooms.find(r => r.tipoHabitacion.nombre === d.tipoHabitacion)?.tipoHabitacion;
+    const type = rooms.find(r => d.tipoHabitacionId ? r.tipoHabitacion.id === d.tipoHabitacionId : r.tipoHabitacion.nombre === d.tipoHabitacion)?.tipoHabitacion;
     const room = d.habitacionId ? rooms.find(r => 'hh-' + r.numero === d.habitacionId) : null;
     if (!type || (d.habitacionId && !room)) throw new Error('Revisa la habitación seleccionada.');
     const detail = await createReservation({ huespedId: registered.huesped.id, tipoHabitacionId: type.id,
-      entrada: d.fechaEntrada, salida: d.fechaSalida, numeroHuespedes: d.personas, habitacionId: room?.id ?? null });
+      entrada: d.fechaEntrada, salida: d.fechaSalida, numeroHuespedes: d.personas, habitacionId: room?.id ?? null }, d.solicitudId);
+    if (conectado) {
+      setBffRefresh(n => n + 1);
+      return { id: detail.codigo, codigo: detail.codigo, huespedId: String(detail.huesped.id), habitacionId: d.habitacionId, tipoHabitacion: d.tipoHabitacion, fechaEntrada: detail.entrada, fechaSalida: detail.salida, personas: detail.numeroHuespedes, estado: 'confirmada', acompanantes: [], servicios: [], pagos: [], descuento: 0, creadoEn: detail.historial[0]?.fechaHora ?? '', precioNoche: detail.total / detail.noches };
+    }
     const id = prepareExistingReceptionScreen(detail);
     const nueva = upsertReserva({ ...leerReservas().find(r => r.id === id)!, adultos: d.adultos, ninos: d.ninos });
     setReservas(leerReservas());
@@ -380,9 +450,13 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       ninos: number;
       habitacionId: string | null;
     }) {
-    const modificada = modificarReservaRecepcion(reservaId, c);
-    if (!modificada) return;
-    const prev = modificada.habitacionAnterior;
+    const r = leerReservas().find(x => x.id === reservaId);
+    if (!r || r.estado === 'finalizada' || r.estado === 'cancelada') return;
+    const prev = r.habitacionId ?? null;
+    let estado = r.estado;
+    if (c.habitacionId && estado === 'pendiente') estado = 'confirmada';
+    if (!c.habitacionId && estado === 'confirmada') estado = 'pendiente';
+    upsertReserva({ ...r, ...c, estado });
     setReservas(leerReservas());
     if (prev && prev !== c.habitacionId)
       libera(prev);
@@ -393,8 +467,20 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
   async function checkedCheckIn(reservaId: string, origin: 'recepcion' | 'portal') {
     if (checkInPending.current.has(reservaId)) return;
     checkInPending.current.add(reservaId);
+    const validate = origin === 'recepcion' ? errorCheckInRecepcion : errorActivacionCheckInPortal;
     try {
-      await activarCheckInConHabitacionLista(reservaId, origin);
+      const error = validate(reservaId);
+      if (error) throw new Error(error);
+      const reservation = leerReservas().find(r => r.id === reservaId)!;
+      const room = leerHabitaciones().find(r => r.id === reservation.habitacionId)!;
+      await requireReadyCheckInRoom(room.numero);
+      // Revalidar después de la consulta: otra acción pudo cambiar la reserva.
+      const currentError = validate(reservaId);
+      if (currentError) throw new Error(currentError);
+      if (leerReservas().find(r => r.id === reservaId)?.habitacionId !== reservation.habitacionId) {
+        throw new Error('La habitación asignada cambió. Revisa la reserva antes del check-in.');
+      }
+      completarCheckInReserva(reservaId, origin);
       setReservas(leerReservas());
       setHabitaciones(aplicarTarifasHabitaciones(leerHabitaciones()));
     } catch (e) {
@@ -405,8 +491,12 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
   function validarCheckInWeb(reservaId: string) { void checkedCheckIn(reservaId, 'portal'); }
   function rechazarCheckInWeb(reservaId: string,
     motivo: string) {
-    const rechazada = rechazarCheckInPortal(reservaId, motivo, huespedes);
-    if (!rechazada) return;
+    const r = leerReservas().find(x => x.id === reservaId);
+    const h = r ? huespedes.find(x => x.id === r.huespedId) : null;
+    if (!r || !h || r.estado !== 'confirmada' || r.checkInWeb?.estado !== 'pendiente')
+      return;
+    const rechazada: Reserva = { ...r, estado: 'confirmada', checkInWeb: { ...r.checkInWeb, estado: 'rechazado', revisadoEn: ahoraISO(), motivoRevision: motivo } };
+    upsertReserva(rechazada);
     setReservas(rs => rs.map(x => x.id === reservaId ? rechazada : x));
   }
   function checkOut(reservaId: string) {
@@ -484,6 +574,16 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
     setObjetos(leerObjetosOlvidados());
   }
   const contenido = (() => {
+    if (conectado) {
+      if (seccion === "dia") return <div className="min-w-0 flex-1 overflow-y-auto"><div className="h-[min(760px,calc(100dvh-110px))] min-h-[360px] p-4"><CalendarioReservas conectado reservas={EMPTY_RESERVATIONS} huespedes={EMPTY_GUESTS} habitaciones={EMPTY_ROOMS} onAbrir={id => setBffCode(id.replace("bff-reservation-", ""))} onNueva={() => setNuevaReserva({ open: true })} /></div><ConnectedReceptionDay refreshTick={bffRefresh} onAbrirReserva={setBffCode} onIr={setSeccion} /></div>;
+      if (seccion === "reservas") return <Reservas refreshTick={bffRefresh} reservas={EMPTY_RESERVATIONS} huespedes={EMPTY_GUESTS} habitaciones={EMPTY_ROOMS} onAbrir={setBffCode} onNueva={() => setNuevaReserva({ open: true })} />;
+      if (seccion === "huespedes") return <Huespedes conectado huespedes={EMPTY_GUESTS} reservas={EMPTY_RESERVATIONS} habitaciones={EMPTY_ROOMS} onRegistrar={() => {}} onActualizar={() => {}} onAbrirReserva={setBffCode} />;
+      if (seccion === "habitaciones") return <HabitacionesRecepcion conectado habitaciones={EMPTY_ROOMS} reservas={EMPTY_RESERVATIONS} huespedes={EMPTY_GUESTS} onCambiarEstado={() => {}} onVerReserva={() => {}} onVerReservaBff={setBffCode} />;
+      if (seccion === "incidencias") return <IncidenciasRecepcion />;
+      if (seccion === 'disponibilidad') return <Disponibilidad conectado habitaciones={EMPTY_ROOMS} reservas={EMPTY_RESERVATIONS} onReservar={preset => setNuevaReserva({ open: true, preset })} />;
+      if (seccion === 'chat') return <ConnectedReceptionChat />;
+      if (seccion === 'objetos') return <ObjetosEncontradosConectados />;
+    }
     switch (seccion) {
       case 'dia':
         return (<DiaRecepcion reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrirReserva={abrirReserva} onIr={setSeccion} />);
@@ -531,7 +631,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
         return <ObjetosRecepcion objetos={objetos} habitaciones={habitaciones} reservas={reservas} huespedes={huespedes} onActualizar={cambiarObjeto} />;
     }
   })();
-  return (<div className="size-full flex flex-col overflow-hidden" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
+  return (<div className={`${seccion === 'chat' ? 'h-dvh min-h-0 w-full' : 'size-full'} flex flex-col overflow-hidden`} style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
     <style>
       {`
         @import url('https://fonts.googleapis.com/css2?family=Afacad:wght@400;500;600;700&display=swap');
@@ -602,7 +702,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
         </div>
 
         <div className="flex-1 flex overflow-hidden relative">
-          {seccion === 'dia' ? <div className="flex-1 overflow-y-auto"><div className="p-4"><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={abrirReserva} onNueva={() => setNuevaReserva({ open: true })} /></div>{contenido}</div> : contenido}
+          {!conectado && seccion === 'dia' ? <div className="flex-1 overflow-y-auto"><div className="p-4"><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={abrirReserva} onNueva={() => setNuevaReserva({ open: true })} /></div>{contenido}</div> : contenido}
         </div>
 
         <div className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
@@ -634,7 +734,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
 
     {perfilAbierto && (<StaffProfileModal open={perfilAbierto} onClose={() => setPerfilAbierto(false)} name={perfil.nombre} role="Recepción" email={perfil.correo} />)}
 
-    {bffCode && <DetalleReserva codigo={bffCode} onCerrar={() => { setBffCode(null); setBffRefresh(n => n + 1); }} onExistingAction={existingAction} />}
+    {bffCode && <DetalleReserva conectado={conectado} codigo={bffCode} onCerrar={() => { setBffCode(null); setBffRefresh(n => n + 1); }} onExistingAction={conectado ? detail => window.location.assign(`/panel/recepcion/reservas/${detail.codigo}/cuenta`) : existingAction} />}
     {reservaAbierta && huespedAbierto && (<DetalleReserva
       initialTab={legacyTab}
       bffAction={legacyAction}
@@ -658,7 +758,7 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       onRegistrarPago={registrarPago}
       onAplicarDescuento={aplicarDescuento} />)}
 
-    {nuevaReserva.open && (<NuevaReservaModal
+    {nuevaReserva.open && (<NuevaReservaModal conectado={conectado}
       huespedes={huespedes}
       habitaciones={habitaciones}
       reservas={reservas}
@@ -667,9 +767,9 @@ export default function RecepcionApp({ onCambiarModulo }: Props) {
       onVerReserva={id => {
         setNuevaReserva({ open: false });
         setSeccion('reservas');
-        abrirReserva(id);
+        if (conectado) setBffCode(id); else abrirReserva(id);
       }}
-      onCrearHuesped={crearHuesped}
+      onCrearHuesped={conectado ? registrarHuespedConectado : crearHuesped}
       onCrearReserva={crearReserva} />)}
   </div>);
 }
@@ -680,7 +780,7 @@ function PerfilRecepcionModal({ perfil, onGuardar, onCerrar }: {
     telefono: string;
     foto: string;
   };
-  onGuardar: (p: any) => void;
+  onGuardar: (p: { nombre: string; correo: string; telefono: string; foto: string }) => void;
   onCerrar: () => void;
 }) {
   const [form, setForm] = useState(perfil);

@@ -63,7 +63,7 @@ interface Props {
   }) => Pago;
   onAplicarDescuento: (reservaId: string, monto: number) => void;
 }
-type BffProps = { codigo: string; onCerrar: () => void; onExistingAction: (detail: ReservationDetail, action: ExistingAction) => void };
+type BffProps = { conectado?: boolean; codigo: string; onCerrar: () => void; onExistingAction: (detail: ReservationDetail, action: ExistingAction) => void };
 export default function DetalleReserva(props: Props | BffProps) {
   return 'codigo' in props ? <ReceptionDetailBff {...props} /> : <LocalDetail {...props} />;
 }

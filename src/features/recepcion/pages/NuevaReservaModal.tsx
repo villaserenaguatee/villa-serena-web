@@ -1,6 +1,8 @@
+import PassportIssuerSelect from '@/components/common/PassportIssuerSelect';
+import { validDocument, validNationalPhone, validPassportIssuer } from '@/lib/guestValidation';
 import ReceptionCloseButton from './ReceptionCloseButton';
 import { useEffect, useRef, useState } from 'react';
-import { ReceptionRequestError, getReceptionAvailability, getAvailableRoomReferences } from '@/lib/api/reception';
+import { ReceptionRequestError, receptionFieldErrors, searchGuests, getReceptionAvailability, getAvailableRoomReferences, getRooms } from '@/lib/api/reception';
 import { Minus, Plus, Users } from 'lucide-react';
 import type { Huesped, HabitacionHotel, Reserva, TipoHabitacion, TipoDocumento, } from '@/lib/pms/types';
 import { nochesEntre, fechaHoyISO, fechaRelativaISO, RESERVAS_INICIALES } from '@/data/pms';
@@ -13,6 +15,7 @@ interface NuevoHuespedForm {
   apellidos: string;
   tipoDocumento: TipoDocumento;
   documento: string;
+  paisEmisorPasaporte: string;
   telefono: string;
   prefijo: string;
   correo: string;
@@ -20,6 +23,7 @@ interface NuevoHuespedForm {
   nacionalidad: string;
 }
 interface Props {
+  conectado?: boolean;
   huespedes: Huesped[];
   habitaciones: HabitacionHotel[];
   reservas: Reserva[];
@@ -33,10 +37,12 @@ interface Props {
   };
   onCerrar: () => void;
   onVerReserva: (id: string) => void;
-  onCrearHuesped: (h: Omit<Huesped, 'id' | 'creadoEn'>) => Huesped;
+  onCrearHuesped: (h: Omit<Huesped, 'id' | 'creadoEn'>) => Huesped | Promise<Huesped>;
   onCrearReserva: (datos: {
     huespedId: string;
     tipoHabitacion: TipoHabitacion;
+    tipoHabitacionId?: number;
+    solicitudId?: string;
     fechaEntrada: string;
     fechaSalida: string;
     personas: number;
@@ -46,16 +52,29 @@ interface Props {
     descuento?: number;
   }) => Promise<Reserva>;
 }
-export default function NuevaReservaModal({ huespedes, habitaciones, reservas, preset, onCerrar, onVerReserva, onCrearHuesped, onCrearReserva, }: Props) {
-  const [modoNuevoHuesped, setModoNuevoHuesped] = useState(huespedes.length === 0);
+export default function NuevaReservaModal({ conectado = false, huespedes: localGuests, habitaciones, reservas, preset, onCerrar, onVerReserva, onCrearHuesped, onCrearReserva, }: Props) {
+  const [modoNuevoHuesped, setModoNuevoHuesped] = useState(localGuests.length === 0);
   const [huespedId, setHuespedId] = useState('');
   const [buscarHuesped, setBuscarHuesped] = useState('');
+  const [remoteGuests, setRemoteGuests] = useState<Huesped[]>([]);
+  const huespedes = conectado ? remoteGuests : localGuests;
+  const [guestSearchError, setGuestSearchError] = useState('');
+  useEffect(() => {
+    if (!conectado || modoNuevoHuesped || huespedId) return;
+    const controller = new AbortController(); setRemoteGuests([]); setGuestSearchError('');
+    if (buscarHuesped.trim().length < 2) return () => controller.abort();
+    const timer = setTimeout(() => { searchGuests(buscarHuesped.trim(), controller.signal).then(list => {
+      if (!controller.signal.aborted) setRemoteGuests(list.map(g => ({ id: String(g.id), nombre: g.nombreCompleto, correo: g.correo, telefono: g.telefono, nacionalidad: g.nacionalidad, tipoDocumento: g.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte', documento: g.numeroDocumento, paisEmisorPasaporte: g.paisEmisorPasaporte, creadoEn: '' })));
+    }).catch(e => { if (!controller.signal.aborted) setGuestSearchError(e.message); }); }, 250);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [conectado, modoNuevoHuesped, buscarHuesped, huespedId]);
   const [campoBusqueda, setCampoBusqueda] = useState<'nombre' | 'correo' | 'telefono'>('nombre');
   const [piso, setPiso] = useState('Todos');
   const [usarHoraLlegada, setUsarHoraLlegada] = useState(false);
   const [revisando, setRevisando] = useState(false);
   const [reservaCreada, setReservaCreada] = useState<Reserva | null>(null);
   const saving = useRef(false);
+  const solicitud = useRef<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [resultadoDesconocido, setResultadoDesconocido] = useState(false);
   const [nh, setNh] = useState<NuevoHuespedForm>({
@@ -63,7 +82,8 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
     apellidos: '',
     tipoDocumento: 'DPI',
     documento: '',
-    telefono: '',
+  paisEmisorPasaporte: '',
+telefono: '',
     prefijo: '+502',
     correo: '',
     horaLlegada: '15:00',
@@ -75,6 +95,22 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
   const [ninos, setNinos] = useState(String(preset?.ninos ?? 0));
   const [huespedesAbierto, setHuespedesAbierto] = useState(false);
   const [tipo, setTipo] = useState<TipoHabitacion>(preset?.tipo ?? 'Standard');
+  const [catalogo, setCatalogo] = useState<{id:number;nombre:string}[]>([]);
+  const [remoteTypeId, setRemoteTypeId] = useState<number | undefined>();
+  const [catalogoError, setCatalogoError] = useState('');
+  useEffect(() => {
+    if (!conectado) return;
+    const controller = new AbortController();
+    getRooms(new URLSearchParams(), controller.signal).then(rooms => {
+      const types = [...new Map(rooms.map(r => [r.tipoHabitacion.id, r.tipoHabitacion])).values()];
+      setCatalogo(types);
+      setRemoteTypeId((types.find(t => t.nombre === preset?.tipo) ?? types[0])?.id);
+      setTipo(current => types.some(t => t.nombre === current) ? current : (types[0]?.nombre ?? '') as TipoHabitacion);
+    }).catch(e => { if (!controller.signal.aborted) setCatalogoError(e.message); });
+    return () => controller.abort();
+  }, [conectado]);
+  const tipoId = remoteTypeId;
+  const tipos = conectado ? catalogo.map(t => t.nombre as TipoHabitacion) : TIPOS;
   const [habitacionId, setHabitacionId] = useState<string>(preset?.habitacionId ?? '');
   const [errores, setErrores] = useState<Record<string, string>>({});
   const nPersonas = Math.max(1, (Number(adultos) || 0) + (Number(ninos) || 0));
@@ -84,17 +120,20 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
   const [disponibles, setDisponibles] = useState<HabitacionHotel[]>([]);
   const [consultando, setConsultando] = useState(true);
   const [disponibilidadError, setDisponibilidadError] = useState('');
+  const [cupo, setCupo] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
-    setDisponibles([]); setConsultando(true); setDisponibilidadError('');
+    setDisponibles([]); setCupo(0); setConsultando(true); setDisponibilidadError('');
     getReceptionAvailability(entrada, salida, nPersonas, controller.signal).then(async options => {
-      const option = options.find(o => o.tipoHabitacion.nombre === tipo);
+      const option = options.find(o => conectado ? o.tipoHabitacion.id === tipoId : o.tipoHabitacion.nombre === tipo);
       if (!option) return [];
+      if (!controller.signal.aborted) setCupo(option.habitacionesDisponibles);
       const refs = await getAvailableRoomReferences(option.tipoHabitacion.id, entrada, salida, controller.signal);
       // Conserva el bloqueo de reservas antiguas de este navegador sin recrearlas en el BFF.
-      const legacy = reservas.filter(r => !/^VS-[A-Z0-9]{6}$/.test(r.codigo) && !RESERVAS_INICIALES.some(seed => seed.id === r.id) &&
+      const legacy = conectado ? [] : reservas.filter(r => !/^VS-[A-Z0-9]{6}$/.test(r.codigo) && !RESERVAS_INICIALES.some(seed => seed.id === r.id) &&
         r.tipoHabitacion === tipo && !['cancelada', 'finalizada'].includes(r.estado) && r.fechaEntrada < salida && r.fechaSalida > entrada);
-      const rooms = habitaciones.filter(h => h.tipo === tipo && h.capacidad >= nPersonas && refs.some(r => r.numero === h.numero) && !legacy.some(r => r.habitacionId === h.id));
+      const source: HabitacionHotel[] = conectado ? refs.map(r => ({ id: 'hh-' + r.numero, numero: r.numero, piso: r.piso, tipo, capacidad: option.capacidad, precioNoche: option.total / option.noches, estado: 'disponible' })) : habitaciones;
+      const rooms = source.filter(h => h.tipo === tipo && h.capacidad >= nPersonas && refs.some(r => r.numero === h.numero) && !legacy.some(r => r.habitacionId === h.id));
       let peak = 0;
       for (let day = entrada; day < salida; day = new Date(Date.parse(day) + 86400000).toISOString().slice(0, 10))
         peak = Math.max(peak, legacy.filter(r => r.fechaEntrada <= day && r.fechaSalida > day).length);
@@ -104,20 +143,20 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
       .catch(e => { if (!controller.signal.aborted) setDisponibilidadError(e instanceof Error ? e.message : 'No se pudo consultar la disponibilidad.'); })
       .finally(() => { if (!controller.signal.aborted) setConsultando(false); });
     return () => controller.abort();
-  }, [entrada, salida, nPersonas, tipo, habitaciones, reservas]);
-  const habElegida = (reservaCreada ? habitaciones : disponibles).find(h => h.id === habitacionId) ?? null;
+  }, [entrada, salida, nPersonas, tipo, tipoId, habitaciones, reservas, conectado]);
+  const habElegida = (reservaCreada && !conectado ? habitaciones : disponibles).find(h => h.id === habitacionId) ?? null;
   const huespedesFiltrados = huespedes.filter(h => {
     const q = buscarHuesped.toLowerCase().trim();
     if (!q)
       return false;
-    const valor = campoBusqueda === 'nombre' ? h.nombre : campoBusqueda === 'correo' ? h.correo : h.telefono;
+    const valor = campoBusqueda === 'nombre' ? h.nombre : campoBusqueda === 'correo' ? h.correo : conectado ? h.documento : h.telefono;
     return valor.toLowerCase().includes(q);
   });
   const disponiblesPiso = disponibles.filter(h => piso === 'Todos' || String(h.piso) === piso);
   async function guardar() {
     if (saving.current || reservaCreada || resultadoDesconocido) return;
     const e: Record<string, string> = {};
-    if (consultando || disponibilidadError || !disponibles.length) e.habitacion = disponibilidadError || 'Comprueba la disponibilidad antes de guardar.';
+    if (consultando || disponibilidadError || catalogoError || (conectado ? cupo <= 0 || !tipoId : !disponibles.length)) e.habitacion = disponibilidadError || catalogoError || 'Comprueba la disponibilidad antes de guardar.';
     if (!rangoValido || entrada < fechaHoyISO() || noches > 30 || entrada > fechaRelativaISO(365))
       e.fechas = 'Revisa las fechas: desde hoy, máximo 30 noches y entrada dentro de un año.';
     let idHuesped = huespedId;
@@ -137,26 +176,33 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
     if (habitacionId && !disponibles.some(h => h.id === habitacionId)) {
       e.habitacion = 'Esa habitación ya no está disponible para el rango.';
     }
+    if (modoNuevoHuesped && !validDocument(nh.tipoDocumento, nh.documento)) e.documento = nh.tipoDocumento === 'DPI' ? 'El DPI debe contener exactamente 13 dígitos.' : 'Introduce solo letras y números, hasta el límite de almacenamiento de 30 caracteres.';
+    if (modoNuevoHuesped && !validNationalPhone(nh.prefijo, nh.telefono)) e.telefono = 'Guatemala: 8 dígitos sin repetir +502. Otros países: número internacional válido, sin letras.';
+    if (modoNuevoHuesped && nh.tipoDocumento === 'Pasaporte' && !validPassportIssuer(nh.paisEmisorPasaporte)) e.paisEmisorPasaporte = 'Selecciona el país emisor del pasaporte.';
     setErrores(e);
     if (Object.keys(e).length > 0)
       return;
+    saving.current = true;
+    solicitud.current ??= crypto.randomUUID();
+    setGuardando(true);
+    try {
     if (modoNuevoHuesped) {
-      const creado = onCrearHuesped({
+      const creado = await onCrearHuesped({
         nombre: `${nh.nombre.trim()} ${nh.apellidos.trim()}`.trim(),
         tipoDocumento: nh.tipoDocumento,
         documento: nh.documento.trim(),
+        paisEmisorPasaporte: nh.tipoDocumento === 'Pasaporte' ? nh.paisEmisorPasaporte : undefined,
         telefono: `${nh.prefijo} ${nh.telefono.trim()}`,
         correo: nh.correo.trim(),
         nacionalidad: nh.nacionalidad,
       });
       idHuesped = creado.id;
     }
-    saving.current = true;
-    setGuardando(true);
-    try {
     const creada = await onCrearReserva({
       huespedId: idHuesped,
       tipoHabitacion: tipo,
+      tipoHabitacionId: conectado ? tipoId : undefined,
+      solicitudId: solicitud.current,
       fechaEntrada: entrada,
       fechaSalida: salida,
       personas: nPersonas,
@@ -170,12 +216,14 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
     } catch (error) {
       const uncertain = !(error instanceof ReceptionRequestError) || error.status >= 500;
       setResultadoDesconocido(uncertain);
-      setErrores({ reserva: uncertain
+      const fields=receptionFieldErrors(error);if(Object.keys(fields).length)setRevisando(false);
+      setErrores({ ...fields, reserva: uncertain
         ? 'No se pudo comprobar el resultado. Consulta las reservas por el huésped antes de crear otra; la solicitud no se repetirá automáticamente.'
         : error.message });
     } finally { saving.current = false; setGuardando(false); }
   }
   return (<div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4">
+    {guestSearchError && <p role="alert" className="relative z-50 bg-white p-3 text-red-800">{guestSearchError}</p>}
     <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
 
     <div role="dialog" aria-modal="true" aria-label="Nueva reserva" className="reception-compact relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[780px] max-h-[90vh] overflow-y-auto">
@@ -207,7 +255,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
                 <select value={campoBusqueda} onChange={e => setCampoBusqueda(e.target.value as 'nombre' | 'correo' | 'telefono')} className={`${INPUT_CLS} !h-10 !py-2 !px-3`}>
                   <option value="nombre">Nombre</option>
                   <option value="correo">Correo</option>
-                  <option value="telefono">Teléfono</option>
+                  <option value="telefono">{conectado ? 'Documento' : 'Teléfono'}</option>
                 </select>
               </div>
               <Campo label="Buscar huésped" error={errores.huesped}>
@@ -260,17 +308,18 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
                 <option value="Pasaporte">Pasaporte</option>
               </select>
             </Campo>
-            <Campo label="Número de documento" error={errores.documento}>
+            {nh.tipoDocumento === 'Pasaporte' && <Campo label="País emisor del pasaporte" error={errores.paisEmisorPasaporte}><PassportIssuerSelect value={nh.paisEmisorPasaporte} onChange={value => setNh(f => ({ ...f, paisEmisorPasaporte: value }))} className={INPUT_CLS} /></Campo>}
+          <Campo label="Número de documento" error={errores.documento}>
               <input
                 aria-label="Número de documento"
                 type="text"
                 value={nh.documento}
-                onChange={e => setNh(f => ({ ...f, documento: e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, f.tipoDocumento === 'DPI' ? 13 : 20) }))}
-                maxLength={nh.tipoDocumento === 'DPI' ? 13 : 20}
+                onChange={e => setNh(f => ({ ...f, documento: e.target.value }))}
+                maxLength={64}
                 inputMode={nh.tipoDocumento === 'DPI' ? 'numeric' : 'text'}
                 className={INPUT_CLS} />
             </Campo>
-            <Campo label="Correo electrónico">
+            <Campo label="Correo electrónico" error={errores.correo}>
               <input aria-label="Correo electrónico" type="email" value={nh.correo} onChange={e => setNh(f => ({ ...f, correo: e.target.value }))} className={INPUT_CLS} />
             </Campo>
             <Campo label="Teléfono" error={errores.telefono}>
@@ -300,16 +349,13 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
                   aria-label="Teléfono"
                   type="text"
                   value={nh.telefono}
-                  onChange={e => setNh(f => {
-                    const max = ["+1", "+52", "+34", "+44"].includes(f.prefijo) ? 10 : 8;
-                    return { ...f, telefono: e.target.value.replace(/\D/g, "").slice(0, max) };
-                  })}
-                  maxLength={["+1", "+52", "+34", "+44"].includes(nh.prefijo) ? 10 : 8}
-                  inputMode="numeric"
+                  onChange={e => setNh(f => ({ ...f, telefono: e.target.value }))}
+                  maxLength={24}
+                  inputMode="tel"
                   className={`${INPUT_CLS} flex-1`} />
               </div>
             </Campo>
-            <Campo label="Nacionalidad">
+            <Campo label="Nacionalidad" error={errores.nacionalidad}>
               <input aria-label="Nacionalidad" value={nh.nacionalidad} onChange={e => setNh(f => ({ ...f, nacionalidad: e.target.value }))} className={INPUT_CLS} />
             </Campo>
             <div className="rounded-xl border border-[#EEE7DA] p-4">
@@ -383,7 +429,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
                     <span>{nPersonas} huésped{nPersonas === 1 ? '' : 'es'}</span>
                   </button>
                   {huespedesAbierto && <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-[310px] bg-white rounded-xl shadow-2xl border border-[#EEE7DA] p-4 text-[#102747]">
-                    {[['Adultos', adultos, setAdultos, 1], ['Niños', ninos, setNinos, 0]].map(([etiqueta, valor, setter, min]: any) => <div key={etiqueta} className="flex items-center justify-between py-3">
+                    {([['Adultos', adultos, setAdultos, 1], ['Niños', ninos, setNinos, 0]] as const).map(([etiqueta, valor, setter, min]) => <div key={etiqueta} className="flex items-center justify-between py-3">
                       <span className="text-[17px]">
                         {etiqueta}
                       </span>
@@ -416,11 +462,12 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
               </Campo>
             </div>
             <Campo label="Categoría">
-              <select value={tipo} onChange={e => {
-                setTipo(e.target.value as TipoHabitacion);
+              <select value={conectado ? String(tipoId ?? '') : tipo} onChange={e => {
+                if (conectado) {const selected = catalogo.find(t => t.id === Number(e.target.value));setRemoteTypeId(selected?.id);setTipo((selected?.nombre ?? '') as TipoHabitacion);}
+                else setTipo(e.target.value as TipoHabitacion);
                 setHabitacionId('');
               }} className={INPUT_CLS}>
-                {TIPOS.map(t => <option key={t} value={t}>
+                {conectado ? catalogo.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>) : tipos.map(t => <option key={t} value={t}>
                   {t}
                 </option>)}
               </select>
@@ -505,7 +552,7 @@ export default function NuevaReservaModal({ huespedes, habitaciones, reservas, p
                 <ResumenFinal label="Entrada" valor={entrada} />
                 <ResumenFinal label="Salida" valor={salida} />
                 <ResumenFinal label="Ocupación" valor={`${adultos} adultos · ${ninos} niños`} />
-                <ResumenFinal label="Total estimado demo" valor={dinero((reservaCreada.precioNoche ?? 0) * noches)} />
+                <ResumenFinal label={conectado ? 'Total de la reserva' : 'Total estimado demo'} valor={dinero((reservaCreada.precioNoche ?? 0) * noches)} />
                 <ResumenFinal label="Pago" valor="En el check-out" />
               </div>
             </section>

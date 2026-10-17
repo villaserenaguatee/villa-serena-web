@@ -9,9 +9,9 @@ import PublicLanguageToggle from '@/components/common/PublicLanguageToggle';
 import ScopedI18nProvider from '@/i18n/ScopedI18nProvider';
 import { RoleGuard } from '@/components/common/RoleGuard';
 const noop = () => { };
-export function RecepcionRoleApp() {
+export function RecepcionRoleApp({ conectado = false }: { conectado?: boolean }) {
   return <RoleGuard role="recepcion">
-    <ScopedI18nProvider><RecepcionApp onCambiarModulo={noop} /></ScopedI18nProvider>
+    <ScopedI18nProvider><RecepcionApp conectado={conectado} onCambiarModulo={noop} /></ScopedI18nProvider>
   </RoleGuard>;
 }
 export function HuespedRoleApp() {
@@ -39,6 +39,6 @@ export function AdminRoleApp() {
 }
 export function MantenimientoRoleApp() {
   return <RoleGuard role="mantenimiento">
-    <ScopedI18nProvider><MantenimientoApp onCambiarModulo={noop} /></ScopedI18nProvider>
+    <MantenimientoApp onCambiarModulo={noop} />
   </RoleGuard>;
 }

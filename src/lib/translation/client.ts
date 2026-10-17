@@ -15,8 +15,8 @@ export async function translatePublicContent(texts: string[],
 }
 export async function translateChatMessage(text: string,
   sourceLocale: 'es' | 'en' | undefined,
-  targetLocale: 'es' | 'en') {
-  const body: TranslateRequest = { texts: [text], sourceLocale, targetLocale, contentKind: 'chat-message' };
+  targetLocale: 'es' | 'en', protectedTerms: string[] = []) {
+  const body: TranslateRequest = { texts: [text], sourceLocale, targetLocale, contentKind: 'chat-message', protectedTerms };
   const response = await fetch('/api/translate', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
   });

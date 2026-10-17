@@ -1,8 +1,9 @@
 import { statusBadge, statusTone } from './statusStyle';
 import { calcularCuentaEstancia } from '@/lib/pms/cuentaEstancia';
-import type { ReactNode } from 'react';
+import { Children, cloneElement, isValidElement, useId, type ReactNode } from 'react';
 import type { EstadoReserva, EstadoHabHotel, EstadoSolicitudHuesped, PrioridadSolicitud, HabitacionHotel, Reserva, } from '@/lib/pms/types';
-export { rangosSeSolapan, habitacionTieneConflicto, habitacionesDisponibles } from '../roomAvailability';
+import { MONEDA, nochesEntre } from '@/data/pms';
+import { leerTarifas } from '@/store/tarifasStore';
 export function dinero(n: number): string {
   return `Q ${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 }
@@ -73,6 +74,40 @@ export function Chip({ cls, children }: {
   return (<span className={`inline-flex h-fit w-fit shrink-0 items-center whitespace-nowrap text-[11px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wide border ${cls}`}>
     {children}
   </span>);
+}
+export function rangosSeSolapan(aIn: string, aOut: string, bIn: string, bOut: string): boolean {
+  return aIn < bOut && bIn < aOut;
+}
+const ESTADOS_BLOQUEANTES: EstadoReserva[] = ['pendiente', 'confirmada', 'en-curso'];
+export function habitacionTieneConflicto(habitacionId: string,
+  entrada: string,
+  salida: string,
+  reservas: Reserva[],
+  ignorarReservaId?: string): boolean {
+  return reservas.some(r => r.id !== ignorarReservaId &&
+    r.habitacionId === habitacionId &&
+    ESTADOS_BLOQUEANTES.includes(r.estado) &&
+    rangosSeSolapan(entrada, salida, r.fechaEntrada, r.fechaSalida));
+}
+export function habitacionesDisponibles(entrada: string,
+  salida: string,
+  habitaciones: HabitacionHotel[],
+  reservas: Reserva[],
+  opciones?: {
+    personas?: number;
+    tipo?: string;
+    ignorarReservaId?: string;
+  }): HabitacionHotel[] {
+  const { personas, tipo, ignorarReservaId } = opciones ?? {};
+  return habitaciones.filter(h => {
+    if (h.estado === 'mantenimiento')
+      return false;
+    if (tipo && h.tipo !== tipo)
+      return false;
+    if (personas && h.capacidad < personas)
+      return false;
+    return !habitacionTieneConflicto(h.id, entrada, salida, reservas, ignorarReservaId);
+  });
 }
 export interface ResumenCuenta {
   noches: number;
@@ -156,12 +191,24 @@ export function Campo({ label, error, children, }: {
   error?: string;
   children: ReactNode;
 }) {
+  const id = useId(), labelId = `${id}-label`, errorId = `${id}-error`;
+  const hasTextInput = (nodes: ReactNode): boolean => Children.toArray(nodes).some(node => isValidElement<{children?:ReactNode;type?:string}>(node) && ((node.type === 'input' && !['radio','checkbox'].includes(node.props.type??'')) || node.type === 'textarea' || hasTextInput(node.props.children)));
+  const textInput = hasTextInput(children);
+  const connect = (nodes: ReactNode): ReactNode => Children.map(nodes, node => {
+    if (!isValidElement<Record<string,unknown>>(node)) return node;
+    const props: Record<string,unknown> = node.props.children === undefined ? {} : {children:connect(node.props.children as ReactNode)};
+    if ((node.type === 'input' && !['radio','checkbox'].includes(String(node.props.type??''))) || node.type === 'textarea' || (node.type === 'select' && !textInput)) {
+      if (!node.props['aria-label'] && !node.props['aria-labelledby']) props['aria-labelledby'] = labelId;
+      if (error) {props['aria-invalid']=true;props['aria-describedby']=[node.props['aria-describedby'],errorId].filter(Boolean).join(' ');}
+    } else if (node.type === 'select' && textInput && !node.props['aria-label']) props['aria-label']='Prefijo de teléfono';
+    return cloneElement(node, props);
+  });
   return (<div>
-    <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-1.5">
+    <p id={labelId} className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-1.5">
       {label}
     </p>
-    {children}
-    {error && <p className="text-xs text-[#991B1B] mt-1">
+    {connect(children)}
+    {error && <p id={errorId} role="alert" className="text-xs text-[#991B1B] mt-1">
       {error}
     </p>}
   </div>);

@@ -7,13 +7,15 @@ import { ahoraISO, generarId } from '@/data/pms';
 import { leerMensajesChat, guardarMensajesChat, actualizarMensajeChat, leerPreferenciasChat, guardarPreferenciasChat } from '@/store/chatStore';
 import type { PreferenciasChat } from '@/store/chatStore';
 import { translateChatMessage } from '@/lib/translation/client';
+import { getReservation } from '@/lib/api/reception';
 type Filtro = 'todos' | 'no-leidos' | 'favoritos' | 'archivados';
 const hora = (iso: string) => new Date(iso).toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
 const iniciales = (n: string) => n.split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase();
-export default function ChatRecepcion({ huespedes, reservas, habitaciones }: {
+export default function ChatRecepcion({ huespedes, reservas, habitaciones, conectado = false }: {
   huespedes: Huesped[];
   reservas: Reserva[];
-  habitaciones: HabitacionHotel[];
+  habitaciones: Pick<HabitacionHotel, 'id' | 'numero'>[];
+  conectado?: boolean;
 }) {
   const [mensajes, setMensajes] = useState<MensajeChat[]>([]);
   const [seleccionado, setSeleccionado] = useState('');
@@ -59,7 +61,7 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones }: {
   const conversacionActual = conversaciones.find(c => c.h.id === seleccionado);
   const actual = conversacionActual?.h;
   const listaBase = conversaciones.filter(c => !buscar.trim() || c.h.nombre.toLowerCase().includes(buscar.trim().toLowerCase())).filter(c => filtro === 'favoritos' ? favoritos.includes(c.h.id) : filtro === 'archivados' ? archivados.includes(c.h.id) : filtro === 'no-leidos' ? mensajes.some(m => m.huespedId === c.h.id && m.autor === 'huesped' && !m.leidoPor?.includes('recepcion') && !m.eliminadoParaTodos) : !archivados.includes(c.h.id));
-  const lista = (mostrarTodos || buscar.trim() ? listaBase : listaBase.filter(c => mensajes.some(m => m.huespedId === c.h.id)))
+  const lista = (mostrarTodos || buscar.trim() ? listaBase : listaBase.filter(c => mensajes.some(m => m.huespedId === c.h.id && !m.eliminadoPara?.includes('recepcion'))))
     .slice().sort((a, b) => Number(fijados.includes(b.h.id)) - Number(fijados.includes(a.h.id)));
   function cambiarPreferencia(key: keyof PreferenciasChat, id: string) {
     const prefs = leerPreferenciasChat();
@@ -81,8 +83,14 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones }: {
       el.scrollTop = el.scrollHeight;
   }, [seleccionado, mensajesVisibles.length]);
   async function enviar() {
-    if (!actual || !texto.trim() || !estanciaHabilitaChat(leerReservas().find(r => r.id === conversacionActual?.r.id && r.huespedId === actual.id)))
-      return;
+    async function estanciaVigente() {
+      if (!conectado) return estanciaHabilitaChat(leerReservas().find(r => r.id === conversacionActual?.r.id && r.huespedId === actual?.id));
+      if (!conversacionActual) return false;
+      const d = await getReservation(conversacionActual.r.codigo);
+      return d.estado === 'EN_ESTADIA' && Boolean(d.habitacion) && d.historial.some(h => h.estadoNuevo === 'EN_ESTADIA') && !d.historial.some(h => h.estadoNuevo === 'FINALIZADA');
+    }
+    if (!actual || !texto.trim()) return;
+    try { if (!await estanciaVigente()) return; } catch { setAviso('No se pudo comprobar la estancia. Intenta nuevamente.'); return; }
     const valor = texto.trim();
     const m: MensajeChat = { id: generarId(), autor: 'recepcion', huespedId: actual.id, texto: valor, textoEs: valor, idiomaOriginal: 'es', hora: ahoraISO() };
     try {
@@ -91,7 +99,7 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones }: {
     catch {
       setAviso('La traducción no está disponible; se conservará únicamente el mensaje original.');
     }
-    if (!estanciaHabilitaChat(leerReservas().find(r => r.id === conversacionActual?.r.id && r.huespedId === actual.id))) return;
+    try { if (!await estanciaVigente()) return; } catch { setAviso('No se pudo comprobar la estancia. Intenta nuevamente.'); return; }
     const next = [...leerMensajesChat([]), m];
     guardarMensajesChat(next);
     setMensajes(next);
@@ -124,9 +132,9 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones }: {
     setEliminarId(null);
   }
   return <div
-    className="flex h-[calc(100dvh-96px)] md:h-[calc(100dvh-48px)] min-h-0 flex-1 flex-col overflow-hidden bg-[#F8F6F0]"
+    className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-[#F8F6F0]"
     style={{ fontFamily: '"Afacad","Segoe UI",Arial,sans-serif' }}>
-    <section className="mx-auto my-3 flex min-h-0 w-[calc(100%-24px)] max-w-[1180px] flex-1 flex-col overflow-hidden rounded-2xl border border-[#E5E0D8] bg-white shadow-sm md:my-4 md:flex-row">
+    <section className="mx-auto my-2 flex min-h-0 w-[calc(100%-24px)] max-w-[1180px] flex-1 flex-col overflow-hidden rounded-2xl border border-[#E5E0D8] bg-white shadow-sm md:flex-row">
       <aside className="flex max-h-[300px] w-full shrink-0 min-h-0 flex-col border-b border-[#E5E0D8] bg-white md:max-h-none md:w-[300px] md:border-b-0 md:border-r">
         <div className="shrink-0 border-b border-[#E5E0D8] p-3">
           <h1 className="text-2xl font-semibold text-[#18345C]">Mensajes</h1>
@@ -153,14 +161,14 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones }: {
             </button>)}
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {!lista.length && <p className="px-4 py-4 text-center text-sm text-[#71839B]">{mostrarTodos ? 'No hay huéspedes con estancia activa' : 'No hay conversaciones'}</p>}
           {lista.map(c => <div
             key={c.h.id}
             className="relative"
             onContextMenu={e => { if (!mensajes.some(m => m.huespedId === c.h.id)) return; e.preventDefault(); setChatMenu({ id: c.h.id, x: e.clientX, y: e.clientY }); }}>
             <button
-            onClick={() => { setSeleccionado(c.h.id); setMostrarTodos(false); setBuscar(''); }}
+            onClick={() => { setSeleccionado(c.h.id); setTexto(''); setMenuId(null); setEditandoId(null); setMostrarTodos(false); setBuscar(''); }}
             className={`flex w-full items-center gap-3 border-b border-[#F0EDE7] pl-4 pr-11 py-2.5 text-left hover:bg-[#F8F6F0] ${seleccionado === c.h.id ? 'bg-[#EEF4FA]' : ''}`}>
             <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-[#DDEAF7] text-sm font-semibold text-[#18345C]">
               {c.h.foto ? <img src={c.h.foto} alt="" className="h-full w-full object-cover" /> : iniciales(c.h.nombre)}

@@ -4,6 +4,7 @@ import { HABITACIONES_HOTEL } from '@/data/pms';
 import { Campo, INPUT_CLS, PRIORIDAD_META, TIPOS_AVERIA, Modal } from '@/features/mantenimiento/pages/mantUtils';
 interface Props {
   activos: Activo[];
+  habitaciones?: {numero:string;piso:number}[];
   onCerrar: () => void;
   onGuardar: (datos: {
     ubicacion: string;
@@ -15,7 +16,7 @@ interface Props {
     activoId?: string;
   }) => void;
 }
-export default function NuevaOrdenModal({ activos, onCerrar, onGuardar }: Props) {
+export default function NuevaOrdenModal({ activos, habitaciones, onCerrar, onGuardar }: Props) {
   const [esHabitacion, setEsHabitacion] = useState(true);
   const [piso, setPiso] = useState('1');
   const [habitacion, setHabitacion] = useState('');
@@ -93,7 +94,7 @@ export default function NuevaOrdenModal({ activos, onCerrar, onGuardar }: Props)
             setPiso(e.target.value);
             setHabitacion('');
           }} className={INPUT_CLS}>
-            {[1, 2, 3].map(n => <option key={n} value={String(n)}>Piso {n}</option>)}
+            {(habitaciones?Array.from(new Set(habitaciones.map(h=>h.piso))).sort():[1,2,3]).map(n => <option key={n} value={String(n)}>Piso {n}</option>)}
           </select>
         </Campo>
         <Campo label="Habitación" error={errores.ubicacion}>
@@ -105,7 +106,7 @@ export default function NuevaOrdenModal({ activos, onCerrar, onGuardar }: Props)
             }}
             className={INPUT_CLS}>
             <option value="">Seleccionar…</option>
-            {HABITACIONES_HOTEL.filter(n => String(n).startsWith(piso)).map(n => <option key={n} value={n}>Habitación {n}</option>)}
+            {(habitaciones?habitaciones.filter(h=>String(h.piso)===piso).map(h=>h.numero):HABITACIONES_HOTEL.filter(n=>String(n).startsWith(piso))).map(n => <option key={n} value={n}>Habitación {n}</option>)}
           </select>
         </Campo>
       </div>) : (<Campo label="Área" error={errores.ubicacion}>

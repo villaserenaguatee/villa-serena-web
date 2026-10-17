@@ -142,6 +142,7 @@ export default function DocumentosCheckIn({ checkInWeb, tipoDocumento, onSolicit
   const etiquetas = documentos.map((doc, indice) => etiquetaDocumento(doc, tipoDocumento, indice, documentos.length));
   return <div className="rounded-lg border border-[#DCE3EA] bg-white p-2">
     <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#71839B]">Documento de identidad</p>
+    <p role="status" className="mb-2 text-xs text-[#52677F]">Documento guardado. Preséntalo en Recepción para su verificación.</p>
     <div className="grid grid-cols-2 gap-2">
       {documentos.map((doc, indice) => <Miniatura key={`${indice}-${doc.previewUrl ?? doc.nombre}`} documento={doc}
         etiqueta={etiquetas[indice]} onAbrir={() => setAbierto(indice)}

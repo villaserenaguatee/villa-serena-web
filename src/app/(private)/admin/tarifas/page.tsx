@@ -1,2 +1,2 @@
-import { redirect } from 'next/navigation';
-export default function Page() { redirect('/admin'); }
+import { AdminRoleApp } from '@/app/router/RoleEntrypoints';
+export default function Page() { return <AdminRoleApp/>; }

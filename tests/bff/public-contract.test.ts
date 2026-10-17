@@ -129,7 +129,7 @@ test('an old hotel draft cannot recover or create a hotel booking through the ca
   try {
     const params = new URLSearchParams({ llegada: arrival, salida: departure, adultos: '2', ninos: '0' });
     const id = saveBookingDraft(params).get('draft')!;
-    bookingAttempt(id, JSON.stringify({ paymentMethod: 'hotel' }));
+    await bookingAttempt(id, JSON.stringify({ paymentMethod: 'hotel' }));
     await assert.rejects(prepareStripeBooking(params, id, true), /no admite pago con tarjeta/);
     assert.equal(calls, 0); assert.equal(readPublicContractState().entries.length, 0);
     assert.ok(readBookingDraft(id)?.attempt);

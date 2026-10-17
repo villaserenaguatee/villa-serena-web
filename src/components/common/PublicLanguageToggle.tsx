@@ -10,10 +10,13 @@ export function getPublicLang(): PublicLang {
 export function usePublicLanguage() {
   const [lang, setLang] = useState<PublicLang>('ES');
   useEffect(() => {
-    setLang(getPublicLang());
-    const fn = (e: Event) => setLang((e as CustomEvent<PublicLang>).detail);
+    const apply = (next: PublicLang) => { setLang(next); document.documentElement.lang = next === 'EN' ? 'en' : 'es'; };
+    apply(getPublicLang());
+    const fn = (e: Event) => apply((e as CustomEvent<PublicLang>).detail === 'EN' ? 'EN' : 'ES');
+    const storage = (e: StorageEvent) => { if (e.key === 'villa-serena-lang') apply(getPublicLang()); };
     window.addEventListener('villa-serena-language', fn);
-    return () => window.removeEventListener('villa-serena-language', fn);
+    window.addEventListener('storage', storage);
+    return () => { window.removeEventListener('villa-serena-language', fn); window.removeEventListener('storage', storage); };
   },
     []);
   return { lang, en: lang === 'EN' };
