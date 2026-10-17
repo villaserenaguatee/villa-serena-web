@@ -20,7 +20,7 @@ for (const { name, viewport } of viewports) {
       await page.reload(); await expect(detail.getByRole('heading', { name: 'VS-TEST01', exact: true })).toBeVisible();
       const roomsMenu = () => page.getByRole('button', { name: viewport.width < 1024 ? /^Habs\./ : /^Habitaciones/ }).first();
       for (const [number, code] of [['101', 'VS-TEST01'], ['105', 'VS-TEST03']]) {
-        await detail.getByRole('button', { name: 'Cerrar detalle de reserva', exact: true }).click();
+        await detail.getByRole('button', { name: 'Cerrar', exact: true }).click();
         await roomsMenu().click(); await page.getByRole('button', { name: `Abrir detalle de habitación ${number}`, exact: true }).click();
         await page.getByRole('dialog', { name: `Detalle de habitación ${number}`, exact: true }).getByRole('link', { name: 'Ver reserva completa' }).click();
         await expect(detail.getByRole('heading', { name: code, exact: true })).toBeVisible();
@@ -31,7 +31,7 @@ for (const { name, viewport } of viewports) {
       const empty = page.getByRole('dialog', { name: 'Detalle de habitación 103', exact: true });
       await expect(empty).toContainText('No hay reservas activas asignadas a esta habitación.');
       await expect(empty.getByRole('link', { name: 'Ver reserva completa' })).toHaveCount(0);
-      await empty.getByRole('button', { name: 'Cerrar detalle de habitación' }).click();
+      await empty.getByRole('button', { name: 'Cerrar' }).click();
       const card = page.locator('[data-room="103"]'); await card.getByRole('button', { name: 'Marcar sucia', exact: true }).click();
       await expect(card).toContainText('Sucia'); await expect(page.getByRole('dialog')).toHaveCount(0);
       await page.getByLabel('Condición', { exact: true }).selectOption('SUCIA');

@@ -24,7 +24,7 @@ for (const { name, viewport } of viewports) {
       const detail = page.getByRole('dialog', { name: 'Detalle de reserva' });
       await expect(detail.getByRole('heading', { name: 'Historial de estados' })).toBeVisible();
       await expect(detail).toContainText(first.huespedPrincipal);
-      await detail.getByRole('button', { name: 'Cerrar detalle de reserva', exact: true }).click();
+      await detail.getByRole('button', { name: 'Cerrar', exact: true }).click();
       await calendar.getByRole('button', { name: 'Habitaciones', exact: true }).click();
       const table = calendar.getByRole('table', { name: 'Reservas por habitación y día' });
       await expect.poll(codes).toEqual(expected); await expect(table).toContainText('Piso 1');
@@ -42,7 +42,7 @@ for (const { name, viewport } of viewports) {
       const filtered = data.reservas.filter(r => r.tipoHabitacionId === group.tipoHabitacion.id && rooms.some(h => h.id === r.habitacionId)).map(r => r.codigo).sort();
       await expect.poll(codes).toEqual(filtered);
       await calendar.locator(`[data-reservation-code="${first.codigo}"]`).first().click();
-      await expect(detail).toContainText(first.codigo); await detail.getByRole('button', { name: 'Cerrar detalle de reserva' }).click();
+      await expect(detail).toContainText(first.codigo); await detail.getByRole('button', { name: 'Cerrar' }).click();
       await calendar.getByRole('button', { name: 'Mes', exact: true }).click();
       await expect(calendar.getByLabel('Piso del calendario')).toHaveValue(String(room.piso));
       await expect(calendar.getByLabel('Categoría del calendario')).toHaveValue(group.tipoHabitacion.nombre);

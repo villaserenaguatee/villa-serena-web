@@ -14,14 +14,16 @@ for (const { name, viewport } of viewports) {
       await expect(checkIn).toBeVisible();
       const snapshot = () => page.evaluate(() => ({ reservations: localStorage.getItem('vs-reservas'), rooms: localStorage.getItem('vs-habitaciones') }));
       const before = await snapshot();
-      const alerts: string[] = [];
-      page.on('dialog', async dialog => { alerts.push(dialog.message()); await dialog.accept(); });
+      const notice = page.getByRole('alertdialog', { name: 'No se pudo iniciar la estancia', exact: true });
       await page.route('**/api/habitaciones?*', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ mensaje: 'Consulta de habitaciones no disponible' }) }));
-      await checkIn.click(); await expect.poll(() => alerts.length).toBe(1); expect(alerts[0]).toMatch(/no disponible/);
-      expect(await snapshot()).toEqual(before); await page.unroute('**/api/habitaciones?*');
+      await checkIn.click(); await expect(notice).toContainText('no disponible');
+      expect(await snapshot()).toEqual(before);
+      await notice.getByRole('button', { name: 'Entendido', exact: true }).click();
+      await expect(notice).toHaveCount(0);
+      await page.unroute('**/api/habitaciones?*');
       await checkIn.click();
       await expect.poll(() => page.evaluate(code => JSON.parse(localStorage.getItem('vs-reservas')!).find((r: { codigo: string }) => r.codigo === code).estado, created.codigo)).toBe('en-curso');
-      expect(alerts).toHaveLength(1);
+      await expect(notice).toHaveCount(0);
       await page.reload();
       expect(await page.evaluate(code => JSON.parse(localStorage.getItem('vs-reservas')!).find((r: { codigo: string }) => r.codigo === code).estado, created.codigo)).toBe('en-curso');
       // A second reservation bridges while clean, then its room changes in the BFF.
@@ -35,8 +37,9 @@ for (const { name, viewport } of viewports) {
       const dirty = await context.request.post(`/api/habitaciones/${room.id}/marcar-sucia`, { headers: { Origin: new URL(page.url()).origin } });
       expect(dirty.status()).toBe(200);
       const unchanged = await snapshot(); await checkIn.click();
-      await expect.poll(() => alerts.length).toBe(2); expect(alerts[1]).toMatch(/sucia/i);
+      await expect(notice).toContainText(/sucia/i);
       expect(await snapshot()).toEqual(unchanged);
+      await notice.getByRole('button', { name: 'Entendido', exact: true }).click();
       await page.reload();
       const dirtyDetail = await openDetail(page, second.codigo);
       await expect(dirtyDetail.getByRole('button', { name: 'Ir a check-in', exact: true })).toHaveCount(0);
