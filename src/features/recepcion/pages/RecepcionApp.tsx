@@ -780,7 +780,7 @@ function PerfilRecepcionModal({ perfil, onGuardar, onCerrar }: {
     telefono: string;
     foto: string;
   };
-  onGuardar: (p: any) => void;
+  onGuardar: (p: { nombre: string; correo: string; telefono: string; foto: string }) => void;
   onCerrar: () => void;
 }) {
   const [form, setForm] = useState(perfil);

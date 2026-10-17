@@ -210,8 +210,9 @@ export function useLimpieza(
       ejecutarAccion(
         () => iniciarLimpieza(id),
         'No se pudo iniciar la limpieza.',
-        (data: any) => {
-          const nombre = data?.empleadoACargo?.nombre ?? data?.empleado ?? data?.nombre;
+        (data: unknown) => {
+          const detail = data as { empleadoACargo?: { nombre?: string }; empleado?: string; nombre?: string; motivo?: string; mensaje?: string } | null;
+          const nombre = detail?.empleadoACargo?.nombre ?? detail?.empleado ?? detail?.nombre;
           return nombre ? `La habitación ya está siendo limpiada por ${nombre}. Se recargó su estado actual.` : null;
         }
       ),
@@ -229,8 +230,9 @@ export function useLimpieza(
       ejecutarAccion(
         () => tomarSolicitud(id),
         'No se pudo tomar la solicitud.',
-        (data: any) => {
-          const motivo = data?.motivo ?? data?.mensaje;
+        (data: unknown) => {
+          const detail = data as { empleadoACargo?: { nombre?: string }; empleado?: string; nombre?: string; motivo?: string; mensaje?: string } | null;
+          const motivo = detail?.motivo ?? detail?.mensaje;
           return motivo ? `No se pudo tomar la solicitud: ${motivo}. Se recargó la lista.` : null;
         }
       ),
@@ -238,8 +240,9 @@ export function useLimpieza(
       ejecutarAccion(
         () => atenderSolicitud(id),
         'No se pudo marcar la solicitud como atendida.',
-        (data: any) => {
-          const motivo = data?.motivo ?? data?.mensaje;
+        (data: unknown) => {
+          const detail = data as { empleadoACargo?: { nombre?: string }; empleado?: string; nombre?: string; motivo?: string; mensaje?: string } | null;
+          const motivo = detail?.motivo ?? detail?.mensaje;
           return motivo ? `No se pudo atender la solicitud: ${motivo}. Se recargó la lista.` : null;
         }
       ),

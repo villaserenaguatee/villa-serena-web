@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import type { ActivoHotel, CompraHotel, Empleado, GastoHotel, Reserva } from '@/lib/pms/types';
 import { dinero, INPUT_CLS } from '@/features/admin/pages/adminUtils';
 import { exportXlsx } from '@/lib/pms/exportXlsx';
+type NominaFila = { e: Empleado; base: number; extras: number; descuentos: number; neto: number };
 type Tab = 'resumen' | 'caja' | 'gastos' | 'nomina' | 'activos' | 'reportes';
 export default function FinanzasActivos({ empleados, reservas, compras, gastos, activos, onAgregarGasto, onAgregarActivo, soloOperaciones = false, nominaConectada, pagosConectados, reportesConectados }: {
   nominaConectada?:React.ReactNode;
@@ -158,11 +159,11 @@ function Gastos({ compras, gastos }: {
   </Tabla>;
 }
 function Nomina({ filas, pagados, onPagar }: {
-  filas: any[];
+  filas: NominaFila[];
   pagados: string[];
   onPagar: (id: string) => void | boolean | Promise<void | boolean>;
 }) {
-  const [detalle, setDetalle] = useState<any | null>(null);
+  const [detalle, setDetalle] = useState<NominaFila | null>(null);
   return <><div className="grid gap-3">
     {filas.map(n => <div key={n.e.id} className="grid items-center gap-3 rounded-xl border border-[#E5E0D8] bg-white p-4 sm:grid-cols-[1fr_repeat(4,120px)_auto]">
       <button onClick={() => setDetalle(n)} className="text-left">
@@ -262,7 +263,7 @@ function Reportes({ ingresos, compras, gastos, nominaFilas, activos }: {
   ingresos: number;
   compras: CompraHotel[];
   gastos: GastoHotel[];
-  nominaFilas: any[];
+  nominaFilas: NominaFila[];
   activos: ActivoHotel[];
 }) {
   const egresosCompras = compras.filter(c => c.estado === 'pagada').reduce((s, c) => s + c.total, 0);

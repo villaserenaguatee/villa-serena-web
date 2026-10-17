@@ -94,7 +94,7 @@ export default function AdminApp({ onCambiarModulo }: Props) {
   const [personalInitial,setPersonalInitial]=useState('catalogo');
   const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [notificacionesAbiertas, setNotificacionesAbiertas] = useState(false);
-  const [correccionesPersonal, setCorreccionesPersonal] = useState<any[]>([]);
+  const [correccionesPersonal, setCorreccionesPersonal] = useState<ReturnType<typeof leerCorrecciones>>([]);
   useEffect(() => {
     const cargar = () => setCorreccionesPersonal(leerCorrecciones());
     cargar();

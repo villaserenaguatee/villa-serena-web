@@ -101,7 +101,7 @@ export default function CuentaHuesped({ abrirResena = false, onResenaAbierta, hu
       localStorage.setItem(opinionKey, JSON.stringify(review));
       const key = "vs-resenas-publicas";
       const prev = JSON.parse(localStorage.getItem(key) || "[]");
-      const next = [review, ...prev.filter((r: any) => r.estanciaId !== reserva.codigo)];
+      const next = [review, ...prev.filter((r: { estanciaId?: string }) => r.estanciaId !== reserva.codigo)];
       localStorage.setItem(key, JSON.stringify(next));
       window.dispatchEvent(new Event("vs-resenas-updated"));
     }

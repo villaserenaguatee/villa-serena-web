@@ -5,6 +5,9 @@ import { useMemo, useState } from "react";
 import type { Reserva, ReservaAmenidad, TurnoAmenidad, } from "@/lib/pms/types";
 import { Cabecera } from "@/features/huesped/pages/huespedUtils";
 import { useUiText } from "@/i18n/UiText";
+type ExperienciaLocal = { id: string; reservaId: string; huespedId: string; nombre: string; precio: string; fecha: string; hora: string; personas: number; estado: string };
+// Legacy-only formatter retained for the existing unit contract; connected mode remains disabled.
+export function crearExperienciaLocal(id: string, reservaId: string, huespedId: string, opcion: { nombre: string; precio: string }, fecha: string, hora: string, personas: number): ExperienciaLocal { return { id, reservaId, huespedId, nombre: opcion.nombre, precio: opcion.precio, fecha: fecha || "Por coordinar", hora: hora || "Por coordinar", personas, estado: "Pendiente" }; }
 type Categoria = "Todos" | "Restaurante" | "Spa" | "Piscina" | "Experiencias" | "Transporte";
 type Opcion = {
   id: string;
@@ -255,7 +258,7 @@ export default function ReservasExperiencias({ connected=false,reserva, huespedI
   const [personas, setPersonas] = useState(1);
   const [nota, setNota] = useState("");
   const [mis, setMis] = useState(!disponible);
-  const [locales, setLocales] = useState<any[]>([]);
+  const [locales, setLocales] = useState<ExperienciaLocal[]>([]);
   const lista = OPCIONES.filter((x) => cat === "Todos" || x.categoria === cat);
   const turnosArea = useMemo(() => activo?.area
     ? turnos.filter((t) => t.area === activo.area)

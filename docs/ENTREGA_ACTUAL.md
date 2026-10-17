@@ -17,3 +17,9 @@ El backend se entrega en su repositorio. Sus migraciones representan esquema, ca
 Pendientes: Facebook tras HTTPS; cancelación interactiva Google; recepción con nuevos participantes autorizados; carrera directa de renovación; archivo propio tras logout en sesión exclusiva; límites distribuidos y auditoría Java/imagen vigente. Servicios físicos/experiencias requieren sus contratos; FEL y desembolsos bancarios no implementados. Personalización Stripe detenida: Sandbox sin reclamar y permisos limitados, sin crear otro ni cambiar apariencia. No repetir pagos/correos para comprobar esta rama.
 
 Sin merge, despliegue ni PR.
+
+## Validación posterior autorizada — 16/10/2026
+
+Se corrigió el lockfile inválido de la entrega inicial regenerándolo con pnpm. Instalación con `--frozen-lockfile` e `--ignore-scripts`, TypeScript y build completo de Next aprobados, con lint activo: cero errores y avisos pendientes. Correcciones limitadas a tipos, JSX y compatibilidad del contrato unitario local anterior; no cambia el diseño ni habilita experiencias en modo conectado. No se ejecutó la suite de pruebas.
+
+Frontend compilado activado únicamente en localhost:3054, API saludable y catálogo real de 15 ofertas. Configuración privada ignorada por Git y conservada en servidor; sin pagos/correos. Ningún despliegue remoto, merge ni PR.

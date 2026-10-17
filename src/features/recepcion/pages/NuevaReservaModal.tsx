@@ -429,7 +429,7 @@ telefono: '',
                     <span>{nPersonas} huésped{nPersonas === 1 ? '' : 'es'}</span>
                   </button>
                   {huespedesAbierto && <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-[310px] bg-white rounded-xl shadow-2xl border border-[#EEE7DA] p-4 text-[#102747]">
-                    {[['Adultos', adultos, setAdultos, 1], ['Niños', ninos, setNinos, 0]].map(([etiqueta, valor, setter, min]: any) => <div key={etiqueta} className="flex items-center justify-between py-3">
+                    {([['Adultos', adultos, setAdultos, 1], ['Niños', ninos, setNinos, 0]] as const).map(([etiqueta, valor, setter, min]) => <div key={etiqueta} className="flex items-center justify-between py-3">
                       <span className="text-[17px]">
                         {etiqueta}
                       </span>

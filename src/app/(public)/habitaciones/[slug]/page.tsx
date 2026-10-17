@@ -208,7 +208,7 @@ export default function RoomDetail() {
           {en ? "Guests" : "Huéspedes"}
           <GuestSelector
             adults={adults}
-            children={children}
+            childCount={children}
             onAdults={(n) => {
               setAdults(n);
               setChecked(false);

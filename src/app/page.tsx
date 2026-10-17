@@ -53,6 +53,8 @@ const prefTextES: Record<string, string> = {
   Negocios: "Espacios prácticos y tranquilos para combinar descanso y trabajo.",
   Bienestar: "Habitaciones con ambientes tranquilos, terrazas o vistas que acompañan una visita de descanso.",
 };
+type PublicReview = { id?: string; name: string; country: string; countryEn: string; date: string; dateEn: string; rating: number; text: string; textEn: string; sample?: boolean };
+type SavedPublicReview = { id?: string; reservaId?: string; creadaEn: string; nombre?: string; pais?: string; estrellas: number; experiencia?: string; experienciaEn?: string; autorizaPublicar: boolean; verificada: boolean };
 const samplePublicReviews = [
   {
     id: "sample-1",
@@ -130,14 +132,14 @@ function HomeContent() {
   const [reviewsPerPage,setReviewsPerPage]=useState(3);
   const [searchError, setSearchError] = useState("");
   const invalidSearch = publicSearchError(arrival, departure, adults, children, Math.max(0, ...publicRooms.map(room => room.capacity)));
-  const [publicReviews, setPublicReviews] = useState<any[]>([]);
+  const [publicReviews, setPublicReviews] = useState<PublicReview[]>([]);
   const [reviewTranslations, setReviewTranslations] = useState<Record<string, string>>({});
   useEffect(() => {
     const cargarResenas = () => {
       try {
         const saved = JSON.parse(localStorage.getItem("vs-resenas-publicas") || "[]")
-          .filter((r: any) => r.autorizaPublicar && r.verificada && r.estrellas >= 1 && r.estrellas <= 5)
-          .map((r: any) => ({
+          .filter((r: SavedPublicReview) => r.autorizaPublicar && r.verificada && r.estrellas >= 1 && r.estrellas <= 5)
+          .map((r: SavedPublicReview) => ({
             id: r.id || `${r.reservaId || "stay"}-${r.creadaEn}`,
             name: r.nombre || "Huésped Villa Serena",
             country: r.pais || "Guatemala",
@@ -805,13 +807,13 @@ function HomeContent() {
 
         <div className="guest-experiences-body">
           <span className="section-kicker">
-            {publicReviews.every((r: any) => r.sample) ? (en ? "REVIEW PREVIEW" : "VISTA DE RESEÑAS") : (en ? "REAL EXPERIENCES" : "EXPERIENCIAS REALES")}
+            {publicReviews.every((r) => r.sample) ? (en ? "REVIEW PREVIEW" : "VISTA DE RESEÑAS") : (en ? "REAL EXPERIENCES" : "EXPERIENCIAS REALES")}
           </span>
           <h2 id="guest-experiences-title">
             {en ? "Experiences from our guests" : "Experiencias de nuestros huéspedes"}
           </h2>
           <p>
-            {publicReviews.every((r: any) => r.sample) ? (en ? "Sample reviews are shown so you can preview how this section looks." : "Se muestran reseñas de muestra para visualizar cómo se verá esta sección.") : (en ? "Verified reviews from guests who enjoyed their stay at Villa Serena." : "Opiniones verificadas de huéspedes que vivieron su estancia en Villa Serena.")}
+            {publicReviews.every((r) => r.sample) ? (en ? "Sample reviews are shown so you can preview how this section looks." : "Se muestran reseñas de muestra para visualizar cómo se verá esta sección.") : (en ? "Verified reviews from guests who enjoyed their stay at Villa Serena." : "Opiniones verificadas de huéspedes que vivieron su estancia en Villa Serena.")}
           </p>
           {publicReviews.length === 0 ? <div className="review-empty">
             <ShieldCheck size={22} />
@@ -834,7 +836,7 @@ function HomeContent() {
               </i>
               <b>
                 <ShieldCheck size={16} />
-                {publicReviews.every((r: any) => r.sample) ? (en ? "Sample reviews" : "Reseñas de muestra") : (en ? "Verified reviews" : "Opiniones verificadas")}
+                {publicReviews.every((r) => r.sample) ? (en ? "Sample reviews" : "Reseñas de muestra") : (en ? "Verified reviews" : "Opiniones verificadas")}
               </b>
             </div>
             <div className="review-carousel">

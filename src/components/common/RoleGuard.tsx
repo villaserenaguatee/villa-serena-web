@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,6 +19,6 @@ export function RoleGuard({ role, children }: {
     return <div className="vs-loading">Cargando Villa Serena…</div>;
   }
   if (user.staff ? !staffCanAccess(user.staff, role) : user.role !== role)
-    return <main className="p-8"><h1>Acceso denegado</h1><a href="/panel">Volver a mi panel</a></main>;
+    return <main className="p-8"><h1>Acceso denegado</h1><Link href="/panel">Volver a mi panel</Link></main>;
   return <>{children}</>;
 }

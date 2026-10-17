@@ -143,7 +143,7 @@ export default function ReportesRecepcion({ habitaciones, reservas, huespedes }:
             className="mt-1 w-full rounded-lg border border-[#D9D5CC] bg-white p-2 outline-none focus:border-[#B58B2A]" /></label>
           <label>Prioridad<select
             value={prioridad}
-            onChange={e => setPrioridad(e.target.value as any)}
+            onChange={e => setPrioridad(e.target.value as Reporte['prioridad'])}
             className="mt-1 w-full rounded-lg border border-[#D9D5CC] bg-white p-2 outline-none focus:border-[#B58B2A]">
             <option>Alta</option>
             <option>Media</option>

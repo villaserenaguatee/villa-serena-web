@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {usePublicLanguage} from '@/components/common/PublicLanguageToggle';
 import { useAuth } from '@/hooks/useAuth';
@@ -38,7 +39,7 @@ export default function IncidenciasConectadas({ soloReportar = false, onCrearOrd
   }
   if (employee && !soloReportar && !allowed) return <h1 className="p-6">Acceso denegado</h1>;
   return <main className="min-h-screen bg-[#F8F6F0] p-4 sm:p-6 text-[#18345C]">
-    <header className="flex flex-wrap justify-between gap-3"><h1 className="text-[32px] font-semibold">Incidencias</h1><div className="flex gap-3"><a href="/panel" className="rounded-md border px-4 py-2">Mi panel</a><button onClick={() => setReload(n => n + 1)} disabled={loading || busy} className="rounded-md border px-4 py-2">Actualizar</button><button disabled={loading || !rooms.length} onClick={() => setReportar(true)} className="rounded-md bg-[#18345C] text-white px-4 py-2">Reportar daño</button></div></header>
+    <header className="flex flex-wrap justify-between gap-3"><h1 className="text-[32px] font-semibold">Incidencias</h1><div className="flex gap-3"><Link href="/panel" className="rounded-md border px-4 py-2">Mi panel</Link><button onClick={() => setReload(n => n + 1)} disabled={loading || busy} className="rounded-md border px-4 py-2">Actualizar</button><button disabled={loading || !rooms.length} onClick={() => setReportar(true)} className="rounded-md bg-[#18345C] text-white px-4 py-2">Reportar daño</button></div></header>
     {error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-red-800">{error}</p>}{loading && <p role="status" className="mt-4">Consultando incidencias…</p>}
     {notice && <p role="status" className="mt-3 rounded-lg bg-amber-50 p-3">{notice}</p>}
     {!loading && <p className="mt-3 text-sm">Selecciona una habitación del catálogo del hotel para reportar un daño.</p>}

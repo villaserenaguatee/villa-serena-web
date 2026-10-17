@@ -95,7 +95,7 @@ export default function Catalogo() {
       </label>
       <label>
         {en ? "Guests" : "Huéspedes"}
-        <GuestSelector adults={adults} children={children} onAdults={setAdults} onChildren={setChildren} max={5} />
+        <GuestSelector adults={adults} childCount={children} onAdults={setAdults} onChildren={setChildren} max={5} />
       </label>
       <div className="price-range">
         <strong>
