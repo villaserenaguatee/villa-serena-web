@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Modulo, Pedido, ItemMenu, LineaPedido, NotificacionRS, SeccionRS, EstadoPedido, } from '@/lib/pms/types';
+import { usePathname, useRouter } from 'next/navigation';
 import { generarId, ahoraISO, formatoHoraISO, turnoActual, siguienteNumeroPedido, pisoDeHabitacion, } from '@/data/pms';
 import { SIGUIENTE_ESTADO, BellIcon, BedIcon, ClockIcon } from '@/features/roomservice/pages/rsUtils';
 import ModuloSwitcher from '@/components/common/ModuloSwitcher';
@@ -64,9 +65,10 @@ interface Props {
   conectado?: boolean;
 }
 export default function RoomServiceApp({ onCambiarModulo, conectado = false }: Props) {
-  const [empleados, setEmpleados] = useState(() => leerEmpleados());
+  const [empleados, setEmpleados] = useState(() => conectado ? [] : leerEmpleados());
   const { user } = useAuth();
   useEffect(() => {
+    if (conectado) return;
     const sincronizar = () => setEmpleados(leerEmpleados());
     window.addEventListener(EMPLEADOS_EVENT, sincronizar);
     window.addEventListener('storage', sincronizar);
@@ -92,7 +94,16 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
     };
   },
     [conectado]);
-  const [seccion, setSeccion] = useState<SeccionRS>('resumen');
+  const pathname = usePathname(), router = useRouter();
+  const fromPath = (path: string): SeccionRS => SECCIONES.find(s => path === `/room-service/${s.id}`)?.id ?? 'resumen';
+  const [seccion, setSeccionActual] = useState<SeccionRS>(() => fromPath(pathname));
+  function setSeccion(section: SeccionRS) {
+    setSeccionActual(section);
+    if (!conectado) return;
+    const target = section === 'resumen' ? '/room-service' : `/room-service/${section}`;
+    if (pathname !== target) router.push(target);
+  }
+  useEffect(() => { setSeccionActual(fromPath(pathname)); }, [pathname]);
   const [pedidoAbierto, setPedidoAbierto] = useState<string | null>(null);
   const [mostrarNuevo, setMostrarNuevo] = useState(false);
   const [notificaciones, setNotificaciones] = useState<NotificacionRS[]>([]);
@@ -461,7 +472,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
         <div className="px-4 pt-5 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
           <img src="/villa-serena-logo.png" alt="Villa Serena" className="h-32 w-44 object-contain mx-auto mb-2" />
           <p className="text-white text-xl font-bold leading-tight" style={{ letterSpacing: '0.02em' }}>Villa Serena</p>
-          <p className="text-xs mt-1" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>
+          <p className="mt-2 text-xl font-semibold leading-6" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>
             Room Service
           </p>
         </div>
@@ -489,10 +500,10 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
           })}
         </div>
 
-        <div className="mt-auto px-4 py-5 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
+        <div className="mt-auto px-4 py-2 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
           <button
             onClick={() => setPerfilAbierto(true)}
-            className="w-full flex items-center gap-3 rounded-lg p-2 text-left hover:bg-[#18345C] transition-colors"
+            className="w-full min-h-16 flex items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-[#18345C] transition-colors"
             title="Abrir mi perfil">
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
@@ -502,7 +513,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
                 {encargadoRS}
               </p>
               <p className="text-[10px] truncate" style={{ color: '#AEBCC1' }}>Room Service · turno de {turno}</p>
-              <p className="text-[10px] mt-0.5" style={{ color: '#D8B94E' }}>Abrir perfil</p>
+              <p className="text-[14px] leading-5 no-underline" style={{ color: '#D8B94E' }}>Perfil</p>
             </div>
           </button>
         </div>
@@ -518,6 +529,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
           </p>
 
           <div className="lg:hidden flex gap-1.5 shrink-0">
+            <button className="text-xs text-white" onClick={() => setPerfilAbierto(true)}>Mi perfil</button>
             <ModuloSwitcher actual="roomservice" onCambiar={onCambiarModulo} variant="inline" />
           </div>
 

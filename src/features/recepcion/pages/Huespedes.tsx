@@ -1,9 +1,16 @@
-import { useMemo, useState } from 'react';
+import PassportIssuerSelect from '@/components/common/PassportIssuerSelect';
+import { validDocument, validNationalPhone, validPassportIssuer } from '@/lib/guestValidation';
+import { searchGuests, registerGuest, searchReservations, receptionFieldErrors } from '@/lib/api/reception';
+import type { ReservationSummary } from '@/lib/bff/contracts/reception';
+import { reservationLabels } from '@/lib/receptionPresentation';
+import ReceptionCloseButton from './ReceptionCloseButton';
+import { useEffect, useMemo, useState } from 'react';
 import type { Huesped, Reserva, HabitacionHotel, TipoDocumento } from '@/lib/pms/types';
 import { formatoFecha } from '@/data/pms';
 import { publicRoomForHotelType } from '@/data/publicRooms';
-import { dinero, Chip, RESERVA_META, calcularCuenta, Campo, INPUT_CLS, SearchIcon, PlusIcon, CloseIcon, UserIcon, } from '@/features/recepcion/pages/recUtils';
+import { dinero, Chip, RECEPTION_RESERVA_META, calcularCuenta, Campo, INPUT_CLS, SearchIcon, PlusIcon, UserIcon, } from '@/features/recepcion/pages/recUtils';
 interface Props {
+  conectado?: boolean;
   huespedes: Huesped[];
   reservas: Reserva[];
   habitaciones: HabitacionHotel[];
@@ -15,6 +22,7 @@ interface Form {
   nombre: string;
   tipoDocumento: TipoDocumento;
   documento: string;
+  paisEmisorPasaporte: string;
   telefono: string;
   correo: string;
   nacionalidad: string;
@@ -25,14 +33,28 @@ const FORM_VACIO: Form = {
   nombre: '',
   tipoDocumento: 'DPI',
   documento: '',
+  paisEmisorPasaporte: '',
   telefono: '',
   correo: '',
   nacionalidad: 'Guatemalteca',
   apellidos: '',
   prefijo: '+502',
 };
-export default function Huespedes({ huespedes, reservas, habitaciones, onRegistrar, onActualizar, onAbrirReserva }: Props) {
+export default function Huespedes({ conectado = false, huespedes: localGuests, reservas, habitaciones, onRegistrar, onActualizar, onAbrirReserva }: Props) {
   const [q, setQ] = useState('');
+  const [remoteGuests, setRemoteGuests] = useState<Huesped[]>([]);
+  const [queryError, setQueryError] = useState('');
+  const [queryLoading, setQueryLoading] = useState(false);
+  const huespedes = conectado ? remoteGuests : localGuests;
+  useEffect(() => {
+    if (!conectado) return;
+    if (q.trim().length < 2) { setRemoteGuests([]); setQueryLoading(false); setQueryError(''); return; }
+    const controller = new AbortController(); setRemoteGuests([]); setQueryError(''); setQueryLoading(true);
+    const timer = setTimeout(() => { searchGuests(q.trim(), controller.signal).then(guests => {
+      if (!controller.signal.aborted) setRemoteGuests(guests.map(g => ({ id: String(g.id), nombre: g.nombreCompleto, correo: g.correo, telefono: g.telefono, nacionalidad: g.nacionalidad, tipoDocumento: g.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte', documento: g.numeroDocumento, paisEmisorPasaporte: g.paisEmisorPasaporte, creadoEn: '' })));
+    }).catch(e => { if (!controller.signal.aborted) setQueryError(e.message); }).finally(() => { if (!controller.signal.aborted) setQueryLoading(false); }); }, 250);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [conectado, q]);
   const [registrando, setRegistrando] = useState(false);
   const [perfilId, setPerfilId] = useState<string | null>(null);
   const [form, setForm] = useState<Form>(FORM_VACIO);
@@ -40,11 +62,12 @@ export default function Huespedes({ huespedes, reservas, habitaciones, onRegistr
   const [errores, setErrores] = useState<Partial<Record<keyof Form, string>>>({});
   const filtrados = useMemo(() => {
     const t = q.trim().toLowerCase();
+    const documento = t.replace(/\s/g, '');
     return [...huespedes]
-      .filter(h => !t || h.nombre.toLowerCase().includes(t))
+      .filter(h => !t || h.nombre.toLowerCase().includes(t) || h.documento.toLowerCase().replace(/\s/g, '').includes(documento) || (conectado && h.correo.toLowerCase().includes(t)))
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
   },
-    [huespedes, q]);
+    [huespedes, q, conectado]);
   const perfil = huespedes.find(h => h.id === perfilId) ?? null;
   function validar(): boolean {
     const e: Partial<Record<keyof Form, string>> = {};
@@ -62,20 +85,34 @@ export default function Huespedes({ huespedes, reservas, habitaciones, onRegistr
       e.correo = 'Correo no válido.';
     if (!form.nacionalidad)
       e.nacionalidad = 'Selecciona la nacionalidad.';
+    if (!validDocument(form.tipoDocumento, form.documento)) e.documento = form.tipoDocumento === 'DPI' ? 'El DPI debe contener exactamente 13 dígitos.' : 'Introduce solo letras y números, hasta el límite de almacenamiento de 30 caracteres.';
+    if (!validNationalPhone(form.prefijo, form.telefono)) e.telefono = 'Guatemala: 8 dígitos sin repetir +502. Otros países: número internacional válido, sin letras.';
+    if (form.tipoDocumento === 'Pasaporte' && !validPassportIssuer(form.paisEmisorPasaporte)) e.paisEmisorPasaporte = 'Selecciona el país emisor del pasaporte.';
     setErrores(e);
     return Object.keys(e).length === 0;
   }
-  function guardar() {
+  async function guardar() {
     if (!validar())
       return;
-    onRegistrar({
+    const datos = {
       nombre: `${form.nombre.trim()} ${form.apellidos.trim()}`.trim(),
       tipoDocumento: form.tipoDocumento,
       documento: form.documento.trim(),
+        paisEmisorPasaporte: form.tipoDocumento === 'Pasaporte' ? form.paisEmisorPasaporte : undefined,
       telefono: `${form.prefijo} ${form.telefono.trim()}`,
       correo: form.correo.trim(),
       nacionalidad: form.nacionalidad,
-    });
+    };
+    if (queryLoading) return;
+    setQueryError(''); setQueryLoading(true);
+    try {
+      if (conectado) {
+        const { huesped: g } = await registerGuest({ nombreCompleto: datos.nombre, tipoDocumento: datos.tipoDocumento === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: datos.documento, paisEmisorPasaporte: datos.paisEmisorPasaporte, correo: datos.correo, telefono: datos.telefono, nacionalidad: datos.nacionalidad });
+        setRemoteGuests(prev => [...prev.filter(h => h.id !== String(g.id)), { id: String(g.id), nombre: g.nombreCompleto, correo: g.correo, telefono: g.telefono, nacionalidad: g.nacionalidad, tipoDocumento: g.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte', documento: g.numeroDocumento, paisEmisorPasaporte: g.paisEmisorPasaporte, creadoEn: '' }]);
+        setQ(datos.documento);
+      } else onRegistrar(datos);
+    } catch (e) { const fields=receptionFieldErrors(e);setErrores(fields);if(Object.keys(fields).length)setRevisando(false);setQueryError(e instanceof Error ? e.message : 'No se pudo registrar el huésped.'); return; }
+    finally { setQueryLoading(false); }
     setForm(FORM_VACIO);
     setErrores({});
     setRegistrando(false);
@@ -89,6 +126,7 @@ export default function Huespedes({ huespedes, reservas, habitaciones, onRegistr
           <p className="text-[15px] text-[#AEBCC1] mt-1">{huespedes.length} registrados</p>
         </div>
         <button
+          disabled={queryLoading}
           onClick={() => {
             setForm(FORM_VACIO);
             setErrores({});
@@ -101,20 +139,23 @@ export default function Huespedes({ huespedes, reservas, habitaciones, onRegistr
         </button>
       </div>
 
-      <div className="relative">
+      <label htmlFor="buscar-huesped" className="mb-1 block text-sm font-medium text-[#18345C]">Buscar huésped</label>
+      <div className="relative w-full max-w-md">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#AEBCC1]">
           <SearchIcon size={15} />
         </span>
         <input
+          id="buscar-huesped"
           type="text"
           value={q}
           onChange={e => setQ(e.target.value)}
-          placeholder="Buscar por nombre completo…"
-          className="w-full border border-[#E5E0D8] rounded-md pl-9 pr-3 py-2.5 text-sm bg-white" />
+          placeholder="Nombre o documento…"
+          className="h-10 w-full border border-[#E5E0D8] rounded-md pl-9 pr-3 text-sm bg-white" />
       </div>
     </div>
 
     <div className="px-4 sm:px-6 py-5">
+      {conectado && q.trim().length < 2 && <p role="status">Escribe al menos dos caracteres para buscar un huésped.</p>}{queryLoading && <p role="status">Consultando huéspedes...</p>}{queryError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-800">{queryError}</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtrados.map(h => {
           const estancias = reservas.filter(r => r.huespedId === h.id).length;
@@ -130,17 +171,17 @@ export default function Huespedes({ huespedes, reservas, habitaciones, onRegistr
                 <p className="text-[16px] font-semibold text-[#18345C] truncate">
                   {h.nombre}
                 </p>
-                <p className="text-[12px] text-[#AEBCC1]">{h.tipoDocumento} •••• {h.documento.slice(-4)}</p>
+                <p className="text-[12px] text-[#AEBCC1]">{h.tipoDocumento}: •••• {h.documento.slice(-4)}</p>
               </div>
             </div>
             <div className="mt-3 pt-3 border-t border-[#F0EBE3] text-[13px] text-[#6B7280] space-y-0.5">
               <p>
-                {h.telefono.replace(/\d(?=.*\d{2})/g, '•')}
+                Teléfono: {h.telefono.replace(/\d(?=.*\d{2})/g, '•')}
               </p>
               <p className="truncate">
-                {h.correo.replace(/^(.{2}).*(@.*)$/, '$1••••••$2')}
+                Correo: {h.correo.replace(/^(.{2}).*(@.*)$/, '$1••••••$2')}
               </p>
-              <p className="text-[#AEBCC1]">{h.nacionalidad} · {estancias} reserva(s)</p>
+              <p className="text-[#AEBCC1]">Nacionalidad: {h.nacionalidad} · Reservas: {conectado ? "Pendiente de consulta" : estancias}</p>
             </div>
           </button>);
         })}
@@ -152,7 +193,7 @@ export default function Huespedes({ huespedes, reservas, habitaciones, onRegistr
         setRegistrando(false);
         setRevisando(false);
       }} />
-      <div className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-4xl max-h-[94vh] overflow-y-auto">
+      <div role="dialog" aria-modal="true" aria-label="Registrar huésped" className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-4xl max-h-[94vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-5 border-b sticky top-0 bg-white z-10">
           <div>
             <p className="text-[11px] tracking-[.18em] text-[#B38719] uppercase">Datos del huésped</p>
@@ -160,10 +201,10 @@ export default function Huespedes({ huespedes, reservas, habitaciones, onRegistr
               {revisando ? 'Revisar datos' : 'Registrar huésped'}
             </h2>
           </div>
-          <button onClick={() => {
+          <ReceptionCloseButton onClick={() => {
             setRegistrando(false);
             setRevisando(false);
-          }} className="text-2xl text-[#AEBCC1]">×</button>
+          }} />
         </div>
         {!revisando ? <><div className="p-6 grid sm:grid-cols-2 gap-4">
           <Campo label="Nombre" error={errores.nombre}>
@@ -178,11 +219,12 @@ export default function Huespedes({ huespedes, reservas, habitaciones, onRegistr
               <option>Pasaporte</option>
             </select>
           </Campo>
+          {form.tipoDocumento === 'Pasaporte' && <Campo label="País emisor del pasaporte" error={errores.paisEmisorPasaporte}><PassportIssuerSelect value={form.paisEmisorPasaporte} onChange={value => setForm(f => ({ ...f, paisEmisorPasaporte: value }))} className={INPUT_CLS} /></Campo>}
           <Campo label="Número de documento" error={errores.documento}>
             <input
               value={form.documento}
-              onChange={e => setForm(f => ({ ...f, documento: e.target.value.replace(f.tipoDocumento === 'DPI' ? /\D/g : /[^A-Za-z0-9]/g, '').slice(0, f.tipoDocumento === 'DPI' ? 13 : 20) }))}
-              maxLength={form.tipoDocumento === 'DPI' ? 13 : 20}
+              onChange={e => setForm(f => ({ ...f, documento: e.target.value }))}
+              maxLength={64}
               className={INPUT_CLS} />
           </Campo>
           <Campo label="Correo electrónico" error={errores.correo}>
@@ -199,8 +241,8 @@ export default function Huespedes({ huespedes, reservas, habitaciones, onRegistr
               </select>
               <input
                 value={form.telefono}
-                onChange={e => setForm(f => ({ ...f, telefono: e.target.value.replace(/\D/g, "").slice(0, ["+1", "+52"].includes(f.prefijo) ? 10 : 8) }))}
-                maxLength={["+1", "+52"].includes(form.prefijo) ? 10 : 8}
+                onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))}
+                maxLength={24}
                 className={`${INPUT_CLS} flex-1`} />
             </div>
           </Campo>
@@ -217,17 +259,20 @@ export default function Huespedes({ huespedes, reservas, habitaciones, onRegistr
           </div></> : <><div className="p-7 grid sm:grid-cols-2 gap-x-10 gap-y-6">
             <Dato k="Huésped" v={`${form.nombre} ${form.apellidos}`.trim()} />
             <Dato k={form.tipoDocumento} v={form.documento} />
+            {form.tipoDocumento === "Pasaporte" && <Dato k="País emisor del pasaporte" v={form.paisEmisorPasaporte} />}
             <Dato k="Correo" v={form.correo} />
             <Dato k="Teléfono" v={`${form.prefijo} ${form.telefono}`} />
             <Dato k="Nacionalidad" v={form.nacionalidad} />
           </div><div className="px-7 pb-7 flex justify-end gap-3">
             <button onClick={() => setRevisando(false)} className="px-7 py-3 border border-[#18345C] text-[#18345C] rounded-md font-semibold">Editar</button>
-            <button onClick={guardar} className="px-10 py-3 bg-[#18345C] text-white rounded-md font-semibold">GUARDAR HUÉSPED</button>
+            {queryError && <p role="alert" className="text-red-800">{queryError}</p>}
+            <button disabled={queryLoading} onClick={guardar} className="px-10 py-3 bg-[#18345C] text-white rounded-md font-semibold disabled:opacity-50">{queryLoading ? 'Guardando…' : 'GUARDAR HUÉSPED'}</button>
           </div></>}
       </div>
     </div>)}
 
     {perfil && (<PerfilHuesped
+      soloLectura={conectado}
       huesped={perfil}
       reservas={reservas.filter(r => r.huespedId === perfil.id)}
       habitaciones={habitaciones}
@@ -239,7 +284,8 @@ export default function Huespedes({ huespedes, reservas, habitaciones, onRegistr
       }} />)}
   </div>);
 }
-function PerfilHuesped({ huesped, reservas, habitaciones, onCerrar, onActualizar, onAbrirReserva, }: {
+function PerfilHuesped({ soloLectura = false, huesped, reservas, habitaciones, onCerrar, onActualizar, onAbrirReserva, }: {
+  soloLectura?: boolean;
   huesped: Huesped;
   reservas: Reserva[];
   habitaciones: HabitacionHotel[];
@@ -247,6 +293,23 @@ function PerfilHuesped({ huesped, reservas, habitaciones, onCerrar, onActualizar
   onActualizar: (id: string, cambios: Partial<Huesped>) => void;
   onAbrirReserva: (id: string) => void;
 }) {
+  const [remoteHistory, setRemoteHistory] = useState<ReservationSummary[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(soloLectura), [historyError, setHistoryError] = useState('');
+  useEffect(() => {
+    if (!soloLectura) return;
+    const controller = new AbortController(); setHistoryLoading(true); setHistoryError(''); setRemoteHistory([]);
+    (async () => {
+      const list: ReservationSummary[] = [];
+      let page = 0, pages = 1;
+      do {
+        const result = await searchReservations(new URLSearchParams({ texto: huesped.documento, page: String(page), size: '100' }), controller.signal);
+        list.push(...result.contenido.filter(r => String(r.huespedPrincipal.id) === huesped.id));
+        pages = result.totalPaginas; page++;
+      } while (page < pages);
+      if (!controller.signal.aborted) setRemoteHistory(list);
+    })().catch(e => { if (!controller.signal.aborted) setHistoryError(e.message); }).finally(() => { if (!controller.signal.aborted) setHistoryLoading(false); });
+    return () => controller.abort();
+  }, [soloLectura, huesped.id, huesped.documento]);
   const ordenadas = [...reservas].sort((a, b) => b.fechaEntrada.localeCompare(a.fechaEntrada));
   const historicas = ordenadas.filter(r => r.estado === 'finalizada');
   const partesNombre = huesped.nombre.trim().split(/\s+/);
@@ -262,10 +325,10 @@ function PerfilHuesped({ huesped, reservas, habitaciones, onCerrar, onActualizar
     correo: huesped.correo,
     nacionalidad: huesped.nacionalidad
   });
-  return (<div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4">
+  return (<div className="fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-4">
     <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
-    <div className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-3xl max-h-[92vh] overflow-y-auto">
-      <div className="flex items-start justify-between gap-3 px-5 sm:px-6 py-4 border-b border-[#E5E0D8] sticky top-0 bg-white">
+    <div role="dialog" aria-modal="true" aria-label="Detalle del huésped" className="reception-compact relative z-10 flex max-h-[90dvh] w-full max-w-[760px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className="flex items-start justify-between gap-3 shrink-0 px-4 py-3 border-b border-[#E5E0D8] bg-white">
         <div className="flex items-center gap-3">
           {huesped.foto ? <img src={huesped.foto} alt={huesped.nombre} className="h-12 w-12 shrink-0 rounded-full object-cover" /> : <span className="w-12 h-12 rounded-full bg-[#EFF6FF] text-[#1E40AF] flex items-center justify-center shrink-0 text-sm font-bold">
             {iniciales(huesped.nombre)}
@@ -280,23 +343,22 @@ function PerfilHuesped({ huesped, reservas, habitaciones, onCerrar, onActualizar
             </p>
           </div>
         </div>
-        <button onClick={onCerrar} className="text-[#AEBCC1] hover:text-[#1F2933] p-1 shrink-0">
-          <CloseIcon />
-        </button>
+        <ReceptionCloseButton onClick={onCerrar} />
       </div>
 
-      <div className="px-5 sm:px-6 py-5 space-y-5">
-        {!editando ? <><div className="grid gap-3 rounded-xl border border-[#E5E0D8] bg-[#FCFBF8] p-4 text-[13px] sm:grid-cols-2 lg:grid-cols-3">
+      <div className="min-h-0 overflow-y-auto px-4 py-3 space-y-3">
+        {!editando ? <><div className="grid gap-2 rounded-xl border border-[#E5E0D8] bg-[#FCFBF8] p-3 text-[13px] sm:grid-cols-2 lg:grid-cols-3">
           <Dato k="Nombre completo" v={huesped.nombre} />
           <Dato k="Documento" v={`${huesped.tipoDocumento} · ${huesped.documento}`} />
+          {huesped.tipoDocumento === "Pasaporte" && <Dato k="País emisor del pasaporte" v={huesped.paisEmisorPasaporte || "Pendiente de información"} />}
           <Dato k="Teléfono" v={huesped.telefono} />
           <Dato k="Correo electrónico" v={huesped.correo} />
           <Dato k="Nacionalidad" v={huesped.nacionalidad} />
           <Dato k="Reservas registradas" v={String(reservas.length)} />
           <Dato k="Huésped desde" v={formatoFecha(huesped.creadoEn)} />
-        </div><button onClick={() => setEditando(true)} className="px-4 py-2 border border-[#18345C] text-[#18345C] rounded-md text-sm font-semibold">Editar datos</button></> : <div className="rounded-xl border border-[#E5E0D8] p-4">
-          <h3 className="mb-4 font-semibold text-[#18345C]">Editar datos del huésped</h3>
-          <div className="grid gap-3 sm:grid-cols-2">
+        </div><button disabled={soloLectura} title={soloLectura ? "El backend no ofrece edición de huéspedes" : undefined} onClick={() => setEditando(true)} className="px-4 py-2 border border-[#18345C] text-[#18345C] rounded-md text-sm font-semibold">Editar datos</button></> : <div className="rounded-xl border border-[#E5E0D8] p-3">
+          <h3 className="mb-2 font-semibold text-[#18345C]">Editar datos del huésped</h3>
+          <div className="grid gap-2 sm:grid-cols-2">
             <Campo label="Nombre">
               <input value={ed.nombre} onChange={e => setEd({ ...ed, nombre: e.target.value })} className={INPUT_CLS} />
             </Campo>
@@ -340,7 +402,7 @@ function PerfilHuesped({ huesped, reservas, habitaciones, onCerrar, onActualizar
               <input value={ed.nacionalidad} onChange={e => setEd({ ...ed, nacionalidad: e.target.value })} className={INPUT_CLS} />
             </Campo>
           </div>
-          <div className="mt-4 flex justify-end gap-2">
+          <div className="mt-3 flex justify-end gap-2">
             <button onClick={() => setEditando(false)} className="px-5 py-2.5 border rounded-md text-sm">Cancelar</button>
             <button
               disabled={!ed.nombre.trim() || !ed.apellidos.trim() || !ed.documento.trim() || !ed.correo.trim() || !ed.telefono.trim()}
@@ -360,12 +422,12 @@ function PerfilHuesped({ huesped, reservas, habitaciones, onCerrar, onActualizar
           </div>
         </div>}
 
-        <div className="rounded-xl border border-[#BFD4EA] bg-[#F5FAFF] p-4">
+        {!editando && <><div className="rounded-xl border border-[#BFD4EA] bg-[#F5FAFF] p-3">
           <p className="text-[10px] uppercase tracking-widest text-[#71839B]">Cuenta del huésped</p>
           <div className="mt-1 flex items-center justify-between gap-4">
             <div>
               <p className="font-semibold text-[#18345C]">
-                {ordenadas.length > 0 ? 'Cuenta vinculada' : 'Se vinculará con la primera reserva'}
+                {(soloLectura ? remoteHistory.length : ordenadas.length) > 0 ? 'Cuenta vinculada' : soloLectura && (historyLoading || historyError) ? 'Consulta de cuenta pendiente' : 'Se vinculará con la primera reserva'}
               </p>
               <p className="text-[12px] text-[#52677F]">Las nuevas reservas realizadas para esta persona se asociarán automáticamente al mismo perfil.</p>
             </div>
@@ -375,18 +437,28 @@ function PerfilHuesped({ huesped, reservas, habitaciones, onCerrar, onActualizar
 
         <div>
           <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-2">
-            Historial de estadías ({historicas.length})
+            Historial de estadías ({soloLectura ? remoteHistory.filter(r => r.estado === 'FINALIZADA').length : historicas.length})
           </p>
-          {ordenadas.length === 0 ? (<p className="text-[13px] text-[#AEBCC1]">Sin reservas registradas.</p>) : (<div className="border border-[#E5E0D8] rounded-xl divide-y divide-[#F0EBE3]">
+          {soloLectura ? <>
+            {historyLoading && <p role="status">Consultando reservas…</p>}
+            {historyError && <p role="alert" className="text-red-800">{historyError}</p>}
+            {!historyLoading && !historyError && !remoteHistory.length && <p className="text-[13px] text-[#AEBCC1]">Sin reservas registradas.</p>}
+            <div className="border border-[#E5E0D8] rounded-xl divide-y divide-[#F0EBE3]">{remoteHistory.map(r => <button key={r.codigo} onClick={() => onAbrirReserva(r.codigo)} className="w-full text-left px-3 py-2 hover:bg-[#F8F6F0]">
+              <p className="font-semibold text-[#18345C]">{r.codigo} · {reservationLabels[r.estado]}</p>
+              <p className="text-sm">{formatoFecha(r.entrada)} → {formatoFecha(r.salida)} · {r.noches} noche(s)</p>
+              <p className="text-sm">{r.tipoHabitacion.nombre} · {r.habitacion ? `Habitación ${r.habitacion.numero}` : 'Sin asignar'}</p>
+              <p className="text-sm">Total {dinero(r.total)} · saldo pendiente {dinero(r.saldoPendiente)}</p>
+            </button>)}</div>
+          </> : ordenadas.length === 0 ? (<p className="text-[13px] text-[#AEBCC1]">Sin reservas registradas.</p>) : (<div className="border border-[#E5E0D8] rounded-xl divide-y divide-[#F0EBE3]">
             {ordenadas.map(r => {
               const hab = habitaciones.find(h => h.id === r.habitacionId) ?? null;
               const cuenta = calcularCuenta(r, hab);
-              const meta = RESERVA_META[r.estado];
-              return (<button key={r.id} onClick={() => onAbrirReserva(r.id)} className="w-full text-left px-4 py-3 hover:bg-[#F8F6F0] transition-colors">
-                <div className="flex gap-4">
+              const meta = RECEPTION_RESERVA_META[r.estado];
+              return (<button key={r.id} onClick={() => onAbrirReserva(r.id)} className="w-full text-left px-3 py-2 hover:bg-[#F8F6F0] transition-colors">
+                <div className="flex gap-3">
                   {(() => {
                     const visual = publicRoomForHotelType(hab?.tipo ?? 'Standard');
-                    return <img src={visual.image} alt={`Habitación ${hab?.numero || ''}`} className="w-28 h-20 object-cover rounded-lg shrink-0" />;
+                    return <img src={visual.image} alt={`Habitación ${hab?.numero || ''}`} className="w-20 h-16 object-cover rounded-lg shrink-0" />;
                   })()}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -413,7 +485,7 @@ function PerfilHuesped({ huesped, reservas, habitaciones, onCerrar, onActualizar
               </button>);
             })}
           </div>)}
-        </div>
+        </div></>}
       </div>
     </div>
   </div>);

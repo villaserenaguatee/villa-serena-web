@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { operacion } from '@/lib/api/operaciones';
 import { validarFoto } from '@/lib/incidenciaValidation';
 import type { components } from '@/lib/api/schema';
@@ -7,18 +7,20 @@ type Room = components['schemas']['HabitacionOperativa'];
 export default function ReportarIncidencia({ rooms, selected, cerrar, creado }: { rooms: Room[]; selected?: number; cerrar: () => void; creado: () => void }) {
   const [room, setRoom] = useState(String(selected ?? '')), [descripcion, setDescripcion] = useState(''), [impideUso, setImpideUso] = useState(false);
   const [foto, setFoto] = useState<File>(), [error, setError] = useState(''), [busy, setBusy] = useState(false);
+  const requestKey=useRef<string|undefined>(undefined);
+  const uploadedPhoto=useRef<{file:File;key:string}|undefined>(undefined);
   async function reportar(event: React.FormEvent) {
     event.preventDefault(); if (busy) return;
     if (!room || !descripcion.trim()) { setError('Selecciona habitación y describe el daño.'); return; }
     if (foto && validarFoto(foto)) { setError(validarFoto(foto)); return; }
     setBusy(true); setError('');
     try {
-      let fotoClave: string | undefined;
-      if (foto) {
+      let fotoClave: string | undefined = uploadedPhoto.current?.file===foto?uploadedPhoto.current?.key:undefined;
+      if (foto && !fotoClave) {
         const form = new FormData(); form.set('archivo', foto); form.set('uso', 'INCIDENCIA');
-        fotoClave = (await operacion<components['schemas']['ImagenSubida']>('archivos/imagenes', 'POST', form)).clave;
+        fotoClave = (await operacion<components['schemas']['ImagenSubida']>('archivos/imagenes', 'POST', form)).clave;uploadedPhoto.current={file:foto,key:fotoClave};
       }
-      await operacion('incidencias', 'POST', { habitacionId: Number(room), descripcion: descripcion.trim(), impideUso, ...(fotoClave ? { fotoClave } : {}) });
+      await operacion('incidencias', 'POST', { habitacionId: Number(room), descripcion: descripcion.trim(), impideUso, ...(fotoClave ? { fotoClave } : {}) },undefined,requestKey.current??=crypto.randomUUID());
       creado(); cerrar();
     } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo reportar el daño.'); }
     finally { setBusy(false); }

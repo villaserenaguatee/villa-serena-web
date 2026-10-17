@@ -1,4 +1,6 @@
 import { AvailabilityError } from '@/lib/bff/publicAvailability';
+import { bookingEmailProof } from '@/lib/bff/bookingEmailVerification';
+import { publicBookingAudit } from '@/lib/bff/publicBookingAudit';
 import { creationResponse } from '@/lib/bff/bookingContext';
 import { demoCatalog, demoCreate, demoHotel, demoPayment, demoQuotes, demoStatus, parseContractBooking } from '@/lib/bff/publicContract';
 
@@ -25,6 +27,29 @@ function demoOnly() {
 function path(request: Request) { return new URL(request.url).pathname.slice('/api/publico/'.length).split('/').map(decodeURIComponent); }
 export async function GET(request: Request) {
   try {
+    if (process.env.VILLA_SERENA_BFF_MODE === 'api') {
+      const route = path(request);
+      const allowed = (route.length === 1 && ['hotel', 'tipos-habitacion', 'disponibilidad', 'ofertas'].includes(route[0])) ||
+        (route.length === 2 && route[0] === 'ofertas' && route[1] === 'disponibilidad') ||
+        (route.length === 2 && route[0] === 'tipos-habitacion' && /^\d+$/.test(route[1])) ||
+        (route.length === 3 && route[0] === 'reservas' && route[2] === 'estado');
+      if (!allowed) throw new AvailabilityError('RUTA_NO_ENCONTRADA', 404);
+      if (!process.env.API_URL) throw new AvailabilityError('API_NOT_READY', 503);
+      const query = new URL(request.url).searchParams;
+      if ((route[0] === 'disponibilidad' || route[0] === 'ofertas') && query.has('numeroHuespedes')) {
+        query.set('huespedes', query.get('numeroHuespedes')!);
+        query.delete('numeroHuespedes');
+      }
+      let upstream: Response;
+      try {
+        upstream = await fetch(new URL(`/api/v1/publico/${route.map(encodeURIComponent).join('/')}?${query}`, process.env.API_URL), {
+          cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(10000), headers: { Accept: 'application/json' },
+        });
+      } catch { throw new AvailabilityError('API_NO_DISPONIBLE', 502); }
+      const body = await upstream.json().catch(() => null);
+      if (body === null) throw new AvailabilityError('RESPUESTA_API_INVALIDA', 502);
+      return Response.json(body, { status: upstream.status, headers: { 'Cache-Control': 'no-store', 'X-Villa-Serena-Mode': 'spring' } });
+    }
     demoOnly();
     const route = path(request), url = new URL(request.url);
     if (route.length === 1 && route[0] === 'hotel') return Response.json(demoHotel(), { headers });
@@ -45,8 +70,36 @@ export async function POST(request: Request) {
   try {
     if (request.headers.get('Origin') !== new URL(request.url).origin || request.headers.get('Sec-Fetch-Site') === 'cross-site')
       throw new AvailabilityError('ORIGIN_FORBIDDEN', 403);
-    demoOnly();
     const route = path(request);
+    if (process.env.VILLA_SERENA_BFF_MODE === 'api') {
+      const creating = route.length === 1 && route[0] === 'reservas';
+      const paying = route.length === 3 && route[0] === 'reservas' && /^VS-[A-Z0-9]{6}$/.test(route[1]) && route[2] === 'pago';
+      if (!creating && !paying) throw new AvailabilityError('RUTA_NO_ENCONTRADA', 404);
+      if (!process.env.API_URL) throw new AvailabilityError('API_NOT_READY', 503);
+      const key = request.headers.get('Idempotency-Key');
+      if (creating && (!key || !/^[a-zA-Z0-9_-]{16,100}$/.test(key))) throw new AvailabilityError('DATOS_INVALIDOS', 400);
+      let body: string | undefined;
+      let draftId = '';
+      let target = route.map(encodeURIComponent).join('/');
+      if (creating) {
+        if (!request.body) throw new AvailabilityError('DATOS_INVALIDOS', 400);
+        const reader = request.body.getReader(), chunks: Uint8Array[] = []; let size = 0;
+        while (true) { const part = await reader.read(); if (part.done) break; size += part.value.length;
+          if (size > 16384) { await reader.cancel(); throw new AvailabilityError('DATOS_INVALIDOS', 400); } chunks.push(part.value); }
+        try { const parsed=JSON.parse(Buffer.concat(chunks).toString('utf8')); draftId=typeof parsed.borradorId==='string'?parsed.borradorId:''; delete parsed.borradorId; if(parsed.ofertaSlug){if(!/^[a-z0-9-]{1,80}$/.test(parsed.ofertaSlug)) throw new Error(); target=`ofertas/${parsed.ofertaSlug}/reservas`; delete parsed.ofertaSlug;} body=JSON.stringify(parsed); } catch { throw new AvailabilityError('DATOS_INVALIDOS', 400); }
+      }
+      const audit = publicBookingAudit(request, creating ? 'create' : 'checkout', creating ? key : null);
+      let upstream: Response;
+      try { upstream = await fetch(new URL(`/api/v1/publico/${target}`, process.env.API_URL), {
+        method: 'POST', body, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(30000),
+        headers: { Accept: 'application/json', ...(creating ? { 'Content-Type': 'application/json', 'Idempotency-Key': key!, 'X-Booking-Draft': draftId, 'X-Booking-Email-Verification': bookingEmailProof(request, draftId) } : {}) },
+      }); } catch { audit.finish(502); throw new AvailabilityError('API_NO_DISPONIBLE', 502); }
+      const payload = await upstream.json().catch(() => null);
+      if (payload === null) { audit.finish(502); throw new AvailabilityError('RESPUESTA_API_INVALIDA', 502); }
+      audit.finish(upstream.status, payload);
+      return Response.json(payload, {status: upstream.status, headers: {'Cache-Control':'no-store','X-Villa-Serena-Mode':'spring','X-Villa-Serena-Request-Id':audit.id}});
+    }
+    demoOnly();
     if (route.length === 1 && route[0] === 'reservas') {
       if (!request.body) throw new AvailabilityError('DATOS_INVALIDOS', 400);
       const reader = request.body.getReader(), chunks: Uint8Array[] = [];

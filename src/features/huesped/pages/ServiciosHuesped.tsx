@@ -18,7 +18,8 @@ const PESTANAS: {
   ];
 type SeccionMenu = CategoriaMenu;
 const CATEGORIAS_MENU: SeccionMenu[] = ['Desayuno', 'Almuerzo', 'Entre horarios', 'Cena', 'Postres', 'Bebidas sin alcohol', 'Bebidas con alcohol'];
-const FOTO_HERO_GENERAL = "https://images.unsplash.com/photo-1595236629937-aadaf7c1d99d?auto=format&fit=crop&fm=jpg&q=88&w=1800";
+// Exact editorial backdrop from issue-4, stored locally; not a numbered-room photograph.
+export const FOTO_HERO_GENERAL = "/images/portal-original-services.jpg";
 const HERO_MENU: Record<SeccionMenu, {
   foto: string;
   frase: string;
@@ -1324,7 +1325,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
     </div>}
   </div>);
 }
-function FilaCatalogo({ nombre, descripcion, precio, foto, etiqueta, disponible, motivoNoDisponible, cantidad, onCambiar, onAbrir, textoPrecio, textoAccion, cuadrado = false, }: {
+export function FilaCatalogo({ nombre, descripcion, precio, foto, etiqueta, disponible, motivoNoDisponible, cantidad, onCambiar, onAbrir, textoPrecio, textoAccion, cuadrado = false, }: {
   nombre: string;
   descripcion: string;
   precio: number;
@@ -1374,7 +1375,7 @@ function FilaCatalogo({ nombre, descripcion, precio, foto, etiqueta, disponible,
           {textoAccion ? textoAccion : <UiText text={onAbrir ? " Personalizar" : " Agregar"} />}
         </button>) : (<div className="flex items-center gap-2">
           <button
-            onClick={() => onCambiar(-1)}
+            disabled={!disponible} onClick={() => onCambiar(-1)}
             aria-label={ui("Quitar una unidad")}
             className="w-11 h-11 flex items-center justify-center rounded-md border border-[#E5E0D8] text-[#18345C] text-[18px] font-bold hover:bg-[#F8F6F0]">
             <UiText text="                 −               " />
@@ -1383,7 +1384,7 @@ function FilaCatalogo({ nombre, descripcion, precio, foto, etiqueta, disponible,
             {cantidad}
           </span>
           <button
-            onClick={() => onCambiar(1)}
+            disabled={!disponible} onClick={() => onCambiar(1)}
             aria-label={ui("Agregar una unidad")}
             className="w-11 h-11 flex items-center justify-center rounded-md border border-[#E5E0D8] text-[#18345C] text-[18px] font-bold hover:bg-[#F8F6F0]">
             <UiText text="                 +               " />

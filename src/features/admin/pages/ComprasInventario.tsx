@@ -1,4 +1,6 @@
+import FormOperationFeedback from '@/components/common/FormOperationFeedback';
 import { fechaHotel } from "@/lib/hotel";
+import {validPublicDate} from '@/lib/publicStayValidation';
 import { useMemo, useState } from 'react';
 import type { CompraHotel, Insumo, MovimientoInsumo, TipoMovimiento } from '@/lib/pms/types';
 import Inventario from '@/features/admin/pages/Inventario';
@@ -9,9 +11,9 @@ interface Props {
   insumos: Insumo[];
   movimientos: MovimientoInsumo[];
   compras: CompraHotel[];
-  onAgregarInsumo: (i: Omit<Insumo, 'id'>) => void;
-  onRegistrarMovimiento: (insumoId: string, tipo: TipoMovimiento, cantidad: number, motivo: string) => void;
-  onRegistrarCompra: (c: Omit<CompraHotel, 'id' | 'subtotal' | 'impuesto' | 'total'>) => void;
+  onAgregarInsumo: (i: Omit<Insumo, 'id'>) => void | boolean | Promise<void | boolean>;
+  onRegistrarMovimiento: (insumoId: string, tipo: TipoMovimiento, cantidad: number, motivo: string) => void | boolean | Promise<void | boolean>;
+  onRegistrarCompra: (c: Omit<CompraHotel, 'id' | 'subtotal' | 'impuesto' | 'total'>) => void | boolean | Promise<void | boolean>;
 }
 export default function ComprasInventario(props: Props) {
   const [tab, setTab] = useState<Tab>('resumen');
@@ -86,8 +88,8 @@ export default function ComprasInventario(props: Props) {
       <FormCompra
         insumos={props.insumos}
         onCancel={() => setFormCompra(false)}
-        onSave={c => {
-          props.onRegistrarCompra(c);
+        onSave={async c => {
+          if(await props.onRegistrarCompra(c)===false)return false;
           setFormCompra(false);
           setTab('compras');
         }} />
@@ -246,8 +248,8 @@ function Reportes({ compras, movimientos, insumos }: {
 }
 function FormCompra({ insumos, onCancel, onSave }: {
   insumos: Insumo[];
-  onCancel: () => void;
-  onSave: (c: Omit<CompraHotel, 'id' | 'subtotal' | 'impuesto' | 'total'>) => void;
+  onCancel: () => void | boolean | Promise<void | boolean>;
+  onSave: (c: Omit<CompraHotel, 'id' | 'subtotal' | 'impuesto' | 'total'>) => void | boolean | Promise<void | boolean>;
 }) {
   const [factura, setFactura] = useState('');
   const [proveedor, setProveedor] = useState('');
@@ -260,7 +262,7 @@ function FormCompra({ insumos, onCancel, onSave }: {
   const [error, setError] = useState('');
   const base = (Number(cantidad) || 0) * (Number(costo) || 0), subtotal = ivaIncluido ? base / 1.12 : base, impuesto = ivaIncluido ? base - subtotal : subtotal * .12, total = ivaIncluido ? base : subtotal + impuesto;
   function guardar() {
-    if (!factura || !proveedor || !insumoId || subtotal <= 0)
+    if (!factura.trim() || !proveedor.trim() || !insumoId || !validPublicDate(fecha) || !Number.isFinite(Number(cantidad)) || Number(cantidad)<=0 || !Number.isFinite(Number(costo)) || Number(costo)<0)
       return setError('Completa la factura, proveedor, producto, cantidad y costo.');
     onSave({ numeroFactura: factura, proveedor, fecha, insumoId, cantidad: Number(cantidad), costoUnitario: Number(costo), estado, ivaIncluido });
   }
@@ -332,7 +334,7 @@ function FormCompra({ insumos, onCancel, onSave }: {
         </div>
       </div>
     </div>
-    {error && <p className="mt-3 text-sm text-red-700">
+    <FormOperationFeedback/>{error && <p className="mt-3 text-sm text-red-700">
       {error}
     </p>}
     <div className="mt-4 flex flex-wrap justify-end gap-2">
@@ -354,7 +356,7 @@ function Campo({ label, children }: {
 }
 function Modal({ children, onClose }: {
   children: React.ReactNode;
-  onClose: () => void;
+  onClose: () => void | boolean | Promise<void | boolean>;
 }) {
   return <div
     onMouseDown={e => e.target === e.currentTarget && onClose()}

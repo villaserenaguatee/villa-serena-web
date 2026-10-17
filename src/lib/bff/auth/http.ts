@@ -4,6 +4,7 @@ import { authProvider } from './provider';
 import { AuthError, expired, isAuthError } from './errors';
 import type { Employee, Tokens } from '@/lib/auth/staff-contract';
 import { publicEmployee } from './response';
+import { readLimitedBody } from '../readLimitedBody';
 export const ACCESS_COOKIE = 'vs_staff_access', REFRESH_COOKIE = 'vs_staff_refresh';
 export function sameOrigin(request: Request) {
   if (request.headers.get('origin') !== new URL(request.url).origin)
@@ -22,7 +23,7 @@ export function writeCookies(response: NextResponse, request: Request, tokens?: 
   return response;
 }
 export async function readAuthJson(request: Request, fields: string[]): Promise<Record<string, string>> {
-  const raw = await request.text();
+  const raw = await readLimitedBody(request, 16384);
   if (raw.length > 16384) throw new AuthError('DATOS_INVALIDOS', 400, 'Los datos son demasiado largos.');
   let value: Record<string, string>;
   try { value = JSON.parse(raw); } catch { throw new AuthError('DATOS_INVALIDOS', 400, 'Envía datos JSON válidos.'); }

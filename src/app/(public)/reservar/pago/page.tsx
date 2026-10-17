@@ -1,4 +1,5 @@
 "use client";
+import BookingDraftActions from '@/components/common/BookingDraftActions';
 import { UiText, useUiText } from "@/i18n/UiText";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -9,7 +10,8 @@ import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { money } from "@/data/publicRooms";
 import { usePublicCatalog, usePublicQuotes } from "@/lib/usePublicCatalog";
 import { prepareStripeBooking } from "@/lib/publicStripeBooking";
-import { useBookingDraft, readBookingDraft } from "@/lib/bookingDraft";
+import { useBookingDraft, readBookingDraft, BookingAttemptPendingError } from "@/lib/bookingDraft";
+import { bookingEmail } from '@/lib/bookingEmail';
 export default function Pago() {
   const { rooms: publicRooms } = usePublicCatalog();
   const ui = useUiText();
@@ -20,13 +22,15 @@ export default function Pago() {
   const sp = draft ?? new URLSearchParams(query.toString());
   const busy = useRef(false);
   const [canRecover, setCanRecover] = useState(false);
+  const [reservationCode, setReservationCode] = useState('');
+  const [emailVerified, setEmailVerified] = useState(false), [verificationChecked, setVerificationChecked] = useState(false);
   const [saving, setSaving] = useState(false),
     [accepted, setAccepted] = useState(false),
     [legal, setLegal] = useState<'terms' | 'privacy' | null>(null),
     [paymentError, setPaymentError] = useState("");
-  const room = publicRooms.find((x) => x.name === (sp.get("habitacion") || ""));
+  const room = publicRooms.find((x) => sp.get("slug") ? x.slug === sp.get("slug") : x.name === (sp.get("habitacion") || ""));
   const quoteResult = usePublicQuotes(sp.get("llegada") || "", sp.get("salida") || "", Number(sp.get("adultos") || sp.get("huespedes") || 1), Number(sp.get("ninos") || 0), room?.capacity ?? 0);
-  const quote = quoteResult.quotes.find(q => q.tipoHabitacion.id === room?.apiTypeId);
+  const quote = quoteResult.quotes.find(q => q.ofertaSlug === room?.slug);
   const total = quote?.total ?? 0;
   const nights = useMemo(() => {
     const a = sp.get("llegada"), b = sp.get("salida");
@@ -35,19 +39,27 @@ export default function Pago() {
     return Math.max(1, Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / 86400000));
   },
     [sp]);
-  const canPay = accepted && Boolean(draft) && Boolean(quote) && !canRecover;
+  const canPay = accepted && Boolean(draft) && Boolean(quote) && !canRecover && emailVerified;
+  useEffect(() => {
+    setEmailVerified(false); setVerificationChecked(false);
+    if (!draft) return;
+    let active = true;
+    bookingEmail('estado', { correo: draft.get('correo') || '', borrador: query.get('draft') || '' }, en).then(result => { if (active) setEmailVerified(result.verificado === true); }).catch(() => { /* Keep creation disabled; offer verification below. */ }).finally(() => { if (active) setVerificationChecked(true); });
+    return () => { active = false; };
+  }, [draft, query, en]);
   useEffect(() => {
     const attempt = readBookingDraft(query.get("draft") || "")?.attempt;
     setCanRecover(Boolean(attempt));
+    setReservationCode(attempt?.code ?? '');
   }, [draft, query]);
   async function recoverPrevious() {
-    if (!accepted || busy.current) return;
+    if (!accepted || busy.current || (!emailVerified && !reservationCode)) return;
     busy.current = true; setSaving(true); setPaymentError("");
     try {
       r.push(await prepareStripeBooking(sp, query.get("draft") || "", true));
     }
-    catch (error) { setPaymentError(error instanceof Error ? error.message : bookingText("saveFailed")); }
-    finally { busy.current = false; setSaving(false); }
+    catch (error) { setPaymentError(error instanceof BookingAttemptPendingError ? bookingText('requestUncertain') : error instanceof Error ? error.message : bookingText("saveFailed")); }
+    finally { setReservationCode(readBookingDraft(query.get('draft') || '')?.attempt?.code ?? ''); busy.current = false; setSaving(false); }
   }
   async function finish() {
     if (!canPay || busy.current)
@@ -61,15 +73,17 @@ export default function Pago() {
     catch (error) {
       setCanRecover(Boolean(readBookingDraft(query.get("draft") || "")?.attempt));
       setPaymentError(
-        error instanceof Error ? error.message : bookingText("saveFailed"),
+        error instanceof BookingAttemptPendingError ? bookingText('requestUncertain') : error instanceof Error ? error.message : bookingText("saveFailed"),
       );
     }
     finally {
+      setReservationCode(readBookingDraft(query.get('draft') || '')?.attempt?.code ?? '');
       busy.current = false;
       setSaving(false);
     }
   }
   return (<main className="reserve-public booking-checkout payment-page">
+    {draft && verificationChecked && !emailVerified && !reservationCode && <p role="alert" className="mx-auto max-w-3xl p-4">{en ? 'Verify your email before creating this booking.' : 'Verifica tu correo antes de crear esta reserva.'} <a href={'/reservar/verificar?' + query.toString()} className="underline">{en ? 'Verify email' : 'Verificar correo'}</a></p>}
     <header className="reserve-nav">
       <button className="icon-back" onClick={() => r.back()} aria-label={ui("Volver")}>
         <ArrowLeft />
@@ -85,6 +99,7 @@ export default function Pago() {
         <h3>
           {ui(sp.get("habitacion") ?? "")}
         </h3>
+        <p role="note">{room?.inventoryNote}</p>
         <div className="summary-dates">
           <span>
             <small>
@@ -172,6 +187,7 @@ export default function Pago() {
             <UiText text="." />
           </span>
         </label>
+        {reservationCode && <p role="status">{en ? 'Reservation code' : 'Código de reserva'}: <strong>{reservationCode}</strong></p>}
         {paymentError && <p className="password-error" role="alert">
           {paymentError}
         </p>}
@@ -179,7 +195,7 @@ export default function Pago() {
           {en ? "Recover previous attempt" : "Recuperar intento anterior"}
         </button>}
         <button className="reserve-primary" disabled={!canPay || saving} onClick={finish}>
-          {saving ? (en ? "Processing..." : "Procesando...") : (en ? "Continue payment →" : "Continuar pago →")}
+          {saving ? (en ? "Processing..." : "Procesando...") : (en ? "Continue payment" : "Continuar pago")}
         </button>
       </section>
     </div>
@@ -267,5 +283,6 @@ export default function Pago() {
         </>)}
       </section>
     </div>)}
+    <BookingDraftActions />
   </main>);
 }

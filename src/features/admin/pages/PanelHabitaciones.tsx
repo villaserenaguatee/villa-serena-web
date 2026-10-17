@@ -75,12 +75,12 @@ export default function PanelHabitaciones({ habitaciones, reservas, huespedes, o
         <div>
           <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Mapa de habitaciones</h1>
           <p className="text-[14px] text-[#AEBCC1] mt-1">
-            Estado en tiempo real · actualizado {ahora ? ahora.toLocaleTimeString() : '—'}
+            Datos de este navegador · actualizado {ahora ? ahora.toLocaleTimeString() : '—'}
           </p>
         </div>
         <span className="flex items-center gap-2 text-[13px] text-[#166534] bg-[#F0FAF4] border border-[#86EFAC] rounded-md px-3 py-1.5">
           <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
-          En vivo
+          Local
         </span>
       </div>
 

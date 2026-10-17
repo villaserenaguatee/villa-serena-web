@@ -612,7 +612,7 @@ export default function CuentaHuesped({ abrirResena = false, onResenaAbierta, hu
       onCerrar={() => setVerComprobante(false)} />)}
   </div>);
 }
-function ResumenCuenta({ icono, valor, label, color = "#18345C" }: {
+export function ResumenCuenta({ icono, valor, label, color = "#18345C" }: {
   icono: React.ReactNode;
   valor: string;
   label: string;

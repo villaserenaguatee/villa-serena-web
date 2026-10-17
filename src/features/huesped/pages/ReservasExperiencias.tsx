@@ -1,3 +1,4 @@
+import { approvedExperienceEnglish } from "./approvedExperienceEnglish";
 import { leerReservas } from "@/store/reservationStore";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { useMemo, useState } from "react";
@@ -53,7 +54,7 @@ const PRESENTACION: Record<Categoria, {
     frase: "Muévete con comodidad con traslados coordinados durante tu estancia.",
   },
 };
-const OPCIONES: Opcion[] = [
+export const OPCIONES: Opcion[] = [
   {
     id: "mesa",
     categoria: "Restaurante",
@@ -233,15 +234,8 @@ const OPCIONES: Opcion[] = [
 export function puedeCrearExperiencia(reservaId: string, huespedId: string) {
   return leerReservas().some(r => r.id === reservaId && r.huespedId === huespedId && r.estado === "en-curso");
 }
-export function crearExperienciaLocal(id: string, reservaId: string, huespedId: string,
-  opcion: Pick<Opcion, "nombre" | "precio">, fecha: string, hora: string, personas: number) {
-  return {
-    id, reservaId, huespedId, nombre: opcion.nombre,
-    fecha: fecha || "Por coordinar", hora: hora || "Por coordinar",
-    personas, precio: opcion.precio, estado: "Pendiente",
-  };
-}
-export default function ReservasExperiencias({ reserva, huespedId, turnos, reservas, onReservar, onCancelar, onCargoConfirmado, }: {
+export default function ReservasExperiencias({ connected=false,reserva, huespedId, turnos, reservas, onReservar, onCancelar, onCargoConfirmado, }: {
+  connected?:boolean;
   reserva: Reserva;
   huespedId: string;
   turnos: TurnoAmenidad[];
@@ -252,7 +246,7 @@ export default function ReservasExperiencias({ reserva, huespedId, turnos, reser
 }) {
   const ui = useUiText();
   const { en } = usePublicLanguage();
-  const disponible = reserva.estado === "en-curso" && puedeCrearExperiencia(reserva.id, huespedId);
+  const disponible = !connected&&reserva.estado === "en-curso" && puedeCrearExperiencia(reserva.id, huespedId);
   const [rechazada, setRechazada] = useState(false);
   const [cat, setCat] = useState<Categoria>("Todos");
   const [activo, setActivo] = useState<Opcion | null>(null);
@@ -261,7 +255,7 @@ export default function ReservasExperiencias({ reserva, huespedId, turnos, reser
   const [personas, setPersonas] = useState(1);
   const [nota, setNota] = useState("");
   const [mis, setMis] = useState(!disponible);
-  const [locales, setLocales] = useState<ReturnType<typeof crearExperienciaLocal>[]>([]);
+  const [locales, setLocales] = useState<any[]>([]);
   const lista = OPCIONES.filter((x) => cat === "Todos" || x.categoria === cat);
   const turnosArea = useMemo(() => activo?.area
     ? turnos.filter((t) => t.area === activo.area)
@@ -270,6 +264,7 @@ export default function ReservasExperiencias({ reserva, huespedId, turnos, reser
     .filter((t) => !fecha || t.fecha === fecha)
     .filter((t) => t.aforo - t.ocupados > 0);
   function abrir(o: Opcion) {
+    if (connected) return;
     if (!puedeCrearExperiencia(reserva.id, huespedId)) { setRechazada(true); return; }
     setRechazada(false);
     setActivo(o);
@@ -282,6 +277,7 @@ export default function ReservasExperiencias({ reserva, huespedId, turnos, reser
     setNota("");
   }
   function confirmar() {
+    if(connected)return;
     if (!puedeCrearExperiencia(reserva.id, huespedId)) { setActivo(null); setRechazada(true); return; }
     if (!activo)
       return;
@@ -293,7 +289,17 @@ export default function ReservasExperiencias({ reserva, huespedId, turnos, reser
     }
     else {
       setLocales((v) => [
-        crearExperienciaLocal(id, reserva.id, huespedId, activo, fecha, hora, personas),
+        {
+          id,
+          reservaId: reserva.id,
+          huespedId,
+          nombre: activo.nombre,
+          fecha: fecha || "Por coordinar",
+          hora: hora || "Por coordinar",
+          personas,
+          precio: activo.precio,
+          estado: "Pendiente",
+        },
         ...v,
       ]);
     }
@@ -310,7 +316,7 @@ export default function ReservasExperiencias({ reserva, huespedId, turnos, reser
     <Cabecera titulo="Reservas y experiencias" subtitulo="Agenda restaurante, spa, piscina, experiencias y transporte durante tu estancia." />
 
     <div className="space-y-5 p-4 sm:p-6">
-      {(!disponible || rechazada) && <div role="status" className="rounded-xl border border-[#D8B94E] bg-[#FFF9E5] p-4 text-[#18345C]">
+      {connected ? <div role="status" className="rounded-xl border border-[#D8B94E] bg-[#FFF9E5] p-4 text-[#18345C]">{en ? 'Contact Reception to arrange an experience.' : 'Contacta a Recepción para coordinar una experiencia.'}</div> : (!disponible || rechazada) && <div role="status" className="rounded-xl border border-[#D8B94E] bg-[#FFF9E5] p-4 text-[#18345C]">
         <p className="font-semibold">{reserva.estado === "finalizada" ? (en ? "Your stay has ended" : "Tu estancia ha finalizado") : reserva.estado === "cancelada" ? (en ? "Your reservation is cancelled" : "Tu reserva está cancelada") : (en ? "Bookings require an active stay" : "Las reservas requieren una estancia activa")}</p>
         <p className="mt-1 text-sm">{reserva.codigo} · {en ? "You can view your booking history. New bookings are unavailable for this stay." : "Puedes consultar Mis reservas y el historial. No se pueden crear nuevas reservas para esta estancia."}</p>
       </div>}
@@ -356,7 +362,7 @@ export default function ReservasExperiencias({ reserva, huespedId, turnos, reser
         {ui("Mis reservas")}
 
         <span className="ml-2 rounded-full bg-[#FFF7DD] px-2 py-1 text-xs">
-          {reservas.length + locales.length}
+          {connected?'—':reservas.length+locales.length}
         </span>
       </button>
 
@@ -371,7 +377,7 @@ export default function ReservasExperiencias({ reserva, huespedId, turnos, reser
           {reservas.length +
             locales.length ===
             0 && (<p className="text-sm text-[#71839B]">
-              {ui("Todavía no tienes reservas.")}
+              {connected?(en?'Contact Reception to arrange your activities.':'Contacta a Recepción para coordinar tus actividades.'):ui('Todavía no tienes reservas.')}
             </p>)}
 
           {locales.map((r) => (<div key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#E9E5DC] p-3">
@@ -441,20 +447,20 @@ export default function ReservasExperiencias({ reserva, huespedId, turnos, reser
           </span>
 
           <h3 className="mt-2 text-xl font-semibold text-[#18345C]">
-            {ui(o.nombre)}
+            {en&&approvedExperienceEnglish[o.id]?approvedExperienceEnglish[o.id].nombre:ui(o.nombre)}
           </h3>
 
           <p className="mt-1.5 text-sm leading-5 text-[#66758A]">
-            {ui(o.descripcion)}
+            {en&&approvedExperienceEnglish[o.id]?approvedExperienceEnglish[o.id].descripcion:ui(o.descripcion)}
           </p>
 
           <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#52677F]">
 
-            {o.duracion && (<span className="rounded-full bg-[#F8F6F0] px-2 py-1">
+            {!connected&&o.duracion && (<span className="rounded-full bg-[#F8F6F0] px-2 py-1">
               {o.duracion}
             </span>)}
 
-            {o.personas && (<span className="rounded-full bg-[#F8F6F0] px-2 py-1">
+            {!connected&&o.personas && (<span className="rounded-full bg-[#F8F6F0] px-2 py-1">
               {ui(o.personas)}
             </span>)}
 
@@ -463,7 +469,7 @@ export default function ReservasExperiencias({ reserva, huespedId, turnos, reser
           <div className="mt-auto flex items-center justify-between gap-3 pt-4">
 
             <b className="text-[#18345C]">
-              {ui(o.precio)}
+              {connected?(en?'Contact Reception':'Consultar en Recepción'):ui(o.precio)}
             </b>
 
             <button disabled={!disponible} onClick={() => abrir(o)} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">

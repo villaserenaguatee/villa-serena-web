@@ -2649,6 +2649,8 @@ export interface components {
         };
         /** @description Los 6 datos obligatorios del huésped principal (web, Recepción y canal). */
         HuespedDatos: {
+            /** ISO 3166-1 alpha-2; required for a new passport document. */
+            paisEmisorPasaporte?: string;
             /** @example María José López */
             nombreCompleto: string;
             /**

@@ -1,7 +1,8 @@
 'use client';
 import { Fragment } from 'react';
 import type { Reserva, Huesped, HabitacionHotel } from '@/lib/pms/types';
-import { RESERVA_META } from './recUtils';
+import { CALENDAR_STATUS as RESERVA_META } from '../calendarStatus';
+import { BedDouble } from 'lucide-react';
 
 type Props = { days: string[]; groupByFloor: boolean; reservas: Reserva[]; huespedes: Huesped[]; habitaciones: (Pick<HabitacionHotel, 'id' | 'numero' | 'piso'> & { tipo: string })[]; onSelect: (r: Reserva) => void };
 const weekdays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -22,7 +23,7 @@ export default function ReceptionTimeline({ days, groupByFloor, reservas, huespe
             const name = huespedes.find(h => h.id === r.huespedId)?.nombre ?? 'Huésped';
             return <button key={r.id} data-reservation-code={r.codigo} aria-label={`${r.codigo}, ${RESERVA_META[r.estado].label}`} title={`${name} · ${r.codigo}`}
               onClick={() => onSelect(r)} className={`mb-1 block w-full rounded border px-1 py-1 text-left text-[11px] leading-tight break-words ${RESERVA_META[r.estado].chip}`}>
-              {r.origenReserva === 'publica' ? '🌐' : '🏨'} {name}
+              <BedDouble size={13} aria-hidden="true" className="mr-1 inline-block align-middle" /> Hab. {room.numero} · {name}
             </button>;
           })}
         </td>)}

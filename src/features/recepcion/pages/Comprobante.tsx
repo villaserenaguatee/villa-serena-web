@@ -1,7 +1,9 @@
+import ReceptionCloseButton from './ReceptionCloseButton';
+import { calcularCuentaRecepcion as calcularCuenta } from '../accountTotals';
 import { HOTEL } from "@/lib/hotel";
 import type { Pago, Reserva, Huesped } from '@/lib/pms/types';
 import { formatoFechaHora } from '@/data/pms';
-import { dinero, calcularCuenta, CloseIcon } from '@/features/recepcion/pages/recUtils';
+import { dinero } from '@/features/recepcion/pages/recUtils';
 import type { HabitacionHotel } from '@/lib/pms/types';
 const METODO_LABEL: Record<string, string> = {
   efectivo: 'Efectivo',
@@ -20,12 +22,10 @@ export default function Comprobante({ pago, reserva, huesped, habitacion, onCerr
   return (<div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
     <div className="absolute inset-0 bg-black/50" onClick={onCerrar} />
 
-    <div className="relative z-10 w-full max-w-xl max-h-[88vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
+    <div className="reception-print-document relative z-10 w-full max-w-xl max-h-[88vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
       <div className="flex items-center justify-between px-5 py-4 border-b border-[#E5E0D8]">
         <h2 className="text-[20px] font-semibold text-[#18345C]">Comprobante de pago</h2>
-        <button onClick={onCerrar} className="text-[#AEBCC1] hover:text-[#1F2933] p-1">
-          <CloseIcon />
-        </button>
+        <ReceptionCloseButton onClick={onCerrar} />
       </div>
 
       <div className="px-5 py-5" id="comprobante-imprimible">
@@ -67,7 +67,7 @@ export default function Comprobante({ pago, reserva, huesped, habitacion, onCerr
         <div className="border-t border-dashed border-[#CBD5E1] mt-3 pt-3 space-y-1.5 text-[13px]">
           <Fila k="Monto pagado" v={dinero(pago.monto)} bold />
           <Fila k="Método de pago" v={METODO_LABEL[pago.metodo] ?? pago.metodo} />
-          <Fila k="Total pagado a la fecha" v={dinero(cuenta.pagado)} />
+          <Fila k="Total pagado a la fecha" v={dinero(reserva.pagos.reduce((total, p) => total + p.monto, 0))} />
           <Fila k="Saldo pendiente" v={dinero(Math.max(0, cuenta.saldo))} bold />
         </div>
 
@@ -77,9 +77,6 @@ export default function Comprobante({ pago, reserva, huesped, habitacion, onCerr
       </div>
 
       <div className="flex flex-wrap justify-end gap-2 px-5 pb-5">
-        <button onClick={onCerrar} className="rounded-md border border-[#E5E0D8] px-4 py-2.5 text-sm text-[#6B7280] transition-colors hover:bg-[#F8F6F0]">
-          Cerrar
-        </button>
         <button
           onClick={() => window.print()}
           className="rounded-md bg-[#18345C] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#102747]">

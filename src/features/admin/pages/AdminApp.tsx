@@ -1,4 +1,6 @@
+import GestionAdmin from './GestionAdmin';
 import { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Bell, X } from 'lucide-react';
 import StaffProfileModal from '@/components/common/StaffProfileModal';
 import { useAuth } from '@/hooks/useAuth';
@@ -80,7 +82,16 @@ interface Props {
   onCambiarModulo: (m: Modulo) => void;
 }
 export default function AdminApp({ onCambiarModulo }: Props) {
-  const [seccion, setSeccion] = useState<SeccionAdmin>('panel');
+  const pathname = usePathname(), router = useRouter();
+  const fromPath = (path: string): SeccionAdmin => SECCIONES.find(s => path === `/admin/${s.id}`)?.id ?? 'panel';
+  const [seccion, setSeccionActual] = useState<SeccionAdmin>(() => fromPath(pathname));
+  function setSeccion(section: SeccionAdmin) {
+    setSeccionActual(section);
+    const target = section === 'panel' ? '/admin' : `/admin/${section}`;
+    if (pathname !== target) router.push(target);
+  }
+  useEffect(() => { setSeccionActual(fromPath(pathname)); }, [pathname]);
+  const [personalInitial,setPersonalInitial]=useState('catalogo');
   const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [notificacionesAbiertas, setNotificacionesAbiertas] = useState(false);
   const [correccionesPersonal, setCorreccionesPersonal] = useState<any[]>([]);
@@ -136,10 +147,10 @@ export default function AdminApp({ onCambiarModulo }: Props) {
   const [reglas, setReglas] = useState<ReglaTarifa[]>(REGLAS_TARIFA_INICIALES);
   const [promociones, setPromociones] = useState<Promocion[]>(() => leerPromociones());
   useEffect(() => guardarPromociones(promociones), [promociones]);
-  const [empleados, setEmpleados] = useState<Empleado[]>(() => leerEmpleados());
   const { user } = useAuth();
-  const adminActual = empleados.find(e => e.id === user?.id && e.activo);
-  useEffect(() => guardarEmpleados(empleados), [empleados]);
+  const [empleados, setEmpleados] = useState<Empleado[]>(() => user?.staff ? [] : leerEmpleados());
+  const adminActual = user?.staff ?? empleados.find(e => e.id === user?.id && e.activo);
+  useEffect(() => { if (!user?.staff) guardarEmpleados(empleados); }, [empleados, user?.staff]);
   const [insumos, setInsumos] = useState<Insumo[]>(() => leerInsumosAdmin());
   const [movimientos, setMovimientos] = useState<MovimientoInsumo[]>(() => leerMovimientosAdmin());
   const [compras, setCompras] = useState<CompraHotel[]>(() => leerComprasAdmin());
@@ -154,8 +165,8 @@ export default function AdminApp({ onCambiarModulo }: Props) {
     ? Math.round((habitaciones.filter(h => h.estado === 'ocupada').length / habitaciones.length) * 100)
     : 0;
   const hoy = fechaHoyISO();
-  const badgePanel = reservas.filter(r => r.fechaEntrada === hoy && (r.estado === 'pendiente' || r.estado === 'confirmada') && !r.habitacionId).length;
-  const badgeInventario = insumos.filter(i => i.stock <= i.stockMinimo).length;
+  const badgePanel = user?.staff ? 0 : reservas.filter(r => r.fechaEntrada === hoy && (r.estado === 'pendiente' || r.estado === 'confirmada') && !r.habitacionId).length;
+  const badgeInventario = user?.staff ? 0 : insumos.filter(i => i.stock <= i.stockMinimo).length;
   function cambiarEstadoHab(habId: string,
     nuevo: EstadoHabHotel) {
     setHabitaciones(hs => hs.map(h => {
@@ -259,6 +270,7 @@ export default function AdminApp({ onCambiarModulo }: Props) {
     ...prev]);
   }
   const contenido = (() => {
+    if(user?.staff)return <GestionAdmin key={seccion+personalInitial} seccion={seccion} personalInitial={personalInitial}/>;
     switch (seccion) {
       case 'panel':
         return (<PanelHabitaciones habitaciones={habitaciones} reservas={reservas} huespedes={huespedes} onCambiarEstadoHab={cambiarEstadoHab} />);
@@ -316,7 +328,7 @@ export default function AdminApp({ onCambiarModulo }: Props) {
         <div className="px-5 pt-5 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
           <img src="/villa-serena-logo.png" alt="Villa Serena" className="mx-auto w-32 h-auto object-contain mb-2" />
           <p className="text-white text-xl font-bold leading-tight" style={{ letterSpacing: '0.02em' }}>Villa Serena</p>
-          <p className="text-xs mt-1" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>Administración</p>
+          <p className="mt-2 text-xl font-semibold leading-6" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>Administración</p>
         </div>
 
         <div className="vs-scroll-clean flex-1 py-3 overflow-y-auto">
@@ -344,8 +356,8 @@ export default function AdminApp({ onCambiarModulo }: Props) {
 
         <ModuloSwitcher actual="admin" onCambiar={onCambiarModulo} />
 
-        <div className="px-5 py-4 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
-          <div className="flex items-center gap-3">
+        <div className="px-4 py-2 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
+          <button onClick={() => setPerfilAbierto(true)} title="Abrir mi perfil" className="w-full min-h-16 flex items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-[#18345C] transition-colors">
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
               style={{ backgroundColor: '#D8B94E', color: '#102747' }}>
@@ -356,9 +368,9 @@ export default function AdminApp({ onCambiarModulo }: Props) {
                 {adminActual?.nombre || 'Administración'}
               </p>
               <p className="text-[10px] truncate" style={{ color: '#AEBCC1' }}>Administradora</p>
-              <button onClick={() => setPerfilAbierto(true)} className="block mt-1 text-[11px] font-semibold text-[#D8B94E]">Perfil</button>
+              <p className="text-[14px] leading-5 no-underline text-[#D8B94E]">Perfil</p>
             </div>
-          </div>
+          </button>
         </div>
       </nav>
 
@@ -370,23 +382,26 @@ export default function AdminApp({ onCambiarModulo }: Props) {
             {SECCIONES.find(s => s.id === seccion)?.label}
           </p>
           <button
+            title={user?.staff ? 'Solicitudes de corrección del personal' : 'Notificaciones'}
             onClick={() => {
+              if(user?.staff){setPersonalInitial('correcciones');setSeccion('personal');return;}
               setNotificacionesAbiertas(true);
               guardarCorrecciones(leerCorrecciones().map(n => ({ ...n, leidaAdmin: true })));
             }}
             className="relative grid h-9 w-9 place-items-center rounded-full border border-[#365270] text-white"
             aria-label="Notificaciones">
             <Bell size={18} />
-            {correccionesPersonal.filter(n => n.estado === 'pendiente' && !n.leidaAdmin).length > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#D8B94E] px-1 text-[9px] font-bold text-[#102747]">
+            {!user?.staff && correccionesPersonal.filter(n => n.estado === 'pendiente' && !n.leidaAdmin).length > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#D8B94E] px-1 text-[9px] font-bold text-[#102747]">
               {correccionesPersonal.filter(n => n.estado === 'pendiente' && !n.leidaAdmin).length}
             </span>}
           </button>
           <div className="lg:hidden flex gap-1.5">
+            <button className="text-xs text-white" onClick={() => setPerfilAbierto(true)}>Mi perfil</button>
             <ModuloSwitcher actual="admin" onCambiar={onCambiarModulo} variant="inline" />
           </div>
         </div>
 
-        <div className="flex-1 flex overflow-hidden relative">
+        <div className="min-w-0 flex-1 flex overflow-hidden relative">
           {contenido}
         </div>
 

@@ -25,20 +25,34 @@ export async function receptionRoute(request: NextRequest, root: 'reservas' | 'h
   try {
     if (request.method !== 'GET') sameOrigin(request);
     let roomsBody: string | undefined;
+    let forwardedBody: string | undefined;
     let status = 200;
     const session = await withStaffSession(request, async (_access, employee) => {
       if (employee.rol !== 'RECEPCION') throw new AuthError('ACCESO_DENEGADO', 403, 'Acceso denegado');
-      if (process.env.STAFF_AUTH_MODE === 'spring' && root === 'habitaciones') {
-        const suffix = request.nextUrl.pathname.slice('/api/habitaciones'.length);
-        if (!(request.method === 'GET' && (!suffix || suffix === '/')) && !(request.method === 'POST' && /^\/\d+\/marcar-sucia$/.test(suffix)))
-          throw new AuthError('RUTA_NO_ENCONTRADA', 404, 'Esta operación aún no está conectada.');
-        if (request.method === 'POST' && (roomsBody ??= await request.text()).length) throw new AuthError('DATOS_INVALIDOS', 400, 'Marcar sucia no admite cuerpo.');
+      if (process.env.STAFF_AUTH_MODE === 'spring') {
+        const suffix = request.nextUrl.pathname.slice(`/api/${root}`.length);
+        const allowed = root === 'huespedes'
+          ? /^\/?$/.test(suffix) && ['GET', 'POST'].includes(request.method)
+          : root === 'habitaciones'
+            ? (request.method === 'GET' && /^\/(?:disponibles)?$|^$/.test(suffix)) || (request.method === 'POST' && /^\/\d+\/marcar-sucia$/.test(suffix))
+            : (request.method === 'GET' && /^(?:\/?|\/(?:calendario|disponibilidad|VS-[A-Z0-9]{6}(?:\/cancelacion)?))$/.test(suffix))
+              || (request.method === 'POST' && /^(?:\/?|\/VS-[A-Z0-9]{6}\/(?:cancelar|check-in|huespedes-adicionales))$/.test(suffix))
+              || (request.method === 'PUT' && /^\/VS-[A-Z0-9]{6}\/habitacion$/.test(suffix));
+        if (!allowed) throw new AuthError('RUTA_NO_ENCONTRADA', 404, 'Esta operación no está disponible en el backend.');
+        if (!process.env.API_URL) throw new AuthError('CONFIGURACION_INVALIDA', 503, 'Configura API_URL en el servidor.');
+        let body: string | undefined;
+        if (request.method !== 'GET') {
+          if (/\/(?:check-in|marcar-sucia)$/.test(suffix)) {
+            if ((roomsBody ??= await request.text()).length) throw new AuthError('DATOS_INVALIDOS', 400, 'Esta acción no admite cuerpo.');
+          } else body = forwardedBody ??= JSON.stringify(await jsonBody(request));
+        }
         let response: Response;
-        try { response = await fetch(new URL(`/api/v1/habitaciones${suffix}${request.nextUrl.search}`, process.env.API_URL), { method: request.method, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(10000), headers: { Authorization: `Bearer ${_access}`, Accept: 'application/json' } }); }
-        catch { throw new AuthError('API_NO_DISPONIBLE', 502, 'No se pudo consultar el API.'); }
+        try { response = await fetch(new URL(`/api/v1/${root}${suffix}${request.nextUrl.search}`, process.env.API_URL), { method: request.method, body, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(30000), headers: { Authorization: `Bearer ${_access}`, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}), ...(request.headers.get('Idempotency-Key') ? {'Idempotency-Key':request.headers.get('Idempotency-Key')!} : {}) } }); }
+        catch { throw new AuthError('API_NO_DISPONIBLE', 502, 'No se pudo consultar el API. Consulta el estado antes de repetir la acción.'); }
         const payload = await response.json().catch(() => null);
-        if (!response.ok) throw new AuthError('ERROR_HABITACIONES', response.status, 'No se pudo completar la operación de habitaciones.');
+        if (!response.ok) throw new AuthError(payload?.codigo ?? 'ERROR_API', response.status, payload?.mensaje ?? 'No se pudo completar la consulta.');
         if (!payload || typeof payload !== 'object') throw new AuthError('RESPUESTA_INVALIDA', 502, 'El API devolvió una respuesta incompleta.');
+        status = response.status;
         return withoutSessionTokens(payload);
       }
       if ((process.env.VILLA_SERENA_BFF_MODE ?? 'demo') !== 'demo') throw new AuthError('API_NOT_READY', 503, 'La conexión real está pendiente. No se usarán datos de prueba en modo conectado.');
@@ -85,7 +99,7 @@ export async function receptionRoute(request: NextRequest, root: 'reservas' | 'h
       }
     });
     if (session.response) return session.response;
-    const response = NextResponse.json(session.value, { status, headers: { 'Cache-Control': 'no-store', 'X-Villa-Serena-Mode': process.env.STAFF_AUTH_MODE === 'spring' && root === 'habitaciones' ? 'spring' : 'demo' } });
+    const response = NextResponse.json(session.value, { status, headers: { 'Cache-Control': 'no-store', 'X-Villa-Serena-Mode': process.env.STAFF_AUTH_MODE === 'spring' ? 'spring' : 'demo' } });
     return session.rotated ? writeCookies(response, request, session.rotated) : response;
   } catch (e) { return authError(e); }
 }

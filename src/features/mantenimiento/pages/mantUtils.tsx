@@ -1,3 +1,4 @@
+import FormOperationFeedback from '@/components/common/FormOperationFeedback';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { EstadoOT, TipoAveria, CategoriaActivo, EstadoActivo, FrecuenciaPreventivo, OrigenOT, OrdenTrabajo, } from '@/lib/pms/types';
@@ -136,7 +137,7 @@ export function Modal({ titulo, subtitulo, onCerrar, children, ancho = 'sm:max-w
       </div>
 
       <div className="px-4 sm:px-6 py-5">
-        {children}
+        <FormOperationFeedback/>{children}
       </div>
     </div>
   </div>);

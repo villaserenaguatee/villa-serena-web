@@ -9,6 +9,7 @@ import {
   tomarSolicitud,
   atenderSolicitud,
   OperationError,
+  operacion,
   type HabitacionLimpiezaAPI,
   type SolicitudLimpiezaAPI,
 } from '@/lib/api/operaciones';
@@ -48,6 +49,7 @@ export function useLimpieza(
   avisarNuevaSolicitud?: (aviso: SolicitudAviso) => void
 ) {
   const [habitaciones, setHabitaciones] = useState<HabitacionLimpiezaAPI[]>([]);
+  const [mapa, setMapa] = useState<Array<{id:number;numero:string;piso:number;tipo:string;ocupacion:string;condicion:string;empleadoId:number|null;responsable:string|null}>>([]);
   const [solicitudes, setSolicitudes] = useState<SolicitudLimpiezaAPI[]>([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -63,14 +65,12 @@ export function useLimpieza(
   const recargar = async () => {
     const current = ++version.current;
     try {
-      const [habs, sols] = await Promise.all([
-        habitacionesLimpieza(),
-        colaSolicitudes(),
-      ]);
+      const [habs, sols, catalogo] = await Promise.allSettled([habitacionesLimpieza(), colaSolicitudes(), operacion<typeof mapa>('limpieza/mapa')]);
       if (mounted.current && current === version.current) {
-        setHabitaciones(ordenarHabitaciones(habs.filter(h => (h.condicion as string) !== 'LIMPIA')));
-        setSolicitudes(ordenarSolicitudes(sols.filter(s => s.estado === 'PENDIENTE' || s.estado === 'EN_PROCESO')));
-        setError('');
+        if(catalogo.status==='fulfilled')setMapa(catalogo.value);
+        if(habs.status==='fulfilled')setHabitaciones(ordenarHabitaciones(habs.value.filter(h=>(h.condicion as string)!=='LIMPIA')));
+        if(sols.status==='fulfilled')setSolicitudes(ordenarSolicitudes(sols.value.filter(s=>s.estado==='PENDIENTE'||s.estado==='EN_PROCESO')));
+        setError([habs.status==='rejected'?'Habitaciones: '+String(habs.reason?.message??'No disponibles'):'',sols.status==='rejected'?'Solicitudes: '+String(sols.reason?.message??'No disponibles'):'',catalogo.status==='rejected'?'Mapa: '+String(catalogo.reason?.message??'No disponible'):''].filter(Boolean).join(' · '));
       }
     } catch (e) {
       if (mounted.current && current === version.current) {
@@ -197,6 +197,7 @@ export function useLimpieza(
   };
 
   return {
+    mapa,
     habitaciones,
     solicitudes,
     loading,

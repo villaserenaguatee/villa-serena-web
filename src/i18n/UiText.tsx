@@ -1,6 +1,7 @@
 "use client";
 import { useCallback } from "react";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
+import { connectedMessages } from './connectedMessages';
 const exact: Record<string, string> = {
   'Avisarme si hay cupo': 'Notify me if a spot opens',
   'Aviso de disponibilidad activado': 'Availability alert enabled',
@@ -1640,6 +1641,7 @@ for (const [k, v] of Object.entries(exact)) {
     "Business",
     "Gastronomy",
     "Relaxation",
+    "Wellness",
     "RECOMMENDED FOR YOU",
     "From",
     "ABOUT US",
@@ -1679,6 +1681,91 @@ for (const [k, v] of Object.entries(exact)) {
     delete exact[k];
   }
 }
+// Textos de las secciones conectadas del huésped.
+Object.assign(exact,{
+  "Pendiente de asignación": "Pending assignment",
+  "Solicitar artículos": "Request items",
+  "Comentario opcional": "Optional comment",
+  "Solicitar limpieza": "Request housekeeping",
+  "Limpieza de tu habitación": "Room housekeeping",
+  "Actualizar pedidos": "Refresh orders",
+  "Mis pedidos": "My orders",
+  "Tu pedido": "Your order",
+  "Revisar pedido": "Review order",
+  "Confirmar pedido": "Confirm order",
+  "Reintentar el mismo pedido": "Retry the same order",
+  "No hay pedidos registrados.": "No orders recorded.",
+  "No hay mensajes todavía.": "No messages yet.",
+  "Chat con Recepción": "Chat with Reception",
+  "Mensajes de tu estancia": "Messages for your stay",
+  "Mensaje": "Message",
+  "Enviar": "Send",
+  "Consultando mensajes…": "Loading messages…",
+  "Documentos del check-in": "Check-in documents",
+  "Enviar documento": "Upload document",
+  "Descargar documento": "Download document",
+  "No hay documentos enviados.": "No documents uploaded.",
+  "Documento (JPEG, PNG o PDF; hasta 5 MiB)": "Document (JPEG, PNG or PDF; up to 5 MiB)",
+  "Documentos privados de esta reserva. Recepción los revisará; enviarlos no realiza el check-in.": "Private documents for this reservation. Reception will review them; uploading does not complete check-in.",
+  "Cuenta y check-out": "Account and check-out",
+  "Detalle de la cuenta": "Account details",
+  "Pagos registrados": "Recorded payments",
+  "No hay pagos registrados.": "No payments recorded.",
+  "Pagar saldo con tarjeta": "Pay balance by card",
+  "Revisar check-out": "Review check-out",
+  "Confirmar salida": "Confirm departure",
+  "Saldo pendiente": "Outstanding balance",
+  "Tu estancia ha finalizado. Cuenta cerrada.": "Your stay has ended. Account closed.",
+  "Concepto": "Description",
+  "Cantidad": "Quantity",
+  "Importe": "Amount",
+  "Estado": "Status",
+  "Vigente": "Active",
+  "Anulado": "Voided",
+  "Consultando…": "Loading…",
+  "Notas para el pedido": "Order notes",
+  "Enviando…": "Sending…",
+  "Gestión de estancia": "Manage stay",
+  "Pendiente de revisión": "Pending review",
+  "Aceptado": "Accepted",
+  "Rechazado": "Rejected",
+  "Esta reserva ya tiene el máximo de diez documentos.": "This reservation has reached the limit of ten documents.",
+  "Reintentar solicitud": "Retry request",
+  "Cantidad de": "Quantity of"
+});
+
+const guestLabels:Record<string,string>={
+  "Mi habitación": "My room",
+  "Tu estancia": "Your stay",
+  "Tu cuenta": "Your account",
+  "Menú": "Menu",
+  "Completa tu check-in": "Complete your check-in",
+  "Tus actividades reservadas": "Your booked activities",
+  "Pedir algo": "Request something",
+  "Controlar": "Control",
+  "Ver experiencias": "View experiences",
+  "Saldo por pagar": "Balance due",
+  "Consumos adicionales": "Additional charges",
+  "Consulta tus pedidos y su estado en Menú.": "View your orders and their status in Menu.",
+  "PENDIENTE": "PENDING",
+  "Pendiente": "Pending",
+  "Total estimado:": "Estimated total:",
+  "Servicio a la habitación": "Room service",
+  "Categoría": "Category",
+  "Todas": "All",
+  "Actualizar": "Refresh",
+  "No hay solicitudes registradas.": "No requests recorded.",
+  "Paga el saldo con tarjeta para continuar con el check-out.": "Pay the balance by card before continuing to check-out.",
+  "La reserva no está en estadía.": "The reservation is not checked in.",
+  "El check-out desde la app es de 00:00 a 12:00 del día de salida.": "App check-out is available from midnight to noon on the departure date.",
+  "Paga el saldo pendiente antes del check-out.": "Pay the outstanding balance before check-out."
+};
+Object.assign(exact,guestLabels);
+for(const [es,en] of Object.entries(guestLabels)){if(es!==en && exact[en]===es){enToEsAliases[en]=es;delete exact[en];}}
+Object.assign(exact, connectedMessages);
+for (const [es, en] of Object.entries(connectedMessages)) {
+  if (es !== en && exact[en] === es) { enToEsAliases[en] = es; delete exact[en]; }
+}
 const reverse: Record<string, string> = {};
 for (const [es, en] of Object.entries(exact))
   if (!(en in reverse))
@@ -1688,6 +1775,18 @@ const esPatterns: [
   RegExp,
   string
 ][] = [
+      [/^Alojamiento /, 'Accommodation '],
+      [/^(\d+) habitaciones disponibles$/i, '$1 available rooms'],
+      [/^(\d+) tareas registradas$/i, '$1 recorded tasks'],
+      [/^Cada (\d+) días$/i, 'Every $1 days'],
+      [/^Próximos (\d+) días$/i, 'Next $1 days'],
+      [/^· en (\d+) día$/i, '· in $1 day'],
+      [/^· en (\d+) días$/i, '· in $1 days'],
+      [/^Sin asignar · /, 'Unassigned · '],
+      [/^Hab\. (\S+) · /, 'Room $1 · '],
+      [/^(\d+) habitaciones$/i, '$1 rooms'],
+      [/^(\d+) registros$/i, '$1 records'],
+      [/^(\d+) equipos registrados$/i, '$1 equipment records'],
     [/^(\d+) cama queen$/i, "$1 queen bed"],
     [/^(\d+) camas queen$/i, "$1 queen beds"],
     [/^(\d+) cama king$/i, "$1 king bed"],
@@ -1790,6 +1889,68 @@ const esPatterns: [
     ],
     [/^salida el /i, "departure "],
   ];
+Object.assign(exact, {
+  'Tu alojamiento actual': 'Your current accommodation',
+  'Wi-Fi del hotel': 'Hotel Wi-Fi',
+  'Disponible 24 horas': 'Available 24 hours',
+  'Finalizada': 'Completed',
+  'Tu estancia finalizó. Gracias por hospedarte con nosotros.': 'Your stay has ended. Thank you for staying with us.',
+});
+Object.assign(exact,{'Abrir perfil':'Open profile','Cerrar perfil':'Close profile'});
+Object.assign(exact, {
+  'Términos': 'Terms',
+  'La cantidad de huéspedes corresponde a tu reserva y no puede modificarse desde el check-in.': 'The number of guests matches your booking and cannot be changed during check-in.',
+});
+Object.assign(exact, {
+  'Datos para la factura de estancia': 'Stay invoice details',
+  'Agenda restaurante, spa, piscina, experiencias y transporte durante tu estancia.': 'Arrange dining, spa, pool, experiences and transport during your stay.',
+  'Elige una experiencia': 'Choose an experience',
+  'Haz de tu estancia una experiencia a tu medida.': 'Make your stay an experience tailored to you.',
+  'Reserva tu mesa y disfruta momentos especiales alrededor de buena comida.': 'Reserve your table and enjoy special moments over good food.',
+  'Regálate un momento de descanso, bienestar y relajación.': 'Enjoy a moment of rest, wellbeing and relaxation.',
+  'Disfruta el agua, el descanso y tu propio espacio junto a la piscina.': 'Enjoy the water, relax and find your own space by the pool.',
+  'Descubre detalles y experiencias creadas para recordar Villa Serena.': 'Discover experiences that will help you remember Villa Serena.',
+  'Muévete con comodidad con traslados coordinados durante tu estancia.': 'Travel comfortably with transfers arranged during your stay.',
+  'Toallas extra': 'Extra towels',
+  'Almohadas adicionales': 'Extra pillows',
+  'Reposición de amenidades': 'Toiletry replenishment',
+  'Agua de cortesía': 'Complimentary water',
+  'Plancha y tabla de planchar': 'Iron and ironing board',
+  'Cobija adicional': 'Extra blanket',
+  'Perchas adicionales': 'Extra hangers',
+  'Limpieza de habitación': 'Room cleaning',
+  'Cambio de ropa de cama': 'Bed linen change',
+  'Planchado express': 'Express ironing',
+  'Spa y Relajación': 'Spa and relaxation',
+  'Masaje relajante': 'Relaxing massage',
+  'Masaje de espalda y cuello': 'Back and neck massage',
+  'Masaje con piedras calientes': 'Hot stone massage',
+  'Reflexología': 'Reflexology',
+  'Facial relajante': 'Relaxing facial',
+  'Exfoliación corporal': 'Body exfoliation',
+  'Masaje para dos': 'Massage for two',
+  'Experiencia de relajación': 'Relaxation experience',
+  'Aniversario': 'Anniversary',
+  'Arreglo de flores': 'Flower arrangement',
+  'Pastel personalizado': 'Custom cake',
+  'Bienvenida en la habitación': 'In-room welcome',
+  'Transporte al aeropuerto': 'Airport transfer',
+  'Llamada de despertador': 'Wake-up call',
+  'Ayuda con el equipaje': 'Luggage assistance',
+  'Solicitar taxi': 'Request a taxi',
+  'Información y asistencia': 'Information and assistance',
+  'Reportar un problema': 'Report a problem',
+  'Cena romántica': 'Romantic dinner',
+  'Reservar traslado': 'Book transfer',
+  'Solicitud de toallas adicionales directamente a la habitación.': 'Request additional towels delivered to your room.',
+  'Almohadas adicionales para mayor comodidad durante la estancia.': 'Extra pillows for a more comfortable stay.',
+  'Reposición de productos esenciales disponibles en la habitación.': 'Replenish the toiletries available in your room.',
+  'Préstamo de plancha y tabla de planchar para uso dentro de la habitación.': 'Borrow an iron and ironing board for use in your room.',
+  'Cobija adicional para mayor comodidad durante la estancia.': 'An extra blanket for a more comfortable stay.',
+  'Perchas adicionales para organizar prendas dentro de la habitación.': 'Extra hangers to organise clothes in your room.',
+  'Servicio de limpieza y organización general de la habitación.': 'Room cleaning and general housekeeping service.',
+});
+for (const [es, translated] of Object.entries(exact)) reverse[translated] ??= es;
 export function translateUiText(s: string,
   en: boolean) {
   const lead = s.match(/^\s*/)?.[0] || "", trail = s.match(/\s*$/)?.[0] || "", core = s.trim().replace(/\s+/g, " ");

@@ -15,11 +15,12 @@ interface FormNuevo {
   foto: string;
 }
 interface Props {
+  mensajeError?:string;
   objetos: ObjetoOlvidado[];
   habitaciones: Habitacion[];
-  onRegistrar: (obj: ObjetoOlvidado) => void;
+  onRegistrar: (obj: ObjetoOlvidado) => void | Promise<boolean>;
 }
-export default function Objetos({ objetos, habitaciones, onRegistrar }: Props) {
+export default function Objetos({ objetos, habitaciones, onRegistrar, mensajeError }: Props) {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [piso, setPiso] = useState('');
   const [form, setForm] = useState<FormNuevo>({
@@ -36,6 +37,7 @@ export default function Objetos({ objetos, habitaciones, onRegistrar }: Props) {
       e.habitacionNumero = 'Selecciona una habitación';
     if (!form.descripcion.trim())
       e.descripcion = 'Describe el objeto';
+    if(!form.fechaHora||Number.isNaN(new Date(form.fechaHora).getTime()))e.fechaHora='Indica una fecha y hora válidas.';
     setErrores(e);
     return Object.keys(e).length === 0;
   }
@@ -43,17 +45,19 @@ export default function Objetos({ objetos, habitaciones, onRegistrar }: Props) {
     const archivo = e.target.files?.[0];
     if (!archivo)
       return;
+    if(archivo.size>5*1024*1024||!['image/jpeg','image/png'].includes(archivo.type)){setErrores(e=>({...e,foto:'Usa JPEG o PNG de hasta 5 MiB.'}));return;}
+    setErrores(e=>({...e,foto:undefined}));
     const reader = new FileReader();
     reader.onload = () => {
       setForm(f => ({ ...f, foto: String(reader.result ?? '') }));
     };
     reader.readAsDataURL(archivo);
   }
-  function handleGuardar() {
+  async function handleGuardar() {
     if (!validar())
       return;
     const id = generarId();
-    onRegistrar({
+    const result=await onRegistrar({
       id,
       habitacionNumero: form.habitacionNumero,
       descripcion: form.descripcion.trim(),
@@ -63,6 +67,7 @@ export default function Objetos({ objetos, habitaciones, onRegistrar }: Props) {
       estado: 'guardado',
       origen: 'limpieza',
     });
+    if(result===false)return;
     setMostrarForm(false);
     setForm({
       habitacionNumero: '',
@@ -161,7 +166,7 @@ export default function Objetos({ objetos, habitaciones, onRegistrar }: Props) {
 
     {mostrarForm && (<div className="fixed inset-0 z-30 flex items-end sm:items-center justify-center sm:p-4">
       <div className="absolute inset-0 bg-black/30" onClick={() => setMostrarForm(false)} />
-      <div className="relative z-10 bg-white rounded-t-xl sm:rounded-xl shadow-2xl w-full sm:max-w-lg max-h-[88vh] overflow-y-auto">
+      <div role="dialog" aria-label="Registrar objeto olvidado" className="relative z-10 bg-white rounded-t-xl sm:rounded-xl shadow-2xl w-full sm:max-w-lg max-h-[88vh] overflow-y-auto">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#E5E0D8] sticky top-0 bg-white">
           <h2 className="text-[21px] font-semibold text-[#18345C]">
             Registrar objeto olvidado
@@ -209,17 +214,17 @@ export default function Objetos({ objetos, habitaciones, onRegistrar }: Props) {
                 className="w-full border border-[#E5E0D8] rounded-md px-3 py-3 text-sm text-[#1F2933] focus:outline-none focus:border-[#18345C] placeholder:text-[#AEBCC1]" />
             </Campo>
 
-            <Campo label="Foto del objeto">
+            <Campo label="Foto del objeto" error={errores.foto}>
               <label className="flex h-32 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-[#D7D1C7] bg-[#F8F6F0] text-sm text-[#71839B]">
                 {form.foto ? <img src={form.foto} alt="Vista previa" className="h-full w-full object-cover" /> : <span>+ Agregar fotografía</span>}
-                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFoto} />
+                <input type="file" accept="image/jpeg,image/png" className="hidden" onChange={handleFoto} />
               </label>
               {form.foto && (<div className="mt-2 overflow-hidden rounded-lg border border-[#E5E0D8] bg-[#F8F6F0]">
                 <img src={form.foto} alt="Objeto olvidado" className="h-28 w-full object-contain" />
               </div>)}
             </Campo>
 
-            <Campo label="Fecha y hora del hallazgo">
+            <Campo label="Fecha y hora del hallazgo" error={errores.fechaHora}>
               <input
                 type="datetime-local"
                 value={form.fechaHora}
@@ -238,6 +243,7 @@ export default function Objetos({ objetos, habitaciones, onRegistrar }: Props) {
 
         </div>
 
+        {mensajeError&&<p role="alert" className="px-4 pb-3 text-red-800">{mensajeError}</p>}
         <div className="px-4 pb-4 flex justify-end gap-2">
           <button
             onClick={() => setMostrarForm(false)}

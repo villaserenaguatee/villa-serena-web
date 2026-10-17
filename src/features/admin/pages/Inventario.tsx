@@ -1,3 +1,5 @@
+import FormOperationFeedback from '@/components/common/FormOperationFeedback';
+import {validPublicDate} from '@/lib/publicStayValidation';
 import { useMemo, useState } from 'react';
 import type { Insumo, MovimientoInsumo, CategoriaInsumo, TipoMovimiento } from '@/lib/pms/types';
 import { formatoFechaHora } from '@/data/pms';
@@ -7,8 +9,8 @@ const MOV_LABEL: Record<TipoMovimiento, string> = { entrada: 'Entrada', salida: 
 interface Props {
   insumos: Insumo[];
   movimientos: MovimientoInsumo[];
-  onAgregarInsumo: (i: Omit<Insumo, 'id'>) => void;
-  onRegistrarMovimiento: (insumoId: string, tipo: TipoMovimiento, cantidad: number, motivo: string) => void;
+  onAgregarInsumo: (i: Omit<Insumo, 'id'>) => void | boolean | Promise<void | boolean>;
+  onRegistrarMovimiento: (insumoId: string, tipo: TipoMovimiento, cantidad: number, motivo: string) => void | boolean | Promise<void | boolean>;
   integrado?: boolean;
 }
 export default function Inventario({ insumos, movimientos, onAgregarInsumo, onRegistrarMovimiento, integrado = false }: Props) {
@@ -83,14 +85,14 @@ export default function Inventario({ insumos, movimientos, onAgregarInsumo, onRe
       <FormMovimiento
         insumos={insumos}
         onCancelar={() => setFormMov(false)}
-        onGuardar={(id, tipo, cant, motivo) => {
-          onRegistrarMovimiento(id, tipo, cant, motivo);
+        onGuardar={async (id, tipo, cant, motivo) => {
+          if(await onRegistrarMovimiento(id, tipo, cant, motivo)===false)return false;
           setFormMov(false);
         }} />
     </ModalFormulario>)}
     {formInsumo && (<ModalFormulario onCerrar={() => setFormInsumo(false)}>
-      <FormInsumo onCancelar={() => setFormInsumo(false)} onGuardar={x => {
-        onAgregarInsumo(x);
+      <FormInsumo onCancelar={() => setFormInsumo(false)} onGuardar={async x => {
+          if(await onAgregarInsumo(x)===false)return false;
         setFormInsumo(false);
       }} />
     </ModalFormulario>)}
@@ -182,8 +184,8 @@ export default function Inventario({ insumos, movimientos, onAgregarInsumo, onRe
 }
 function FormMovimiento({ insumos, onCancelar, onGuardar, }: {
   insumos: Insumo[];
-  onCancelar: () => void;
-  onGuardar: (insumoId: string, tipo: TipoMovimiento, cantidad: number, motivo: string) => void;
+  onCancelar: () => void | boolean | Promise<void | boolean>;
+  onGuardar: (insumoId: string, tipo: TipoMovimiento, cantidad: number, motivo: string) => void | boolean | Promise<void | boolean>;
 }) {
   const [insumoId, setInsumoId] = useState('');
   const [tipo, setTipo] = useState<TipoMovimiento>('salida');
@@ -195,7 +197,7 @@ function FormMovimiento({ insumos, onCancelar, onGuardar, }: {
     if (!insumoId)
       return setErr('Selecciona un insumo.');
     const c = Number(cantidad);
-    if (!c || c <= 0)
+    if (!Number.isFinite(c) || c <= 0)
       return setErr('Cantidad inválida.');
     const motivoFinal = motivo === 'otro' ? otroMotivo.trim() : motivo;
     if (!motivoFinal)
@@ -281,7 +283,7 @@ function FormMovimiento({ insumos, onCancelar, onGuardar, }: {
 function SelectorInsumo({ insumos, value, onChange }: {
   insumos: Insumo[];
   value: string;
-  onChange: (id: string) => void;
+  onChange: (id: string) => void | boolean | Promise<void | boolean>;
 }) {
   const seleccionado = insumos.find(i => i.id === value);
   const [busqueda, setBusqueda] = useState(seleccionado?.nombre ?? '');
@@ -303,6 +305,7 @@ function SelectorInsumo({ insumos, value, onChange }: {
         }}
         onBlur={() => window.setTimeout(() => setAbierto(false), 160)}
         placeholder="Buscar o elegir de la lista"
+        aria-label="Insumo"
         className="min-w-0 px-3 py-2.5 text-sm outline-none"
         autoComplete="off" />
       <select
@@ -345,8 +348,8 @@ function SelectorInsumo({ insumos, value, onChange }: {
   </div>);
 }
 function FormInsumo({ onCancelar, onGuardar, }: {
-  onCancelar: () => void;
-  onGuardar: (i: Omit<Insumo, 'id'>) => void;
+  onCancelar: () => void | boolean | Promise<void | boolean>;
+  onGuardar: (i: Omit<Insumo, 'id'>) => void | boolean | Promise<void | boolean>;
 }) {
   const [nombre, setNombre] = useState('');
   const [categoria, setCategoria] = useState<CategoriaInsumo>('Lencería');
@@ -362,14 +365,18 @@ function FormInsumo({ onCancelar, onGuardar, }: {
     if (!nombre.trim())
       return setErr('El nombre es obligatorio.');
     const c = Number(costo);
-    if (!c || c <= 0)
+    if (!Number.isFinite(c) || c <= 0)
       return setErr('Costo unitario inválido.');
+    if (!Number.isFinite(Number(stock)) || Number(stock) < 0 || !Number.isFinite(Number(stockMinimo)) || Number(stockMinimo) < 0)
+      return setErr('Las existencias y el mínimo no pueden ser negativos.');
+    if (tieneVencimiento && !validPublicDate(vencimiento))
+      return setErr('Selecciona una fecha de vencimiento válida.');
     onGuardar({
       nombre: nombre.trim(),
       categoria,
       unidad: unidad === 'Otro' ? (otraUnidad.trim() || 'Unidad') : unidad,
-      stock: Math.max(0, Number(stock) || 0),
-      stockMinimo: Math.max(0, Number(stockMinimo) || 0),
+      stock: Number(stock),
+      stockMinimo: Number(stockMinimo),
       costoUnitario: Math.round(c * 100) / 100,
       vencimiento: tieneVencimiento && vencimiento ? vencimiento : undefined,
     });
@@ -449,7 +456,7 @@ function FormInsumo({ onCancelar, onGuardar, }: {
 }
 function BotonFiltro({ activo, onClick, children }: {
   activo: boolean;
-  onClick: () => void;
+  onClick: () => void | boolean | Promise<void | boolean>;
   children: React.ReactNode;
 }) {
   return (<button
@@ -460,7 +467,7 @@ function BotonFiltro({ activo, onClick, children }: {
 }
 function ModalFormulario({ children, onCerrar }: {
   children: React.ReactNode;
-  onCerrar: () => void;
+  onCerrar: () => void | boolean | Promise<void | boolean>;
 }) {
   return <div
     className="fixed inset-0 z-50 flex items-end justify-center bg-[#071D34]/45 sm:items-center sm:p-4"
@@ -473,8 +480,8 @@ function ModalFormulario({ children, onCerrar }: {
         onClick={onCerrar}
         aria-label="Cerrar"
         className="absolute right-5 top-4 grid h-9 w-9 place-items-center rounded-full border border-[#E5E0D8] text-xl text-[#71839B] hover:bg-[#F8F6F0]">×</button>
-      {children}
-    </section>
+      {children}<FormOperationFeedback/>
+      </section>
   </div>;
 }
 function Kpi({ valor, label, color }: {

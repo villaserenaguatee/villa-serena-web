@@ -7,6 +7,8 @@ import { usePublicLanguage } from '@/components/common/PublicLanguageToggle';
 import { getPublicStatus, startPublicPayment } from '@/lib/api/public';
 import { paymentView, type PaymentView } from '@/lib/paymentResult';
 import type { PublicStatusDto } from '@/lib/bff/contracts/public';
+import { stripeCheckoutUrl } from '@/lib/stripeCheckoutUrl';
+import { completeBookingDraft } from '@/lib/bookingDraft';
 
 export default function PublicPaymentStatus({ code }: { code: string }) {
   const { en } = usePublicLanguage();
@@ -29,6 +31,7 @@ export default function PublicPaymentStatus({ code }: { code: string }) {
         const value = await getPublicStatus(code, controller.signal);
         const next = paymentView(value, code);
         if (controller.signal.aborted) return;
+        if(next==='confirmed' || value.estadoReserva==='CANCELADA') completeBookingDraft(code);
         setResult(value); setView(next); setConsulting(false);
         if (reload > 0) setFeedback(en ? 'Status updated.' : 'Estado actualizado.');
         if (next === 'processing' && Date.now() < deadline) {
@@ -54,10 +57,7 @@ export default function PublicPaymentStatus({ code }: { code: string }) {
       setResult(latest); setView(next);
       if (latest.estadoReserva !== 'PENDIENTE_PAGO' || !latest.puedeReintentar) return;
       const payment = await startPublicPayment(code);
-      const target = new URL(payment.urlPago, window.location.origin);
-      if (target.origin !== window.location.origin || target.pathname !== '/reserva/resultado' || target.searchParams.get('codigo') !== code)
-        throw new Error('La redirección real a Stripe está pendiente de validación.');
-      window.location.assign(target.href);
+      window.location.assign(stripeCheckoutUrl(payment.urlPago, payment.mode, window.location.origin, code));
     } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo reintentar el pago.'); }
     finally { setBusy(false); }
   }

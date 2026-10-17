@@ -1,4 +1,16 @@
+import ConnectedManageStay from './ConnectedManageStay';
+import GuestStaySections from './GuestStaySections';
+import ConnectedGuestCheckIn from './ConnectedGuestCheckIn';
+import {GuestPage} from './GuestApprovedLayout';
+import { estanciaHabilitaChat } from '@/lib/pms/chatAccess';
 import { calcularCuentaEstancia } from "@/lib/pms/cuentaEstancia";
+import EstanciaChat from '@/components/common/EstanciaChat';
+import EstanciaDocumentos from '@/components/common/EstanciaDocumentos';
+import LimpiezaHuespedConectada from './LimpiezaHuespedConectada';
+import CuentaHuespedConectada from './CuentaHuespedConectada';
+import PerfilHuespedConectado from './PerfilHuespedConectado';
+import MenuHuespedConectado from './MenuHuespedConectado';
+import {guestAccountCall,type GuestAccount} from '@/lib/api/guestAccount';
 import { useAuth } from "@/hooks/useAuth";
 import { UiText, useUiText } from "@/i18n/UiText";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
@@ -11,7 +23,6 @@ import { actualizarHuespedCentral } from "@/store/guestStore";
 import { leerHabitaciones, HABITACIONES_EVENT } from "@/store/roomStore";
 import { MENU_EVENT, leerMenu } from "@/store/menuStore";
 import { leerReservas, RESERVAS_EVENT, upsertReserva } from "@/store/reservationStore";
-import { enviarCheckInPortal } from "@/store/portalCheckIn";
 import { aplicarTarifasHabitaciones, leerTarifas, TARIFAS_EVENT } from "@/store/tarifasStore";
 import { Aviso, pedidoActivo, totalCargos, puntosDeMonto, } from "@/features/huesped/pages/huespedUtils";
 import ModuloSwitcher from "@/components/common/ModuloSwitcher";
@@ -44,7 +55,7 @@ const SECCIONES: {
     { id: "reservar", label: "Gestionar estancia", corto: "Estancia" },
   ];
 export function seccionesPortal(estado: Reserva['estado']) {
-  return SECCIONES.filter(s => estado !== 'finalizada' || !['checkin', 'restaurante', 'servicios'].includes(s.id));
+  return SECCIONES;
 }
 function GestionIcon({ tipo }: {
   tipo: "calendario" | "cama" | "solicitud";
@@ -182,6 +193,8 @@ interface Props {
   onCambiarModulo: (m: Modulo) => void;
 }
 interface PortalProps extends Props {
+  conectado?: boolean;
+  habitacionesApi?: import('@/lib/pms/types').HabitacionHotel[];
   huesped: Huesped;
   reservaInicial: Reserva;
   reservasAutorizadas?: Reserva[];
@@ -227,15 +240,19 @@ export default function HuespedApp(props: Props) {
   return <HuespedPortal key={`${huesped.id}:${reservaInicial.id}`} {...props} huesped={huesped} reservaInicial={reservaInicial} />;
 }
 
-export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reservasAutorizadas, publicSummary }: PortalProps) {
+export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reservasAutorizadas, publicSummary, conectado = false, habitacionesApi = [] }: PortalProps) {
   const ui = useUiText();
   const { logout } = useAuth();
   const { en, lang } = usePublicLanguage();
   const [seccion, setSeccion] = useState<SeccionHuesped>("inicio");
+  const [navigationReady,setNavigationReady]=useState(false);
   const [abrirResena, setAbrirResena] = useState(false);
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("seccion") === "habitacion") setSeccion("habitacion");
+    const saved=new URLSearchParams(window.location.search).get('seccion');
+    if(SECCIONES.some(s=>s.id===saved))setSeccion(saved as SeccionHuesped);
+    setNavigationReady(true);
   }, []);
+  useEffect(()=>{if(!navigationReady)return;const url=new URL(window.location.href);url.searchParams.set('seccion',seccion);window.history.replaceState(null,'',url.pathname+url.search+url.hash);},[seccion,navigationReady]);
   const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [nombrePerfil, setNombrePerfil] = useState(huesped.nombre);
   const [telefonoPerfil, setTelefonoPerfil] = useState(huesped.telefono);
@@ -250,7 +267,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
   }, [huesped.id, huesped.nombre, huesped.telefono, huesped.correo, huesped.foto]);
   const [tarifasReserva, setTarifasReserva] = useState(() => leerTarifas());
   const ofertasReserva = useMemo(() => CATALOGO_HABITACIONES_PUBLICO.map(oferta => ({ ...oferta, precioNoche: tarifasReserva[oferta.tipo] })), [tarifasReserva]);
-  const habitacionesReserva = useMemo(() => aplicarTarifasHabitaciones(leerHabitaciones(), tarifasReserva), [tarifasReserva]);
+  const habitacionesReserva = useMemo(() => aplicarTarifasHabitaciones(conectado ? [] : leerHabitaciones(), tarifasReserva), [tarifasReserva]);
   useEffect(() => {
     const sincronizarTarifas = () => setTarifasReserva(leerTarifas());
     window.addEventListener(TARIFAS_EVENT, sincronizarTarifas);
@@ -262,14 +279,14 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
   },
     []);
   const reservasDelPortal = () => reservasAutorizadas
-    ? reservasAutorizadas.map(owned => leerReservas().find(r => r.id === owned.id && r.huespedId === huesped.id) ?? owned)
+    ? reservasAutorizadas.map(owned => { const saved = leerReservas().find(r => r.id === owned.id && r.huespedId === huesped.id); return conectado ? { ...owned, checkInWeb: saved?.checkInWeb } : saved ?? owned; })
     : leerReservas();
   const [reservasHotel, setReservasHotel] = useState<Reserva[]>(reservasDelPortal);
   const [reserva, setReserva] = useState<Reserva>(reservaInicial);
   const pedidosKey = `vs-pedidos-huesped-${reserva.codigo}`;
-  const [menu, setMenu] = useState(() => leerMenu());
+  const [menu, setMenu] = useState(() => conectado ? [] : leerMenu());
   useEffect(() => {
-    const sincronizarMenu = () => setMenu(leerMenu());
+    const sincronizarMenu = () => { if (!conectado) setMenu(leerMenu()); };
     window.addEventListener(MENU_EVENT, sincronizarMenu);
     window.addEventListener('storage', sincronizarMenu);
     return () => {
@@ -295,9 +312,9 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
     };
   },
     [reserva.id, reserva.codigo, huesped.id]);
-  const [habitacionesPortal, setHabitacionesPortal] = useState(() => leerHabitaciones());
+  const [habitacionesPortal, setHabitacionesPortal] = useState(() => conectado ? habitacionesApi : leerHabitaciones());
   useEffect(() => {
-    const sync = () => setHabitacionesPortal(leerHabitaciones());
+    const sync = () => setHabitacionesPortal(conectado ? habitacionesApi : leerHabitaciones());
     sync();
     window.addEventListener(HABITACIONES_EVENT, sync);
     window.addEventListener('storage', sync);
@@ -307,6 +324,9 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
     };
   }, []);
   const habitacion = habitacionesPortal.find((h) => h.id === reserva.habitacionId);
+  const blockedStay = reserva.estado !== 'en-curso' || !habitacion ? (!habitacion ? (en ? 'Reception must assign your room before you can use this service.' : 'Recepción debe asignar tu habitación antes de usar este servicio.') : (en ? 'Available during your stay, after check-in.' : 'Disponible durante tu estancia, después del check-in.')) : '';
+  const blockedChat = reserva.estado !== 'en-curso' ? (en ? 'Chat is available during your stay, after check-in.' : 'El chat está disponible durante tu estancia, después del check-in.') : '';
+  const blockedDocs = !['confirmada','en-curso'].includes(reserva.estado) ? (en ? 'The reservation must be confirmed to upload documents.' : 'La reserva debe estar confirmada para enviar documentos.') : '';
   const estadoHabitacion: EstadoHabHotel = habitacion?.estado ?? 'reservada';
   const web = reserva.checkInWeb;
   const checkin: CheckInWeb = {
@@ -316,9 +336,10 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
     peticiones: web?.peticiones ?? [], notaPeticiones: web?.notaPeticiones ?? '',
     completadoEn: reserva.checkInEn ?? web?.revisadoEn ?? web?.enviadoEn,
     motivoRechazo: web?.motivoRevision,
-    codigoLlave: reserva.estado === 'en-curso' && habitacion ? codigoLlaveDigital(reserva.codigo, (habitacion?.numero ?? (en ? 'Unassigned' : 'Sin asignar'))) : undefined,
+    codigoLlave: reserva.estado === 'en-curso' && habitacion ? codigoLlaveDigital(reserva.codigo, (habitacion?.numero ?? (en ? 'Pending assignment' : 'Pendiente de asignación'))) : undefined,
   };
   const [pedidos, setPedidos] = useState<PedidoHuesped[]>(() => {
+    if (conectado) return [];
     if (typeof window === "undefined")
       return PEDIDOS_HUESPED_INICIALES.filter(p => p.tipo !== 'restaurante');
     try {
@@ -536,7 +557,12 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
     };
   },
     []);
+  const chatHabilitado = estanciaHabilitaChat(reserva);
+  function puedeEnviarChat() {
+    return estanciaHabilitaChat(leerReservas().find(r => r.id === reserva.id && r.huespedId === huesped.id));
+  }
   async function enviarMensaje(texto: string) {
+    if (!puedeEnviarChat()) { setAviso("El chat requiere check-in realizado y una estancia activa."); return; }
     const valor = texto.trim();
     if (!valor)
       return;
@@ -559,6 +585,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
     }
     catch {
     }
+    if (!puedeEnviarChat()) { setAviso("El chat requiere check-in realizado y una estancia activa."); return; }
     setMensajes((actuales) => {
       const globales = leerMensajesChat([]);
       const siguientes = [...globales, mensaje];
@@ -621,7 +648,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
     };
     if (datos.tipo === 'restaurante') {
       const guardado = publicarPedidoPortal(pedido, {
-        reserva, habitacion: (habitacion?.numero ?? (en ? 'Unassigned' : 'Sin asignar')), piso: habitacion.piso,
+        reserva, habitacion: (habitacion?.numero ?? (en ? 'Pending assignment' : 'Pendiente de asignación')), piso: habitacion.piso,
         huesped: nombrePerfil, turno: turnoActual(),
       });
       if (!guardado) return 0;
@@ -658,10 +685,24 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
     } : pedido));
     setCargos(actuales => actuales.filter(c => !c.id.startsWith(`pedido-${id}-`)));
   }
+  const [remoteAccount,setRemoteAccount] = useState<GuestAccount|null>(null);
+  const [accountError,setAccountError] = useState('');
+  const [accountReload,setAccountReload] = useState(0);
+  useEffect(()=>{
+    if(!conectado)return;
+    const controller=new AbortController();setRemoteAccount(null);setAccountError('');
+    guestAccountCall<GuestAccount>(reserva.codigo,'cuenta',undefined,controller.signal).then(setRemoteAccount).catch(e=>{if(!controller.signal.aborted)setAccountError(e.message);});
+    return()=>controller.abort();
+  },[conectado,reserva.codigo,accountReload]);
   const cuenta = useMemo(() => {
+    if(conectado&&remoteAccount?.codigoReserva===reserva.codigo){
+      const nights=remoteAccount.detalleNoches.length;
+      const lodging=remoteAccount.cargos.filter(c=>c.tipo==='ALOJAMIENTO'&&c.estado==='VIGENTE').reduce((sum,c)=>sum+c.monto,0);
+      return {noches:nights,precioNoche:nights?lodging/nights:0,alojamiento:lodging,extras:remoteAccount.totalCargosVigentes-lodging,descuento:0,total:remoteAccount.totalCargosVigentes,anticipo:0,abonado:remoteAccount.totalPagosAprobados,pagado:remoteAccount.totalPagosAprobados,saldo:remoteAccount.saldo};
+    }
     return calcularCuentaEstancia(reserva, habitacion ?? null, totalCargos(cargos));
   },
-    [reserva, habitacion, cargos, tarifasReserva]);
+    [reserva, habitacion, cargos, tarifasReserva,conectado,remoteAccount]);
   const nochesAdicionales = Math.max(0, nochesEntre(reserva.fechaSalida, nuevaSalida));
   const estimacionExtension = nochesAdicionales * cuenta.precioNoche;
   const fechaLarga = (fecha: string) => new Date(`${fecha}T12:00:00`).toLocaleDateString("es-GT", { day: "numeric", month: "long", year: "numeric" });
@@ -677,7 +718,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
       JSON.stringify({
         id: reserva.codigo,
         huesped: nombrePerfil,
-        habitacion: (habitacion?.numero ?? (en ? 'Unassigned' : 'Sin asignar')),
+        habitacion: (habitacion?.numero ?? (en ? 'Pending assignment' : 'Pendiente de asignación')),
         salidaActual: reserva.fechaSalida,
         nuevaSalida,
         noches: nochesAdicionales,
@@ -718,7 +759,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
             ...p, estado: existente.estado === 'nuevo' ? 'recibido' : existente.estado,
             entregadoEn: existente.entregadoEn, motivoCancelacion: existente.motivoCancelacion,
             historial: existente.historial.map(h => ({ ...h, estado: h.estado === 'nuevo' ? 'recibido' : h.estado })),
-          } : p, { reserva, habitacion: (habitacion?.numero ?? (en ? 'Unassigned' : 'Sin asignar')), piso: habitacion.piso, huesped: nombrePerfil, turno: turnoActual() });
+          } : p, { reserva, habitacion: (habitacion?.numero ?? (en ? 'Pending assignment' : 'Pendiente de asignación')), piso: habitacion.piso, huesped: nombrePerfil, turno: turnoActual() });
         });
         localStorage.setItem(pedidosKey, JSON.stringify(restantes));
       }
@@ -775,12 +816,29 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
     peticiones: string[];
     notaPeticiones: string;
   }) {
-    const actualizada = enviarCheckInPortal(reserva.id, huesped.id, datos);
-    if (!actualizada) return;
+    const canonica = leerReservas().find(r => r.id === reserva.id && r.huespedId === huesped.id);
+    if (!canonica || canonica.estado !== 'confirmada' || canonica.checkInEn || canonica.checkInWeb?.estado === 'pendiente' || canonica.checkInWeb?.estado === 'aprobado') return;
+    const enviadoEn = ahoraISO();
+    const actualizada: Reserva = {
+      ...canonica,
+      estado: 'confirmada',
+      checkInWeb: {
+        estado: 'pendiente',
+        documento: datos.documento,
+        documentos: datos.documentos,
+        terminosAceptados: true,
+        peticiones: datos.peticiones,
+        notaPeticiones: datos.notaPeticiones,
+        enviadoEn,
+      },
+    };
+    upsertReserva(actualizada);
     setReserva(actualizada);
-    mostrarAviso("Check-in enviado. Recepción revisará la información antes de activar tu llave digital.");
+    mostrarAviso("Documento guardado. Preséntalo en Recepción para su verificación.");
   }
   const renderCuenta = () => {
+    if(conectado&&remoteAccount)return <CuentaHuespedConectada account={remoteAccount} onReload={()=>setAccountReload(n=>n+1)}/>;
+    if(conectado)return <div className="flex-1 overflow-auto bg-[#F8F6F0] p-5 text-[#18345C]"><h1 className="text-3xl font-semibold">{en ? "Account and check-out" : "Cuenta y check-out"}</h1><p>{reserva.codigo}</p><div className="mt-4 grid gap-4 sm:grid-cols-3">{[en?"Total":"Total",en?"Paid":"Pagado",en?"Balance":"Saldo"].map(label=><section key={label} className="rounded-xl border bg-white p-5"><h2>{label}</h2><p role="status">{en?"Loading account…":"Consultando cuenta…"}</p></section>)}</div>{accountError&&<p role="alert">{accountError}</p>}<button onClick={()=>setAccountReload(n=>n+1)}>{en?"Retry":"Volver a consultar"}</button></div>;
     if (publicSummary) return <div className="p-6 space-y-4"><h1 className="text-2xl font-semibold text-[#18345C]">Cuenta</h1><p>{reserva.codigo}</p><p>Total original de la reserva: {new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ' }).format(publicSummary.total)}</p><p>Estado del pago: {publicSummary.estadoPago ?? 'Sin iniciar'}</p><Aviso>La cuenta de la estancia todavía no está disponible.</Aviso></div>;
     return (<CuentaHuesped
           abrirResena={abrirResena}
@@ -800,27 +858,17 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
           onCheckOut={hacerCheckOut} />);
   };
   const contenido = (() => {
-    if (reserva.estado === 'finalizada' && ['inicio', 'checkin', 'restaurante', 'servicios'].includes(seccion)) return renderCuenta();
-    const dependeHabitacion = ['restaurante', 'servicios', 'habitacion', 'checkin'].includes(seccion);
-    const requiereEstanciaActiva = ['restaurante', 'servicios'].includes(seccion);
-    if (dependeHabitacion && (!habitacion || (requiereEstanciaActiva && reserva.estado !== 'en-curso'))) {
-      const titulo = SECCIONES.find(s => s.id === seccion)?.label ?? seccion;
-      return <div className="p-6 space-y-4">
-        <h1 className="text-2xl font-semibold text-[#18345C]">{ui(titulo)}</h1>
-        <p className="text-sm text-[#52677F]">{reserva.codigo} · {en ? 'Reservation status' : 'Estado de la reserva'}: {ui(reserva.estado)}</p>
-        <Aviso>{!habitacion
-          ? (en ? 'Reception must assign a room to this reservation first.' : 'Recepción debe asignar primero una habitación a esta reserva.')
-          : (en ? 'This section is available during an active stay, after check-in.' : 'Esta sección está disponible durante una estancia activa, después del check-in.')}</Aviso>
-        <div className="flex flex-wrap gap-3">
-          {habitacion && reserva.estado === 'confirmada' && <button onClick={() => setSeccion('checkin')} className="rounded-lg bg-[#18345C] px-4 py-2 text-white">{en ? 'Go to check-in' : 'Ir a check-in'}</button>}
-          <button onClick={() => setSeccion('chat')} className="rounded-lg border border-[#18345C] px-4 py-2 text-[#18345C]">{en ? 'Contact Reception' : 'Contactar a Recepción'}</button>
-          <button onClick={() => setSeccion('cuenta')} className="rounded-lg border border-[#18345C] px-4 py-2 text-[#18345C]">{en ? 'View account' : 'Ver cuenta'}</button>
-        </div>
-      </div>;
-    }
+    if(conectado&&seccion==='chat')return <EstanciaChat approved guestName={huesped.nombre} key={reserva.codigo} code={reserva.codigo} protectedTerms={[huesped.nombre]} blockedReason={blockedChat}/>;
+    if(conectado&&seccion==='checkin')return <ConnectedGuestCheckIn key={reserva.codigo} reserva={reserva} huesped={huesped} habitacion={habitacion} blockedReason={blockedDocs}/>;
+    if(conectado&&seccion==='servicios')return <LimpiezaHuespedConectada key={reserva.codigo} code={reserva.codigo} blockedReason={blockedStay}/>;
+    if(conectado&&seccion==='habitacion')return <MiHabitacion conectado reserva={reserva} habitacion={habitacion} domotica={domotica} turnos={[]} reservasAmenidad={[]} llaveActiva={false} estanciaCerrada={estanciaCerrada} onActualizarDomotica={()=>{}} onActualizarLuz={()=>{}} onConectarWifi={()=>{}} onReservarTurno={()=>{}} onCancelarTurno={()=>{}} onIrCheckin={()=>setSeccion('checkin')}/>;
+    if(conectado&&seccion==='experiencias')return <ReservasExperiencias connected reserva={reserva} huespedId={huesped.id} turnos={[]} reservas={[]} onReservar={()=>{}} onCancelar={()=>{}}/>;
+    if(conectado&&seccion==='reservar')return <ConnectedManageStay reserva={reserva} habitacion={habitacion}/>;
     switch (seccion) {
       case "inicio":
-        return habitacion ? (<InicioHuesped
+        return (<InicioHuesped
+          accountReady={!conectado || remoteAccount?.codigoReserva===reserva.codigo}
+          conectado={conectado}
           huesped={huesped}
           reserva={reserva}
           habitacion={habitacion}
@@ -833,7 +881,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
           puntos={puntos}
           llaveActiva={llaveActiva}
           estanciaCerrada={estanciaCerrada}
-          onIr={setSeccion} />) : <div className="p-6 space-y-3"><h1 className="text-xl font-semibold">{huesped.nombre}</h1><p>{reserva.codigo} · {reserva.fechaEntrada} → {reserva.fechaSalida}</p><p className="text-sm text-[#52677F]">{en ? "Reservation status" : "Estado de la reserva"}: {ui(reserva.estado)}</p><Aviso>{en ? 'Room assignment pending. You can consult your account or contact Reception in the chat.' : 'Habitación pendiente de asignación. Puedes consultar tu cuenta o contactar a Recepción por chat.'}</Aviso></div>;
+          onIr={setSeccion} />);
       case "reservar":
         if (!gestionEstancia)
           return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0] p-4 sm:p-6">
@@ -859,9 +907,9 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
                   <div className="mt-4 flex items-center gap-3 rounded-lg bg-[#F8F6F0] p-3">
                     <img
                       src="https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=500&q=85"
-                      alt={`Habitación ${(habitacion?.numero ?? (en ? 'Unassigned' : 'Sin asignar'))}`}
+                      alt={`Habitación ${(habitacion?.numero ?? (en ? 'Pending assignment' : 'Pendiente de asignación'))}`}
                       className="h-16 w-24 rounded-md object-cover" />
-                    <p className="text-sm text-[#52677F]"><b className="block text-[#18345C]">Habitación {(habitacion?.numero ?? (en ? 'Unassigned' : 'Sin asignar'))} · {reserva.tipoHabitacion}</b>Salida {reserva.fechaSalida}</p>
+                    <p className="text-sm text-[#52677F]"><b className="block text-[#18345C]">Habitación {(habitacion?.numero ?? (en ? 'Pending assignment' : 'Pendiente de asignación'))} · {reserva.tipoHabitacion}</b>Salida {reserva.fechaSalida}</p>
                   </div>
                   <button
                     disabled={!habitacion || !estanciaActiva()} onClick={() => setGestionEstancia("extender")}
@@ -906,7 +954,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
                 <div className="grid gap-5 border-b border-[#ECE7DE] pb-6 sm:grid-cols-2 lg:grid-cols-4">
                   {[
                     ["huesped", "Huésped", nombrePerfil],
-                    ["habitacion", "Habitación", `${(habitacion?.numero ?? (en ? 'Unassigned' : 'Sin asignar'))} · ${reserva.tipoHabitacion}`],
+                    ["habitacion", "Habitación", `${(habitacion?.numero ?? (en ? 'Pending assignment' : 'Pendiente de asignación'))} · ${reserva.tipoHabitacion}`],
                     ["fecha", "Estancia actual", `${fechaLarga(reserva.fechaEntrada)} — ${fechaLarga(reserva.fechaSalida)}`],
                     ["tarifa", "Tarifa por noche", `Q ${cuenta.precioNoche.toLocaleString()}`],
                   ].map(([icono, etiqueta, valor]) => <div key={etiqueta} className="flex items-center gap-3 lg:border-r lg:last:border-0">
@@ -1077,6 +1125,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
             setSeccion("chat");
           }} />);
       case "restaurante":
+        if(conectado)return <MenuHuespedConectado key={reserva.codigo} code={reserva.codigo} blockedReason={blockedStay}/>;
         if (!habitacion) return null;
         return (<ServiciosHuesped
           menu={menu}
@@ -1111,7 +1160,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
           onIrCuenta={() => setSeccion("cuenta")}
           modo="servicios" />);
       case "chat":
-        return <ChatHuesped key={huesped.id} nombreHuesped={huesped.nombre} mensajes={mensajes} onEnviar={enviarMensaje} onEditar={editarMensaje} onEliminar={eliminarMensaje} />;
+        return <ChatHuesped habilitado={chatHabilitado} key={huesped.id} nombreHuesped={huesped.nombre} mensajes={mensajes} onEnviar={enviarMensaje} onEditar={editarMensaje} onEliminar={eliminarMensaje} />;
       case "experiencias":
         return (<ReservasExperiencias
           reserva={reserva}
@@ -1181,6 +1230,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
             const active = seccion === s.id;
             const badge = badgeDe(s.id);
             return (<button
+              data-guest-section={s.id}
               key={s.id}
               onClick={() => setSeccion(s.id)}
               className="w-full flex items-center gap-3 px-5 py-3 text-left transition-colors relative"
@@ -1213,7 +1263,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
             {fotoPerfil ? (<img src={fotoPerfil} alt={ui("Foto de perfil")} className="w-9 h-9 rounded-full object-cover shrink-0" />) : (<div
               className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
               style={{ backgroundColor: "#D8B94E", color: "#102747" }}>
-              <UiText text="AM" />
+              {nombrePerfil.split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join('')}
             </div>)}
             <div className="min-w-0">
               <p className="text-white text-xs font-semibold truncate">
@@ -1222,7 +1272,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
               <p className="text-[10px] truncate" style={{ color: "#AEBCC1" }}>
                 {ui(estanciaCerrada
                   ? "Estancia finalizada"
-                  : `Habitación ${(habitacion?.numero ?? (en ? 'Unassigned' : 'Sin asignar'))}`)}
+                  : `Habitación ${(habitacion?.numero ?? (en ? 'Pending assignment' : 'Pendiente de asignación'))}`)}
               </p>
               <span className="mt-0.5 block text-[10px] font-semibold text-[#D8B94E]">
                 <UiText text="Perfil" />
@@ -1259,6 +1309,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
             const active = seccion === s.id;
             const badge = badgeDe(s.id);
             return (<button
+              data-guest-section={s.id}
               key={s.id}
               onClick={() => setSeccion(s.id)}
               className="flex-1 min-w-[64px] flex flex-col items-center justify-center py-2 gap-0.5 relative transition-colors"
@@ -1281,7 +1332,8 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
       </div>
     </div>
 
-    {perfilAbierto && (<PerfilHuesped
+    {perfilAbierto && conectado && <PerfilHuespedConectado huesped={huesped} onClose={()=>setPerfilAbierto(false)} onLogout={()=>{setPerfilAbierto(false);setCerrarSesionAbierto(true);}}/>}
+    {perfilAbierto && !conectado && (<PerfilHuesped
       huespedId={huesped.id}
       onCerrarSesion={() => { setPerfilAbierto(false); setCerrarSesionAbierto(true); }}
       documento={`${huesped.tipoDocumento} ${huesped.documento}`}

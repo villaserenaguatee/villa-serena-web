@@ -3,7 +3,7 @@ export interface LocalizedText {
   es: string;
   en: string;
   translatedAt?: string;
-  provider?: 'deepl';
+  provider?: 'deepl' | 'libretranslate';
 }
 export type TranslatableContentKind = 'room' | 'amenity' | 'menu-item' | 'service' | 'promotion' | 'public-notice' | 'chat-message';
 export interface TranslateRequest {
@@ -11,8 +11,9 @@ export interface TranslateRequest {
   sourceLocale?: SupportedLocale;
   targetLocale: SupportedLocale;
   contentKind: TranslatableContentKind;
+  protectedTerms?: string[];
 }
 export interface TranslateResponse {
   translations: string[];
-  provider: 'deepl';
+  provider: 'deepl' | 'libretranslate';
 }

@@ -1,17 +1,18 @@
 "use client";
+import ContactForm from '@/components/public/ContactForm';
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, CalendarDays, KeyRound, MessageCircle, ShieldCheck, Wifi, Smartphone, Mail, MapPin, Phone, Clock3, Search, BookOpen, HelpCircle, Users, Minus, Plus, ChevronDown, } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, KeyRound, MessageCircle, ShieldCheck, Wifi, Smartphone, Mail, MapPin, Phone, Clock3, Search, BookOpen, HelpCircle, Users, Minus, Plus, ChevronDown, ChevronLeft, ChevronRight, } from "lucide-react";
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
 import PublicLanguageToggle, { usePublicLanguage, } from "@/components/common/PublicLanguageToggle";
 import { UiText, useUiText } from "@/i18n/UiText";
 import BilingualDateInput from "@/components/common/BilingualDateInput";
-import { money } from "@/data/publicRooms";
 import { usePublicCatalog, usePublicHotel } from "@/lib/usePublicCatalog";
 import { publicSearchError } from "@/lib/publicStayValidation";
 import { translatePublicContent } from "@/lib/translation/client";
 import ScopedI18nProvider from "@/i18n/ScopedI18nProvider";
 import { validStay } from "@/lib/publicAvailability";
+
 const slides = [
   [
     "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1900&q=90",
@@ -61,7 +62,7 @@ const samplePublicReviews = [
     date: "septiembre de 2026",
     dateEn: "September 2026",
     rating: 5,
-    text: "Una estancia muy tranquila. La habitación estaba impecable y la atención fue excelente.",
+    text: "Una estancia muy tranquila. La habitación estaba impecable y la atención fue excelente.",    textEn: "A very peaceful stay. The room was spotless and the service was excellent.",
     sample: true
   },
   {
@@ -73,6 +74,7 @@ const samplePublicReviews = [
     dateEn: "September 2026",
     rating: 5,
     text: "Nos gustó mucho el ambiente del hotel, el servicio y la comodidad de la habitación.",
+    textEn: "We really enjoyed the hotel atmosphere, the service and the comfort of the room.",
     sample: true
   },
   {
@@ -84,6 +86,7 @@ const samplePublicReviews = [
     dateEn: "August 2026",
     rating: 4,
     text: "El personal fue muy amable y todo estuvo muy ordenado. Volvería a hospedarme en Villa Serena.",
+    textEn: "The staff were very friendly and everything was well organized. I would stay at Villa Serena again.",
     sample: true
   },
 ];
@@ -100,7 +103,7 @@ export default function Home() {
   </ScopedI18nProvider>);
 }
 function HomeContent() {
-  const { rooms: publicRooms } = usePublicCatalog();
+  const { rooms: publicRooms, loading: catalogLoading, error: catalogError } = usePublicCatalog();
   const hotel = usePublicHotel();
   const ui = useUiText();
   const [slide, setSlide] = useState(0),
@@ -113,12 +116,22 @@ function HomeContent() {
     [arrival, setArrival] = useState(""),
     [departure, setDeparture] = useState("");
   const [reviewPage, setReviewPage] = useState(0);
+  useEffect(() => {
+    const header = document.querySelector<HTMLElement>('[data-public-navigation]');
+    if (!header) return;
+    const update = () => {
+      header.classList.toggle('is-scrolled', window.scrollY > 12);
+      document.documentElement.style.setProperty('--public-nav-height', header.offsetHeight + 'px');
+    };
+    const resize = new ResizeObserver(update); resize.observe(header);
+    window.addEventListener('scroll', update, { passive: true }); update();
+    return () => { resize.disconnect(); window.removeEventListener('scroll', update); document.documentElement.style.removeProperty('--public-nav-height'); };
+  }, []);
+  const [reviewsPerPage,setReviewsPerPage]=useState(3);
   const [searchError, setSearchError] = useState("");
   const invalidSearch = publicSearchError(arrival, departure, adults, children, Math.max(0, ...publicRooms.map(room => room.capacity)));
   const [publicReviews, setPublicReviews] = useState<any[]>([]);
   const [reviewTranslations, setReviewTranslations] = useState<Record<string, string>>({});
-  const [reviewOriginal, setReviewOriginal] = useState<Record<string, boolean>>({});
-  const [reviewTranslationBusy, setReviewTranslationBusy] = useState<string | null>(null);
   useEffect(() => {
     const cargarResenas = () => {
       try {
@@ -146,34 +159,9 @@ function HomeContent() {
     return () => window.removeEventListener("vs-resenas-updated", cargarResenas);
   },
     []);
-  async function alternarTraduccionResena(review: any) {
-    const key = review.id || `${review.name}-${review.date}`;
-    if (reviewOriginal[key]) {
-      setReviewOriginal(v => ({ ...v, [key]: false }));
-      return;
-    }
-    if (reviewTranslations[key]) {
-      setReviewOriginal(v => ({ ...v, [key]: true }));
-      return;
-    }
-    if (!review.text)
-      return;
-    setReviewTranslationBusy(key);
-    try {
-      const result = await translatePublicContent([review.text], "public-notice");
-      const translated = result.translations[0];
-      if (translated) {
-        setReviewTranslations(v => ({ ...v, [key]: translated }));
-        setReviewOriginal(v => ({ ...v, [key]: true }));
-      }
-    }
-    catch { }
-    finally {
-      setReviewTranslationBusy(null);
-    }
-  }
   const reviewAverage = publicReviews.length ? publicReviews.reduce((s, r) => s + r.rating, 0) / publicReviews.length : 0;
-  const reviewPages = Math.max(1, Math.ceil(publicReviews.length / 3));
+  const reviewPages = Math.max(1, Math.ceil(publicReviews.length / reviewsPerPage));
+  useEffect(()=>setReviewPage(p=>Math.min(p,reviewPages-1)),[reviewPages]);
   useEffect(() => {
     const t = setInterval(() => setSlide((s) => (s + 1) % slides.length), 6500);
     return () => clearInterval(t);
@@ -194,8 +182,8 @@ function HomeContent() {
       ? <>From <a className={linkClass} href="#inicio">Home</a>, select your arrival date, departure date and number of guests. Then select <a className={linkClass} href="#buscar">Check availability</a> to view the rooms available for your stay.</>
       : <>Desde <a className={linkClass} href="#inicio">Inicio</a>, selecciona tu fecha de llegada, fecha de salida y número de huéspedes. Luego selecciona <a className={linkClass} href="#buscar">Comprobar disponibilidad</a> para consultar las habitaciones disponibles para tu estancia.</>;
     if (key === "rooms") return en
-      ? <>Select <a className={linkClass} href="/catalogo">View rooms</a> to browse the Villa Serena catalog. You can explore rooms and filter by category, number of guests, floor and price range.</>
-      : <>Selecciona <a className={linkClass} href="/catalogo">Ver habitaciones</a> para consultar el catálogo de Villa Serena. Puedes explorar las habitaciones y filtrar por categoría, número de huéspedes, piso y rango de precio.</>;
+      ? <>Select <a className={linkClass} href="/catalogo">View rooms</a> to browse the Villa Serena catalog. You can explore rooms and filter by category, number of guests and price range.</>
+      : <>Selecciona <a className={linkClass} href="/catalogo">Ver habitaciones</a> para consultar el catálogo de Villa Serena. Puedes explorar las habitaciones y filtrar por categoría, número de huéspedes y rango de precio.</>;
     if (key === "book") return en
       ? <>From <a className={linkClass} href="#buscar">Check availability</a>, browse the options for your dates and guests. Choose a room and select “Book room”. Enter your details, review the information and continue to card payment. Once payment is confirmed, select “View my booking” to see its details.</>
       : <>Desde <a className={linkClass} href="#buscar">Comprobar disponibilidad</a>, consulta las opciones para tus fechas y huéspedes. Elige una habitación y selecciona «Reservar habitación». Completa tus datos, revisa la información y continúa al pago con tarjeta. Cuando el pago esté confirmado, selecciona «Ver mi reserva» para consultar sus detalles.</>;
@@ -210,10 +198,11 @@ function HomeContent() {
       : <>Contacta a <a className={linkClass} href="#contacto">Recepción</a> e indica tu código de reserva y la modificación o cancelación que necesitas solicitar. Se aplicarán las condiciones de tu reserva. Si reservaste mediante una plataforma externa, la cancelación debe gestionarse en esa plataforma.</>;
   };
   const { en } = usePublicLanguage();
+  useEffect(()=>{const mq=matchMedia('(max-width:700px)');const update=()=>{setReviewsPerPage(mq.matches?1:3);setReviewPage(0);};update();mq.addEventListener('change',update);return()=>mq.removeEventListener('change',update);},[]);
+  useEffect(()=>{if(!en)return;const missing=publicReviews.filter(r=>!r.textEn&&!reviewTranslations[r.id||r.name+'-'+r.date]&&r.text);if(!missing.length)return;let active=true;translatePublicContent(missing.map(r=>r.text),'public-notice').then(v=>{if(active)setReviewTranslations(old=>({...old,...Object.fromEntries(missing.map((r,i)=>[r.id||r.name+'-'+r.date,v.translations[i]]))}));}).catch(()=>{});return()=>{active=false;};},[en,publicReviews]);
   return (<>
-    <PublicLanguageToggle />
     <main className="hotel-site">
-      <header className="hotel-nav">
+      <header className="hotel-nav" data-public-navigation>
         <VillaSerenaLogo light />
         <nav>
           <a href="#inicio">
@@ -239,6 +228,7 @@ function HomeContent() {
           <a href="#buscar" className="gold-button">
             {en ? "Book now" : "Reservar ahora"}
           </a>
+          <PublicLanguageToggle className="header-lang-toggle" />
         </div>
       </header>
 
@@ -261,10 +251,10 @@ function HomeContent() {
               : hotel?.descripcion ?? "Hospitalidad cercana, habitaciones cómodas y experiencias pensadas para acompañar tu estancia."}
           </p>
         </div>
-        <button className="carousel-arrow carousel-prev" onClick={() => setSlide((slide - 1 + slides.length) % slides.length)}>
+        <button type="button" aria-label={en ? "Previous slide" : "Imagen anterior"} className="carousel-arrow carousel-prev" onClick={() => setSlide((slide - 1 + slides.length) % slides.length)}>
           <ArrowLeft />
         </button>
-        <button className="carousel-arrow carousel-next" onClick={() => setSlide((slide + 1) % slides.length)}>
+        <button type="button" aria-label={en ? "Next slide" : "Imagen siguiente"} className="carousel-arrow carousel-next" onClick={() => setSlide((slide + 1) % slides.length)}>
           <ArrowRight />
         </button>
         <div className="carousel-dots">
@@ -368,6 +358,7 @@ function HomeContent() {
             <ArrowRight size={15} />
           </Link>
         </div>
+        {catalogLoading && <p role="status">{en ? "Loading rooms..." : "Cargando habitaciones..."}</p>}{catalogError && <p role="alert">{catalogError}</p>}
         <div className="public-room-grid">
           {featured.map((r) => (<article key={r.slug} className="public-room-card">
             <Link href={`/habitaciones/${r.slug}`} className="room-photo">
@@ -383,19 +374,12 @@ function HomeContent() {
               <p>
                 {ui(r.beds)}
                 <UiText text=" · " />
-                {r.size}
-                <UiText text=" m² · " />
+                {Number.isFinite(r.size) && r.size > 0 && <>{r.size}<UiText text=" m² · " /></>}
                 {r.capacity}
-                {en ? "guests" : "huéspedes"}
+                {en ? " guests" : " huéspedes"}
               </p>
               <footer>
-                <b>
-                  {money(r.price)}
-                  <small>
-                    <UiText text=" / " />
-                    {en ? "night" : "noche"}
-                  </small>
-                </b>
+                <b>Q{r.price.toFixed(2)} <small>{en ? "/ night" : "/ noche"}</small></b>
                 <Link href={`/habitaciones/${r.slug}`}>
                   {en ? "View room" : "Ver habitación"}
                   <UiText text=" →" />
@@ -406,7 +390,7 @@ function HomeContent() {
         </div>
       </section>
 
-      <section className="preference-section">
+      <section id="estancias" className="preference-section">
         <span className="section-kicker">
           {en ? "A STAY FOR YOU" : "VILLA SERENA SE ADAPTA A TI"}
         </span>
@@ -441,32 +425,23 @@ function HomeContent() {
             i) => (<article className="recommend-mini" key={r.slug}>
               <Link href={`/habitaciones/${r.slug}`}>
                 <img src={r.image} alt={ui(r.name)} />
+                {i === 0 && (<span className="recommend-photo-badge">
+                  {en ? "Recommended for you" : "Recomendada para ti"}
+                </span>)}
               </Link>
               <div>
-                {i === 0 && (<span className="section-kicker">
-                  {en ? "RECOMMENDED FOR YOU" : "RECOMENDADA PARA TI"}
-                </span>)}
                 <h3>
                   {ui(r.name)}
                 </h3>
                 <p>
                   {ui(r.beds)}
                   <UiText text=" · " />
-                  {r.size}
-                  <UiText text=" m² · " />
+                  {Number.isFinite(r.size) && r.size > 0 && <>{r.size}<UiText text=" m² · " /></>}
                   {r.capacity}
-                  {en ? "guests" : "huéspedes"}
+                  {en ? " guests" : " huéspedes"}
                 </p>
                 <div className="recommend-bottom">
-                  <b>
-                    {en ? "From" : "Desde"}
-                    {money(r.price)}
-                    {" "}
-                    <small>
-                      <UiText text="/ " />
-                      {en ? "night" : "noche"}
-                    </small>
-                  </b>
+                  <b>Q{r.price.toFixed(2)} <small>{en ? "/ night" : "/ noche"}</small></b>
                   <Link href={`/habitaciones/${r.slug}`}>
                     {en ? "View room" : "Ver habitación"}
                     {" "}
@@ -824,33 +799,9 @@ function HomeContent() {
             </article>))}
           </div>
         </div>
-        <form
-          className="contact-compact"
-          onSubmit={(e) => {
-            e.preventDefault();
-            alert(en ? "Thank you. We have received your message." : "Gracias. Hemos recibido tu mensaje.");
-          }}>
-          <h3>
-            <UiText text="Sugerencias y consultas" />
-          </h3>
-          <label>
-            <UiText text="Nombre" />
-            <input required />
-          </label>
-          <label>
-            <UiText text="Correo" />
-            <input required type="email" />
-          </label>
-          <label>
-            <UiText text="Mensaje" />
-            <textarea required />
-          </label>
-          <button className="gold-button">
-            <UiText text="Enviar mensaje" />
-          </button>
-        </form>
+        <ContactForm />
       </section>
-      <section className="guest-experiences" aria-labelledby="guest-experiences-title">
+      <section id="resenas" className="guest-experiences" aria-labelledby="guest-experiences-title">
 
         <div className="guest-experiences-body">
           <span className="section-kicker">
@@ -878,7 +829,7 @@ function HomeContent() {
                   {en ? "out of 5" : "de 5"}
                 </small>
               </strong>
-              <span aria-label={`${reviewAverage.toFixed(1)} de 5 estrellas`}>★★★★★</span>
+              <span aria-label={`${reviewAverage.toFixed(1)} ${en ? "out of 5 stars" : "de 5 estrellas"}`}>★★★★★</span>
               <i>
               </i>
               <b>
@@ -890,13 +841,11 @@ function HomeContent() {
               <button
                 className="review-arrow review-arrow-left"
                 aria-label={en ? "Previous reviews" : "Opiniones anteriores"}
-                onClick={() => setReviewPage((reviewPage - 1 + reviewPages) % reviewPages)}>‹</button>
+                onClick={() => setReviewPage((reviewPage - 1 + reviewPages) % reviewPages)}><ChevronLeft size={20} aria-hidden/></button>
               <div className="review-grid">
-                {publicReviews.slice(reviewPage * 3, reviewPage * 3 + 3).map(review => {
-                  const key = review.id || `${review.name}-${review.date}`;
-                  const mostrandoTraduccion = Boolean(reviewOriginal[key] && reviewTranslations[key]);
-                  return <article key={key} className="review-card">
-                    <div className="review-stars" aria-label={`${review.rating} de 5 estrellas`}>
+                {publicReviews.slice(reviewPage * reviewsPerPage, reviewPage * reviewsPerPage + reviewsPerPage).map(review => {
+                  const key = review.id || `${review.name}-${review.date}`;                  return <article key={key} className="review-card">
+                    <div className="review-stars" aria-label={`${review.rating} ${en ? "out of 5 stars" : "de 5 estrellas"}`}>
                       {[1, 2, 3, 4, 5].map(n => <span key={n} className={n <= review.rating ? 'filled' : ''}>★</span>)}
                     </div>
                     <div className="review-person">
@@ -919,18 +868,16 @@ function HomeContent() {
                       {review.sample ? (en ? "Sample review" : "Reseña de muestra") : (en ? "Verified stay" : "Estancia verificada")}
                     </em>
                     <p>
-                      {mostrandoTraduccion ? reviewTranslations[key] : review.text}
+                      {en ? review.textEn || reviewTranslations[key] || 'This review is not available in English yet.' : review.text}
                     </p>
-                    {review.text && <button type="button" className="review-translate" disabled={reviewTranslationBusy === key} onClick={() => alternarTraduccionResena(review)}>
-                      {reviewTranslationBusy === key ? (en ? "Translating…" : "Traduciendo…") : mostrandoTraduccion ? (en ? "View original" : "Ver original") : (en ? "Translate review" : "Traducir reseña")}
-                    </button>}
+
                   </article>;
                 })}
               </div>
               <button
                 className="review-arrow review-arrow-right"
                 aria-label={en ? "Next reviews" : "Opiniones siguientes"}
-                onClick={() => setReviewPage((reviewPage + 1) % reviewPages)}>›</button>
+                onClick={() => setReviewPage((reviewPage + 1) % reviewPages)}><ChevronRight size={20} aria-hidden/></button>
             </div>
             <div className="review-dots">
               {Array.from({ length: reviewPages }, (_, page) => page).map(page => <button

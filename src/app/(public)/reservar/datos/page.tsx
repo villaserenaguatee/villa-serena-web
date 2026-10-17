@@ -1,17 +1,22 @@
 "use client";
+import BookingDraftActions from '@/components/common/BookingDraftActions';
+import { passportCountries, validPassportIssuer, validDocument, validNationalPhone } from "@/lib/guestValidation";
 import { UiText, useUiText } from "@/i18n/UiText";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ChevronDown, Search } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
+import { bookingEmail } from '@/lib/bookingEmail';
 import { money } from "@/data/publicRooms";
 import { usePublicCatalog, usePublicQuotes } from "@/lib/usePublicCatalog";
 import { availableRoom, usePublicAvailability, validGuests } from "@/lib/publicAvailability";
-import { saveBookingDraft, readBookingDraft, BookingAttemptPendingError } from "@/lib/bookingDraft";
+import { saveBookingDraft, readBookingDraft, mergeBookingProfile, BookingAttemptPendingError } from "@/lib/bookingDraft";
+import BookingCountryPicker from "@/components/common/BookingCountryPicker";
+import { getCountryCallingCode } from "libphonenumber-js/max";
 export default function Datos() {
-  const { rooms: publicRooms, loading: catalogLoading, error: catalogError } = usePublicCatalog();
+  const { rooms: publicRooms, connected, loading: catalogLoading, error: catalogError } = usePublicCatalog();
   const ui = useUiText();
   const bookingText = useTranslations("publicBooking");
   const { en } = usePublicLanguage();
@@ -23,12 +28,16 @@ export default function Datos() {
     [tel, setTel] = useState(""),
     [prefix, setPrefix] = useState("+502"),
     [docType, setDocType] = useState("DPI"),
+    [passportIssuer, setPassportIssuer] = useState(''),
     [documento, setDocumento] = useState(""),
     [nacionalidad, setNacionalidad] = useState("Guatemala"),
     [hora, setHora] = useState("15:00"),
-    [review, setReview] = useState(false),
-    [countryOpen, setCountryOpen] = useState(false),
-    [countrySearch, setCountrySearch] = useState("");
+    [review, setReview] = useState(false);
+  const countryOptions = useMemo(() => {
+    const names = new Intl.DisplayNames([en ? 'en' : 'es'], { type: 'region' });
+    return passportCountries.map(code => ({ value: code, label: names.of(code) || code })).sort((a, b) => a.label.localeCompare(b.label, en ? 'en' : 'es'));
+  }, [en]);
+  const phoneOptions = useMemo(() => countryOptions.map(o => ({ value: '+' + getCountryCallingCode(o.value as typeof passportCountries[number]), label: o.label + ' (+' + getCountryCallingCode(o.value as typeof passportCountries[number]) + ')' })), [countryOptions]);
   const habitacion = sp.get("habitacion") || "",
     llegada = sp.get("llegada") || "",
     salida = sp.get("salida") || "",
@@ -36,10 +45,11 @@ export default function Datos() {
     ninos = sp.get("ninos") || "0",
     huespedes = String(Number(adultos) + Number(ninos));
   const room = publicRooms.find((x) => sp.get("slug") ? x.slug === sp.get("slug") : x.name === habitacion);
-  const inventory = usePublicAvailability({ arrival: llegada, departure: salida, adults: Number(adultos), children: Number(ninos) }, room?.capacity ?? 0);
+  const inventory = usePublicAvailability({ arrival: llegada, departure: salida, adults: Number(adultos), children: Number(ninos) }, room?.capacity ?? 0, !connected);
   const quoteResult = usePublicQuotes(llegada, salida, Number(adultos), Number(ninos), room?.capacity ?? 0);
-  const quote = quoteResult.quotes.find(q => q.tipoHabitacion.id === room?.apiTypeId);
+  const quote = quoteResult.quotes.find(q => q.ofertaSlug === room?.slug);
   const physical = room && validGuests(Number(adultos), Number(ninos)) ? availableRoom(room, llegada, salida, Number(huespedes), inventory, sp.get("habitacionId") || undefined) : undefined;
+  const available = Boolean(quote) && (connected || Boolean(physical));
   const nights = useMemo(() => {
     if (!llegada || !salida)
       return 1;
@@ -47,6 +57,11 @@ export default function Datos() {
   }, [llegada, salida]);
   const total = quote?.total ?? 0;
   const [draftError, setDraftError] = useState("");
+  const continueLock = useRef(false);
+  const reviewLock=useRef(false);
+  const [savingReview,setSavingReview]=useState(false);
+  const [continuing, setContinuing] = useState(false);
+  const [socialBusy, setSocialBusy] = useState(false), [socialMessage, setSocialMessage] = useState("");
   useEffect(() => {
     const draft = readBookingDraft(sp.get("draft") || "");
     if (!draft) return;
@@ -54,13 +69,56 @@ export default function Datos() {
     setNombre(saved.get("nombre") || ""); setApellidos(saved.get("apellidos") || "");
     setCorreo(saved.get("correo") || ""); setDocumento(saved.get("documento") || "");
     setDocType(saved.get("tipoDocumento") || "DPI"); setNacionalidad(saved.get("nacionalidad") || "Guatemala");
+    setPassportIssuer(saved.get('paisEmisorPasaporte') || '');
     const [code, ...phone] = (saved.get("telefono") || "+502 ").split(" ");
     setPrefix(code); setTel(phone.join(" ")); setHora(saved.get("hora") || "15:00");
+    if(sp.get('editar')==='1') {
+      setReview(false);setValidationShown(false);setDraftError('');
+      continueLock.current=false;setContinuing(false);
+    }
   }, [sp]);
-  function continueBooking() {
-    if (!physical || !quote) return;
-    try { r.push("/reservar/pago?" + saveBookingDraft(q(), sp.get("draft") || "")); }
-    catch (error) { setDraftError(error instanceof BookingAttemptPendingError ? bookingText("requestUncertain") : en ? "Could not save your details. Try again." : "No se pudieron guardar tus datos. Intenta nuevamente."); }
+  useEffect(() => {
+    const status = sp.get('social'), draftId = sp.get('draft');
+    if (!status) return;
+    if (status !== 'profile' || !draftId) {
+      setSocialMessage(status === 'cancelled' ? (en ? 'Sign-in cancelled. Your booking details are preserved; you can continue with email.' : 'Acceso cancelado. Conservamos los datos de tu reserva; puedes continuar con correo.') : (en ? 'Sign-in could not be completed. You can retry or continue with email.' : 'No se pudo completar el acceso. Puedes reintentar o continuar con correo.'));
+      return;
+    }
+    const controller = new AbortController();
+    fetch('/api/auth/booking-social/profile?draft=' + encodeURIComponent(draftId), { cache: 'no-store', signal: controller.signal }).then(async response => {
+      if (!response.ok) throw new Error('profile');
+      const profile = await response.json();
+      const params = mergeBookingProfile(draftId, profile);
+      setNombre(params.get('nombre') || ''); setApellidos(params.get('apellidos') || ''); setCorreo(params.get('correo') || '');
+      setSocialMessage(en ? 'Profile received. Review and complete your details to continue; no booking has been created.' : 'Perfil recibido. Revisa y completa tus datos para continuar; todavía no se ha creado una reserva.');
+    }).catch(() => { if (!controller.signal.aborted) setSocialMessage(en ? 'Your profile could not be loaded. Your booking details are preserved; continue with email.' : 'No se pudo cargar tu perfil. Conservamos los datos de tu reserva; continúa con correo.'); });
+    return () => controller.abort();
+  }, [sp, en]);
+  async function socialLogin(provider: 'google' | 'facebook') {
+    if (socialBusy) return;
+    setMethod(provider); setSocialBusy(true); setSocialMessage('');
+    try {
+      const query = saveBookingDraft(q(), sp.get('draft') || '');
+      // Put the draft in history before leaving, including when configuration is absent.
+      window.history.replaceState(null, '', '/reservar/datos?' + query.toString());
+      const response = await fetch(`/api/auth/booking-social/${provider}/start`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: query.toString() }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.codigo === 'SOCIAL_NO_CONFIGURADO' ? 'configuration' : 'request');
+      window.location.assign(result.url);
+    } catch (error) {
+      setSocialMessage(error instanceof BookingAttemptPendingError ? bookingText('requestUncertain') : error instanceof Error && error.message === 'configuration' ? (en ? 'This sign-in option is not available yet. Your booking details are preserved; continue with email.' : 'Esta opción de acceso todavía no está disponible. Conservamos los datos de tu reserva; continúa con correo.') : (en ? 'Sign-in could not be started. You can retry or continue with email.' : 'No se pudo iniciar el acceso. Puedes reintentar o continuar con correo.'));
+      setSocialBusy(false);
+    }
+  }
+  async function continueBooking() {
+    if (!available || continueLock.current) return;
+    continueLock.current = true; setContinuing(true);
+    try {
+      const params = q(), saved = saveBookingDraft(params, sp.get('draft') || '');
+      const status = await bookingEmail('estado', { correo: params.get('correo') || '', borrador: saved.get('draft') || '' }, en).catch(() => ({ verificado: false }));
+      r.push((status.verificado ? '/reservar/pago?' : '/reservar/verificar?') + saved);
+    }
+    catch (error) { continueLock.current = false; setContinuing(false); setDraftError(error instanceof BookingAttemptPendingError ? bookingText("requestUncertain") : en ? "Could not save your details. Try again." : "No se pudieron guardar tus datos. Intenta nuevamente."); }
   }
   const q = () => new URLSearchParams({
     nombre,
@@ -69,6 +127,7 @@ export default function Datos() {
     telefono: `${prefix} ${tel}`,
     tipoDocumento: docType,
     documento,
+    paisEmisorPasaporte: docType === 'Pasaporte' ? passportIssuer : '',
     nacionalidad,
     hora,
     habitacion: room?.name || habitacion,
@@ -85,8 +144,12 @@ export default function Datos() {
     huespedes,
     total: String(total),
   });
-  function submit(e: FormEvent) {
+  const [validationShown, setValidationShown] = useState(false);
+  async function submit(e: FormEvent) {
     e.preventDefault();
+    if(reviewLock.current)return;
+    setValidationShown(true);
+    if (!validDocument(docType, documento) || (docType === 'Pasaporte' && !validPassportIssuer(passportIssuer)) || !validNationalPhone(prefix, tel)) return;
     if (![nombre, apellidos, correo, tel, documento, nacionalidad].every(v => v.trim())) {
       setDraftError(en ? "Complete all required guest details." : "Completa todos los datos obligatorios del huésped.");
       return;
@@ -96,13 +159,25 @@ export default function Datos() {
       return;
     }
     setDraftError("");
-    if (physical && quote)
-      setReview(true);
+    if (available) {
+      reviewLock.current=true;setSavingReview(true);
+      try {
+        const params=q(),id=sp.get('draft')||'',previous=readBookingDraft(id);
+        if(previous?.attempt&&previous.params!==params.toString())throw new BookingAttemptPendingError();
+        const oldEmail=new URLSearchParams(previous?.params||'').get('correo')||'';
+        if(previous&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(oldEmail.trim())&&oldEmail.trim().toLowerCase()!==correo.trim().toLowerCase())await bookingEmail('actualizar',{correo,borrador:id,anterior:oldEmail},en);
+        const saved=saveBookingDraft(params,id);
+        setReview(true);
+        r.replace('/reservar/datos?'+saved.toString());
+      } catch(error) {
+        setDraftError(error instanceof BookingAttemptPendingError?bookingText('requestUncertain'):en?'Could not save your details. Try again.':'No se pudieron guardar tus datos. Intenta nuevamente.');
+      } finally {reviewLock.current=false;setSavingReview(false);}
+    }
   }
-  if (!physical || !quote)
+  if (!available)
     return (<main className="reserve-public">
       <p role="status">
-        {catalogError || (!catalogLoading && quoteResult.error) || (!inventory || catalogLoading || quoteResult.loading ? (en ? "Loading availability..." : "Cargando disponibilidad...") : inventory.error ? (en ? "Availability could not be checked. Try again." : "No se pudo consultar la disponibilidad. Intenta nuevamente.") : (en ? "This room is unavailable or the stay is invalid." : "La habitación no está disponible o la estancia no es válida."))}
+        {catalogError || (!catalogLoading && quoteResult.error) || (catalogLoading || quoteResult.loading || (!connected && !inventory) ? (en ? "Loading availability..." : "Cargando disponibilidad...") : !connected && inventory?.error ? (en ? "Availability could not be checked. Try again." : "No se pudo consultar la disponibilidad. Intenta nuevamente.") : (en ? "This room is unavailable or the stay is invalid." : "La habitación no está disponible o la estancia no es válida."))}
       </p>
       <button className="reserve-primary" onClick={() => r.push(`/reservar/habitaciones?${sp.toString()}`)}>
         {en ? "Back to results" : "Volver a resultados"}
@@ -124,6 +199,7 @@ export default function Datos() {
         <h3>
           {ui(room?.name || habitacion)}
         </h3>
+        {connected && <p role="note">{room?.inventoryNote}</p>}
         {room && <p>{ui(room.type)} · {money(room.price)} {en ? "/ night" : "/ noche"}</p>}
         <div className="summary-dates">
           <span>
@@ -184,25 +260,20 @@ export default function Datos() {
           {ui(review ? "Revisa tus datos" : "Introduce tus datos")}
         </h1>
         {!review ? (<>
-          <p className="social-copy">
-            <UiText text="Continúa con una opción rápida o introduce tus datos con correo electrónico." />
-          </p>
-          <div className="social-booking">
-            <button onClick={() => setMethod("google")} className={method === "google" ? "active" : ""}>
+          <div className="social-booking social-booking-google-only">
+            <button type="button" disabled={socialBusy} onClick={() => void socialLogin('google')} className={method === "google" ? "active" : ""}>
               <span aria-hidden="true">G&nbsp;&nbsp;</span>
-              {en ? "Continue with Google" : "Continuar con Google"}
-            </button>
-            <button onClick={() => setMethod("facebook")} className={method === "facebook" ? "active" : ""}>
-              <span aria-hidden="true">f&nbsp;&nbsp;</span>
-              {en ? "Continue with Facebook" : "Continuar con Facebook"}
+              {en ? "Fill in with Google" : "Completar con Google"}
             </button>
           </div>
+          {socialBusy && <p role="status">{en ? 'Opening sign-in…' : 'Abriendo acceso…'}</p>}
+          {socialMessage && <p role="status">{socialMessage}</p>}
           <div className="or-divider">
             <span>
-              <UiText text="o continúa con tu correo" />
+              {en ? "or fill in your details manually" : "o completa tus datos manualmente"}
             </span>
           </div>
-          <form onSubmit={submit}>
+          <form onSubmit={submit} onInvalidCapture={() => setValidationShown(true)}>
             {draftError && <p role="alert">{draftError}</p>}
             <div className="guest-form-grid">
               <label>
@@ -213,130 +284,55 @@ export default function Datos() {
                 <UiText text="Apellidos" />
                 <input required value={apellidos} onChange={(e) => setApellidos(e.target.value)} />
               </label>
-              <label>
+              <label className="booking-document-type">
                 <UiText text="Tipo de documento" />
-                <select value={docType} onChange={(e) => setDocType(e.target.value)}>
+                <select value={docType} onChange={(e) => { setDocType(e.target.value); if (e.target.value === 'DPI') setDocumento(value => value.replace(/\D/g, '').slice(0, 13)); }}>
                   <option value="DPI">DPI</option>
                   <option value="Pasaporte">
                     {ui("Pasaporte")}
                   </option>
                 </select>
               </label>
+              {docType === 'Pasaporte' && <label>
+                {en ? 'Passport issuing country' : 'País emisor del pasaporte'}
+                <BookingCountryPicker label={en ? 'Passport issuing country' : 'País emisor del pasaporte'} value={passportIssuer} options={countryOptions} onChange={setPassportIssuer} en={en} />
+                {validationShown && !validPassportIssuer(passportIssuer) && <small id="reservation-issuer-error" role="alert" className="text-red-800">{en ? 'Select the passport issuing country.' : 'Selecciona el país emisor del pasaporte.'}</small>}
+              </label>}
               <label>
                 <UiText text="Número de documento" />
                 <input
+                  aria-label={en ? 'Document number' : 'Número de documento'}
                   required
                   value={documento}
-                  onChange={(e) => setDocumento(e.target.value.replace(docType === "DPI" ? /\D/g : /[^A-Za-z0-9]/g, "").slice(0, docType === "DPI" ? 13 : 20))}
-                  maxLength={docType === "DPI" ? 13 : 20}
+                  aria-invalid={validationShown && !validDocument(docType, documento)}
+                  aria-describedby="reservation-document-error"
+                  onChange={(e) => setDocumento(docType === "DPI" ? e.target.value.replace(/\D/g, "").slice(0, 13) : e.target.value)}
+                  pattern={docType === 'DPI' ? '[0-9]{13}' : '[A-Za-z0-9]+'}
+                  title={docType === 'DPI' ? (en ? 'Exactly 13 digits' : 'Exactamente 13 dígitos') : (en ? 'Use the letters and numbers printed on your passport' : 'Usa las letras y números impresos en tu pasaporte')}
+                  maxLength={docType === "DPI" ? 13 : 30}
                   inputMode={docType === "DPI" ? "numeric" : "text"} />
+                {validationShown && !validDocument(docType, documento) && <small id="reservation-document-error" role="alert" className="text-red-800">{docType === 'DPI' ? (en ? 'The DPI must contain exactly 13 digits.' : 'El DPI debe contener exactamente 13 dígitos.') : (en ? 'Use letters and numbers only, within the supported 30-character storage limit.' : 'Usa solo letras y números, dentro del límite de almacenamiento de 30 caracteres.')}</small>}
               </label>
               <label>
                 <UiText text="Correo electrónico" />
                 <input required type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} />
               </label>
-              <label>
+              <label className="booking-phone-field">
                 <UiText text="Teléfono" />
                 <div className="phone-combo">
-                  <div className="country-picker">
-                    <button type="button" className="country-trigger" onClick={() => setCountryOpen(!countryOpen)}>
-                      {({
-                        " +502": "🇬🇹",
-                        "+502": "🇬🇹",
-                        "+503": "🇸🇻",
-                        "+504": "🇭🇳",
-                        "+501": "🇧🇿",
-                        "+506": "🇨🇷",
-                        "+507": "🇵🇦",
-                        "+52": "🇲🇽",
-                        "+1": "🇺🇸",
-                        "+57": "🇨🇴",
-                        "+34": "🇪🇸",
-                        "+51": "🇵🇪",
-                        "+54": "🇦🇷",
-                        "+56": "🇨🇱",
-                        "+593": "🇪🇨",
-                        "+591": "🇧🇴",
-                        "+595": "🇵🇾",
-                        "+598": "🇺🇾",
-                        "+58": "🇻🇪",
-                        "+55": "🇧🇷",
-                        "+44": "🇬🇧",
-                        "+33": "🇫🇷",
-                        "+49": "🇩🇪",
-                        "+39": "🇮🇹",
-                      } as Record<string, string>)[prefix] || "🌐"}
-                      {" "}
-                      {prefix}
-                      <ChevronDown size={16} />
-                    </button>
-                    {countryOpen && (<div className="country-menu">
-                      <div className="country-search">
-                        <Search size={15} />
-                        <input autoFocus placeholder={ui("Buscar país o código")} value={countrySearch} onChange={(e) => setCountrySearch(e.target.value)} />
-                      </div>
-                      <div className="country-list">
-                        {[
-                          ["🇬🇹", "+502", "Guatemala"],
-                          ["🇸🇻", "+503", "El Salvador"],
-                          ["🇭🇳", "+504", "Honduras"],
-                          ["🇧🇿", "+501", "Belice"],
-                          ["🇨🇷", "+506", "Costa Rica"],
-                          ["🇵🇦", "+507", "Panamá"],
-                          ["🇲🇽", "+52", "México"],
-                          ["🇺🇸", "+1", "Estados Unidos / Canadá"],
-                          ["🇨🇴", "+57", "Colombia"],
-                          ["🇪🇸", "+34", "España"],
-                          ["🇵🇪", "+51", "Perú"],
-                          ["🇦🇷", "+54", "Argentina"],
-                          ["🇨🇱", "+56", "Chile"],
-                          ["🇪🇨", "+593", "Ecuador"],
-                          ["🇧🇴", "+591", "Bolivia"],
-                          ["🇵🇾", "+595", "Paraguay"],
-                          ["🇺🇾", "+598", "Uruguay"],
-                          ["🇻🇪", "+58", "Venezuela"],
-                          ["🇧🇷", "+55", "Brasil"],
-                          ["🇬🇧", "+44", "Reino Unido"],
-                          ["🇫🇷", "+33", "Francia"],
-                          ["🇩🇪", "+49", "Alemania"],
-                          ["🇮🇹", "+39", "Italia"],
-                        ]
-                          .filter((x) => (x[1] + " " + x[2])
-                            .toLowerCase()
-                            .includes(countrySearch
-                              .toLowerCase()
-                              .replace(/^\+/, "")
-                              .trim()) || x[1].includes(countrySearch.trim()))
-                          .map((x) => (<button
-                            type="button"
-                            key={x[1]}
-                            onClick={() => {
-                              setPrefix(x[1]);
-                              setCountryOpen(false);
-                              setCountrySearch("");
-                            }}>
-                            <span>
-                              {x[0]}
-                            </span>
-                            <b>
-                              {x[1]}
-                            </b>
-                            <span>
-                              {ui(x[2])}
-                            </span>
-                          </button>))}
-                      </div>
-                    </div>)}
-                  </div>
+                  <BookingCountryPicker compact label={en ? 'Phone country code' : 'Prefijo telefónico'} value={prefix} options={phoneOptions} onChange={code => { setPrefix(code); setTel(value => value.replace(/\D/g, '').slice(0, code === '+502' ? 8 : 15 - code.length + 1)); }} en={en} />
                   <input
                     className="phone-number-input"
+                    aria-label={en ? 'Phone' : 'Teléfono'}
                     required
                     inputMode="tel"
-                    placeholder="5555 5555"
                     value={tel}
-                    onChange={(e) => setTel(e.target.value.replace(/\D/g, "").slice(0, ["+1", "+52", "+34", "+44"].includes(prefix) ? 10 : 8))}
-                    maxLength={["+1", "+52", "+34", "+44"].includes(prefix) ? 10 : 8} />
+                    aria-invalid={validationShown && !validNationalPhone(prefix, tel)}
+                    aria-describedby="reservation-phone-error"
+                    onChange={(e) => setTel(e.target.value.replace(/\D/g, "").slice(0, prefix === "+502" ? 8 : 15 - prefix.length + 1))}
+                    maxLength={prefix === '+502' ? 8 : 15 - prefix.length + 1} pattern={prefix === '+502' ? '[0-9]{8}' : '[0-9]+'} />
                 </div>
+                {validationShown && !validNationalPhone(prefix, tel) && <small id="reservation-phone-error" role="alert" className="text-red-800">{prefix === '+502' ? (en ? 'Enter exactly 8 digits, without repeating +502. Letters are not allowed.' : 'Introduce exactamente 8 dígitos, sin repetir +502. No se admiten letras.') : (en ? 'Enter a valid number for the selected country, without repeating the country code.' : 'Introduce un número válido para el país elegido, sin repetir el prefijo.')}</small>}
               </label>
               <label>
                 <UiText text="Nacionalidad" />
@@ -347,7 +343,7 @@ export default function Datos() {
                 <input required type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
               </label>
             </div>
-            <button className="reserve-primary">
+            <button className="reserve-primary" disabled={savingReview}>
               <UiText text="Revisar datos" />
             </button>
           </form>
@@ -370,6 +366,7 @@ export default function Datos() {
               {documento}
             </b>
           </div>
+          {docType === 'Pasaporte' && <div><small>{en ? 'Passport issuing country' : 'País emisor del pasaporte'}</small><b>{new Intl.DisplayNames([en ? 'en' : 'es'], { type: 'region' }).of(passportIssuer)}</b></div>}
           <div>
             <small>
               <UiText text="Correo" />
@@ -426,12 +423,13 @@ export default function Datos() {
             <button className="reserve-secondary" onClick={() => setReview(false)}>
               <UiText text="Editar" />
             </button>
-            <button className="reserve-primary" onClick={continueBooking}>
+            <button className="reserve-primary" disabled={continuing} onClick={continueBooking}>
               <UiText text="Continuar" />
             </button>
           </div>
         </div>)}
       </section>
     </div>
+    <BookingDraftActions />
   </main>);
 }

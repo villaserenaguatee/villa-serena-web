@@ -1,7 +1,9 @@
+import { statusBadge, statusTone } from './statusStyle';
 import { calcularCuentaEstancia } from '@/lib/pms/cuentaEstancia';
-import type { ReactNode } from 'react';
+import { Children, cloneElement, isValidElement, useId, type ReactNode } from 'react';
 import type { EstadoReserva, EstadoHabHotel, EstadoSolicitudHuesped, PrioridadSolicitud, HabitacionHotel, Reserva, } from '@/lib/pms/types';
-export { rangosSeSolapan, habitacionTieneConflicto, habitacionesDisponibles } from '../roomAvailability';
+import { MONEDA, nochesEntre } from '@/data/pms';
+import { leerTarifas } from '@/store/tarifasStore';
 export function dinero(n: number): string {
   return `Q ${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 }
@@ -15,16 +17,17 @@ export const RESERVA_META: Record<EstadoReserva, {
   'finalizada': { label: 'Finalizada', chip: 'bg-[#F1F5F9] text-[#475569] border-[#CBD5E1]' },
   'cancelada': { label: 'Cancelada', chip: 'bg-[#FEF2F2] text-[#991B1B] border-[#FCA5A5]' },
 };
+export const RECEPTION_RESERVA_META = Object.fromEntries(Object.entries(RESERVA_META).map(([key, value]) => [key, { ...value, chip: statusTone(key) }])) as typeof RESERVA_META;
 export const HAB_META: Record<EstadoHabHotel, {
   label: string;
   chip: string;
   dot: string;
 }> = {
-  'disponible': { label: 'Disponible', chip: 'bg-[#F0FAF4] text-[#166534] border-[#86EFAC]', dot: '#22C55E' },
-  'ocupada': { label: 'Ocupada', chip: 'bg-[#FEF2F2] text-[#991B1B] border-[#FCA5A5]', dot: '#EF4444' },
-  'reservada': { label: 'Reservada', chip: 'bg-[#EFF6FF] text-[#1E40AF] border-[#93C5FD]', dot: '#3B82F6' },
-  'en-limpieza': { label: 'En limpieza', chip: 'bg-[#FFF7ED] text-[#9A3412] border-[#FDBA74]', dot: '#FB923C' },
-  'mantenimiento': { label: 'En mantenimiento', chip: 'bg-[#F1F5F9] text-[#475569] border-[#CBD5E1]', dot: '#94A3B8' },
+  'disponible': { label: 'Disponible', chip: statusTone("disponible"), dot: '#22C55E' },
+  'ocupada': { label: 'Ocupada', chip: statusTone("ocupada"), dot: '#EF4444' },
+  'reservada': { label: 'Reservada', chip: statusTone("reservada"), dot: '#3B82F6' },
+  'en-limpieza': { label: 'En limpieza', chip: statusTone("en-limpieza"), dot: '#FB923C' },
+  'mantenimiento': { label: 'En mantenimiento', chip: statusTone("mantenimiento"), dot: '#94A3B8' },
 };
 export const HAB_TRANSICIONES: Record<EstadoHabHotel, EstadoHabHotel[]> = {
   'disponible': ['reservada', 'mantenimiento', 'en-limpieza'],
@@ -51,9 +54,9 @@ export const SOLICITUD_META: Record<EstadoSolicitudHuesped, {
   label: string;
   chip: string;
 }> = {
-  'pendiente': { label: 'Pendiente', chip: 'bg-[#FFFBEF] text-[#78450A] border-[#F3D98B]' },
-  'en-proceso': { label: 'En proceso', chip: 'bg-[#EFF6FF] text-[#1E40AF] border-[#93C5FD]' },
-  'atendida': { label: 'Atendida', chip: 'bg-[#F0FAF4] text-[#166534] border-[#86EFAC]' },
+  'pendiente': { label: 'Pendiente', chip: statusTone('pendiente') },
+  'en-proceso': { label: 'En proceso', chip: statusTone("en-proceso") },
+  'atendida': { label: 'Atendida', chip: statusTone("atendida") },
 };
 export const PRIORIDAD_META: Record<PrioridadSolicitud, {
   label: string;
@@ -71,6 +74,40 @@ export function Chip({ cls, children }: {
   return (<span className={`inline-flex h-fit w-fit shrink-0 items-center whitespace-nowrap text-[11px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wide border ${cls}`}>
     {children}
   </span>);
+}
+export function rangosSeSolapan(aIn: string, aOut: string, bIn: string, bOut: string): boolean {
+  return aIn < bOut && bIn < aOut;
+}
+const ESTADOS_BLOQUEANTES: EstadoReserva[] = ['pendiente', 'confirmada', 'en-curso'];
+export function habitacionTieneConflicto(habitacionId: string,
+  entrada: string,
+  salida: string,
+  reservas: Reserva[],
+  ignorarReservaId?: string): boolean {
+  return reservas.some(r => r.id !== ignorarReservaId &&
+    r.habitacionId === habitacionId &&
+    ESTADOS_BLOQUEANTES.includes(r.estado) &&
+    rangosSeSolapan(entrada, salida, r.fechaEntrada, r.fechaSalida));
+}
+export function habitacionesDisponibles(entrada: string,
+  salida: string,
+  habitaciones: HabitacionHotel[],
+  reservas: Reserva[],
+  opciones?: {
+    personas?: number;
+    tipo?: string;
+    ignorarReservaId?: string;
+  }): HabitacionHotel[] {
+  const { personas, tipo, ignorarReservaId } = opciones ?? {};
+  return habitaciones.filter(h => {
+    if (h.estado === 'mantenimiento')
+      return false;
+    if (tipo && h.tipo !== tipo)
+      return false;
+    if (personas && h.capacidad < personas)
+      return false;
+    return !habitacionTieneConflicto(h.id, entrada, salida, reservas, ignorarReservaId);
+  });
 }
 export interface ResumenCuenta {
   noches: number;
@@ -154,12 +191,24 @@ export function Campo({ label, error, children, }: {
   error?: string;
   children: ReactNode;
 }) {
+  const id = useId(), labelId = `${id}-label`, errorId = `${id}-error`;
+  const hasTextInput = (nodes: ReactNode): boolean => Children.toArray(nodes).some(node => isValidElement<{children?:ReactNode;type?:string}>(node) && ((node.type === 'input' && !['radio','checkbox'].includes(node.props.type??'')) || node.type === 'textarea' || hasTextInput(node.props.children)));
+  const textInput = hasTextInput(children);
+  const connect = (nodes: ReactNode): ReactNode => Children.map(nodes, node => {
+    if (!isValidElement<Record<string,unknown>>(node)) return node;
+    const props: Record<string,unknown> = node.props.children === undefined ? {} : {children:connect(node.props.children as ReactNode)};
+    if ((node.type === 'input' && !['radio','checkbox'].includes(String(node.props.type??''))) || node.type === 'textarea' || (node.type === 'select' && !textInput)) {
+      if (!node.props['aria-label'] && !node.props['aria-labelledby']) props['aria-labelledby'] = labelId;
+      if (error) {props['aria-invalid']=true;props['aria-describedby']=[node.props['aria-describedby'],errorId].filter(Boolean).join(' ');}
+    } else if (node.type === 'select' && textInput && !node.props['aria-label']) props['aria-label']='Prefijo de teléfono';
+    return cloneElement(node, props);
+  });
   return (<div>
-    <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-1.5">
+    <p id={labelId} className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-1.5">
       {label}
     </p>
-    {children}
-    {error && <p className="text-xs text-[#991B1B] mt-1">
+    {connect(children)}
+    {error && <p id={errorId} role="alert" className="text-xs text-[#991B1B] mt-1">
       {error}
     </p>}
   </div>);

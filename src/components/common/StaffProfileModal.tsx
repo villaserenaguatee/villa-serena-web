@@ -6,6 +6,7 @@ import { guardarEmpleados, leerEmpleados } from '@/store/employeeStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslations } from 'next-intl';
 import { esCuentaDemoArea } from '@/lib/auth/local-auth';
+import StaffProfileConnected from './StaffProfileConnected';
 type Sec = 'personal' | 'contacto' | 'laboral' | 'seguridad' | 'cambiarTelefono' | 'verificarTelefono' | 'cambiarClave' | 'foto' | 'salir' | null;
 type PerfilModalProps = {
   open: boolean;
@@ -25,7 +26,8 @@ type Perfil = {
   foto: string;
 };
 const inputClass = 'w-full rounded-xl border border-[#D9D5CC] bg-white px-3 py-2.5 text-[#18345C] outline-none transition focus:border-[#B58B2A] focus:ring-2 focus:ring-[#D8B94E]/20';
-export default function StaffProfileModal({ open, onClose, name, role, email, onSolicitarCodigoTelefono, onVerificarCodigoTelefono, onActualizarTelefono, onCambiarClave }: PerfilModalProps) {
+export default function StaffProfileModal(props:PerfilModalProps){const {user}=useAuth();return user?.staff ? <StaffProfileConnected open={props.open} onClose={props.onClose}/> : <StaffProfileLocal {...props}/>;}
+function StaffProfileLocal({ open, onClose, name, role, email, onSolicitarCodigoTelefono, onVerificarCodigoTelefono, onActualizarTelefono, onCambiarClave }: PerfilModalProps) {
   const tAuth = useTranslations("auth");
   const { user, logout } = useAuth();
   const area = useMemo(() => role.split('·')[0].trim().replace('Encargado de mantenimiento', 'Mantenimiento'), [role]);

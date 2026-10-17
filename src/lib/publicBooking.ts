@@ -43,7 +43,7 @@ export async function confirmarReservaPublica(params: URLSearchParams, promoCode
     departure: params.get('salida') || '', adults: Number(params.get('adultos') || params.get('huespedes') || 1),
     children: Number(params.get('ninos') || 0), guest, paymentMethod, promoCode: promoCode.trim().toUpperCase(), expectedTotal: Number(params.get('total')) };
   let requestId: string;
-  try { requestId = bookingAttempt(draftId, JSON.stringify(request)); }
+  try { requestId = await bookingAttempt(draftId, JSON.stringify(request)); }
   catch (error) { throw new PublicBookingError(error instanceof BookingAttemptPendingError ? 'requestUncertain' : 'saveFailed'); }
   return submitBooking(request, requestId, draftId, readBookingDraft(draftId)?.attempt?.code);
 }
