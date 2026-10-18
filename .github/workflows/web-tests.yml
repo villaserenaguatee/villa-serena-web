@@ -2,10 +2,7 @@ name: Web tests
 
 on:
   pull_request:
-    branches: [develop, main]
-  push:
-    branches: [develop]
-  workflow_dispatch:
+    branches: [main]
 
 permissions:
   contents: read
