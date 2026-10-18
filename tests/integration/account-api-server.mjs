@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { createAccountApi } from './account-api.ts';
+import { invoicePdf } from '../fixtures/invoice-pdf.mjs';
 
 const token = process.env.ISSUE48_ACCOUNT_MOCK_TOKEN;
 if (!token) throw new Error('Missing account mock control token');
@@ -9,6 +10,12 @@ const server = createServer(async (request, response) => {
   const send = (value, status = 200) => { response.writeHead(status, { 'Content-Type': 'application/json' }); response.end(JSON.stringify(value)); };
   try {
     if (path === '/health' && request.method === 'GET') return send({ ready: true });
+    if (path === '/invoice.pdf' && request.method === 'GET') {
+      const invoice = api.snapshot().invoice;
+      if (!invoice) return send({ mensaje: 'Factura no encontrada' }, 404);
+      response.writeHead(200, { 'Content-Type': 'application/pdf', 'Access-Control-Allow-Origin': 'http://localhost:3048' });
+      return response.end(invoicePdf(invoice));
+    }
     if (path.startsWith('/__test/') && request.headers.authorization !== `Bearer ${token}`) return send({ mensaje: 'Control no autorizado' }, 403);
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);

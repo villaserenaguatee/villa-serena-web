@@ -72,7 +72,7 @@ for (const { name, viewport } of viewports) {
       await expectNoOverflow(page);
       expect(posts()).toHaveLength(2);
       const creation = JSON.parse(posts()[0].body!);
-      expect(Object.keys(creation).sort()).toEqual(['entrada', 'huesped', 'numeroHuespedes', 'salida', 'tipoHabitacionId']);
+      expect(Object.keys(creation).sort()).toEqual(['borradorId', 'entrada', 'huesped', 'numeroHuespedes', 'ofertaSlug', 'salida', 'tipoHabitacionId']);
       expect(creation.numeroHuespedes).toBe(2);
       await page.reload(); await expectPending(page);
       await page.getByRole('button', { name: 'Consultar estado', exact: true }).click();
@@ -80,7 +80,7 @@ for (const { name, viewport } of viewports) {
       await expectPending(page);
       expect(posts()).toHaveLength(2);
       expect(calls.some(call => call.path.endsWith('/hotel'))).toBe(true);
-      expect(calls.some(call => call.path.endsWith('/tipos-habitacion'))).toBe(true);
+      expect(calls.some(call => call.path.endsWith('/ofertas'))).toBe(true);
       expect(calls.filter(call => call.path.endsWith(`/${code}/estado`)).length).toBeGreaterThanOrEqual(3);
       const routePattern = `**/api/publico/reservas/${code}/estado`;
       await page.route(routePattern, route => route.fulfill({ status: 503, json: { codigo: 'SERVICIO_NO_DISPONIBLE', mensaje: 'Consulta de prueba interrumpida.', detalles: [] } }));

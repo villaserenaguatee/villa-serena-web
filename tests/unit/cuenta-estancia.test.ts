@@ -1,5 +1,4 @@
 import { describe, expect, test, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
 import { calcularCuentaEstancia } from '@/lib/pms/cuentaEstancia';
 import { seleccionarEstanciaHuesped } from '@/features/huesped/pages/HuespedApp';
 import { payment, reservation, service } from '../fixtures/reservation';
@@ -38,9 +37,5 @@ describe('cuenta de la estancia (equivalencia con test-cuenta-estancia.cjs)', ()
     const active = reservation({ id: 'active', codigo: 'ACTIVE', estado: 'en-curso', habitacionId: 'room' });
     expect(seleccionarEstanciaHuesped([ended, pending], 'guest')).toBe(pending);
     expect(seleccionarEstanciaHuesped([pending, active, ended], 'guest')).toBe(active);
-  });
-  // Conserva la comprobación estática legacy; no acredita el comportamiento de la UI.
-  test('mantiene las secciones sujetas a asignación de habitación', () => {
-    expect(readFileSync('src/features/huesped/pages/HuespedApp.tsx', 'utf8')).toContain("const dependeHabitacion = ['restaurante', 'servicios', 'habitacion', 'checkin'].includes(seccion)");
   });
 });

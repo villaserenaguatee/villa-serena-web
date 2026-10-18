@@ -34,6 +34,18 @@ afterEach(() => {
 function input(): CreatePublicDto { return { tipoHabitacionId: 1, entrada: arrival, salida: departure, numeroHuespedes: 2,
   huesped: { nombreCompleto: 'Huésped Prueba', correo: 'public@example.test', telefono: '+502 55555555', nacionalidad: 'Guatemala', tipoDocumento: 'DPI', numeroDocumento: '1234567890123' } }; }
 const get = (route: string) => GET(new Request(`http://localhost:3005/api/publico/${route}`));
+test('las ofertas demo publican su tipo y cotizaciones del servidor por slug', async () => {
+  const response = await get('ofertas'); assert.equal(response.status, 200); assert.equal(response.headers.get('X-Villa-Serena-Mode'), 'demo');
+  const offers = await response.json(); assert.equal(offers.length, 15);
+  const quoted = await get(`ofertas/disponibilidad?entrada=${arrival}&salida=${departure}&numeroHuespedes=2`);
+  assert.equal(quoted.status, 200);
+  const quotes = await quoted.json(); assert.ok(quotes.length > 0);
+  for (const quote of quotes) {
+    assert.equal(offers.find((offer: { slug: string }) => offer.slug === quote.ofertaSlug)?.apiTypeId, quote.tipoHabitacion.id);
+    assert.equal(quote.total, quote.desglose.reduce((total: number, night: { precio: number }) => total + night.precio, 0));
+  }
+  assert.equal((await get('ofertas/disponibilidad?entrada=no&salida=no&numeroHuespedes=2')).status, 400);
+});
 const post = (route: string, body?: unknown, attempt = randomUUID(), origin: string | null = 'http://localhost:3005') => POST(new Request(`http://localhost:3005/api/publico/${route}`, {
   method: 'POST', headers: { ...(origin ? { Origin: origin } : {}), 'Content-Type': 'application/json', 'Idempotency-Key': attempt }, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
 }));

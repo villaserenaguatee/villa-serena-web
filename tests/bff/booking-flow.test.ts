@@ -15,6 +15,7 @@ function harness(file: string, imports: Record<string, unknown>, entry = "defaul
   const hooks: any[] = [], effects: (() => void)[] = [];
   let cursor = 0;
   const react = {
+    useMemo<T>(factory: () => T) { cursor++; return factory(); },
     useState(initial: any) {
       const index = cursor++;
       if (!(index in hooks)) hooks[index] = typeof initial === 'function' ? initial() : initial;
@@ -37,22 +38,28 @@ function harness(file: string, imports: Record<string, unknown>, entry = "defaul
 }
 const tick = () => new Promise<void>(resolve => setImmediate(resolve));
 
-test('public email flow uses draft identity with an existing verified guest session, in both languages', () => {
+test('public email flow requires server verification of its own draft, in both languages', async () => {
   for (const en of [false, true]) {
     const pushed: string[] = [], saved: string[][] = [];
+    let verified = false;
     const page = harness('src/app/(public)/reservar/verificar/page.tsx', {
-      'next/navigation': { useRouter: () => ({ push: (url: string) => pushed.push(url) }), useSearchParams: () => new URLSearchParams('draft=public-attempt&slug=test') },
+      'next/navigation': { useRouter: () => ({ replace: (url: string) => pushed.push(url) }), useSearchParams: () => new URLSearchParams('draft=public-attempt&slug=test') },
       'next-intl': { useTranslations: () => (key: string) => key },
       '@/components/common/VillaSerenaLogo': { default: Logo },
       '@/components/common/EmailVerificationFlow': { default: EmailFlow },
       '@/components/common/PublicLanguageToggle': { usePublicLanguage: () => ({ en }) },
       '@/features/huesped/hooks/useCurrentGuest': { useCurrentGuest: () => ({ correo: 'session@example.test', correoVerificacion: { correo: 'session@example.test', estado: 'verificado' } }) },
-      '@/lib/bookingDraft': { readBookingDraft: () => ({ params: 'correo=booking@example.test' }), updateDraftEmail: (...args: string[]) => saved.push(args), BookingAttemptPendingError: class extends Error {} },
+      '@/lib/bookingDraft': { readBookingDraft: () => ({ params: 'correo=booking@example.test' }), updateDraftEmail: (...args: string[]) => saved.push(args), bookingDataHref: (id: string) => '/reservar/datos?draft=' + id, BookingAttemptPendingError: class extends Error {} },
+      '@/lib/bookingEmail': { bookingEmail: async () => ({ verificado: verified, solicitado: false }) },
     });
     page.render(); page.flush();
     let view = page.render(), flow = view.find(n => n.type === EmailFlow);
     assert.equal(flow.props.correo, 'booking@example.test'); assert.equal(flow.props.verificado, false);
-    view.find(n => n.type === 'button' && n.props.children === (en ? 'Continue to booking (email pending)' : 'Continuar a la reserva (correo pendiente)')).props.onClick();
+    await tick();
+    flow.props.onVerificado(); await tick();
+    assert.equal(pushed.length, 0, 'a client callback cannot bypass the server proof');
+    verified = true;
+    flow.props.onVerificado(); await tick();
     assert.equal(pushed.pop(), '/reservar/pago?draft=public-attempt&slug=test');
     flow.props.onCambiar(); view = page.render();
     view.find(n => n.type === 'input').props.onChange({ target: { value: 'changed@example.test' } });
@@ -60,7 +67,7 @@ test('public email flow uses draft identity with an existing verified guest sess
     assert.deepEqual(saved, [['public-attempt', 'changed@example.test']]);
     assert.equal(page.render().find(n => n.type === EmailFlow).props.correo, 'changed@example.test');
     page.render().find(n => n.type === EmailFlow).props.onVolver();
-    assert.equal(pushed.pop(), '/reservar/datos?draft=public-attempt&slug=test');
+    assert.equal(pushed.pop(), '/reservar/datos?draft=public-attempt');
   }
 });
 test('expired public draft cannot borrow the signed-in guest email or continue', () => {
@@ -78,7 +85,7 @@ test('expired public draft cannot borrow the signed-in guest email or continue',
 test('profile verification without a public draft preserves session verification and return to portal', () => {
   const pushed: string[] = [];
   const page = harness('src/app/(public)/reservar/verificar/page.tsx', {
-    'next/navigation': { useRouter: () => ({ push: (url: string) => pushed.push(url) }), useSearchParams: () => new URLSearchParams() },
+    'next/navigation': { useRouter: () => ({ replace: (url: string) => pushed.push(url) }), useSearchParams: () => new URLSearchParams() },
     'next-intl': { useTranslations: () => (key: string) => key },
     '@/components/common/EmailVerificationFlow': { default: EmailFlow },
     '@/components/common/PublicLanguageToggle': { usePublicLanguage: () => ({ en: false }) },

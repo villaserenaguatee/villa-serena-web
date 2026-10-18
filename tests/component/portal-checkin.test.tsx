@@ -33,7 +33,7 @@ describe.each(['Pasaporte', 'DPI'] as const)('check-in web con %s', tipoDocument
     }
     await next(view.user); expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
     await view.user.click(screen.getByRole('checkbox')); await next(view.user);
-    await view.user.click(screen.getByRole('button', { name: 'Enviar check-in para revisión' }));
+    await view.user.click(screen.getByRole('button', { name: 'Guardar' }));
     expect(onCompletar).toHaveBeenCalledOnce();
     const data = onCompletar.mock.calls[0][0];
     expect(data.documentos).toHaveLength(inputs.length); expect(data.documento).toEqual(data.documentos[0]);
@@ -46,8 +46,8 @@ describe.each(['Pasaporte', 'DPI'] as const)('check-in web con %s', tipoDocument
     render(<CheckInWebScreen huesped={{ ...guest, tipoDocumento }} reserva={leerReservas()[0]} habitacion={room}
       checkin={persisted} estanciaCerrada={false} onCompletar={onCompletar} onGuardarOcupantes={vi.fn()}
       onIrHabitacion={vi.fn()} onContactarRecepcion={vi.fn()} />);
-    expect(screen.getByText('Recibimos tu check-in')).toBeVisible();
-    expect(screen.queryByRole('button', { name: 'Enviar check-in para revisión' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Documentos guardados en este navegador' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Guardar' })).not.toBeInTheDocument();
   });
 
   test('error de almacenamiento mantiene el formulario y permite reintentar sin anunciar éxito', async () => {
@@ -59,9 +59,9 @@ describe.each(['Pasaporte', 'DPI'] as const)('check-in web con %s', tipoDocument
     await next(view.user); await view.user.click(screen.getByRole('checkbox')); await next(view.user);
     const before = localStorage.getItem('vs-reservas');
     const storage = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('QuotaExceededError', 'QuotaExceededError'); });
-    const submit = screen.getByRole('button', { name: 'Enviar check-in para revisión' }); await view.user.click(submit);
+    const submit = screen.getByRole('button', { name: 'Guardar' }); await view.user.click(submit);
     expect(screen.getByText(/No se pudieron guardar los documentos/)).toBeVisible();
-    expect(screen.queryByText('Recibimos tu check-in')).not.toBeInTheDocument(); expect(submit).toBeEnabled();
+    expect(screen.queryByRole('heading', { name: 'Documentos guardados en este navegador' })).not.toBeInTheDocument(); expect(submit).toBeEnabled();
     expect(localStorage.getItem('vs-reservas')).toBe(before);
     storage.mockRestore(); await view.user.click(submit); expect(callback).toHaveBeenCalledTimes(2);
     expect(leerReservas()[0].checkInWeb?.estado).toBe('pendiente');

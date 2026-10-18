@@ -179,7 +179,7 @@ test('draft keeps PII out of URL, supports email edits and expires explicitly', 
     assert.ok(!query.toString().includes('SECRET')); assert.ok(!query.toString().includes('correo'));
     const id = query.get('draft')!; assert.ok(readBookingDraft(id)); updateDraftEmail(id, 'changed@example.test');
     assert.equal(new URLSearchParams(readBookingDraft(id)!.params).get('correo'), 'changed@example.test');
-    const data = JSON.parse(b.session.get('vs-public-booking-draft')!); data.createdAt = Date.now() - 3 * 60 * 60 * 1000;
+    const data = JSON.parse(b.session.get('vs-public-booking-draft')!); data.updatedAt = Date.now() - 3 * 60 * 60 * 1000;
     b.session.set('vs-public-booking-draft', JSON.stringify(data)); assert.equal(readBookingDraft(id), null);
   } finally { b.restore(); }
 });

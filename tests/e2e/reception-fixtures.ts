@@ -32,7 +32,7 @@ export async function login(page: Page, correo = 'recepcion@villaserena.gt') {
   await page.goto('/panel/login');
   await (await initialSession).finished();
   await page.getByLabel('Correo electrónico', { exact: true }).fill(correo);
-  await page.getByLabel('Contraseña', { exact: true }).fill('VillaSerena26');
+  await page.getByLabel(/^Contraseña o código de acceso/).fill('VillaSerena26');
   await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
   await expect(page).toHaveURL(correo === 'recepcion@villaserena.gt' ? /\/recepcion$/ : /\/admin$/);
   if (correo === 'recepcion@villaserena.gt') {

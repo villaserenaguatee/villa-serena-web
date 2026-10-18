@@ -55,7 +55,9 @@ const SECCIONES: {
     { id: "reservar", label: "Gestionar estancia", corto: "Estancia" },
   ];
 export function seccionesPortal(estado: Reserva['estado']) {
-  return SECCIONES;
+  return estado === 'finalizada' || estado === 'cancelada'
+    ? SECCIONES.filter(s => !['checkin', 'restaurante', 'servicios'].includes(s.id))
+    : SECCIONES;
 }
 function GestionIcon({ tipo }: {
   tipo: "calendario" | "cama" | "solicitud";
@@ -244,12 +246,12 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
   const ui = useUiText();
   const { logout } = useAuth();
   const { en, lang } = usePublicLanguage();
-  const [seccion, setSeccion] = useState<SeccionHuesped>("inicio");
+  const [seccion, setSeccion] = useState<SeccionHuesped>(reservaInicial.estado === 'finalizada' || reservaInicial.estado === 'cancelada' ? 'cuenta' : 'inicio');
   const [navigationReady,setNavigationReady]=useState(false);
   const [abrirResena, setAbrirResena] = useState(false);
   useEffect(() => {
     const saved=new URLSearchParams(window.location.search).get('seccion');
-    if(SECCIONES.some(s=>s.id===saved))setSeccion(saved as SeccionHuesped);
+    if(seccionesPortal(reservaInicial.estado).some(s=>s.id===saved))setSeccion(saved as SeccionHuesped);
     setNavigationReady(true);
   }, []);
   useEffect(()=>{if(!navigationReady)return;const url=new URL(window.location.href);url.searchParams.set('seccion',seccion);window.history.replaceState(null,'',url.pathname+url.search+url.hash);},[seccion,navigationReady]);
@@ -402,6 +404,9 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
   const [puntos, setPuntos] = useState(PUNTOS_FIDELIDAD_INICIALES);
   const [reservaWeb, setReservaWeb] = useState<ReservaHuesped | null>(null);
   const estanciaCerrada = reserva.estado === 'finalizada' || reserva.estado === 'cancelada';
+  useEffect(() => {
+    if (estanciaCerrada && ['inicio', 'checkin', 'restaurante', 'servicios'].includes(seccion)) setSeccion('cuenta');
+  }, [estanciaCerrada, seccion]);
   const estanciaActiva = () => leerReservas().some(r => r.id === reserva.id && r.huespedId === huesped.id && r.estado === 'en-curso');
   const [aviso, setAviso] = useState<string | null>(null);
   function reservarTurno(turnoId: string,
@@ -858,6 +863,15 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
           onCheckOut={hacerCheckOut} />);
   };
   const contenido = (() => {
+    if (!conectado) {
+      const dependeHabitacion = ['restaurante', 'servicios', 'habitacion', 'checkin'].includes(seccion);
+      const message = dependeHabitacion && !habitacion
+        ? 'Recepción debe asignar primero una habitación a esta reserva.'
+        : ['restaurante', 'servicios'].includes(seccion) && reserva.estado !== 'en-curso' && !estanciaCerrada
+          ? 'Esta sección está disponible durante una estancia activa, después del check-in.' : '';
+      if (message) return <div className="p-6" role="status">{ui(message)}</div>;
+      if (estanciaCerrada && ['inicio', 'checkin', 'restaurante', 'servicios'].includes(seccion)) return renderCuenta();
+    }
     if(conectado&&seccion==='chat')return <EstanciaChat approved guestName={huesped.nombre} key={reserva.codigo} code={reserva.codigo} protectedTerms={[huesped.nombre]} blockedReason={blockedChat}/>;
     if(conectado&&seccion==='checkin')return <ConnectedGuestCheckIn key={reserva.codigo} reserva={reserva} huesped={huesped} habitacion={habitacion} blockedReason={blockedDocs}/>;
     if(conectado&&seccion==='servicios')return <LimpiezaHuespedConectada key={reserva.codigo} code={reserva.codigo} blockedReason={blockedStay}/>;
