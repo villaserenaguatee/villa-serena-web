@@ -101,7 +101,7 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
               className="w-36 h-24 rounded-lg object-cover shrink-0" />}
 
             <div className="flex-1 min-w-0">
-              <p className="text-[20px] font-semibold text-[#18345C] leading-none">
+              <p data-testid="guest-stay-room" className="text-[20px] font-semibold text-[#18345C] leading-none">
                 <UiText text="Habitación " />
                 {(habitacion?.numero ?? pending)}
               </p>

@@ -47,7 +47,7 @@ for (const { name, viewport } of viewports) {
       await expect(page.getByLabel('Correo de la reserva', { exact: true })).toHaveCount(0);
       await enterSelectedPortal(page, code, 'ana.morales@correo.com');
       await page.reload();
-      await expect(page.getByRole('heading', { name: /Habitación\s+Pendiente de asignación/ })).toBeVisible();
+      await expect(page.getByTestId('guest-stay-room')).toHaveText(/Habitación\s+Pendiente de asignación/);
       await expect(page.locator('body')).toContainText(code);
       await expect(page.locator('body')).not.toContainText('VS-2026-01042');
       await expectNoOverflow(page);
