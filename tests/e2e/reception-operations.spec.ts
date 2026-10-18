@@ -108,16 +108,20 @@ test('administrador no puede acceder a páginas ni API de Recepción', async ({ 
   for (const path of ['habitaciones', 'reservas', 'reservas/VS-TEST01']) expect((await context.request.get(`/api/${path}`)).status()).toBe(403);
 });
 
-test('login espera la consulta inicial de sesión antes de permitir enviar credenciales', async ({ page }) => {
+test('login unificado bloquea envíos simultáneos mientras confirma la sesión', async ({ page }) => {
   let release!: () => void;
+  let requests = 0;
   const ready = new Promise<void>(resolve => { release = resolve; });
-  await page.route('**/api/auth/yo', async route => { await ready; await route.continue(); });
+  await page.route('**/api/auth/iniciar-sesion', async route => { requests++; await ready; await route.continue(); });
   try {
     await page.goto('/panel/login');
     await page.getByLabel('Correo electrónico', { exact: true }).fill('recepcion@villaserena.gt');
-    await page.getByLabel('Contraseña', { exact: true }).fill('VillaSerena26');
-    const submit = page.getByRole('button', { name: 'Iniciar sesión', exact: true });
-    await expect(submit).toBeDisabled(); release(); await expect(submit).toBeEnabled();
-    await submit.click(); await expect(page).toHaveURL(/\/recepcion$/);
+    await page.getByLabel(/^Contraseña o código de acceso/).fill('VillaSerena26');
+    await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Espera…', exact: true })).toBeDisabled();
+    await page.locator('form').evaluate(form => (form as HTMLFormElement).requestSubmit());
+    expect(requests).toBe(1);
+    release(); await expect(page).toHaveURL(/\/recepcion$/);
+    expect(requests).toBe(1);
   } finally { release(); }
 });

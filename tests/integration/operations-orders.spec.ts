@@ -8,6 +8,7 @@ for (const { name, viewport } of viewports) {
       const issued = page.waitForResponse(response => response.url().endsWith('/api/auth/ws-ticket'));
       await page.goto('/room-service');
       await page.getByRole('button', { name: 'Pedidos', exact: true }).last().click();
+      await expect(page).toHaveURL(/\/room-service\/pedidos$/);
       await expect(page.getByText('Ana de prueba', { exact: false }).first()).toBeVisible();
       await realtime.subscribed('/topic/pedidos');
       expect(Object.keys(await (await issued).json()).sort()).toEqual(['expiraEn', 'ticket']);
@@ -29,6 +30,7 @@ for (const { name, viewport } of viewports) {
       expect((await mock.state()).order).toMatchObject({ estado: 'CANCELADO', motivoCancelacion: 'Prueba de cancelación' });
       await realtime.reconnect(); await realtime.subscribed('/topic/pedidos');
       await page.getByRole('button', { name: name === 'móvil' ? 'Menú' : 'Menú y catálogo', exact: true }).last().click();
+      await expect(page).toHaveURL(/\/room-service\/menu$/);
       await page.getByRole('button', { name: 'Marcar agotado', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Marcar agotado', exact: true })).toHaveCount(0);
       await expect(page.getByRole('button', { name: /Reactivar/ })).toHaveCount(0);

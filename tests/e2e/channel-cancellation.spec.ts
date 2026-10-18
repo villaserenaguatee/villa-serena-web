@@ -4,6 +4,10 @@ import { test, expect, viewports, login, calendar, openDetail, expectNoOverflow 
 
 async function calendarDetail(page: Page, code: string, entry: string) {
   const region = await calendar(page, entry);
+  await expect(region.getByText('Consultando reservas…', { exact: true })).toBeHidden();
+  if (!(await region.locator(`[data-reservation-code="${code}"]`).first().isVisible())) {
+    await region.getByRole('button', { name: `Ver todas las reservas del ${entry}`, exact: true }).click();
+  }
   await region.locator(`[data-reservation-code="${code}"]`).first().click();
   const detail = page.getByRole('dialog', { name: 'Detalle de reserva', exact: true });
   await expect(detail.getByRole('heading', { name: 'Historial de estados' })).toBeVisible();

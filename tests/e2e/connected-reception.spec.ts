@@ -12,7 +12,7 @@ async function login(page: Page) {
   await page.goto('/panel/login');
   await session;
   await page.getByLabel('Correo electrónico', { exact: true }).fill('recepcion@villaserena.gt');
-  await page.getByLabel('Contraseña', { exact: true }).fill('VillaSerena26');
+  await page.getByLabel(/^Contraseña o código de acceso/).fill('VillaSerena26');
   await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
   await expect(page).toHaveURL(/\/recepcion$/);
   await expect(page.getByRole('heading', { name: boundaryTitle, exact: true })).toBeVisible();

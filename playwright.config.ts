@@ -41,7 +41,7 @@ export default defineConfig({
     timeout: 180_000,
     env: {
       TZ: 'America/Guatemala', NEXT_TELEMETRY_DISABLED: '1',
-      NODE_OPTIONS: '--max-old-space-size=1536',
+      NODE_OPTIONS: `--max-old-space-size=${process.env.CI ? 3072 : 1536}`,
       STAFF_AUTH_MODE: 'demo', GUEST_AUTH_MODE: 'demo', VILLA_SERENA_BFF_MODE: 'demo',
       VILLA_SERENA_RECEPTION_DEMO_PATH: receptionPath,
       API_URL: '', NEXT_PUBLIC_WS_URL: '', DEEPL_API_KEY: '',

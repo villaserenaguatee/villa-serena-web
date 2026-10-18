@@ -704,7 +704,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
         </div>
 
         <div className="flex-1 flex overflow-hidden relative">
-          {!conectado && seccion === 'dia' ? <div className="flex-1 overflow-y-auto"><div className="p-4"><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={abrirReserva} onNueva={() => setNuevaReserva({ open: true })} /></div>{contenido}</div> : contenido}
+          {!conectado && seccion === 'dia' ? <div className="flex-1 overflow-y-auto"><div className="h-[75dvh] min-h-[280px] max-h-[760px] p-4"><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={abrirReserva} onNueva={() => setNuevaReserva({ open: true })} /></div>{contenido}</div> : contenido}
         </div>
 
         <div className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>

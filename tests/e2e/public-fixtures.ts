@@ -88,7 +88,7 @@ export async function enterSelectedPortal(page: Page, code: string, email: strin
   await page.getByLabel(/^Contraseña o código de acceso/).fill(await readGuestCode(email));
   await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
   await expect(page).toHaveURL(url => url.pathname === '/portal' && url.searchParams.get('codigo') === code);
-  await expect(page.getByText('Habitación pendiente de asignación.', { exact: false })).toBeVisible();
+  await expect(page.getByText(/Habitación\s+Pendiente de asignación/).first()).toBeVisible();
   await expect(page.locator('body')).toContainText(code);
   await expect(page.locator('body')).not.toContainText('VS-2026-01042');
 }

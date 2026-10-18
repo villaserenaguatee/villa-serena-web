@@ -66,7 +66,7 @@ for (const { name, viewport } of viewports) {
       await page.locator('.terms-check input').check();
       await expectNoOverflow(page);
       await page.screenshot({ path: testInfo.outputPath('pago.png'), fullPage: true });
-      await page.getByRole('button', { name: 'Continuar pago →', exact: true }).click();
+      await page.getByRole('button', { name: 'Continuar pago', exact: true }).click();
       const code = await expectPending(page);
       await expect(page.locator('main')).not.toContainText(/PAGO DE PRUEBA|¡Reserva confirmada!/);
       await expectNoOverflow(page);
@@ -107,7 +107,7 @@ for (const { name, viewport } of viewports) {
       await fillGuest(page, 'card-issue48@example.test', 'Tarjeta');
       await reviewGuest(page);
       await page.locator('.terms-check input').check();
-      await page.getByRole('button', { name: 'Continuar pago →', exact: true }).click();
+      await page.getByRole('button', { name: 'Continuar pago', exact: true }).click();
       const secondCode = await expectPending(page);
       expect(secondCode).not.toBe(code);
       expect(posts()).toHaveLength(4);
@@ -118,7 +118,7 @@ for (const { name, viewport } of viewports) {
       const oldQuery = new URLSearchParams({ habitacion: 'Habitación Estándar', tipoHabitacionId: '1', llegada: hotelDate(12), salida: hotelDate(14), adultos: '2', ninos: '0' });
       await page.goto(`/reservar/pago?${oldQuery}`);
       await expect(page.getByRole('alert').filter({ hasText: 'Tus datos no están disponibles' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Continuar pago →', exact: true })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Continuar pago', exact: true })).toBeDisabled();
       await page.goto(`/reservar/datos?${oldQuery}`);
       await expect(page.locator('main')).toContainText(/Introduce tus datos|La habitación no está disponible|No se pudo consultar/);
       await page.goto(`/reservar/habitaciones?llegada=${hotelDate(32)}&salida=${hotelDate(34)}&adultos=2&ninos=0&huespedes=2`);
@@ -128,7 +128,7 @@ for (const { name, viewport } of viewports) {
       const dataURL = page.url();
       await fillGuest(page);
       await reviewGuest(page);
-      const button = page.getByRole('button', { name: 'Continuar pago →', exact: true });
+      const button = page.getByRole('button', { name: 'Continuar pago', exact: true });
       await expect(button).toBeDisabled();
       await page.locator('.terms-check input').check();
       await expect(button).toBeEnabled();

@@ -97,8 +97,8 @@ export async function expectCalendarReservation(region: Locator, detail: Reserva
     date.setUTCDate(date.getUTCDate() - (date.getUTCDay() + 6) % 7);
     return date.toISOString().slice(0, 10);
   }));
-  await expect(events).toHaveCount(detail.habitacion ? monthly ? weeks.size : days.length : 0);
-  if (detail.habitacion && monthly) {
+  await expect(events).toHaveCount(monthly ? weeks.size : detail.habitacion ? days.length : 0);
+  if (monthly) {
     // Weekly bars must still cover every occupied night, excluding checkout.
     await expect.poll(() => events.evaluateAll(elements => elements.reduce((nights, element) =>
       nights + Number(element.getAttribute('data-end-column')) - Number(element.getAttribute('data-start-column')), 0))).toBe(days.length);

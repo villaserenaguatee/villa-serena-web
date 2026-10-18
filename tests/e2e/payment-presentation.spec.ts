@@ -14,7 +14,7 @@ for (const { name, viewport } of viewports) {
       await page.goto(`/reservar/verificar?draft=${draft}`);
       await verifyBookingEmail(page);
       await expect(page.locator('.booking-summary-card img')).toBeVisible();
-      const button = page.getByRole('button', { name: 'Continuar pago →', exact: true });
+      const button = page.getByRole('button', { name: 'Continuar pago', exact: true });
       await expect(button).toBeDisabled();
       await expect(page.locator('.summary-total')).toHaveCount(1);
       const summary = await page.locator('.booking-summary-card').boundingBox();
