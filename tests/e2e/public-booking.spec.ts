@@ -31,7 +31,7 @@ for (const { name, viewport } of viewports) {
     test.use({ viewport });
     test('catálogo y resultados: validación, tarjeta y contrato de pago pendiente', async ({ page }, testInfo) => {
       const calls: { path: string; method: string; body: string | null }[] = [];
-      page.on('request', request => {
+      page.context().on('request', request => {
         const path = new URL(request.url()).pathname;
         if (path.startsWith('/api/')) calls.push({ path, method: request.method(), body: request.postData() });
       });
@@ -105,11 +105,21 @@ for (const { name, viewport } of viewports) {
       await page.locator('.reserve-room-grid .reserve-view-room').first().click();
       await page.getByRole('button', { name: 'Reservar habitación', exact: true }).click();
       await fillGuest(page, 'card-issue48@example.test', 'Tarjeta');
-      await reviewGuest(page);
-      await page.locator('.terms-check input').check();
-      await page.getByRole('button', { name: 'Continuar pago', exact: true }).click();
-      const secondCode = await expectPending(page);
+      await page.getByRole('button', { name: 'Revisar datos', exact: true }).click();
+      await expect(page.getByRole('alert').filter({ hasText: 'Hay un intento anterior cuyo resultado debes recuperar' })).toBeVisible();
+      expect(posts()).toHaveLength(2);
+      // A separate tab has its own draft. The first pending attempt remains intact.
+      const independent = await page.context().newPage();
+      await independent.goto(`/reservar/habitaciones?llegada=${hotelDate(55)}&salida=${hotelDate(57)}&adultos=1&ninos=1`);
+      await independent.getByRole('link', { name: 'Ver habitación', exact: true }).first().click();
+      await independent.getByRole('button', { name: 'Reservar habitación', exact: true }).click();
+      await fillGuest(independent, 'card-issue48@example.test', 'Tarjeta');
+      await reviewGuest(independent);
+      await independent.locator('.terms-check input').check();
+      await independent.getByRole('button', { name: 'Continuar pago', exact: true }).click();
+      const secondCode = await expectPending(independent);
       expect(secondCode).not.toBe(code);
+      await independent.close();
       expect(posts()).toHaveLength(4);
       expect(calls.filter(call => call.method === 'POST' && call.path === '/api/public/bookings')).toHaveLength(0);
     });

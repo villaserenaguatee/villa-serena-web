@@ -25,7 +25,7 @@ export default defineConfig({
   workers: 1, // Las cuentas de prueba del servidor comparten estado (cambio de contraseña).
   forbidOnly: Boolean(process.env.CI),
   retries: 0, // Un reintento necesita reiniciar el proveedor demo, no reutilizar su contraseña cambiada.
-  timeout: 240_000, // El recorrido compila los módulos de seis roles en un servidor nuevo.
+  timeout: 120_000,
   expect: { timeout: 15_000 },
   reporter: reporters('reception'),
   use: {

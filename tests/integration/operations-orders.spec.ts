@@ -31,8 +31,8 @@ for (const { name, viewport } of viewports) {
       await realtime.reconnect(); await realtime.subscribed('/topic/pedidos');
       await page.getByRole('button', { name: name === 'móvil' ? 'Menú' : 'Menú y catálogo', exact: true }).last().click();
       await expect(page).toHaveURL(/\/room-service\/menu$/);
-      await page.getByRole('button', { name: 'Marcar agotado', exact: true }).click();
-      await expect(page.getByRole('button', { name: 'Marcar agotado', exact: true })).toHaveCount(0);
+      await page.getByRole('button', { name: 'Disponible', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Agotado', exact: true })).toBeDisabled();
       await expect(page.getByRole('button', { name: /Reactivar/ })).toHaveCount(0);
       expect((await mock.state()).menuAvailable).toBe(false);
       expect(realtime.tickets.length).toBeGreaterThan(1);

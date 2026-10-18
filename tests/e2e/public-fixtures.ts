@@ -1,4 +1,4 @@
-import { test as base, expect, type Page } from '@playwright/test';
+import { test as base, expect, type Page, type WebError } from '@playwright/test';
 import { readFile, rm } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { basename, dirname, join } from 'node:path';
@@ -15,9 +15,9 @@ export async function resetPublicState() {
 // Only the external booking-email provider is simulated. Reservations, inventory,
 // payment state, cookies and guest OTP still pass through the real demo BFF.
 export const test = base.extend<{ isolatedPublic: void; bookingEmailProvider: void; browserErrors: string[] }>({
-  bookingEmailProvider: [async ({ page }, use) => {
+  bookingEmailProvider: [async ({ context }, use) => {
     const drafts = new Map<string, { requested: boolean; verified: boolean }>();
-    await page.route('**/api/publico/correo/*', async route => {
+    await context.route('**/api/publico/correo/*', async route => {
       const input = route.request().postDataJSON();
       const key = `${input.borrador}:${input.correo}`;
       const state = drafts.get(key) ?? { requested: false, verified: false };
@@ -36,12 +36,12 @@ export const test = base.extend<{ isolatedPublic: void; bookingEmailProvider: vo
     await resetPublicState();
     await use();
   }, { auto: true }],
-  browserErrors: [async ({ page }, use) => {
+  browserErrors: [async ({ context }, use) => {
     const errors: string[] = [];
-    const record = (error: Error) => errors.push(`${page.url()}: ${error.message}`);
-    page.on('pageerror', record);
+    const record = (event: WebError) => errors.push(`${event.page()?.url()}: ${event.error().message}`);
+    context.on('weberror', record);
     await use(errors);
-    page.off('pageerror', record);
+    context.off('weberror', record);
     expect(errors).toEqual([]);
   }, { auto: true }],
 });
@@ -88,7 +88,7 @@ export async function enterSelectedPortal(page: Page, code: string, email: strin
   await page.getByLabel(/^Contraseña o código de acceso/).fill(await readGuestCode(email));
   await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
   await expect(page).toHaveURL(url => url.pathname === '/portal' && url.searchParams.get('codigo') === code);
-  await expect(page.getByText(/Habitación\s+Pendiente de asignación/).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Habitación\s+Pendiente de asignación/ })).toBeVisible();
   await expect(page.locator('body')).toContainText(code);
   await expect(page.locator('body')).not.toContainText('VS-2026-01042');
 }

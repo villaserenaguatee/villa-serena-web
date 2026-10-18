@@ -31,6 +31,7 @@ for (const { name, viewport } of viewports) {
           const event = region.locator(`[data-reservation-code="${detail.codigo}"]`);
           await expectCalendarReservation(region, detail);
           if (assigned) {
+            if (!(await event.first().isVisible())) await region.getByRole('button', { name: `Ver todas las reservas del ${detail.entrada}`, exact: true }).click();
             await event.first().click(); await expect(dialog).toContainText(detail.codigo);
             await dialog.getByRole('button', { name: 'Cerrar' }).click();
           }

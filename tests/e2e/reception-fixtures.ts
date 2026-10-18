@@ -97,6 +97,20 @@ export async function expectCalendarReservation(region: Locator, detail: Reserva
     date.setUTCDate(date.getUTCDate() - (date.getUTCDay() + 6) % 7);
     return date.toISOString().slice(0, 10);
   }));
+  await expect(region.getByText('Consultando reservas…', { exact: true })).toBeHidden();
+  if (monthly && await events.count() !== weeks.size) {
+    // Busy days collapse later bars into a day dialog, including new unassigned stays.
+    for (const day of days) {
+      const more = region.getByRole('button', { name: `Ver todas las reservas del ${day}`, exact: true });
+      if (await more.isVisible()) {
+        await more.click();
+        const dialog = region.getByRole('dialog', { name: 'Reservas del día', exact: true });
+        await expect(dialog.locator(`[data-reservation-code="${detail.codigo}"]`)).toHaveCount(1);
+        await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+      } else await expect(events).not.toHaveCount(0);
+    }
+    return;
+  }
   await expect(events).toHaveCount(monthly ? weeks.size : detail.habitacion ? days.length : 0);
   if (monthly) {
     // Weekly bars must still cover every occupied night, excluding checkout.
