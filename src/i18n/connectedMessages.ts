@@ -1,5 +1,13 @@
 // Interface copy only. Guest messages, names and reservation data are never dictionary keys.
 export const connectedMessages: Record<string, string> = {
+ 'Ver calendario':'View calendar','Volver a vista del día':'Back to daily view',
+ 'Datos del hotel':'Hotel data','Libres':'Unoccupied','Pendiente de limpieza':'Awaiting housekeeping',
+ 'Habitaciones ocupadas ahora':'Currently occupied rooms','Importe de reservas':'Reservation amount',
+ 'No equivale a dinero cobrado':'Does not represent money received',
+ 'Estado actual, fuera del filtro de fechas':'Current status, outside the date filter',
+ 'Consulta las incidencias recibidas y sus tareas para revisar las habitaciones afectadas.':'Check received incidents and their tasks to review the affected rooms.',
+ 'No se pudo consultar el tipo de una habitación.':'A room type could not be retrieved.',
+ 'No se pudo consultar el mapa.':'The room map could not be retrieved.',
  'Tipos de habitación':'Room types','Reservas registradas':'Recorded reservations','Temporadas y ofertas':'Seasons and offers',
  'habitaciones disponibles':'available rooms','tareas registradas':'recorded tasks','Administración conectada al hotel.':'Administration connected to the hotel.',
  'Ajuste viernes y sábado (%)':'Friday and Saturday adjustment (%)','Precio base (Q)':'Base price (Q)','ARTÍCULOS':'SUPPLIES',

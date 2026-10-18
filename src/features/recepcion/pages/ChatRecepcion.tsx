@@ -61,7 +61,7 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
   const conversacionActual = conversaciones.find(c => c.h.id === seleccionado);
   const actual = conversacionActual?.h;
   const listaBase = conversaciones.filter(c => !buscar.trim() || c.h.nombre.toLowerCase().includes(buscar.trim().toLowerCase())).filter(c => filtro === 'favoritos' ? favoritos.includes(c.h.id) : filtro === 'archivados' ? archivados.includes(c.h.id) : filtro === 'no-leidos' ? mensajes.some(m => m.huespedId === c.h.id && m.autor === 'huesped' && !m.leidoPor?.includes('recepcion') && !m.eliminadoParaTodos) : !archivados.includes(c.h.id));
-  const lista = (mostrarTodos || buscar.trim() ? listaBase : listaBase.filter(c => mensajes.some(m => m.huespedId === c.h.id && !m.eliminadoPara?.includes('recepcion'))))
+  const lista = (mostrarTodos ? listaBase : listaBase.filter(c => mensajes.some(m => m.huespedId === c.h.id && !m.eliminadoPara?.includes('recepcion'))))
     .slice().sort((a, b) => Number(fijados.includes(b.h.id)) - Number(fijados.includes(a.h.id)));
   function cambiarPreferencia(key: keyof PreferenciasChat, id: string) {
     const prefs = leerPreferenciasChat();

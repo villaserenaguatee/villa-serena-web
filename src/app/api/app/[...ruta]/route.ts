@@ -6,3 +6,6 @@ async function handler(request: NextRequest, context: { params: Promise<{ ruta: 
 }
 export const GET = handler;
 export const POST = handler;
+
+export const PUT = handler;
+export const DELETE = handler;

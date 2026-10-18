@@ -14,13 +14,14 @@ const PERIODOS: {
     { id: 'todo', label: 'Todo', dias: null },
   ];
 interface Props {
+  roomDataAvailable?: boolean;
   ordenes: OrdenTrabajo[];
   habitaciones: HabitacionHotel[];
-  incidencias: Incidencia[];
+  incidencias: Pick<Incidencia,'estado'>[];
   onLiberarHabitacion: (numero: string) => void;
   onAbrirOrden: (id: string) => void;
 }
-export default function PanelMantenimiento({ ordenes, habitaciones, incidencias, onLiberarHabitacion, onAbrirOrden, }: Props) {
+export default function PanelMantenimiento({ ordenes, habitaciones, incidencias, onLiberarHabitacion, onAbrirOrden, roomDataAvailable = true, }: Props) {
   const [periodo, setPeriodo] = useState<Periodo>('30d');
   const def = PERIODOS.find(p => p.id === periodo)!;
   const desde = def.dias === null ? null : fechaRelativaISO(-def.dias);
@@ -70,7 +71,7 @@ export default function PanelMantenimiento({ ordenes, habitaciones, incidencias,
         </Chip>)}
       </div>
 
-      {bloqueadas.length === 0 ? (<Vacio msg="Ninguna habitación está fuera de servicio en este momento." />) : (<div className="space-y-3">
+      {!roomDataAvailable ? <Vacio msg="Consulta las incidencias recibidas y sus tareas para revisar las habitaciones afectadas." /> : bloqueadas.length === 0 ? (<Vacio msg="Ninguna habitación está fuera de servicio en este momento." />) : (<div className="space-y-3">
         {bloqueadas.map(h => {
           const orden = ordenBloqueo(h.numero);
           const dias = orden ? Math.abs(diasHastaFecha(orden.creadaEn.slice(0, 10))) : null;

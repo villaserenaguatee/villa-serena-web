@@ -1,5 +1,18 @@
 import { test, expect, viewports, login, calendarRegion } from './reception-fixtures';
+import type { Locator } from '@playwright/test';
 import type { ReceptionCalendar } from '@/lib/bff/contracts/reception';
+
+async function monthCodes(calendar: Locator) {
+  await expect(calendar.getByText('Consultando reservas…', { exact: true })).toBeHidden();
+  const codes = new Set(await calendar.locator('[data-reservation-code]').evaluateAll(nodes => nodes.map(n => n.getAttribute('data-reservation-code')!)));
+  for (const button of await calendar.getByRole('button', { name: /^Ver todas las reservas del / }).all()) {
+    await button.click();
+    const day = calendar.getByRole('dialog', { name: 'Reservas del día', exact: true });
+    for (const code of await day.locator('[data-reservation-code]').evaluateAll(nodes => nodes.map(n => n.getAttribute('data-reservation-code')!))) codes.add(code);
+    await day.getByRole('button', { name: 'Cerrar', exact: true }).click();
+  }
+  return [...codes].sort();
+}
 
 for (const { name, viewport } of viewports) {
   test.describe(name, () => {
@@ -17,7 +30,7 @@ for (const { name, viewport } of viewports) {
       const calendar = calendarRegion(page);
       const codes = () => calendar.locator('[data-reservation-code]').evaluateAll(nodes => [...new Set(nodes.map(n => n.getAttribute('data-reservation-code')))].sort());
       const expected = data.reservas.filter(r => r.habitacionId).map(r => r.codigo).sort();
-      await expect.poll(codes).toEqual(expected);
+      expect(await monthCodes(calendar)).toEqual(data.reservas.map(r => r.codigo).sort());
       await expect(calendar.getByRole('region', { name: 'Reservas sin habitación asignada' })).toHaveCount(0);
       const first = data.reservas.find(r => r.habitacionId)!;
       await calendar.locator(`[data-reservation-code="${first.codigo}"]`).first().click();
@@ -46,7 +59,7 @@ for (const { name, viewport } of viewports) {
       await calendar.getByRole('button', { name: 'Mes', exact: true }).click();
       await expect(calendar.getByLabel('Piso del calendario')).toHaveValue(String(room.piso));
       await expect(calendar.getByLabel('Categoría del calendario')).toHaveValue(group.tipoHabitacion.nombre);
-      await expect.poll(codes).toEqual(filtered);
+      expect(await monthCodes(calendar)).toEqual(data.reservas.filter(r => r.tipoHabitacionId === group.tipoHabitacion.id && (!r.habitacionId || rooms.some(h => h.id === r.habitacionId))).map(r => r.codigo).sort());
       await calendar.getByLabel('Piso del calendario').selectOption(''); await calendar.getByLabel('Categoría del calendario').selectOption('');
       for (const view of ['Mes', 'Habitaciones']) {
         await calendar.getByRole('button', { name: view, exact: true }).click();

@@ -9,11 +9,35 @@ import { AuthError } from '../../src/lib/bff/auth/errors';
 import { NextResponse } from 'next/server';
 import { publicEmployee, serverSession } from '../../src/lib/bff/auth/response';
 import { isAuthError } from '../../src/lib/bff/auth/errors';
+import { POST as unifiedLogin } from '../../src/app/api/auth/iniciar-sesion/route';
+import { randomUUID } from 'node:crypto';
 const loginInput = { correo: 'recepcion@villaserena.gt', contrasena: 'VillaSerena26' };
 const request = (path: string, input?: unknown, cookie?: string, origin = 'http://localhost:3000') => new NextRequest(`http://localhost:3000/api/auth/${path}`, {
   method: input ? 'POST' : 'GET', headers: { Origin: origin, ...(cookie ? { Cookie: cookie } : {}), ...(input ? { 'Content-Type': 'application/json' } : {}) }, ...(input ? { body: JSON.stringify(input) } : {}),
 });
 const cookieHeader = (response: NextResponse) => response.cookies.getAll().map(c => `${c.name}=${c.value}`).join('; ');
+
+test('login unificado demo autentica con el proveedor y conserva cookies privadas y permisos', async () => {
+  const previous = { staff: process.env.STAFF_AUTH_MODE, guest: process.env.GUEST_AUTH_MODE };
+  process.env.STAFF_AUTH_MODE = 'demo'; process.env.GUEST_AUTH_MODE = 'demo';
+  const login = (credencial: string) => unifiedLogin(new NextRequest('http://localhost:3000/api/auth/iniciar-sesion', {
+    method: 'POST', headers: { Origin: 'http://localhost:3000', 'Content-Type': 'application/json', 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ correo: loginInput.correo, credencial }),
+  }));
+  try {
+    const rejected = await login('incorrecta'); assert.equal(rejected.status, 401); assert.equal(rejected.cookies.getAll().length, 0);
+    const accepted = await login('VillaSerena26'); assert.equal(accepted.status, 200); assert.deepEqual(await accepted.json(), { destino: '/recepcion' });
+    const cookies = accepted.cookies.getAll().filter(cookie => cookie.name.startsWith('vs_staff_'));
+    assert.equal(cookies.length, 2); assert.ok(cookies.every(cookie => cookie.httpOnly && cookie.sameSite === 'lax'));
+    const session = await authRoute(request('yo', undefined, cookieHeader(accepted)), 'yo');
+    assert.equal((await session.json()).rol, 'RECEPCION');
+    assert.equal((await login('123456')).status, 401, 'an unknown guest OTP cannot create a session');
+  } finally {
+    for (const [key, value] of Object.entries({ STAFF_AUTH_MODE: previous.staff, GUEST_AUTH_MODE: previous.guest })) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
+});
 
 test('personal demo: VillaSerena26 permite entrar y demo123 se rechaza sin cambiar roles', async () => {
   const auth = createDemoAuth();

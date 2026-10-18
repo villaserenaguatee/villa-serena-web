@@ -90,7 +90,7 @@ describe.each(['ES', 'EN'] as const)('estancia finalizada %s', lang => {
     expect(screen.getByRole('button', { name: /^(Buscar|Search)$/ })).toBeVisible();
     expect(localStorage.getItem('vs-reservas')).toBe(before); expect(localStorage.getItem('vs-huespedes')).toBe(guestBefore);
     view.unmount(); mountPortal(lang);
-    expect(screen.getByRole('heading', { name: thankYou })).toBeVisible(); expect(leerReservas()).toEqual([completed]);
+    expect(screen.getByRole('heading', { name: tr('Gestionar estancia', 'Manage stay') })).toBeVisible(); expect(leerReservas()).toEqual([completed]);
   });
 });
 

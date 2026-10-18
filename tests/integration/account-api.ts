@@ -109,6 +109,7 @@ export function createAccountApi() {
         return send(structuredClone({ codigoReserva: accountCode, estadoReserva: 'FINALIZADA', estadoCuenta: 'CERRADA', saldo: 0, factura: invoice }));
       }
       if (path === '/api/v1/facturas/1' && method === 'GET') return invoice ? send(structuredClone(invoice)) : send({ mensaje: 'Todavía no existe una factura emitida para esta cuenta.' }, 404);
+      if (path === '/api/v1/facturas/1/pdf' && method === 'GET') return invoice ? send({ url: 'http://127.0.0.1:3049/invoice.pdf' }) : send({ mensaje: 'Factura no encontrada' }, 404);
       throw new Error(`Petición no prevista en el mock: ${method} ${path}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

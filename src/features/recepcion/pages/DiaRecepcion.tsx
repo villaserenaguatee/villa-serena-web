@@ -6,6 +6,7 @@ import { fechaHoyISO, fechaRelativaISO, formatoFecha } from '@/data/pms';
 import { Chip, RECEPTION_RESERVA_META, habitacionesDisponibles, BedIcon, CalendarIcon } from '@/features/recepcion/pages/recUtils';
 import { publicRoomForHotelType } from '@/data/publicRooms';
 interface Props {
+  onVerCalendario?:()=>void;
   reservas: Reserva[];
   huespedes: Huesped[];
   habitaciones: HabitacionHotel[];
@@ -14,7 +15,7 @@ interface Props {
 }
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-export default function DiaRecepcion({ reservas, huespedes, habitaciones, onAbrirReserva, onIr }: Props) {
+export default function DiaRecepcion({ reservas, huespedes, habitaciones, onAbrirReserva, onIr, onVerCalendario }: Props) {
   const hoy = fechaHoyISO();
   const d = new Date();
   const titulo = `${DIAS[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]}`;
@@ -36,7 +37,7 @@ export default function DiaRecepcion({ reservas, huespedes, habitaciones, onAbri
       <p className="text-[#AEBCC1] text-[10px] tracking-widest uppercase mb-1">
         {titulo}
       </p>
-      <h1 className="text-white text-[32px] font-semibold leading-tight">Recepción · vista del día</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-white text-[32px] font-semibold leading-tight">Recepción · vista del día</h1>{onVerCalendario&&<button type="button" onClick={onVerCalendario} className="inline-flex items-center gap-2 rounded-md border border-[#AEBCC1] px-3 py-2 text-sm text-white"><CalendarIcon size={16}/>Ver calendario</button>}</div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
         <Stat valor={llegadas.length} label="Check-in de hoy" />

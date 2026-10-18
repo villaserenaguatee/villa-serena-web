@@ -250,8 +250,10 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
     });
   },
     [reservas]);
+  const [calendarOpen,setCalendarOpen]=useState(false);
   const [seccion, setSeccionActual] = useState<SeccionRecepcion>(() => seccionDesdeRuta(pathname));
   function setSeccion(section: SeccionRecepcion) {
+    setCalendarOpen(false);
     setSeccionActual(section);
     setBffCodeActual(null);
     if (!conectado) return;
@@ -575,7 +577,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
   }
   const contenido = (() => {
     if (conectado) {
-      if (seccion === "dia") return <div className="min-w-0 flex-1 overflow-y-auto"><div className="h-[min(760px,calc(100dvh-110px))] min-h-[360px] p-4"><CalendarioReservas conectado reservas={EMPTY_RESERVATIONS} huespedes={EMPTY_GUESTS} habitaciones={EMPTY_ROOMS} onAbrir={id => setBffCode(id.replace("bff-reservation-", ""))} onNueva={() => setNuevaReserva({ open: true })} /></div><ConnectedReceptionDay refreshTick={bffRefresh} onAbrirReserva={setBffCode} onIr={setSeccion} /></div>;
+      if (seccion === "dia") return calendarOpen?<div className="flex-1 min-h-0 flex flex-col bg-[#F8F6F0]"><div className="px-4 pt-3"><button type="button" onClick={()=>setCalendarOpen(false)} className="rounded-md border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#18345C]">← Volver a vista del día</button></div><div className="min-h-0 flex-1 p-4"><CalendarioReservas conectado reservas={EMPTY_RESERVATIONS} huespedes={EMPTY_GUESTS} habitaciones={EMPTY_ROOMS} onAbrir={id=>{setCalendarOpen(false);setBffCode(id.replace("bff-reservation-", ""));}} onNueva={()=>setNuevaReserva({open:true})}/></div></div>:<ConnectedReceptionDay onVerCalendario={()=>setCalendarOpen(true)} refreshTick={bffRefresh} onAbrirReserva={setBffCode} onIr={setSeccion}/>;
       if (seccion === "reservas") return <Reservas refreshTick={bffRefresh} reservas={EMPTY_RESERVATIONS} huespedes={EMPTY_GUESTS} habitaciones={EMPTY_ROOMS} onAbrir={setBffCode} onNueva={() => setNuevaReserva({ open: true })} />;
       if (seccion === "huespedes") return <Huespedes conectado huespedes={EMPTY_GUESTS} reservas={EMPTY_RESERVATIONS} habitaciones={EMPTY_ROOMS} onRegistrar={() => {}} onActualizar={() => {}} onAbrirReserva={setBffCode} />;
       if (seccion === "habitaciones") return <HabitacionesRecepcion conectado habitaciones={EMPTY_ROOMS} reservas={EMPTY_RESERVATIONS} huespedes={EMPTY_GUESTS} onCambiarEstado={() => {}} onVerReserva={() => {}} onVerReservaBff={setBffCode} />;
@@ -631,7 +633,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
         return <ObjetosRecepcion objetos={objetos} habitaciones={habitaciones} reservas={reservas} huespedes={huespedes} onActualizar={cambiarObjeto} />;
     }
   })();
-  return (<div className={`${seccion === 'chat' ? 'h-dvh min-h-0 w-full' : 'size-full'} flex flex-col overflow-hidden`} style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
+  return (<div className={"h-dvh min-h-0 w-full flex flex-col overflow-hidden"} style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
     <style>
       {`
         @import url('https://fonts.googleapis.com/css2?family=Afacad:wght@400;500;600;700&display=swap');
@@ -644,7 +646,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
 <nav className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
         <div className="px-5 pt-5 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
           <img src="/villa-serena-logo.png" alt="Villa Serena Hotel" className="w-32 max-h-24 object-contain mx-auto" />
-          <p className="mt-2 text-xl font-semibold leading-6" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>Recepción</p>
+          <p className="text-xs mt-2" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>Recepción</p>
         </div>
 
         <div className="vs-scroll-clean flex-1 py-3 overflow-y-auto">
@@ -702,7 +704,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
         </div>
 
         <div className="flex-1 flex overflow-hidden relative">
-          {!conectado && seccion === 'dia' ? <div className="flex-1 overflow-y-auto"><div className="p-4"><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={abrirReserva} onNueva={() => setNuevaReserva({ open: true })} /></div>{contenido}</div> : contenido}
+          {!conectado && seccion === 'dia' ? <div className="flex-1 overflow-y-auto"><div className="h-[75dvh] min-h-[280px] max-h-[760px] p-4"><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={abrirReserva} onNueva={() => setNuevaReserva({ open: true })} /></div>{contenido}</div> : contenido}
         </div>
 
         <div className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>

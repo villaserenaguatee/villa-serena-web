@@ -3,7 +3,7 @@ import { test, expect, type Page } from '@playwright/test';
 async function login(page: Page, correo: string) {
   await page.goto('/panel/login');
   await page.getByLabel('Correo electrónico', { exact: true }).fill(correo);
-  await page.getByLabel('Contraseña', { exact: true }).fill('VillaSerena26');
+  await page.getByLabel(/^Contraseña o código de acceso/).fill('VillaSerena26');
   await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
 }
 

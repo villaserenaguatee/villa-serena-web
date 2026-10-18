@@ -1,4 +1,5 @@
 'use client';
+import ApprovedReceptionChatFrame from './ApprovedReceptionChatFrame';
 import { useEffect, useState } from 'react';
 import { getReservation, searchReservations } from '@/lib/api/reception';
 import type { Huesped, Reserva, TipoHabitacion } from '@/lib/pms/types';
@@ -8,7 +9,12 @@ import { usePublicLanguage } from '@/components/common/PublicLanguageToggle';
 export default function ConnectedReceptionChat() {
   const { en } = usePublicLanguage();
   const [data, setData] = useState<{ huespedes: Huesped[]; reservas: Reserva[]; habitaciones: { id: string; numero: string }[] }>({ huespedes: [], reservas: [], habitaciones: [] });
+  type Preference={codigo:string;favorita:boolean;archivada:boolean;eliminada:boolean;ultimoId:number;noLeidos:number};
+  const [preferences,setPreferences]=useState<Preference[]>([]);
   const [selected,setSelected]=useState('');
+  async function refreshPreferences(){const r=await fetch('/api/estancias/chat-preferencias',{cache:'no-store'});if(!r.ok)throw Error(en?'Could not load chat folders.':'No se pudieron cargar las carpetas del chat.');const rows:Preference[]=await r.json();setPreferences(rows);return rows;}
+  async function action(code:string,accion:string,valor?:boolean,hasta?:number){try{const r=await fetch('/api/estancias/'+encodeURIComponent(code)+'/chat-preferencias',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accion,valor,hasta})});if(!r.ok){setError(en?'Could not save the change. Try again.':'No se pudo guardar el cambio. Intenta nuevamente.');return;}if(accion==='eliminar')selectConversation('');setError('');await refreshPreferences();}catch{setError(en?'Could not save the change. Try again.':'No se pudo guardar el cambio. Intenta nuevamente.');}}
+  useEffect(()=>{let active=true;async function load(){try{const rows=await refreshPreferences();const p=rows.find(r=>r.codigo===selected);if(active&&selected&&p?.noLeidos)await action(selected,'leido',undefined,p.ultimoId);}catch(e){if(active)setError(e instanceof Error?e.message:'Error');}}void load();const timer=setInterval(load,5000);return()=>{active=false;clearInterval(timer);};},[selected]);
   const selectConversation = (code: string) => {
     setSelected(code);
     const url = new URL(window.location.href);
@@ -61,9 +67,6 @@ export default function ConnectedReceptionChat() {
     window.addEventListener('focus', load);
     return () => { controller.abort(); window.removeEventListener('focus', load); };
   }, []);
-  return <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-    {loading && <p role="status" className="p-3 text-sm">Consultando estancias…</p>}
-    {error && <p role="alert" className="p-3 text-sm text-red-800">{error}</p>}
-    <div className="flex min-h-0 flex-1 flex-col sm:flex-row"><aside className="w-full sm:w-64 shrink-0 border-r border-[#E5E0D8] bg-white p-3"><h1 className="text-2xl font-semibold text-[#18345C] mb-3">Mensajes</h1>{data.reservas.map(r=><button key={r.codigo} onClick={()=>selectConversation(r.codigo)} className={`mb-2 block w-full rounded-xl border p-3 text-left ${selected===r.codigo?'bg-[#18345C] text-white':'text-[#18345C]'}`}>{data.huespedes.find(h=>h.id===r.huespedId)?.nombre}<span className="block text-xs">{r.codigo} · Habitación {data.habitaciones.find(h=>h.id===r.habitacionId)?.numero}</span></button>)}</aside>{selected?<EstanciaChat key={selected} code={selected} blockedReason={data.reservas.find(r=>r.codigo===selected)?.estado==='finalizada'?(en?'This stay has ended. You can read the history, but cannot send new messages.':'La estancia terminó. Puedes consultar el historial, pero no enviar nuevos mensajes.'):''} protectedTerms={data.huespedes.filter(h=>h.id===data.reservas.find(r=>r.codigo===selected)?.huespedId).map(h=>h.nombre)} staff/>:<p className="p-5 text-[#71839B]">Selecciona una estancia para conversar.</p>}</div>
-  </div>;
+  const conversations=data.reservas.filter(r=>preferences.some(p=>p.codigo===r.codigo)).map(r=>({code:r.codigo,name:data.huespedes.find(h=>h.id===r.huespedId)?.nombre??'',room:data.habitaciones.find(h=>h.id===r.habitacionId)?.numero??'',closed:r.estado==='finalizada',favorite:preferences.find(p=>p.codigo===r.codigo)?.favorita,archived:preferences.find(p=>p.codigo===r.codigo)?.archivada,deleted:preferences.find(p=>p.codigo===r.codigo)?.eliminada,unread:preferences.find(p=>p.codigo===r.codigo)?.noLeidos}));
+  return <ApprovedReceptionChatFrame onAction={action} conversations={conversations} selected={selected} onSelect={selectConversation} loading={loading} error={error}>{selected&&conversations.some(c=>c.code===selected)?<EstanciaChat approved staff guestName={conversations.find(c=>c.code===selected)?.name??''} key={selected} code={selected} blockedReason={data.reservas.find(r=>r.codigo===selected)?.estado==='finalizada'?(en?'This stay has ended. You can read the history, but cannot send new messages.':'La estancia terminó. Puedes consultar el historial, pero no enviar nuevos mensajes.'):''} protectedTerms={data.huespedes.filter(h=>h.id===data.reservas.find(r=>r.codigo===selected)?.huespedId).map(h=>h.nombre)}/>:<main className="grid min-h-0 flex-1 place-items-center bg-[#F8F6F0] p-5 text-sm text-[#71839B]">{en?'Select a stay to chat.':'Selecciona una estancia para conversar.'}</main>}</ApprovedReceptionChatFrame>;
 }

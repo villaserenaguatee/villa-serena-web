@@ -5,6 +5,6 @@ export function paymentView(result: PublicStatusDto, code: string, _timedOut = f
   if (result.estadoReserva === 'CONFIRMADA' && result.estadoPago === 'APROBADO' && !result.puedeReintentar) return 'confirmed';
   if (result.estadoReserva === 'CANCELADA' && !result.puedeReintentar && ['FALLIDO', null].includes(result.estadoPago)) return 'incomplete';
   if (result.estadoReserva === 'PENDIENTE_PAGO' && [null, 'PENDIENTE', 'FALLIDO'].includes(result.estadoPago))
-    return result.estadoPago === 'PENDIENTE' ? 'processing' : 'incomplete';
+    return result.estadoUltimoIntento === 'RECHAZADO' ? 'incomplete' : result.estadoPago === 'PENDIENTE' ? 'processing' : 'incomplete';
   throw new Error('No se pudo interpretar el estado de la reserva. Consulta nuevamente.');
 }

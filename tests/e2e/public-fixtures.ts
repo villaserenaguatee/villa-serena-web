@@ -1,4 +1,4 @@
-import { test as base, expect, type Page } from '@playwright/test';
+import { test as base, expect, type Page, type WebError } from '@playwright/test';
 import { readFile, rm } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { basename, dirname, join } from 'node:path';
@@ -12,17 +12,36 @@ export async function resetPublicState() {
     await rm(file, { force: true });
   }
 }
-export const test = base.extend<{ isolatedPublic: void; browserErrors: string[] }>({
+// Only the external booking-email provider is simulated. Reservations, inventory,
+// payment state, cookies and guest OTP still pass through the real demo BFF.
+export const test = base.extend<{ isolatedPublic: void; bookingEmailProvider: void; browserErrors: string[] }>({
+  bookingEmailProvider: [async ({ context }, use) => {
+    const drafts = new Map<string, { requested: boolean; verified: boolean }>();
+    await context.route('**/api/publico/correo/*', async route => {
+      const input = route.request().postDataJSON();
+      const key = `${input.borrador}:${input.correo}`;
+      const state = drafts.get(key) ?? { requested: false, verified: false };
+      const action = new URL(route.request().url()).pathname.split('/').at(-1);
+      if (action === 'solicitar') { state.requested = true; state.verified = false; }
+      if (action === 'verificar') {
+        if (!state.requested || input.codigo !== '123456') { await route.fulfill({ status: 400, json: { codigo: 'VERIFICACION_INVALIDA' } }); return; }
+        state.verified = true;
+      }
+      drafts.set(key, state);
+      await route.fulfill({ json: { verificado: state.verified, solicitado: state.requested, envio: state.requested ? 'ENVIADO' : 'NINGUNO', reenviarEn: 0 } });
+    });
+    await use();
+  }, { auto: true }],
   isolatedPublic: [async ({}, use) => {
     await resetPublicState();
     await use();
   }, { auto: true }],
-  browserErrors: [async ({ page }, use) => {
+  browserErrors: [async ({ context }, use) => {
     const errors: string[] = [];
-    const record = (error: Error) => errors.push(`${page.url()}: ${error.message}`);
-    page.on('pageerror', record);
+    const record = (event: WebError) => errors.push(`${event.page()?.url()}: ${event.error().message}`);
+    context.on('weberror', record);
     await use(errors);
-    page.off('pageerror', record);
+    context.off('weberror', record);
     expect(errors).toEqual([]);
   }, { auto: true }],
 });
@@ -43,21 +62,33 @@ export async function reviewGuest(page: Page) {
   await page.getByRole('button', { name: 'Revisar datos', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Revisa tus datos', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await verifyBookingEmail(page);
   await expect(page.getByRole('heading', { name: 'Pago con tarjeta', exact: true })).toBeVisible();
+}
+
+export async function verifyBookingEmail(page: Page) {
+  await expect(page).toHaveURL(/\/reservar\/verificar\?/);
+  await page.getByRole('button', { name: 'Enviar código', exact: true }).click();
+  const digits = page.locator('input[autocomplete="one-time-code"]');
+  await expect(digits).toHaveCount(1);
+  await digits.fill('123456');
+  await page.getByRole('button', { name: 'Verificar y continuar', exact: true }).click();
+  await expect(page).toHaveURL(/\/reservar\/pago\?/);
 }
 
 export async function enterSelectedPortal(page: Page, code: string, email: string) {
   await page.getByRole('link', { name: 'Acceder al portal del huésped', exact: true }).click();
-  await page.getByLabel('Correo de la reserva', { exact: true }).fill(email);
+  await page.getByLabel('Correo electrónico', { exact: true }).fill(email);
   await expect(page).toHaveURL(url => url.searchParams.get('codigo') === code);
   const requested = page.waitForResponse(response => response.url().endsWith('/acceso/solicitar-codigo') && response.request().method() === 'POST');
-  await page.getByRole('button', { name: 'Solicitar código', exact: true }).click();
+  await page.getByRole('button', { name: 'Solicitar código de acceso', exact: true }).click();
+  await page.getByRole('button', { name: 'Enviar código', exact: true }).click();
   expect((await requested).ok()).toBe(true);
-  await expect(page.getByLabel('Código de acceso')).toBeVisible();
-  await page.getByLabel('Código de acceso').fill(await readGuestCode(email));
-  await page.getByRole('button', { name: 'Verificar código', exact: true }).click();
+  await page.getByRole('button', { name: 'Volver a iniciar sesión', exact: true }).last().click();
+  await page.getByLabel(/^Contraseña o código de acceso/).fill(await readGuestCode(email));
+  await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
   await expect(page).toHaveURL(url => url.pathname === '/portal' && url.searchParams.get('codigo') === code);
-  await expect(page.getByText('Habitación pendiente de asignación.', { exact: false })).toBeVisible();
+  await expect(page.getByTestId('guest-stay-room')).toHaveText(/Habitación\s+Pendiente de asignación/);
   await expect(page.locator('body')).toContainText(code);
   await expect(page.locator('body')).not.toContainText('VS-2026-01042');
 }

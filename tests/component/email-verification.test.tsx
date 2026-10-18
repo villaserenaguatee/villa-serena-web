@@ -4,8 +4,8 @@ import { describe, expect, test, vi } from 'vitest';
 import EmailVerificationFlow, { type EmailVerificationService } from '@/components/common/EmailVerificationFlow';
 
 const labels = {
-  ES: { code: 'Código de verificación', verify: 'Verificar correo', resend: 'Reenviar', change: 'Cambiar correo', back: 'Volver', sent: 'El proveedor aceptó el envío. Revisa tu bandeja de entrada.' },
-  EN: { code: 'Verification code', verify: 'Verify email', resend: 'Resend', change: 'Change email', back: 'Back', sent: 'The provider accepted the send request. Check your inbox.' },
+  ES: { code: 'Código de verificación', verify: 'Verificar correo', resend: 'Solicitar código', change: 'Cambiar correo', back: 'Volver', sent: 'Solicitud recibida. Revisa tu bandeja de entrada.' },
+  EN: { code: 'Verification code', verify: 'Verify email', resend: 'Request code', change: 'Change email', back: 'Back', sent: 'Request received. Check your inbox.' },
 };
 
 describe.each(['ES', 'EN'] as const)('verificación de correo %s', lang => {

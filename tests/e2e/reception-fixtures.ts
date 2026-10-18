@@ -32,7 +32,7 @@ export async function login(page: Page, correo = 'recepcion@villaserena.gt') {
   await page.goto('/panel/login');
   await (await initialSession).finished();
   await page.getByLabel('Correo electrónico', { exact: true }).fill(correo);
-  await page.getByLabel('Contraseña', { exact: true }).fill('VillaSerena26');
+  await page.getByLabel(/^Contraseña o código de acceso/).fill('VillaSerena26');
   await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
   await expect(page).toHaveURL(correo === 'recepcion@villaserena.gt' ? /\/recepcion$/ : /\/admin$/);
   if (correo === 'recepcion@villaserena.gt') {
@@ -97,8 +97,22 @@ export async function expectCalendarReservation(region: Locator, detail: Reserva
     date.setUTCDate(date.getUTCDate() - (date.getUTCDay() + 6) % 7);
     return date.toISOString().slice(0, 10);
   }));
-  await expect(events).toHaveCount(detail.habitacion ? monthly ? weeks.size : days.length : 0);
-  if (detail.habitacion && monthly) {
+  await expect(region.getByText('Consultando reservas…', { exact: true })).toBeHidden();
+  if (monthly && await events.count() !== weeks.size) {
+    // Busy days collapse later bars into a day dialog, including new unassigned stays.
+    for (const day of days) {
+      const more = region.getByRole('button', { name: `Ver todas las reservas del ${day}`, exact: true });
+      if (await more.isVisible()) {
+        await more.click();
+        const dialog = region.getByRole('dialog', { name: 'Reservas del día', exact: true });
+        await expect(dialog.locator(`[data-reservation-code="${detail.codigo}"]`)).toHaveCount(1);
+        await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+      } else await expect(events).not.toHaveCount(0);
+    }
+    return;
+  }
+  await expect(events).toHaveCount(monthly ? weeks.size : detail.habitacion ? days.length : 0);
+  if (monthly) {
     // Weekly bars must still cover every occupied night, excluding checkout.
     await expect.poll(() => events.evaluateAll(elements => elements.reduce((nights, element) =>
       nights + Number(element.getAttribute('data-end-column')) - Number(element.getAttribute('data-start-column')), 0))).toBe(days.length);

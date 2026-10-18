@@ -31,7 +31,7 @@ for (const { name, viewport } of viewports) {
     test.use({ viewport });
     test('catálogo y resultados: validación, tarjeta y contrato de pago pendiente', async ({ page }, testInfo) => {
       const calls: { path: string; method: string; body: string | null }[] = [];
-      page.on('request', request => {
+      page.context().on('request', request => {
         const path = new URL(request.url()).pathname;
         if (path.startsWith('/api/')) calls.push({ path, method: request.method(), body: request.postData() });
       });
@@ -66,13 +66,13 @@ for (const { name, viewport } of viewports) {
       await page.locator('.terms-check input').check();
       await expectNoOverflow(page);
       await page.screenshot({ path: testInfo.outputPath('pago.png'), fullPage: true });
-      await page.getByRole('button', { name: 'Continuar pago →', exact: true }).click();
+      await page.getByRole('button', { name: 'Continuar pago', exact: true }).click();
       const code = await expectPending(page);
       await expect(page.locator('main')).not.toContainText(/PAGO DE PRUEBA|¡Reserva confirmada!/);
       await expectNoOverflow(page);
       expect(posts()).toHaveLength(2);
       const creation = JSON.parse(posts()[0].body!);
-      expect(Object.keys(creation).sort()).toEqual(['entrada', 'huesped', 'numeroHuespedes', 'salida', 'tipoHabitacionId']);
+      expect(Object.keys(creation).sort()).toEqual(['borradorId', 'entrada', 'huesped', 'numeroHuespedes', 'ofertaSlug', 'salida', 'tipoHabitacionId']);
       expect(creation.numeroHuespedes).toBe(2);
       await page.reload(); await expectPending(page);
       await page.getByRole('button', { name: 'Consultar estado', exact: true }).click();
@@ -80,7 +80,7 @@ for (const { name, viewport } of viewports) {
       await expectPending(page);
       expect(posts()).toHaveLength(2);
       expect(calls.some(call => call.path.endsWith('/hotel'))).toBe(true);
-      expect(calls.some(call => call.path.endsWith('/tipos-habitacion'))).toBe(true);
+      expect(calls.some(call => call.path.endsWith('/ofertas'))).toBe(true);
       expect(calls.filter(call => call.path.endsWith(`/${code}/estado`)).length).toBeGreaterThanOrEqual(3);
       const routePattern = `**/api/publico/reservas/${code}/estado`;
       await page.route(routePattern, route => route.fulfill({ status: 503, json: { codigo: 'SERVICIO_NO_DISPONIBLE', mensaje: 'Consulta de prueba interrumpida.', detalles: [] } }));
@@ -105,11 +105,21 @@ for (const { name, viewport } of viewports) {
       await page.locator('.reserve-room-grid .reserve-view-room').first().click();
       await page.getByRole('button', { name: 'Reservar habitación', exact: true }).click();
       await fillGuest(page, 'card-issue48@example.test', 'Tarjeta');
-      await reviewGuest(page);
-      await page.locator('.terms-check input').check();
-      await page.getByRole('button', { name: 'Continuar pago →', exact: true }).click();
-      const secondCode = await expectPending(page);
+      await page.getByRole('button', { name: 'Revisar datos', exact: true }).click();
+      await expect(page.getByRole('alert').filter({ hasText: 'Hay un intento anterior cuyo resultado debes recuperar' })).toBeVisible();
+      expect(posts()).toHaveLength(2);
+      // A separate tab has its own draft. The first pending attempt remains intact.
+      const independent = await page.context().newPage();
+      await independent.goto(`/reservar/habitaciones?llegada=${hotelDate(55)}&salida=${hotelDate(57)}&adultos=1&ninos=1`);
+      await independent.getByRole('link', { name: 'Ver habitación', exact: true }).first().click();
+      await independent.getByRole('button', { name: 'Reservar habitación', exact: true }).click();
+      await fillGuest(independent, 'card-issue48@example.test', 'Tarjeta');
+      await reviewGuest(independent);
+      await independent.locator('.terms-check input').check();
+      await independent.getByRole('button', { name: 'Continuar pago', exact: true }).click();
+      const secondCode = await expectPending(independent);
       expect(secondCode).not.toBe(code);
+      await independent.close();
       expect(posts()).toHaveLength(4);
       expect(calls.filter(call => call.method === 'POST' && call.path === '/api/public/bookings')).toHaveLength(0);
     });
@@ -118,7 +128,7 @@ for (const { name, viewport } of viewports) {
       const oldQuery = new URLSearchParams({ habitacion: 'Habitación Estándar', tipoHabitacionId: '1', llegada: hotelDate(12), salida: hotelDate(14), adultos: '2', ninos: '0' });
       await page.goto(`/reservar/pago?${oldQuery}`);
       await expect(page.getByRole('alert').filter({ hasText: 'Tus datos no están disponibles' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Continuar pago →', exact: true })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Continuar pago', exact: true })).toBeDisabled();
       await page.goto(`/reservar/datos?${oldQuery}`);
       await expect(page.locator('main')).toContainText(/Introduce tus datos|La habitación no está disponible|No se pudo consultar/);
       await page.goto(`/reservar/habitaciones?llegada=${hotelDate(32)}&salida=${hotelDate(34)}&adultos=2&ninos=0&huespedes=2`);
@@ -128,7 +138,7 @@ for (const { name, viewport } of viewports) {
       const dataURL = page.url();
       await fillGuest(page);
       await reviewGuest(page);
-      const button = page.getByRole('button', { name: 'Continuar pago →', exact: true });
+      const button = page.getByRole('button', { name: 'Continuar pago', exact: true });
       await expect(button).toBeDisabled();
       await page.locator('.terms-check input').check();
       await expect(button).toBeEnabled();

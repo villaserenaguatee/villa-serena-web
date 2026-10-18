@@ -7,14 +7,14 @@ for (const { name, viewport } of viewports) {
       const session = page.waitForResponse(response => response.url().endsWith('/api/auth/yo'));
       await page.goto('/panel/login'); await (await session).finished();
       await page.getByLabel('Correo electrónico', { exact: true }).fill('recepcion@villaserena.gt');
-      await page.getByLabel('Contraseña', { exact: true }).fill('demo123');
-      const rejected = page.waitForResponse(response => response.url().endsWith('/api/auth/login'));
+      await page.getByLabel(/^Contraseña o código de acceso/).fill('demo123');
+      const rejected = page.waitForResponse(response => response.url().endsWith('/api/auth/iniciar-sesion'));
       await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
       expect((await rejected).status()).toBe(401);
-      await expect(page.getByRole('alert').filter({ hasText: 'Correo o contraseña incorrectos.' })).toBeVisible();
+      await expect(page.getByRole('alert').filter({ hasText: 'No se pudo iniciar sesión.' })).toBeVisible();
       expect((await context.cookies()).filter(cookie => cookie.name.startsWith('vs_staff_'))).toHaveLength(0);
-      await page.getByLabel('Contraseña', { exact: true }).fill('VillaSerena26');
-      const accepted = page.waitForResponse(response => response.url().endsWith('/api/auth/login'));
+      await page.getByLabel(/^Contraseña o código de acceso/).fill('VillaSerena26');
+      const accepted = page.waitForResponse(response => response.url().endsWith('/api/auth/iniciar-sesion'));
       await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
       expect((await accepted).status()).toBe(200);
       await expect(page).toHaveURL(/\/recepcion$/);
@@ -26,19 +26,19 @@ for (const { name, viewport } of viewports) {
       expect(await page.evaluate(() => document.cookie.includes('vs_staff_'))).toBe(false);
     });
 
-    test('huésped entra desde inicio con OTP, sin contraseña ni sesión local de personal', async ({ page, context }, testInfo) => {
+    test('huésped entra desde el login unificado con OTP y sin sesión local de personal', async ({ page, context }, testInfo) => {
       test.setTimeout(60_000);
       const email = 'ana.morales@correo.com';
       await page.goto('/login');
-      await expect(page.getByRole('tab', { name: 'Huésped', exact: true })).toHaveAttribute('aria-selected', 'true');
-      await expect(page.getByLabel('Contraseña', { exact: true })).toHaveCount(0);
       await page.getByLabel('Correo electrónico', { exact: true }).fill(email);
       const sent = page.waitForResponse(response => response.url().endsWith('/acceso/solicitar-codigo'), { timeout: 15_000 });
-      await page.getByRole('button', { name: 'Solicitar código', exact: true }).click();
+      await page.getByRole('button', { name: 'Solicitar código de acceso', exact: true }).click();
+      await page.getByRole('button', { name: 'Enviar código', exact: true }).click();
       const response = await sent; expect(response.status()).toBe(200);
       await expect(page.getByRole('status').filter({ hasText: 'Si el correo tiene una reserva' })).toBeVisible();
       const code = await readGuestCode(email);
-      await page.getByLabel('Código de acceso', { exact: true }).fill(code);
+      await page.getByRole('button', { name: 'Volver a iniciar sesión', exact: true }).last().click();
+      await page.getByLabel(/^Contraseña o código de acceso/).fill(code);
       await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
       await expect(page).toHaveURL(/\/portal$/);
       await expect(page.locator('body')).toContainText(/Tu estancia\s*VS-\d{4}-\d+/);

@@ -3,6 +3,7 @@ import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 const nextConfig = (phase: string): NextConfig => ({
   reactStrictMode: true,
   devIndicators: false,
+  outputFileTracingRoot: process.cwd(),
   poweredByHeader: false,
   async headers() {
     return [{ source: '/:path*', headers: [

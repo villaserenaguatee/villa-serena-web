@@ -45,6 +45,12 @@ export function createOperationsApi() {
       if (path === '/api/v1/auth/ws-ticket' && method === 'POST') return send({ ticket: `ticket-${++tickets}`, expiraEn: new Date(Date.now() + 60000).toISOString(), accessToken: 'campo-que-no-debe-salir' });
       calls.push({ method, path, ...(body === undefined ? {} : { body: Buffer.isBuffer(body) ? { bytes: body.length } : structuredClone(body) }) });
       if (path === '/api/v1/habitaciones' && method === 'GET') { assert.equal(name, 'recepcion'); return send([room]); }
+      if (method === 'GET' && ['/api/v1/gestion/activos', '/api/v1/gestion/insumos', '/api/v1/gestion/preventivos', '/api/v1/gestion/ordenes'].includes(path)) {
+        assert.equal(name, 'mantenimiento'); return send([]);
+      }
+      if (method === 'GET' && path === '/api/v1/incidencias/habitaciones') {
+        assert.equal(name, 'mantenimiento'); return send([room]);
+      }
       if (path.startsWith('/api/v1/room-service/')) {
         assert.equal(name, 'roomservice');
         if (path.endsWith('/pedidos') && method === 'GET') return send(['ENTREGADO', 'CANCELADO'].includes(order.estado) ? [] : [order]);

@@ -19,6 +19,17 @@ export function demoCatalog(): RoomTypeDto[] {
     return { id: index + 1, nombre: type, descripcion: offers[0].description, capacidad: Math.max(...HABITACIONES_CENTRALES.filter(r => r.tipo === type).map(r => r.capacidad)), precioBaseNoche: TARIFAS_PREDETERMINADAS[type], fotos: [...new Set(offers.flatMap(o => o.gallery))] };
   });
 }
+export function demoOffers() {
+  const catalog = demoCatalog();
+  return publicRooms.map(room => ({ ...room, apiTypeId: catalog.find(type => type.nombre === tipoPublicoATipoHotel(room.type))!.id }));
+}
+export function demoOfferQuotes(entrada: string, salida: string, huespedes: number) {
+  const quotes = demoQuotes(entrada, salida, huespedes);
+  return demoOffers().flatMap(offer => {
+    const quote = quotes.find(q => q.tipoHabitacion.id === offer.apiTypeId);
+    return quote && offer.capacity >= huespedes ? [{ ...quote, ofertaSlug: offer.slug }] : [];
+  });
+}
 export function demoHotel(): HotelDto {
   return { nombre: HOTEL.nombre, descripcion: 'Hospitalidad cercana, habitaciones cómodas y experiencias pensadas para acompañar tu estancia.', fotos: ['https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1900&q=90'],
     ubicacion: { direccion: HOTEL.ubicacion }, contacto: { correo: HOTEL.correo, telefono: HOTEL.telefono }, horaCheckIn: '15:00', horaCheckOut: '12:00' };

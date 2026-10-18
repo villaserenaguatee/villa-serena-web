@@ -1,6 +1,2 @@
-import { redirect } from 'next/navigation';
-import IncidenciasConectadas from '@/features/mantenimiento/pages/IncidenciasConectadas';
-export default function Page() {
-  if (process.env.STAFF_AUTH_MODE === 'spring') return <IncidenciasConectadas soloReportar />;
-  redirect('/limpieza');
-}
+import {LimpiezaRoleApp} from '@/app/router/RoleEntrypoints';
+export default function Page(){return <LimpiezaRoleApp conectado={process.env.STAFF_AUTH_MODE==='spring'}/>;}

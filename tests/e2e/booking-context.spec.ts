@@ -38,7 +38,7 @@ for (const { name, viewport } of viewports) {
       await fillGuest(page, 'ana.morales@correo.com', 'Ana');
       await reviewGuest(page);
       await page.locator('.terms-check input').check();
-      await page.getByRole('button', { name: 'Continuar pago →', exact: true }).click();
+      await page.getByRole('button', { name: 'Continuar pago', exact: true }).click();
       await expect(page.getByRole('heading', { name: 'Pago en proceso', exact: true })).toBeVisible();
       const code = new URL(page.url()).searchParams.get('codigo')!;
       expect(code).toMatch(/^VS-[A-Z0-9]{6}$/);
@@ -47,7 +47,7 @@ for (const { name, viewport } of viewports) {
       await expect(page.getByLabel('Correo de la reserva', { exact: true })).toHaveCount(0);
       await enterSelectedPortal(page, code, 'ana.morales@correo.com');
       await page.reload();
-      await expect(page.getByText('Habitación pendiente de asignación.', { exact: false })).toBeVisible();
+      await expect(page.getByTestId('guest-stay-room')).toHaveText(/Habitación\s+Pendiente de asignación/);
       await expect(page.locator('body')).toContainText(code);
       await expect(page.locator('body')).not.toContainText('VS-2026-01042');
       await expectNoOverflow(page);

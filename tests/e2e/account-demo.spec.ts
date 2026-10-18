@@ -176,7 +176,7 @@ for (const { name, viewport } of viewports) {
       const session = page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/yo');
       await page.reload(); await (await session).finished();
       await page.getByLabel('Correo electrónico', { exact: true }).fill('mantenimiento@villaserena.gt');
-      await page.getByLabel('Contraseña', { exact: true }).fill('VillaSerena26');
+      await page.getByLabel(/^Contraseña o código de acceso/).fill('VillaSerena26');
       await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
       await expect(page).toHaveURL(/\/mantenimiento$/);
       for (const path of [accountPath, invoicePath]) {

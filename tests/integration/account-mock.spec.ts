@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { accountCode } from './account-api';
 import { test, expect, viewports, login, expectNoDemoStorage, expectNoOverflow } from './account-fixtures';
 
@@ -52,32 +53,22 @@ for (const { name, viewport } of viewports) {
       ]);
       await expectNoOverflow(page); await expectNoDemoStorage(page);
       await page.getByRole('link', { name: 'Ver factura e imprimir', exact: true }).click();
-      const invoice = page.locator('main article');
-      await expect(invoice.getByRole('heading', { name: 'Hotel del API', exact: true })).toBeVisible();
-      for (const text of ['Empresa del API', 'Dirección fiscal de prueba', '1234567-9', 'hotel@example.test', '55550000', 'CF — Consumidor Final', 'Q 725.00']) await expect(invoice).toContainText(text);
-      await expect(invoice.getByText('Lavandería', { exact: true })).toHaveCount(0);
+      const invoice = page.getByRole('region', { name: 'Documento de factura' });
+      await expect(page.getByRole('heading', { name: 'Factura de estancia', exact: true })).toBeVisible();
+      expect(closed.invoice).toMatchObject({ total: 725, hotel: { nombreComercial: 'Hotel del API' } });
       expect(closed.invoice?.cargos).toHaveLength(2);
       expect(closed.invoice?.pagos).toHaveLength(2);
-      for (const format of ['ticket', 'letter'] as const) {
-        await page.getByLabel('Formato de impresión', { exact: true }).selectOption(format);
-        await page.screenshot({ path: testInfo.outputPath(`${format}.png`), fullPage: true });
-        await page.emulateMedia({ media: 'print' });
-        await expect(page.locator('main')).toBeHidden();
-        const printed = page.locator('body > .invoice-print');
-        await expect(printed).toBeVisible(); await expect(printed.getByRole('button')).toHaveCount(0);
-        const layout = await printed.locator('article').evaluate(element => ({
-          width: element.getBoundingClientRect().width, overflow: element.scrollWidth > element.clientWidth,
-          fits: Array.from(element.querySelectorAll('.invoice-line')).every(line => {
-            const parent = line.getBoundingClientRect();
-            return Array.from(line.children).every(child => child.getBoundingClientRect().right <= parent.right + 1);
-          }),
-        }));
-        expect(layout.overflow).toBe(false); expect(layout.fits).toBe(true);
-        if (format === 'ticket') expect(Math.abs(layout.width - 72 * 96 / 25.4)).toBeLessThan(1);
-        await page.pdf({ path: testInfo.outputPath(`${format}.pdf`), preferCSSPageSize: true });
-        await page.emulateMedia({ media: 'screen' });
-      }
-      await page.reload(); await expect(invoice).toBeVisible();
+      await expect(invoice.getByRole('img', { name: /Factura .*página 1 de 1/ })).toBeVisible();
+      const downloadReady = page.waitForEvent('download');
+      await invoice.getByRole('link', { name: 'Descargar PDF', exact: true }).click();
+      const download = await downloadReady;
+      const document = await readFile((await download.path())!);
+      expect(document.subarray(0, 5).toString()).toBe('%PDF-');
+      await testInfo.attach('factura.pdf', { body: document, contentType: 'application/pdf' });
+      await expectNoOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath('factura.png'), fullPage: true });
+      await page.reload();
+      await expect(invoice.getByRole('img', { name: /Factura .*página 1 de 1/ })).toBeVisible();
       await expectNoDemoStorage(page);
       expect((await mock.state()).account).toEqual(closed.account);
       expect((await mock.state()).checkoutCalls).toBe(2);

@@ -1,4 +1,4 @@
-import { test, expect, viewports, hotelDate, expectNoOverflow } from './public-fixtures';
+import { test, expect, viewports, hotelDate, expectNoOverflow, verifyBookingEmail } from './public-fixtures';
 
 for (const { name, viewport } of viewports) {
   test.describe(name, () => {
@@ -11,9 +11,10 @@ for (const { name, viewport } of viewports) {
         sessionStorage.setItem('vs-public-booking-draft', JSON.stringify({ id, createdAt: Date.now(), params: params.toString() }));
         return id;
       }, { entrada: hotelDate(14), salida: hotelDate(16) });
-      await page.goto(`/reservar/pago?draft=${draft}`);
+      await page.goto(`/reservar/verificar?draft=${draft}`);
+      await verifyBookingEmail(page);
       await expect(page.locator('.booking-summary-card img')).toBeVisible();
-      const button = page.getByRole('button', { name: 'Continuar pago →', exact: true });
+      const button = page.getByRole('button', { name: 'Continuar pago', exact: true });
       await expect(button).toBeDisabled();
       await expect(page.locator('.summary-total')).toHaveCount(1);
       const summary = await page.locator('.booking-summary-card').boundingBox();

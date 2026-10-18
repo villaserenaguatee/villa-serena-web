@@ -2,7 +2,7 @@ import { AvailabilityError } from '@/lib/bff/publicAvailability';
 import { bookingEmailProof } from '@/lib/bff/bookingEmailVerification';
 import { publicBookingAudit } from '@/lib/bff/publicBookingAudit';
 import { creationResponse } from '@/lib/bff/bookingContext';
-import { demoCatalog, demoCreate, demoHotel, demoPayment, demoQuotes, demoStatus, parseContractBooking } from '@/lib/bff/publicContract';
+import { demoCatalog, demoCreate, demoHotel, demoOffers, demoOfferQuotes, demoPayment, demoQuotes, demoStatus, parseContractBooking } from '@/lib/bff/publicContract';
 
 export const runtime = 'nodejs';
 const headers = { 'Cache-Control': 'no-store', 'X-Villa-Serena-Mode': 'demo' };
@@ -53,6 +53,9 @@ export async function GET(request: Request) {
     demoOnly();
     const route = path(request), url = new URL(request.url);
     if (route.length === 1 && route[0] === 'hotel') return Response.json(demoHotel(), { headers });
+    if (route.length === 1 && route[0] === 'ofertas') return Response.json(demoOffers(), { headers });
+    if (route.length === 2 && route[0] === 'ofertas' && route[1] === 'disponibilidad') return Response.json(demoOfferQuotes(
+      url.searchParams.get('entrada') ?? '', url.searchParams.get('salida') ?? '', Number(url.searchParams.get('numeroHuespedes'))), { headers });
     if (route[0] === 'tipos-habitacion' && route.length <= 2) {
       const catalog = demoCatalog();
       if (route.length === 1) return Response.json(catalog, { headers });

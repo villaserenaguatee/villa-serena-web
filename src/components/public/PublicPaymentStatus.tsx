@@ -67,6 +67,8 @@ export default function PublicPaymentStatus({ code }: { code: string }) {
     ? en
       ? 'Your booking is confirmed'
       : 'Tu reserva está confirmada'
+    : result?.estadoUltimoIntento === 'RECHAZADO' && result.estadoReserva === 'PENDIENTE_PAGO'
+      ? en ? 'Payment attempt declined' : 'Intento de pago rechazado'
     : view === 'processing'
       ? en
         ? 'Payment processing'
@@ -88,6 +90,10 @@ const explanation =
     ? en
       ? 'Check the details of your stay.'
       : 'Consulta los detalles de tu estancia'
+    : result?.estadoUltimoIntento === 'RECHAZADO' && result.estadoReserva === 'PENDIENTE_PAGO'
+      ? result.motivoUltimoIntento === 'TARJETA_REAL_EN_PRUEBAS'
+        ? en ? 'Stripe declined a real card in test mode. No payment was approved. This booking accepts Stripe test cards only.' : 'Stripe rechazó una tarjeta real en modo de prueba. No se aprobó ningún pago. Esta reserva utiliza únicamente tarjetas de prueba de Stripe.'
+        : en ? 'Stripe declined the last attempt. The booking is still pending payment.' : 'Stripe rechazó el último intento. La reserva sigue pendiente de pago.'
     : view === 'processing'
       ? en
         ? 'Your payment is still pending. Check its status in a moment.'
@@ -197,7 +203,9 @@ return (
           <div>
             <span>{en ? 'Payment' : 'Pago'}</span>
             <b>
-              {result.estadoPago === 'APROBADO'
+              {result.estadoUltimoIntento === 'RECHAZADO' && result.estadoReserva === 'PENDIENTE_PAGO'
+                ? en ? 'Last attempt declined' : 'Último intento rechazado'
+                : result.estadoPago === 'APROBADO'
                 ? en
                   ? 'Approved'
                   : 'Aprobado'
