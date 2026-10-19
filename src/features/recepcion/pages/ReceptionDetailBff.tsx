@@ -85,14 +85,13 @@ export default function ReceptionDetailBff({ conectado = false, codigo, onCerrar
             <form className="space-y-3" onSubmit={e => {
               e.preventDefault(); const form = new FormData(e.currentTarget);
               void run(async () => {
-                await addReservationGuest(codigo, { nombreCompleto: String(form.get('nombre')).trim(), tipoDocumento: form.get('tipo') === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: String(form.get('documento')).trim(), nacionalidad: String(form.get('nacionalidad')).trim() });
+                await addReservationGuest(codigo, { nombreCompleto: String(form.get('nombre')).trim(), tipoDocumento: form.get('tipo') === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: String(form.get('documento')).trim() });
                 setAddingGuest(false); setReload(n => n + 1);
               });
             }}>
               <label className="block">Nombre completo<input required maxLength={150} name="nombre" className={`${control} w-full`} /></label>
-              <label className="block">Tipo de documento<select name="tipo" value={additionalDocType} onChange={e=>{setAdditionalDocType(e.target.value);setGuestDocumentError('');}} className={`${control} w-full`}><option>DPI</option><option value="PASAPORTE">Pasaporte</option></select></label>
+              <label className="block">Tipo de documento<select name="tipo" value={additionalDocType} onChange={e=>{setAdditionalDocType(e.target.value);setGuestDocumentError('');}} className={`${control} w-full`}><option>DPI</option></select></label>
               <label className="block">Documento<input required name="documento" maxLength={additionalDocType==='DPI'?13:30} pattern={additionalDocType==='DPI'?'[0-9]{13}':'[A-Za-z0-9]{3,30}'} inputMode={additionalDocType==='DPI'?'numeric':'text'} onInput={()=>setGuestDocumentError('')} onInvalid={()=>setGuestDocumentError(additionalDocType==='DPI'?'El DPI debe contener exactamente 13 dígitos.':'El pasaporte debe tener entre 3 y 30 letras o números.')} aria-describedby="additional-document-error" aria-invalid={Boolean(guestDocumentError)} className={`${control} w-full`} />{guestDocumentError&&<small id="additional-document-error" role="alert" className="block text-red-800">{guestDocumentError}</small>}</label>
-              <label className="block">Nacionalidad<input required maxLength={60} name="nacionalidad" className={`${control} w-full`} /></label>
               {error && <p role="alert" className="text-red-800">{error}</p>}
               <button disabled={busy} className={primary}>Guardar huésped</button>
             </form>

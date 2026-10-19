@@ -400,7 +400,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
   }
   const connectedGuests = useRef(new Map<string, Huesped>());
   async function registrarHuespedConectado(datos: Omit<Huesped, 'id' | 'creadoEn'>): Promise<Huesped> {
-    const { huesped: g } = await registerGuest({ nombreCompleto: datos.nombre, correo: datos.correo, telefono: datos.telefono, nacionalidad: datos.nacionalidad, tipoDocumento: datos.tipoDocumento === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: datos.documento, paisEmisorPasaporte: datos.paisEmisorPasaporte });
+    const { huesped: g } = await registerGuest({ nombreCompleto: datos.nombre, correo: datos.correo, telefono: datos.telefono, ...(datos.nacionalidad ? {nacionalidad: datos.nacionalidad} : {}), tipoDocumento: datos.tipoDocumento === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: datos.documento, paisEmisorPasaporte: datos.paisEmisorPasaporte });
     const value: Huesped = { ...datos, id: String(g.id), nombre: g.nombreCompleto, creadoEn: '' };
     connectedGuests.current.set(value.id, value);
     setHuespedes(prev => [...prev.filter(h => h.id !== value.id), value]);

@@ -18,7 +18,7 @@ function validEntry(value: unknown): value is Entry {
     !result || result.mode !== 'demo' || !/^RES-[A-F0-9]{32}$/.test(result.code) || result.status !== 'confirmed' ||
     result.paymentMethod !== 'hotel' || result.paymentStatus !== 'unpaid' || !Number.isFinite(result.total) || result.total < 0 ||
     !reservation || !guest || !text(guest.id) || !text(guest.nombre) || !text(guest.correo) || !text(guest.documento) ||
-    !['DPI', 'Pasaporte'].includes(guest.tipoDocumento) || !text(guest.telefono) || !text(guest.nacionalidad) ||
+    !['DPI', 'Pasaporte'].includes(guest.tipoDocumento) || !text(guest.telefono) || (guest.nacionalidad !== undefined && typeof guest.nacionalidad !== 'string') ||
     !text(reservation.id) || reservation.codigo !== result.code || reservation.huespedId !== guest.id ||
     reservation.solicitudPublicaId !== entry.requestId || reservation.origenReserva !== 'publica' ||
     !text(reservation.habitacionId) || !['Standard', 'Superior', 'Deluxe', 'Suite Deluxe', 'Suite'].includes(reservation.tipoHabitacion) ||

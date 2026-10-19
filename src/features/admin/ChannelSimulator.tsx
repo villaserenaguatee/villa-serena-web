@@ -7,7 +7,7 @@ import type { RoomTypeDto } from '@/lib/bff/contracts/public';
 import type { ChannelInput, ChannelResult } from '@/lib/bff/contracts/channel';
 
 const empty: ChannelInput = { canal: 'BOOKING', reserva: { identificadorExterno: '', tipoHabitacionId: 1, entrada: '', salida: '', numeroHuespedes: 1, montoTotal: 1,
-  huesped: { nombreCompleto: '', correo: '', telefono: '', nacionalidad: '', tipoDocumento: 'DPI', numeroDocumento: '' } } };
+  huesped: { nombreCompleto: '', correo: '', telefono: '', tipoDocumento: 'DPI', numeroDocumento: '' } } };
 const control = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900';
 const button = 'rounded-lg bg-[#18345C] px-4 py-2 text-white disabled:opacity-50';
 export default function ChannelSimulator() {
@@ -34,7 +34,7 @@ export default function ChannelSimulator() {
     date.setUTCDate(date.getUTCDate() + 2);
     setInput({ canal: Math.random() < .5 ? 'BOOKING' : 'EXPEDIA', reserva: { identificadorExterno: `DEMO-${id}`, tipoHabitacionId: type.id,
       entrada, salida: date.toISOString().slice(0, 10), numeroHuespedes: Math.min(2, type.capacidad), montoTotal: type.precioBaseNoche * 2,
-      huesped: { nombreCompleto: 'Huésped de prueba', correo: `demo-${id.slice(0, 8)}@example.com`, telefono: '+502 5555 0100', nacionalidad: 'Guatemala', tipoDocumento: 'PASAPORTE', numeroDocumento: `DEMO${id.slice(0, 8)}` } } });
+      huesped: { nombreCompleto: 'Huésped de prueba', correo: `demo-${id.slice(0, 8)}@example.com`, telefono: '+502 5555 0100', tipoDocumento: 'DPI', numeroDocumento: String(parseInt(id.replace(/-/g, '').slice(0, 10), 16)).padStart(13, '0') } } });
     setResult(null); setError('');
   }
   async function send(value: ChannelInput) {
@@ -67,8 +67,8 @@ export default function ChannelSimulator() {
       <label>Cantidad de huéspedes<input required type="number" min="1" step="1" className={control} value={input.reserva.numeroHuespedes} onChange={e => reservation('numeroHuespedes', Number(e.target.value))} /></label>
       <label>Monto total (Q)<input required type="number" min="0.01" step="0.01" className={control} value={input.reserva.montoTotal} onChange={e => reservation('montoTotal', Number(e.target.value))} /></label>
       <label className="sm:col-span-2">Identificador externo<input required maxLength={60} className={control} value={input.reserva.identificadorExterno} onChange={e => reservation('identificadorExterno', e.target.value)} /></label>
-      {(['nombreCompleto', 'correo', 'telefono', 'nacionalidad', 'numeroDocumento'] as const).map((key, i) => <label key={key}>{['Nombre completo', 'Correo', 'Teléfono', 'Nacionalidad', 'Número de documento'][i]}<input required type={key === 'correo' ? 'email' : key === 'telefono' ? 'tel' : 'text'} maxLength={key === 'nombreCompleto' || key === 'correo' ? 150 : key === 'nacionalidad' ? 60 : 30} className={control} value={input.reserva.huesped[key]} onChange={e => guest(key, e.target.value)} /></label>)}
-      <label>Tipo de documento<select aria-label="Tipo de documento" className={control} value={input.reserva.huesped.tipoDocumento} onChange={e => guest('tipoDocumento', e.target.value)}><option value="DPI">DPI</option><option value="PASAPORTE">Pasaporte</option></select></label>
+      {(['nombreCompleto', 'correo', 'telefono', 'numeroDocumento'] as const).map((key, i) => <label key={key}>{['Nombre completo', 'Correo', 'Teléfono', 'Número de documento'][i]}<input required type={key === 'correo' ? 'email' : key === 'telefono' ? 'tel' : 'text'} maxLength={key === 'nombreCompleto' || key === 'correo' ? 150 : 30} className={control} value={input.reserva.huesped[key]} onChange={e => guest(key, e.target.value)} /></label>)}
+      <label>Tipo de documento<select aria-label="Tipo de documento" className={control} value={input.reserva.huesped.tipoDocumento} onChange={e => guest('tipoDocumento', e.target.value)}><option value="DPI">DPI</option></select></label>
       <div className="flex flex-wrap gap-3 sm:col-span-2"><button type="button" className={button} disabled={busy || !catalog.length} onClick={randomize}>Llenar al azar</button><button type="submit" className={button} disabled={busy || !catalog.length}>{busy ? 'Enviando…' : 'Enviar reserva de prueba'}</button><button type="button" className={button} disabled={busy || !last} onClick={() => last && void send(last)}>Repetir último envío</button></div>
     </form>
     {error && <p role="alert" className="rounded-lg bg-red-50 p-4 text-red-800">{error}</p>}

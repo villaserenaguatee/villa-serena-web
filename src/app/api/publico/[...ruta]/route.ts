@@ -89,7 +89,7 @@ export async function POST(request: Request) {
         const reader = request.body.getReader(), chunks: Uint8Array[] = []; let size = 0;
         while (true) { const part = await reader.read(); if (part.done) break; size += part.value.length;
           if (size > 16384) { await reader.cancel(); throw new AvailabilityError('DATOS_INVALIDOS', 400); } chunks.push(part.value); }
-        try { const parsed=JSON.parse(Buffer.concat(chunks).toString('utf8')); draftId=typeof parsed.borradorId==='string'?parsed.borradorId:''; delete parsed.borradorId; if(parsed.ofertaSlug){if(!/^[a-z0-9-]{1,80}$/.test(parsed.ofertaSlug)) throw new Error(); target=`ofertas/${parsed.ofertaSlug}/reservas`; delete parsed.ofertaSlug;} body=JSON.stringify(parsed); } catch { throw new AvailabilityError('DATOS_INVALIDOS', 400); }
+        try { const parsed=JSON.parse(Buffer.concat(chunks).toString('utf8')); if(parsed.huesped?.tipoDocumento !== 'DPI' || typeof parsed.huesped?.numeroDocumento !== 'string' || !/^[0-9]{13}$/.test(parsed.huesped.numeroDocumento)) throw new Error(); delete parsed.huesped.paisEmisorPasaporte; draftId=typeof parsed.borradorId==='string'?parsed.borradorId:''; delete parsed.borradorId; if(parsed.ofertaSlug){if(!/^[a-z0-9-]{1,80}$/.test(parsed.ofertaSlug)) throw new Error(); target=`ofertas/${parsed.ofertaSlug}/reservas`; delete parsed.ofertaSlug;} body=JSON.stringify(parsed); } catch { throw new AvailabilityError('DATOS_INVALIDOS', 400); }
       }
       const audit = publicBookingAudit(request, creating ? 'create' : 'checkout', creating ? key : null);
       let upstream: Response;

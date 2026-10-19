@@ -3,7 +3,9 @@ type S = components['schemas'];
 export type HotelDto = S['Hotel'];
 export type RoomTypeDto = S['TipoHabitacionPublico'];
 export type QuoteDto = S['OpcionDisponiblePublica'];
-export type CreatePublicDto = S['ReservaWebPeticion'];
+// MVP write payload; API contract still requires nationality until Alex updates it.
+type ApiCreatePublicDto = S['ReservaWebPeticion'];
+export type CreatePublicDto = Omit<ApiCreatePublicDto, 'huesped'> & { huesped: Omit<ApiCreatePublicDto['huesped'], 'nacionalidad'> & { nacionalidad?: string } };
 export type CreatedPublicDto = S['ReservaWebCreada'];
 export type PaymentDto = S['PagoIniciado'];
 export type PublicStatusDto = S['EstadoReservaPublico'] & {

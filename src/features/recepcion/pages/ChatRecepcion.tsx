@@ -6,7 +6,6 @@ import type { HabitacionHotel, Huesped, MensajeChat, Reserva } from '@/lib/pms/t
 import { ahoraISO, generarId } from '@/data/pms';
 import { leerMensajesChat, guardarMensajesChat, actualizarMensajeChat, leerPreferenciasChat, guardarPreferenciasChat } from '@/store/chatStore';
 import type { PreferenciasChat } from '@/store/chatStore';
-import { translateChatMessage } from '@/lib/translation/client';
 import { getReservation } from '@/lib/api/reception';
 type Filtro = 'todos' | 'no-leidos' | 'favoritos' | 'archivados';
 const hora = (iso: string) => new Date(iso).toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
@@ -93,12 +92,7 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
     try { if (!await estanciaVigente()) return; } catch { setAviso('No se pudo comprobar la estancia. Intenta nuevamente.'); return; }
     const valor = texto.trim();
     const m: MensajeChat = { id: generarId(), autor: 'recepcion', huespedId: actual.id, texto: valor, textoEs: valor, idiomaOriginal: 'es', hora: ahoraISO() };
-    try {
-      m.textoEn = await translateChatMessage(valor, 'es', 'en');
-    }
-    catch {
-      setAviso('La traducción no está disponible; se conservará únicamente el mensaje original.');
-    }
+
     try { if (!await estanciaVigente()) return; } catch { setAviso('No se pudo comprobar la estancia. Intenta nuevamente.'); return; }
     const next = [...leerMensajesChat([]), m];
     guardarMensajesChat(next);
@@ -110,12 +104,7 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
       return;
     const valor = editandoTexto.trim();
     let textoEn: string | undefined;
-    try {
-      textoEn = await translateChatMessage(valor, 'es', 'en');
-    }
-    catch {
-      setAviso('No fue posible actualizar la traducción; se conservará únicamente el original.');
-    }
+
     const next = actualizarMensajeChat(leerMensajesChat([]), id, m => ({ ...m, texto: valor, textoEs: valor, textoEn, idiomaOriginal: 'es', editado: true, editadoEn: ahoraISO() }));
     setMensajes(next);
     setEditandoId(null);
@@ -203,7 +192,7 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
           <div className="mx-auto max-w-3xl space-y-2">
             {mensajesVisibles.length ? mensajesVisibles.map(m => {
               const rec = m.autor === 'recepcion';
-              const contenido = m.eliminadoParaTodos ? 'Este mensaje fue eliminado' : (m.textoEs || m.texto);
+              const contenido = m.eliminadoParaTodos ? 'Este mensaje fue eliminado' : m.texto;
               return <div key={m.id} className={`flex ${rec ? 'justify-end' : 'justify-start'}`}>
                 <div className={`group relative max-w-[72%] rounded-2xl px-4 py-2.5 shadow-sm ${m.eliminadoParaTodos ? 'border border-dashed border-[#C9CED5] bg-[#F2F3F4] italic text-[#7A8798]' : rec ? 'rounded-br-sm bg-[#18345C] text-white' : 'rounded-bl-sm border border-[#E5E0D8] bg-white text-[#18345C]'}`}>
                   {editandoId === m.id ? <div className="min-w-[280px]">
@@ -231,7 +220,7 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
                       disabled={!rec}
                       onClick={() => {
                         setEditandoId(m.id);
-                        setEditandoTexto(m.textoEs || m.texto);
+                        setEditandoTexto(m.texto);
                         setMenuId(null);
                       }}
                       className="block w-full px-4 py-2.5 text-left hover:bg-[#F8F6F0] disabled:opacity-40">Editar</button>

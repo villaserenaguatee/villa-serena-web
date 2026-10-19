@@ -7,7 +7,7 @@ export type BookingInput = AvailabilityInput & {
   recoveryCode?: string;
   slug: string;
   roomId: string;
-  guest: { name: string; email: string; phone: string; nationality: string;
+  guest: { name: string; email: string; phone: string; nationality?: string;
     document: string; documentType: 'DPI' | 'passport' };
   paymentMethod: 'hotel' | 'card' | 'bank';
   promoCode: string;

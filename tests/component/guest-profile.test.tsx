@@ -18,7 +18,7 @@ beforeEach(() => {
 });
 
 describe.each(['ES', 'EN'] as const)('perfil del huésped %s', lang => {
-  const en = lang === 'EN';
+  const en = false; // MVP remains Spanish for either saved preference.
   const tr = (es: string, english: string) => en ? english : es;
   function mount() {
     localStorage.setItem('villa-serena-lang', lang);

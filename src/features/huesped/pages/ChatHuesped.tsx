@@ -91,7 +91,7 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
   function abrirEdicion(mensaje: MensajeChat) {
     setMenuId(null);
     setEditandoId(mensaje.id);
-    setEditandoTexto(mensaje.textoEs ?? mensaje.texto);
+    setEditandoTexto(mensaje.texto);
   }
   function confirmarEdicion() {
     if (!editandoId || !editandoTexto.trim())
@@ -199,9 +199,7 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
               ? en
                 ? "This message was deleted"
                 : "Este mensaje fue eliminado"
-              : en
-                ? m.textoEn ?? m.texto
-                : m.textoEs ?? m.texto;
+              : m.texto;
             return (<div key={m.id} className={`flex ${mio ? "justify-end" : "justify-start"}`}>
               <div className={`group relative max-w-[74%] rounded-2xl px-3.5 py-2.5 text-[14px] ${m.eliminadoParaTodos
                 ? "border border-dashed border-[#C9CED5] bg-[#F2F3F4] italic text-[#7A8798]"

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import PrivacyPolicyContent from "@/components/common/PrivacyPolicyContent";
 import VillaSerenaCard from "@/components/common/VillaSerenaCard";
 import { marcaTarjeta, validarTarjeta, type CardForm } from "@/lib/cardForm";
-type Seccion = null | "personal" | "contacto" | "idioma" | "pago" | "privacidad" | "seguridad";
+type Seccion = null | "personal" | "contacto" | "pago" | "privacidad" | "seguridad";
 interface PerfilHuespedProps {
   connected?:import('@/lib/pms/types').Huesped;
   huespedId: string;
@@ -16,16 +16,14 @@ interface PerfilHuespedProps {
   telefono: string;
   correo: string;
   foto?: string | null;
-  idioma?: string;
   onVolver: () => void;
   onCerrarSesion?: () => void;
   onFoto?: (foto: string | null) => void;
   onTelefono?: (telefono: string) => void;
-  onIdioma?: (idioma?: string) => void;
   onAviso?: (mensaje: string) => void;
   onSolicitarCorreccion?: (datos: unknown) => void;
 }
-export default function PerfilHuesped({ connected, huespedId, nombre, correo, telefono, foto: fotoInicial = null, onVolver, onCerrarSesion, onFoto, onIdioma, onTelefono, }: PerfilHuespedProps) {
+export default function PerfilHuesped({ connected, huespedId, nombre, correo, telefono, foto: fotoInicial = null, onVolver, onCerrarSesion, onFoto, onTelefono, }: PerfilHuespedProps) {
   const { lang } = usePublicLanguage();
   const en = lang === "EN";
   const tr = (es: string, english: string) => en ? english : es;
@@ -134,12 +132,6 @@ export default function PerfilHuesped({ connected, huespedId, nombre, correo, te
       titulo: "Datos de contacto",
       sub: perfil?.telefono || telefono || correo,
       icono: IdCard,
-    },
-    {
-      key: "idioma" as const,
-      titulo: "Idioma",
-      sub: lang === "EN" ? "English" : "Español",
-      icono: Globe2,
     },
     {
       key: "pago" as const,
@@ -259,9 +251,6 @@ export default function PerfilHuesped({ connected, huespedId, nombre, correo, te
           <Campo label={tr("Correo electrónico", "Email")} valor={perfil?.correo || correo} readOnly />
           <Campo label={tr("Teléfono", "Phone")} valor={telefonoEdit} onChange={setTelefonoEdit} type="tel" autoComplete="tel" />
         </>}
-        {seccion === "idioma" && <label className="block text-sm text-[#17365D]">{tr("Idioma preferido", "Preferred language")}
-          <select value={lang} onChange={e => onIdioma?.(e.target.value)} className="mt-2 w-full rounded-xl border p-3"><option value="ES">Español</option><option value="EN">English</option></select>
-        </label>}
         {seccion === "privacidad" && <div className="space-y-3 text-sm leading-6 text-[#17365D] [&_h1]:text-lg [&_h1]:font-semibold [&_h2]:pt-2 [&_h2]:font-semibold [&_p]:text-[#72829A] [&_small]:block [&_small]:text-xs [&_a]:underline [&_.legal-contact]:space-y-2">
           <PrivacyPolicyContent />
           <a href="/privacidad" target="_blank" rel="noopener noreferrer" className="inline-flex rounded-xl border border-[#17365D] px-4 py-2 font-semibold">{tr("Ver política de privacidad", "View privacy policy")}</a>

@@ -34,4 +34,4 @@ export const getAvailableRoomReferences = (tipoHabitacionId: number, entrada: st
 export const searchGuests = (q: string, signal?: AbortSignal) => call<import("./schema").components["schemas"]["Huesped"][]>(`huespedes?${new URLSearchParams({ q })}`, "GET", undefined, signal);
 
 export const checkInReservation = (code: string) => call<ReservationDetail>(`reservas/${encodeURIComponent(code)}/check-in`, 'POST');
-export const addReservationGuest = (code: string, input: import('./schema').components['schemas']['HuespedAdicionalDatos']) => call(`reservas/${encodeURIComponent(code)}/huespedes-adicionales`, 'POST', input);
+export const addReservationGuest = (code: string, input: Omit<import('./schema').components['schemas']['HuespedAdicionalDatos'], 'nacionalidad'> & {nacionalidad?: string}) => call(`reservas/${encodeURIComponent(code)}/huespedes-adicionales`, 'POST', input);

@@ -9,8 +9,8 @@ import en from '@/i18n/messages/en.json';
 import { reservation } from '../fixtures/reservation';
 
 describe.each(['ES', 'EN'] as const)('apertura de reseña %s', lang => {
-  const share = lang === 'EN' ? 'Share your experience' : 'Compartir tu experiencia';
-  const close = lang === 'EN' ? 'Close review' : 'Cerrar reseña';
+  const share = 'Compartir tu experiencia';
+  const close = 'Cerrar reseña';
   function mount(changes: Partial<ComponentProps<typeof CuentaHuesped>> = {}) {
     localStorage.setItem('villa-serena-lang', lang);
     const props: ComponentProps<typeof CuentaHuesped> = {
@@ -22,7 +22,7 @@ describe.each(['ES', 'EN'] as const)('apertura de reseña %s', lang => {
       onGuardarFiscales: vi.fn(), onPagar: vi.fn(), onCheckOut: vi.fn(), ...changes,
     };
     const before = JSON.stringify(props.reserva);
-    render(<NextIntlClientProvider locale={lang === 'EN' ? 'en' : 'es'} messages={lang === 'EN' ? en : es} timeZone="America/Guatemala">
+    render(<NextIntlClientProvider locale="es" messages={es} timeZone="America/Guatemala">
       <CuentaHuesped {...props} />
     </NextIntlClientProvider>);
     return { props, before, user: userEvent.setup() };

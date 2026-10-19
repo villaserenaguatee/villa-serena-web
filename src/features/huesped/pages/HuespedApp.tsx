@@ -14,7 +14,6 @@ import {guestAccountCall,type GuestAccount} from '@/lib/api/guestAccount';
 import { useAuth } from "@/hooks/useAuth";
 import { UiText, useUiText } from "@/i18n/UiText";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
-import { translateChatMessage } from "@/lib/translation/client";
 import { useEffect, useMemo, useState } from "react";
 import { guardarAccesoPostCheckout, leerAccesoPostCheckout } from "@/store/guestAccountAccess";
 import type { Modulo, SeccionHuesped, Huesped, Reserva, CheckInWeb, PedidoHuesped, MensajeChat, Domotica, TurnoAmenidad, ReservaAmenidad, CargoHuesped, DatosFiscales, PagoHuespedApp, MetodoPagoHuesped, ReservaHuesped, TipoPedidoHuesped, LineaPedidoHuesped, DocumentoCargado, EstadoHabHotel, Acompanante, } from "@/lib/pms/types";
@@ -581,15 +580,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
       idiomaOriginal,
       hora: ahoraISO(),
     };
-    try {
-      const traducido = await translateChatMessage(valor, undefined, en ? "es" : "en");
-      if (en)
-        mensaje.textoEs = traducido;
-      else
-        mensaje.textoEn = traducido;
-    }
-    catch {
-    }
+
     if (!puedeEnviarChat()) { setAviso("El chat requiere check-in realizado y una estancia activa."); return; }
     setMensajes((actuales) => {
       const globales = leerMensajesChat([]);
@@ -604,16 +595,9 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
     if (!valor)
       return;
     const idiomaOriginal = en ? "en" : "es";
-    let textoEs: string | undefined = en ? undefined : valor;
-    let textoEn: string | undefined = en ? valor : undefined;
-    try {
-      const traducido = await translateChatMessage(valor, undefined, en ? "es" : "en");
-      if (en)
-        textoEs = traducido;
-      else
-        textoEn = traducido;
-    }
-    catch { }
+    const textoEs: string | undefined = en ? undefined : valor;
+    const textoEn: string | undefined = en ? valor : undefined;
+
     const globales = leerMensajesChat([]);
     const actualizados = actualizarMensajeChat(globales, id, m => ({ ...m, texto: valor, textoEs, textoEn, idiomaOriginal, editado: true, editadoEn: ahoraISO(), eliminadoParaTodos: false }));
     setMensajes(actualizados.filter(m => m.huespedId === huesped.id));
@@ -1355,18 +1339,11 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
       telefono={telefonoPerfil}
       correo={correoPerfil}
       foto={fotoPerfil}
-      idioma={lang}
       onVolver={() => setPerfilAbierto(false)}
       onFoto={setFotoPerfil}
       onTelefono={(v) => {
         setTelefonoPerfil(v);
         actualizarHuespedCentral(huesped.id, { telefono: v });
-      }}
-      onIdioma={(idioma) => {
-        if (idioma !== "ES" && idioma !== "EN") return;
-        localStorage.setItem("villa-serena-lang", idioma);
-        document.documentElement.lang = idioma === "EN" ? "en" : "es";
-        window.dispatchEvent(new CustomEvent("villa-serena-language", { detail: idioma }));
       }}
       onAviso={mostrarAviso}
       onSolicitarCorreccion={(d) => {

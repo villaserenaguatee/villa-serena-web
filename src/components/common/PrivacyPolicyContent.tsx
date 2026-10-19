@@ -22,8 +22,8 @@ export default function PrivacyPolicyContent() {
       </h2>
       <p>
         {en
-          ? "We may request first and last name, identification document, email, phone number, nationality and booking-related information."
-          : "Podemos solicitar nombre, apellidos, documento de identificación, correo electrónico, teléfono, nacionalidad e información relacionada con la reserva."}
+          ? "We may request first and last name, identification document, email, phone number and booking-related information."
+          : "Podemos solicitar nombre, apellidos, documento de identificación, correo electrónico, teléfono e información relacionada con la reserva."}
       </p>
       <h2>
         <UiText text="2. " />

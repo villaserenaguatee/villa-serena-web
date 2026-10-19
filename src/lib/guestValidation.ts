@@ -1,9 +1,8 @@
 import { getCountries, parsePhoneNumberFromString } from 'libphonenumber-js/max';
-export const passportCountries = getCountries().filter(c => !['AC', 'TA', 'XK'].includes(c));
-export function validPassportIssuer(value: string) { return passportCountries.includes(value as typeof passportCountries[number]); }
+export const phoneCountries = getCountries().filter(c => !['AC', 'TA', 'XK'].includes(c));
 export function validDocument(type: string, value: string) {
-  // General storage-compatible check only; no country-specific passport rule or authenticity claim.
-  return (type.toUpperCase() === 'DPI' ? /^[0-9]{13}$/ : /^[A-Za-z0-9]{1,30}$/).test(value.trim());
+  // New MVP documents are DPI only; historical records are not migrated.
+  return type.toUpperCase() === 'DPI' && /^[0-9]{13}$/.test(value.trim());
 }
 export function validNationalPhone(prefix: string, national: string) {
   if (!/^\+[1-9][0-9]{0,2}$/.test(prefix) || national.length > 24 || !/^[0-9][0-9 ()-]*$/.test(national)) return false;
