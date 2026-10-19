@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { prepareStripeBooking } from '@/lib/publicStripeBooking';
-import { discardBookingDraft, bookingReceipt } from '@/lib/bookingDraft';
+import { activeBookingDraft, bookingReceipt } from '@/lib/bookingDraft';
 
 test('payment protocol: Stripe starts only after creation response; retry reuses stored code', async () => {
   const storage = new Map<string, string>();
@@ -34,10 +34,10 @@ test('payment protocol: Stripe starts only after creation response; retry reuses
     assert.equal(JSON.parse(storage.get('vs-public-booking-draft')!).attempt.id, saved.attempt.id);
     storage.clear(); // Separate protocol fixture, not production storage.
     const other=crypto.randomUUID();storage.set('vs-public-booking-draft',JSON.stringify({id:other,createdAt:Date.now(),params:params.toString()}));
-    const afterDiscard:string[]=[];
-    globalThis.fetch=async input=>{afterDiscard.push(String(input));discardBookingDraft(other);return new Response(JSON.stringify({codigo:'VS-CHECK2',estado:'PENDIENTE_PAGO',total:840}),{headers:{'X-Villa-Serena-Mode':'spring','Content-Type':'application/json'}});};
+    const afterExpiry:string[]=[];
+    globalThis.fetch=async input=>{afterExpiry.push(String(input));const expired=JSON.parse(storage.get('vs-public-booking-draft')!);expired.updatedAt=Date.now()-2*60*60*1000;storage.set('vs-public-booking-draft',JSON.stringify(expired));activeBookingDraft();return new Response(JSON.stringify({codigo:'VS-CHECK2',estado:'PENDIENTE_PAGO',total:840}),{headers:{'X-Villa-Serena-Mode':'spring','Content-Type':'application/json'}});};
     await assert.rejects(prepareStripeBooking(params,other),/discarded/);
-    assert.deepEqual(afterDiscard,['/api/publico/reservas']);assert.equal(storage.has('vs-public-booking-draft'),false);assert.equal(bookingReceipt()?.code,'VS-CHECK2');
+    assert.deepEqual(afterExpiry,['/api/publico/reservas']);assert.equal(storage.has('vs-public-booking-draft'),false);assert.equal(bookingReceipt()?.code,'VS-CHECK2');
   } finally {
     globalThis.fetch = oldFetch;
     if (oldStorage) Object.defineProperty(globalThis, 'sessionStorage', oldStorage);

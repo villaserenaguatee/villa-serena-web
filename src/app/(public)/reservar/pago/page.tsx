@@ -1,5 +1,7 @@
 "use client";
-import BookingDraftActions from '@/components/common/BookingDraftActions';
+import BookingTermsContent from '@/components/common/BookingTermsContent';
+import PrivacyPolicyContent from '@/components/common/PrivacyPolicyContent';
+import BookingSummaryCard from '@/components/public/BookingSummaryCard';
 import { UiText, useUiText } from "@/i18n/UiText";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -7,7 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, LockKeyhole, X } from "lucide-react";
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
-import { money } from "@/data/publicRooms";
+
 import { usePublicCatalog, usePublicQuotes } from "@/lib/usePublicCatalog";
 import { prepareStripeBooking } from "@/lib/publicStripeBooking";
 import { useBookingDraft, readBookingDraft, BookingAttemptPendingError } from "@/lib/bookingDraft";
@@ -19,6 +21,9 @@ export default function Pago() {
   const { en } = usePublicLanguage();
   const r = useRouter(), query = useSearchParams();
   const draft = useBookingDraft(query.toString());
+  const [draftCheckedFor, setDraftCheckedFor] = useState<string | null>(null);
+  useEffect(() => { setDraftCheckedFor(query.toString()); }, [query]);
+  const draftChecked = draftCheckedFor === query.toString();
   const sp = draft ?? new URLSearchParams(query.toString());
   const busy = useRef(false);
   const [canRecover, setCanRecover] = useState(false);
@@ -91,74 +96,8 @@ export default function Pago() {
       <VillaSerenaLogo />
     </header>
     <div className="checkout-layout">
-      <aside className="booking-summary-card">
-        <h2>
-          <UiText text="Tu reserva" />
-        </h2>
-        {room && <img src={room.image} alt={ui(room.name)} />}
-        <h3>
-          {ui(sp.get("habitacion") ?? "")}
-        </h3>
-        <p role="note">{room?.inventoryNote}</p>
-        <div className="summary-dates">
-          <span>
-            <small>
-              <UiText text="Llegada" />
-            </small>
-            <b>
-              {sp.get("llegada")}
-            </b>
-          </span>
-          <span>
-            <small>
-              <UiText text="Salida" />
-            </small>
-            <b>
-              {sp.get("salida")}
-            </b>
-          </span>
-          <span>
-            <small>
-              <UiText text="Adultos" />
-            </small>
-            <b>
-              {sp.get("adultos") || sp.get("huespedes") || "1"}
-            </b>
-          </span>
-          <span>
-            <small>
-              <UiText text="Niños" />
-            </small>
-            <b>
-              {sp.get("ninos") || "0"}
-            </b>
-          </span>
-          <span>
-            <small>
-              <UiText text="Noches" />
-            </small>
-            <b>
-              {nights}
-            </b>
-          </span>
-          {room && (<span>
-            <small>
-              <UiText text="Precio / noche" />
-            </small>
-            <b>
-              {money(room.price)}
-            </b>
-          </span>)}
-        </div>
-        <div className="summary-total">
-          <span>
-            {en ? "Total to pay" : "Total a pagar"}
-          </span>
-          <b>
-            {money(total)}
-          </b>
-        </div>
-      </aside>
+      <BookingSummaryCard image={room?.image} name={room?.name || sp.get("habitacion") || ""} category={room?.type} arrival={sp.get("llegada") || ""} departure={sp.get("salida") || ""} adults={Number(sp.get("adultos") || sp.get("huespedes") || 1)} childCount={Number(sp.get("ninos") || 0)} nights={nights} nightlyPrice={room?.price} total={total} note={room?.inventoryNote}/>
+      <div className="booking-form-column">
       <section className="reserve-form-card reserve-form-wide checkout-form">
         <span className="reserve-kicker">{en ? "Last step" : "Último paso"}</span>
         <h1>
@@ -168,9 +107,18 @@ export default function Pago() {
           {en ? "Continue to Stripe to enter your card and complete payment." : "Continúa a Stripe para ingresar tu tarjeta y completar el pago"}
         </p>
         <p className="payment-processor"><LockKeyhole size={16} aria-hidden="true" /><span>{en ? "Payment processed by Stripe" : "Pago procesado por Stripe"}</span></p>
-        {!draft && <p role="alert">{en ? "Your details are unavailable or expired. Return to the guest form." : "Tus datos no están disponibles o vencieron. Vuelve al formulario de huésped."}</p>}
+        {draftChecked && !draft && <p className="payment-draft-error" role="alert">{en ? "Your details are unavailable or expired. Return to the guest form." : "Tus datos no están disponibles o vencieron. Vuelve al formulario de huésped."}</p>}
         {quoteResult.error && !canRecover && <p role="alert">{quoteResult.error}</p>}
         {quoteResult.loading && <p role="status">{en ? "Checking price..." : "Consultando precio..."}</p>}
+        <section className="payment-cancellation" aria-labelledby="payment-cancellation-title">
+          <h2 id="payment-cancellation-title">{en?'Cancellations and refunds':'Cancelaciones y reembolsos'}</h2>
+          <p>{en?'To cancel a confirmed booking, contact Reception.':'Para cancelar una reserva confirmada, contacta a Recepción.'}</p>
+          <dl>
+            <div><dt>{en?'Full refund':'Reembolso total'}</dt><dd>{en?'When Reception cancels at least 48 hours before 3:00 p.m. on your arrival date.':'Cuando Recepción cancela al menos 48 horas antes de las 15:00 del día de llegada.'}</dd></div>
+            <div><dt>{en?'No refund':'Sin reembolso'}</dt><dd>{en?'When cancellation takes place less than 48 hours before that time.':'Cuando la cancelación se realiza con menos de 48 horas de anticipación.'}</dd></div>
+          </dl>
+          <p className="payment-cancellation-note">{en?'Guatemala local time. Sending a request before the deadline does not guarantee a refund.':'Hora de Guatemala. Enviar una solicitud dentro del plazo no garantiza el reembolso.'}</p>
+        </section>
         <label className="terms-check">
           <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
           <span>
@@ -198,6 +146,7 @@ export default function Pago() {
           {saving ? (en ? "Processing..." : "Procesando...") : (en ? "Continue payment" : "Continuar pago")}
         </button>
       </section>
+      </div>
     </div>
     {legal && (<div className="booking-modal-backdrop" onMouseDown={() => setLegal(null)}>
       <section className="legal-modal" onMouseDown={(e) => e.stopPropagation()}>
@@ -227,62 +176,16 @@ export default function Pago() {
               {sp.get("salida")}
             </span>
           </div>
-          <h3>
-            <UiText text="Condiciones de la reserva" />
-          </h3>
-          <p>
-            <UiText text="La reserva queda sujeta a disponibilidad y a las condiciones de la tarifa seleccionada." />
-          </p>
-          <h3>
-            <UiText text="Cancelaciones y modificaciones" />
-          </h3>
-          <p>
-            <UiText text="Las condiciones aplicables a cancelaciones, modificaciones y posibles reembolsos se mostrarán antes de confirmar la reserva." />
-          </p>
-          <h3>
-            <UiText text="No presentación" />
-          </h3>
-          <p>
-            <UiText text="Las condiciones correspondientes se indicarán junto con la tarifa seleccionada." />
-          </p>
+          <BookingTermsContent />
+          <a className="legal-more" href="/terminos">{en?"Read full terms":"Leer términos completos"}</a>
         </>) : (<>
-          <span className="section-kicker">
-            <UiText text="VILLA SERENA" />
-          </span>
-          <h2>
-            <UiText text="Política de privacidad" />
-          </h2>
-          <p>
-            <UiText text="Villa Serena utiliza la información proporcionada para gestionar reservas, prestar los servicios solicitados y facilitar la atención durante la estancia." />
-          </p>
-          <h3>
-            <UiText text="Información y uso" />
-          </h3>
-          <p>
-            <UiText text="Podemos solicitar datos de identificación, contacto y reserva para confirmar la estancia, atender solicitudes, gestionar pagos y mantener comunicaciones relacionadas con la reserva." />
-          </p>
-          <h3>
-            <UiText text="Protección de la información" />
-          </h3>
-          <p>
-            <UiText text="Villa Serena procura mantener medidas adecuadas para proteger la información personal y prevenir accesos o usos no autorizados." />
-          </p>
-          <h3>
-            <UiText text="Contacto" />
-          </h3>
-          <p>
-            <UiText text="Villa Serena · Huehuetenango, Guatemala" />
-            <br />
-            <a href="mailto:villaserenagt@gmail.com">
-              <UiText text="villaserenagt@gmail.com" />
-            </a>
-          </p>
+          <PrivacyPolicyContent />
           <a className="legal-more" href="/privacidad">
             <UiText text="Leer política completa" />
           </a>
         </>)}
       </section>
     </div>)}
-    <BookingDraftActions />
+
   </main>);
 }

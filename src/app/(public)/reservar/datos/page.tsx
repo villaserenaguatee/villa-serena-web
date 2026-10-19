@@ -1,5 +1,5 @@
 "use client";
-import BookingDraftActions from '@/components/common/BookingDraftActions';
+import BookingSummaryCard from '@/components/public/BookingSummaryCard';
 import { phoneCountries, validDocument, validNationalPhone } from "@/lib/guestValidation";
 import { UiText, useUiText } from "@/i18n/UiText";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
@@ -9,7 +9,7 @@ import { ArrowLeft } from "lucide-react";
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { bookingEmail } from '@/lib/bookingEmail';
-import { money } from "@/data/publicRooms";
+
 import { usePublicCatalog, usePublicQuotes } from "@/lib/usePublicCatalog";
 import { availableRoom, usePublicAvailability, validGuests } from "@/lib/publicAvailability";
 import { saveBookingDraft, readBookingDraft, BookingAttemptPendingError } from "@/lib/bookingDraft";
@@ -150,67 +150,8 @@ export default function Datos() {
       <VillaSerenaLogo />
     </header>
     <div className="checkout-layout">
-      <aside className="booking-summary-card">
-        <h2>
-          <UiText text="Tu reserva" />
-        </h2>
-        {room && <img src={room.image} alt={ui(room.name)} />}
-        <h3>
-          {ui(room?.name || habitacion)}
-        </h3>
-        {connected && <p role="note">{room?.inventoryNote}</p>}
-        {room && <p>{ui(room.type)} · {money(room.price)} {en ? "/ night" : "/ noche"}</p>}
-        <div className="summary-dates">
-          <span>
-            <small>
-              <UiText text="Llegada" />
-            </small>
-            <b>
-              {llegada}
-            </b>
-          </span>
-          <span>
-            <small>
-              <UiText text="Salida" />
-            </small>
-            <b>
-              {salida}
-            </b>
-          </span>
-          <span>
-            <small>
-              <UiText text="Noches" />
-            </small>
-            <b>
-              {nights}
-            </b>
-          </span>
-          <span>
-            <small>
-              <UiText text="Huéspedes" />
-            </small>
-            <b>
-              {adultos}
-              {en
-                ? ` adult${adultos === "1" ? "" : "s"}`
-                : ` adulto${adultos === "1" ? "" : "s"}`}
-              {Number(ninos) > 0
-                ? en
-                  ? ` · ${ninos} child${ninos === "1" ? "" : "ren"}`
-                  : ` · ${ninos} niño${ninos === "1" ? "" : "s"}`
-                : ""}
-            </b>
-          </span>
-        </div>
-        <div className="summary-total">
-          <span>
-            <UiText text="Importe estimado" />
-          </span>
-          <b>
-            {money(total)}
-          </b>
-        </div>
-      </aside>
+      <BookingSummaryCard image={room?.image} name={room?.name || sp.get("habitacion") || ""} category={room?.type} arrival={llegada} departure={salida} adults={Number(adultos)} childCount={Number(ninos)} nights={nights} nightlyPrice={room?.price} total={total} note={connected ? room?.inventoryNote : undefined}/>
+      <div className="booking-form-column">
       <section className="reserve-form-card reserve-form-wide checkout-form">
         <span className="reserve-kicker">
           <UiText text="RESERVA · DATOS DEL HUÉSPED" />
@@ -348,7 +289,7 @@ export default function Datos() {
           </div>
         </div>)}
       </section>
+      </div>
     </div>
-    <BookingDraftActions />
   </main>);
 }

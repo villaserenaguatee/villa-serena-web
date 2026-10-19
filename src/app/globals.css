@@ -8049,24 +8049,6 @@ html,body,button,input,select,textarea {
   border-top:1px solid #E5E0D8;
   padding:12px 0 0;
 }
-.payment-page .booking-summary-card {
-  padding:20px;
-  position:static;
-  border-radius:12px;
-}
-.payment-page .booking-summary-card > img {
-  height:170px;
-}
-.payment-page .summary-dates {
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:12px;
-  padding:12px 0;
-}
-.payment-page .summary-dates > span {
-  display:block;
-  padding:0;
-}
 .payment-page .checkout-form > .reserve-primary,
 .payment-page .checkout-form > .reserve-secondary {
   width:100%!important;
@@ -10595,3 +10577,37 @@ body > * {
 /* Resultados: huéspedes fijados por la búsqueda original, solo categoría y precio. */
 @media(min-width:1101px){.reserve-filters.reserve-filters-complete.availability-fixed-guests{grid-template-columns:minmax(160px,1fr) minmax(260px,1.7fr) minmax(88px,auto) minmax(74px,auto)!important;}}
 @media(max-width:1100px){.availability-fixed-guests>label{grid-column:1/-1;}}
+
+/* Shared public booking presentation; payment transport remains unchanged. */
+.booking-checkout .reserve-nav { display:grid; grid-template-columns:48px minmax(0,1fr) 48px; align-items:center; width:100%; box-sizing:border-box; }
+.booking-checkout .reserve-nav > .icon-back { grid-column:1; grid-row:1; justify-self:start; }
+.booking-checkout .reserve-nav > :not(.icon-back) { grid-column:2; grid-row:1; justify-self:center; }
+.booking-checkout .checkout-layout { width:min(1000px,94vw); grid-template-columns:minmax(0,1fr) minmax(0,2fr); margin:20px auto 12px; gap:20px; align-items:start; }
+.booking-checkout .booking-summary-card { min-width:0; position:static; border-radius:12px; }
+.booking-checkout .summary-dates { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.booking-checkout .summary-dates > span { min-width:0; overflow-wrap:anywhere; }
+.booking-checkout .summary-total { align-items:center; gap:12px; }
+.booking-checkout .summary-total > span { font-size:20px; font-family:Georgia,serif; color:#0D2D52; }
+.payment-page .checkout-form { min-height:0; height:auto; }
+.payment-essential-terms { font-size:13px; line-height:1.55; color:#52677f; }
+.legal-modal section h3 { margin-top:20px; }
+.legal-modal h1 { font:28px Georgia,serif; }
+@media(max-width:800px) {
+ .booking-checkout .checkout-layout { grid-template-columns:minmax(0,1fr); }
+ .booking-checkout .reserve-nav { grid-template-columns:44px minmax(0,1fr) 44px; }
+}
+
+.booking-checkout .reserve-nav { position:relative; }
+.booking-checkout .reserve-nav > .villa-logo-link { position:absolute; left:50%; transform:translateX(-50%); width:190px; display:flex; justify-content:center; }
+.booking-checkout .reserve-nav > .villa-logo-link { grid-area:auto; justify-self:auto; }
+
+.booking-checkout .booking-form-column { min-width:0; }
+.booking-checkout .booking-form-column > .checkout-form { margin:0; }
+.payment-cancellation { margin:14px 0; font-size:13px; line-height:1.5; color:#52677f; }
+.payment-cancellation h2 { margin:0 0 7px; font:600 14px Arial,sans-serif; color:#0D2D52; }
+.payment-cancellation p { margin:0 0 8px; }
+.payment-cancellation dl { display:grid; gap:8px; margin:0 0 8px; }
+.payment-cancellation dt { font-weight:600; color:#0D2D52; }
+.payment-cancellation dd { margin:2px 0 0; }
+.payment-cancellation .payment-cancellation-note { font-size:12px; }
+.payment-page .checkout-form > .payment-draft-error { border-left:3px solid #b7791f; padding:8px 12px; margin:12px 0; color:#794813; font-size:14px; }

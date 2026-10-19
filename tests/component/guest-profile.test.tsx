@@ -76,7 +76,7 @@ describe.each(['ES', 'EN'] as const)('perfil del huésped %s', lang => {
     expect(within(dialog).getByRole('heading', { name: tr('Política de privacidad', 'Privacy policy') })).toBeVisible();
     expect(dialog).toHaveTextContent(tr('Derechos del huésped', 'Guest rights'));
     expect(within(dialog).getByRole('link', { name: /privacidad|privacy/i })).toHaveAttribute('href', '/privacidad');
-    expect(within(dialog).getByRole('link', { name: 'villaserenagt@gmail.com' })).toHaveAttribute('href', 'mailto:villaserenagt@gmail.com');
+    expect(within(dialog).getByRole('link', { name: 'hotelvillaserena.gt@gmail.com' })).toHaveAttribute('href', 'mailto:hotelvillaserena.gt@gmail.com');
     expect(dialog.querySelector('input, select, button[type="submit"]')).toBeNull();
     expect({ ...localStorage }).toEqual(before);
   });

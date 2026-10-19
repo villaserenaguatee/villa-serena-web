@@ -20,11 +20,6 @@ export function activeBookingDraft(): Draft | null {
     return draft;
   } catch { return null; }
 }
-export function discardBookingDraft(id: string) {
-  const draft=activeBookingDraft();
-  if (draft?.id===id) { const code=draft.attempt?.code; retire(draft); return code; }
-  return undefined;
-}
 /** Call only after the backend reports a terminal result for this exact code. */
 export function completeBookingDraft(code: string) {
   const draft=activeBookingDraft(), receipt=bookingReceipt();
