@@ -18,6 +18,17 @@ describe('Issue 25: creación y lecturas comparten el BFF de prueba', () => {
   const guest = { nombreCompleto: 'Prueba Recepción', correo: 'issue25@example.test', telefono: '+502 55551234', nacionalidad: 'Guatemala', tipoDocumento: 'DPI', numeroDocumento: '1234567890123' };
   const input = () => ({ huespedId: 1, tipoHabitacionId: 1, entrada: fechaRelativaISO(40), salida: fechaRelativaISO(42), numeroHuespedes: 2, habitacionId: null as number | null });
 
+  test('nationality may be omitted or null without assigning a country or changing historical guests', () => {
+    registerReceptionGuest(guest);
+    const previousGuests = readReceptionState().guests ?? [];
+    for (const nacionalidad of [undefined, null]) {
+      const result = registerReceptionGuest({ ...guest, correo: `nationality-${String(nacionalidad)}@example.test`, nacionalidad });
+      assert.equal(result.yaExistia, false);
+      assert.equal(result.huesped.nacionalidad, '');
+    }
+    assert.deepEqual((readReceptionState().guests ?? []).filter(g => previousGuests.some(p => p.id === g.id)), previousGuests);
+  });
+
   test('registro por correo reutiliza el mismo perfil sin modificarlo y mantiene el archivo anterior', () => {
     const seed = readReceptionState().entries;
     const first = registerReceptionGuest(guest), second = registerReceptionGuest({ ...guest, nombreCompleto: 'No cambiar' });

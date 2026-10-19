@@ -2,6 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validDocument, validNationalPhone } from '@/lib/guestValidation';
 import { saveBookingDraft, readBookingDraft } from '@/lib/bookingDraft';
+import { historicalPassportIssuer } from '@/lib/api/guestCompatibility';
+
+test('historical issuer is read only when a real string exists, without extending generated DTOs', () => {
+  assert.equal(historicalPassportIssuer({ paisEmisorPasaporte: 'GT' }), 'GT');
+  for (const value of [null, undefined, {}, { paisEmisorPasaporte: null }, { paisEmisorPasaporte: 123 }]) {
+    assert.equal(historicalPassportIssuer(value), undefined);
+  }
+});
 test('guest document and international phone rules; unchanged draft identity on manual completion', () => {
   assert.equal(validDocument('DPI', '0000000000001'), true);
   assert.equal(validDocument('DPI', '000000000000A'), false);

@@ -115,7 +115,7 @@ export function registerReceptionGuest(input: Record<string, unknown>): Register
   const keys = ['nombreCompleto', 'correo', 'telefono', 'nacionalidad', 'tipoDocumento', 'numeroDocumento'];
   const limits: Record<string, number> = { nombreCompleto: 150, correo: 150, telefono: 30, nacionalidad: 60, tipoDocumento: 9, numeroDocumento: 30 };
   if (Object.keys(input).some(k => !keys.includes(k)) || keys.filter(k => k !== 'nacionalidad').some(k => typeof input[k] !== 'string' || !(input[k] as string).trim() || (input[k] as string).length > limits[k]) ||
-    (input.nacionalidad !== undefined && (typeof input.nacionalidad !== 'string' || input.nacionalidad.length > 60)) ||
+    (input.nacionalidad != null && (typeof input.nacionalidad !== 'string' || input.nacionalidad.length > 60)) ||
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(input.correo)) || !['DPI', 'PASAPORTE'].includes(String(input.tipoDocumento)))
     fail('DATOS_INVALIDOS', 400, 'Completa los datos del huésped y un correo válido.');
   return receptionTransaction(state => {

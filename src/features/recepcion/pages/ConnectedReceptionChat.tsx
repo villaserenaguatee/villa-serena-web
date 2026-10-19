@@ -51,7 +51,7 @@ export default function ConnectedReceptionChat() {
             if (!history.length) continue;
           }
           const guestId = `bff-guest-${d.huesped.id}`, roomId = `bff-room-${d.habitacion.id}`;
-          if (!huespedes.some(h => h.id === guestId)) huespedes.push({ id: guestId, nombre: d.huesped.nombreCompleto, correo: d.huesped.correo, telefono: d.huesped.telefono, nacionalidad: d.huesped.nacionalidad, documento: d.huesped.numeroDocumento, tipoDocumento: d.huesped.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte', creadoEn: d.creadaEn });
+          if (!huespedes.some(h => h.id === guestId)) huespedes.push({ id: guestId, nombre: d.huesped.nombreCompleto, correo: d.huesped.correo, telefono: d.huesped.telefono, nacionalidad: d.huesped.nacionalidad ?? '', documento: d.huesped.numeroDocumento, tipoDocumento: d.huesped.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte', creadoEn: d.creadaEn });
           if (!habitaciones.some(h => h.id === roomId)) habitaciones.push({ id: roomId, numero: d.habitacion.numero });
           reservas.push({ id: `bff-reservation-${d.codigo}`, codigo: d.codigo, codigoBff: d.codigo, huespedId: guestId, habitacionId: roomId, tipoHabitacion: d.tipoHabitacion.nombre as TipoHabitacion, fechaEntrada: d.entrada, fechaSalida: d.salida, personas: d.numeroHuespedes, estado: d.estado === 'FINALIZADA' ? 'finalizada' : 'en-curso', checkInEn, checkOutEn, acompanantes: [], servicios: [], pagos: [], descuento: 0, creadoEn: d.creadaEn });
         }

@@ -1,5 +1,9 @@
 # Detalle de habitación y reservas (#30)
 
+> Nota #63: las referencias a copias o blobs del contrato en este documento son
+> antecedentes de su implementación. La fuente vigente es docs, fijada mediante
+> `api-contract.json`; ver [generación y comprobación](CONTRATO_API.md).
+
 El contrato vigente del API (`openapi.yaml`, blob
 `45da8635278b5bcda47e2295e432b0b33d56598b`) no incluye código de reserva en
 `HabitacionEstado` ni un filtro de búsqueda por habitación.

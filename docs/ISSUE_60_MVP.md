@@ -100,6 +100,12 @@ y los detalles históricos conservan el dato ya registrado; editar otros campos
 no borra esa información. Los modelos locales de lectura pueden representar un
 dato ausente con texto vacío; ese texto no se utiliza como país en el API.
 
+> Actualización #63: el contrato canónico fijado en `api-contract.json` ya
+> declara nacionalidad opcional/nullable. Los tipos se regeneraron con docs y
+> los DTO usan esos tipos directamente. El listado siguiente documenta el
+> bloqueo histórico de #60; no describe el estado actual del esquema ni acredita
+> por sí solo una integración con un API desplegado. Ver [contrato](CONTRATO_API.md).
+
 **Incompatibilidad comprobada en el contrato versionado, pendiente para Alex:**
 
 - `src/lib/api/schema.d.ts` declara `HuespedDatos.nacionalidad` y

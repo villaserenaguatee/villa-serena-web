@@ -1,5 +1,9 @@
 # Búsqueda, cancelación y habitaciones — Issue 8
 
+> Nota #63: las referencias a copias o blobs del contrato en este documento son
+> antecedentes de su implementación. La fuente vigente es docs, fijada mediante
+> `api-contract.json`; ver [generación y comprobación](CONTRATO_API.md).
+
 Las pantallas existentes consultan el BFF de Next.js. Funciona con datos de prueba;
 no se conecta a Spring ni solicita devoluciones a Stripe. El contrato `openapi.yaml`
 permanece sin cambios. Las reglas usadas son HU-REC-05, HU-REC-06, HU-REC-07,

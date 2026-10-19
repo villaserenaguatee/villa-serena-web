@@ -17,13 +17,14 @@ en otra zona horaria.
 
 ## Contrato y conexión pendiente
 
-`openapi.yaml` es una copia sin cambios del contrato de `villa-serena-api/develop`
-en `99c60f6fb14bb3a273293a8ddcfc4eec8d73043f` (blob
-`45da8635278b5bcda47e2295e432b0b33d56598b`).
-Los tipos se regeneran con:
+El relato de implementación de este documento es histórico. La fuente vigente
+es el contrato de docs fijado en `api-contract.json`, sin copia YAML en web.
+Ver [preparación del checkout y herramientas](CONTRATO_API.md). Los tipos se
+regeneran y comprueban con:
 
 ```powershell
-pnpm exec openapi-typescript openapi.yaml -o src/lib/api/schema.d.ts
+pnpm generate:api
+pnpm check:api
 ```
 
 `src/lib/bff/receptionApi.ts` prepara las llamadas de servidor a huéspedes,

@@ -10,7 +10,7 @@ Fuentes: [Issue #5](https://github.com/villaserenaguatee/villa-serena-web/issues
 [Issue #18](https://github.com/villaserenaguatee/villa-serena-web/issues/18),
 [Issue #13](https://github.com/villaserenaguatee/villa-serena-web/issues/13) y
 [PR #15 integrado](https://github.com/villaserenaguatee/villa-serena-web/pull/15).
-El contrato es `openapi.yaml`; los DTO se toman de `src/lib/api/schema.d.ts`.
+El contrato canónico se obtiene de docs según `api-contract.json`; los DTO se toman de `src/lib/api/schema.d.ts`. Ver [generación y comprobación](CONTRATO_API.md). No mantener una copia del YAML en web.
 Esta rama parte de `develop` y no modifica el trabajo del PR #19.
 
 ## Peticiones según contrato
