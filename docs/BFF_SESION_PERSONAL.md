@@ -1,5 +1,9 @@
 # Sesión del personal con datos de prueba — Issue #4
 
+> Nota #63: las referencias a copias o blobs del contrato en este documento son
+> antecedentes de su implementación. La fuente vigente es docs, fijada mediante
+> `api-contract.json`; ver [generación y comprobación](CONTRATO_API.md).
+
 Rama `feat/issue-4-sesion-personal`, preparada desde `develop` (`ec60ec4`). Los cambios locales de la carpeta original se conservan separados de esta rama.
 
 ## Fuentes y alcance

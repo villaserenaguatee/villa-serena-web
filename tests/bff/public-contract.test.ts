@@ -50,6 +50,15 @@ const post = (route: string, body?: unknown, attempt = randomUUID(), origin: str
   method: 'POST', headers: { ...(origin ? { Origin: origin } : {}), 'Content-Type': 'application/json', 'Idempotency-Key': attempt }, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
 }));
 
+test('canonical nationality permits omission/null and preserves a supplied historical value', () => {
+  for (const nacionalidad of [undefined, null, 'Guatemala']) {
+    const body = input(); body.huesped.nacionalidad = nacionalidad;
+    const parsed = parseContractBooking(body);
+    assert.equal(parsed.huesped.nacionalidad, nacionalidad === 'Guatemala' ? 'Guatemala' : undefined);
+  }
+  assert.throws(() => parseContractBooking({ ...input(), huesped: { ...input().huesped, nacionalidad: 123 } }));
+});
+
 test('public catalog, hotel and availability use contract fields and server prices', async () => {
   const hotel = await get('hotel'); assert.equal(hotel.status, 200); assert.equal((await hotel.json()).horaCheckIn, '15:00');
   const catalog = await get('tipos-habitacion'), types = await catalog.json();

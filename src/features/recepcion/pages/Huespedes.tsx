@@ -1,3 +1,4 @@
+import { historicalPassportIssuer } from '@/lib/api/guestCompatibility';
 import { validDocument, validNationalPhone } from '@/lib/guestValidation';
 import { searchGuests, registerGuest, searchReservations, receptionFieldErrors } from '@/lib/api/reception';
 import type { ReservationSummary } from '@/lib/bff/contracts/reception';
@@ -48,7 +49,7 @@ export default function Huespedes({ conectado = false, huespedes: localGuests, r
     if (q.trim().length === 1) { setQueryLoading(false); return; }
     const controller = new AbortController(); setRemoteGuests([]); setQueryError(''); setQueryLoading(true);
     const timer = setTimeout(() => { searchGuests(q.trim(), controller.signal).then(guests => {
-      if (!controller.signal.aborted) setRemoteGuests(guests.map(g => ({ id: String(g.id), nombre: g.nombreCompleto, correo: g.correo, telefono: g.telefono, nacionalidad: g.nacionalidad, tipoDocumento: g.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte', documento: g.numeroDocumento, paisEmisorPasaporte: g.paisEmisorPasaporte, creadoEn: '' })));
+      if (!controller.signal.aborted) setRemoteGuests(guests.map(g => ({ id: String(g.id), nombre: g.nombreCompleto, correo: g.correo, telefono: g.telefono, nacionalidad: g.nacionalidad ?? '', tipoDocumento: g.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte', documento: g.numeroDocumento, paisEmisorPasaporte: historicalPassportIssuer(g), creadoEn: '' })));
     }).catch(e => { if (!controller.signal.aborted) setQueryError(e.message); }).finally(() => { if (!controller.signal.aborted) setQueryLoading(false); }); }, 250);
     return () => { clearTimeout(timer); controller.abort(); };
   }, [conectado, q]);
@@ -100,8 +101,8 @@ export default function Huespedes({ conectado = false, huespedes: localGuests, r
     setQueryError(''); setQueryLoading(true);
     try {
       if (conectado) {
-        const { huesped: g } = await registerGuest({ nombreCompleto: datos.nombre, tipoDocumento: datos.tipoDocumento === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: datos.documento, paisEmisorPasaporte: datos.paisEmisorPasaporte, correo: datos.correo, telefono: datos.telefono });
-        setRemoteGuests(prev => [...prev.filter(h => h.id !== String(g.id)), { id: String(g.id), nombre: g.nombreCompleto, correo: g.correo, telefono: g.telefono, nacionalidad: g.nacionalidad, tipoDocumento: g.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte', documento: g.numeroDocumento, paisEmisorPasaporte: g.paisEmisorPasaporte, creadoEn: '' }]);
+        const { huesped: g } = await registerGuest({ nombreCompleto: datos.nombre, tipoDocumento: datos.tipoDocumento === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: datos.documento, correo: datos.correo, telefono: datos.telefono });
+        setRemoteGuests(prev => [...prev.filter(h => h.id !== String(g.id)), { id: String(g.id), nombre: g.nombreCompleto, correo: g.correo, telefono: g.telefono, nacionalidad: g.nacionalidad ?? '', tipoDocumento: g.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte', documento: g.numeroDocumento, paisEmisorPasaporte: historicalPassportIssuer(g), creadoEn: '' }]);
         setQ(datos.documento);
       } else onRegistrar({ ...datos, nacionalidad: '' });
     } catch (e) { const fields=receptionFieldErrors(e);setErrores(fields);if(Object.keys(fields).length)setRevisando(false);setQueryError(e instanceof Error ? e.message : 'No se pudo registrar el huésped.'); return; }

@@ -92,7 +92,7 @@ Las piezas compartidas se mantienen como acuerdos del equipo, sin exclusividad p
 | Pieza | Resultado esperado y coordinación |
 |---|---|
 | Migraciones de Flyway | Los cambios de esquema se coordinan mediante issues y PR para evitar colisiones de versiones. Las migraciones ya aplicadas se conservan; la evolución utiliza migraciones nuevas. |
-| `openapi.yaml` | El contrato refleja los endpoints y DTO acordados. Los cambios consideran sus consumidores y se coordinan con API, web y app; cada frontend actualiza su copia y sus tipos. |
+| Contrato API | La fuente canónica es `villa-serena-docs/openapi.yaml`, fijada en `api-contract.json`. No mantener una copia YAML/JSON en web. Proponer cambios mediante issue/PR en docs y coordinar API, web y app; regenerar los tipos de cada consumidor. |
 | Spring Security | La configuración existente se reutiliza y los cambios de rutas o permisos incluyen verificación de acceso. |
 | Cliente de tiempo real de la web | Las pantallas reutilizan el cliente compartido, con una conexión por pestaña y suscripciones autorizadas. |
 
@@ -122,7 +122,11 @@ Next.js 15 aplica el patrón **BFF**: las peticiones HTTP de la web al API pasan
 
 El **WebSocket es una excepción explícita**: el navegador conecta directamente con Spring mediante un ticket de un solo uso y 60 segundos obtenido a través del BFF. El JWT del personal permanece fuera del navegador (documento 14, sección 6.1).
 
-Los tipos se generan con `openapi-typescript` desde la copia local de `openapi.yaml`.
+Los tipos se generan con `pnpm generate:api` mediante las herramientas del checkout
+de docs fijado por `api-contract.json`. Configurar `API_CONTRACT_DOCS_DIR` y hacer
+`pnpm install --frozen-lockfile` en docs con su propio lockfile. `pnpm check:api`
+comprueba la misma revisión sin sobrescribir tipos. Nunca editar el generado ni
+copiar el contrato. Ver [guía de desarrollo](docs/CONTRATO_API.md).
 
 Comando de arranque: `pnpm dev` (`http://localhost:3000`).
 

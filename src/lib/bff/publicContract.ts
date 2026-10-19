@@ -55,7 +55,7 @@ export function parseContractBooking(value: unknown): CreatePublicDto {
   const input = value as CreatePublicDto, g = input.huesped;
   if (!Number.isInteger(input.tipoHabitacionId) || input.tipoHabitacionId < 1 || !g || typeof g !== 'object' || Array.isArray(g) || typeof input.entrada !== 'string' || typeof input.salida !== 'string' ||
     Object.entries({ nombreCompleto: 150, correo: 150, telefono: 30, numeroDocumento: 30 }).some(([key, max]) => typeof g[key as keyof typeof g] !== 'string' || !String(g[key as keyof typeof g]).trim() || String(g[key as keyof typeof g]).length > max) ||
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(g.correo) || (g.nacionalidad !== undefined && (typeof g.nacionalidad !== 'string' || g.nacionalidad.length > 60)) || !['DPI', 'PASAPORTE'].includes(g.tipoDocumento)) throw new AvailabilityError('DATOS_INVALIDOS', 400);
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(g.correo) || (g.nacionalidad != null && (typeof g.nacionalidad !== 'string' || g.nacionalidad.length > 60)) || !['DPI', 'PASAPORTE'].includes(g.tipoDocumento)) throw new AvailabilityError('DATOS_INVALIDOS', 400);
   return { tipoHabitacionId: input.tipoHabitacionId, entrada: input.entrada, salida: input.salida, numeroHuespedes: input.numeroHuespedes,
     huesped: { nombreCompleto: g.nombreCompleto.trim(), correo: g.correo.trim().toLowerCase(), telefono: g.telefono.trim(), ...(g.nacionalidad ? {nacionalidad: g.nacionalidad.trim()} : {}), tipoDocumento: g.tipoDocumento, numeroDocumento: g.numeroDocumento.trim() } };
 }

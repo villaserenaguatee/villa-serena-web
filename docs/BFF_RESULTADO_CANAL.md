@@ -1,5 +1,9 @@
 # Resultado del pago y canal simulado — Issue #6
 
+> Nota #63: las referencias a copias o blobs del contrato en este documento son
+> antecedentes de su implementación. La fuente vigente es docs, fijada mediante
+> `api-contract.json`; ver [generación y comprobación](CONTRATO_API.md).
+
 Esta etapa funciona con datos de prueba detrás del BFF de Next.js. No realiza cobros, no contacta canales externos y no envía correos. El modo real devuelve 503 explícitamente; no usa datos simulados como sustituto de una conexión fallida.
 
 ## Dependencias y fuentes

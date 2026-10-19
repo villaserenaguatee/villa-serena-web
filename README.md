@@ -4,8 +4,8 @@ Sistema web para la operación de Villa Serena. El proyecto está construido con
 
 ## Requisitos
 
-- Node.js 20 o superior.
-- pnpm.
+- Node.js 24.
+- pnpm 12 (según `packageManager`).
 
 ## Instalación
 
@@ -15,6 +15,13 @@ pnpm dev
 ```
 
 Abrir `http://localhost:3000`.
+
+## Contrato API
+
+La fuente oficial está en `villa-serena-docs`, fijada por `api-contract.json`.
+No copiar `openapi.yaml` al frontend. `pnpm generate:api` y `pnpm check:api`
+consumen el mismo checkout configurable de docs, con sus herramientas y lockfile.
+Consultar [preparación local, CI y actualización de la revisión](docs/CONTRATO_API.md).
 
 Para validar TypeScript e internacionalización:
 

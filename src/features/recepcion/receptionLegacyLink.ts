@@ -13,7 +13,7 @@ export function prepareExistingReceptionScreen(detail: ReservationDetail): strin
   const tipoDocumento = detail.huesped.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte';
   // Reutiliza la identidad local sin sobrescribir el perfil ni sus cambios.
   const existing = leerHuespedes().find(g => g.tipoDocumento === tipoDocumento && g.documento === detail.huesped.numeroDocumento);
-  const guestId = (existing ?? upsertHuesped({ id: `bff-guest-${detail.huesped.id}`, nombre: detail.huesped.nombreCompleto, correo: detail.huesped.correo, telefono: detail.huesped.telefono, nacionalidad: detail.huesped.nacionalidad, tipoDocumento, documento: detail.huesped.numeroDocumento, creadoEn: detail.creadaEn })).id;
+  const guestId = (existing ?? upsertHuesped({ id: `bff-guest-${detail.huesped.id}`, nombre: detail.huesped.nombreCompleto, correo: detail.huesped.correo, telefono: detail.huesped.telefono, nacionalidad: detail.huesped.nacionalidad ?? '', tipoDocumento, documento: detail.huesped.numeroDocumento, creadoEn: detail.creadaEn })).id;
   const states = { PENDIENTE_PAGO: 'pendiente', CONFIRMADA: 'confirmada', EN_ESTADIA: 'en-curso', FINALIZADA: 'finalizada', CANCELADA: 'cancelada' } as const;
   const value: Reserva = {
   ...previous,

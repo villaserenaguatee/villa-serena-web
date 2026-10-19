@@ -1,3 +1,4 @@
+import { historicalPassportIssuer } from '@/lib/api/guestCompatibility';
 import { validDocument, validNationalPhone } from '@/lib/guestValidation';
 import ReceptionCloseButton from './ReceptionCloseButton';
 import { useEffect, useRef, useState } from 'react';
@@ -62,7 +63,7 @@ export default function NuevaReservaModal({ conectado = false, huespedes: localG
     const controller = new AbortController(); setRemoteGuests([]); setGuestSearchError('');
     if (buscarHuesped.trim().length < 2) return () => controller.abort();
     const timer = setTimeout(() => { searchGuests(buscarHuesped.trim(), controller.signal).then(list => {
-      if (!controller.signal.aborted) setRemoteGuests(list.map(g => ({ id: String(g.id), nombre: g.nombreCompleto, correo: g.correo, telefono: g.telefono, nacionalidad: g.nacionalidad, tipoDocumento: g.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte', documento: g.numeroDocumento, paisEmisorPasaporte: g.paisEmisorPasaporte, creadoEn: '' })));
+      if (!controller.signal.aborted) setRemoteGuests(list.map(g => ({ id: String(g.id), nombre: g.nombreCompleto, correo: g.correo, telefono: g.telefono, nacionalidad: g.nacionalidad ?? '', tipoDocumento: g.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte', documento: g.numeroDocumento, paisEmisorPasaporte: historicalPassportIssuer(g), creadoEn: '' })));
     }).catch(e => { if (!controller.signal.aborted) setGuestSearchError(e.message); }); }, 250);
     return () => { clearTimeout(timer); controller.abort(); };
   }, [conectado, modoNuevoHuesped, buscarHuesped, huespedId]);

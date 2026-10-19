@@ -1,5 +1,9 @@
 # Cuenta, check-out y factura — issue #12 / OBJ-4C
 
+> Nota #63: las referencias a copias o blobs del contrato en este documento son
+> antecedentes de su implementación. La fuente vigente es docs, fijada mediante
+> `api-contract.json`; ver [generación y comprobación](CONTRATO_API.md).
+
 Recepción permite consultar la cuenta, agregar o anular cargos adicionales,
 cobrar el saldo completo al hacer check-out y consultar e imprimir la factura.
 No incluye abonos, descuentos ni anulación de facturas.
