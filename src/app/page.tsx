@@ -9,7 +9,6 @@ import { UiText, useUiText } from "@/i18n/UiText";
 import BilingualDateInput from "@/components/common/BilingualDateInput";
 import { usePublicCatalog, usePublicHotel } from "@/lib/usePublicCatalog";
 import { publicSearchError } from "@/lib/publicStayValidation";
-import { translatePublicContent } from "@/lib/translation/client";
 import ScopedI18nProvider from "@/i18n/ScopedI18nProvider";
 import { validStay } from "@/lib/publicAvailability";
 
@@ -201,7 +200,6 @@ function HomeContent() {
   };
   const { en } = usePublicLanguage();
   useEffect(()=>{const mq=matchMedia('(max-width:700px)');const update=()=>{setReviewsPerPage(mq.matches?1:3);setReviewPage(0);};update();mq.addEventListener('change',update);return()=>mq.removeEventListener('change',update);},[]);
-  useEffect(()=>{if(!en)return;const missing=publicReviews.filter(r=>!r.textEn&&!reviewTranslations[r.id||r.name+'-'+r.date]&&r.text);if(!missing.length)return;let active=true;translatePublicContent(missing.map(r=>r.text),'public-notice').then(v=>{if(active)setReviewTranslations(old=>({...old,...Object.fromEntries(missing.map((r,i)=>[r.id||r.name+'-'+r.date,v.translations[i]]))}));}).catch(()=>{});return()=>{active=false;};},[en,publicReviews]);
   return (<>
     <main className="hotel-site">
       <header className="hotel-nav" data-public-navigation>

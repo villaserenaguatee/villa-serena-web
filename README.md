@@ -31,14 +31,10 @@ pnpm start
 
 ## Variables de entorno
 
-Copiar `.env.example` a `.env.local` cuando se configure traducción automática.
-
-```env
-DEEPL_API_KEY=
-DEEPL_API_URL=https://api-free.deepl.com/v2/translate
-```
-
-`DEEPL_API_KEY` es opcional. Si no existe, las funciones que requieren traducción automática informan que el servicio no está configurado.
+Usar `.env.example` como referencia para la configuración del BFF. Los secretos
+permanecen en el entorno del servidor o `.env.local`, fuera de Git. El MVP de la
+issue #60 no utiliza proveedores de traducción ni OAuth para completar reservas.
+Ver [alcance y reactivación futura](docs/ISSUE_60_MVP.md).
 
 ## Accesos
 
@@ -140,7 +136,7 @@ Administración ────────────► Tarifas / Habitaciones /
 Room Service ──────────────► Cuenta del huésped
 ```
 
-La sincronización operativa actual se realiza mediante stores y eventos del navegador. La traducción automática utiliza la ruta interna `/api/translate` y DeepL cuando existe una clave configurada.
+La sincronización operativa actual se realiza mediante stores y eventos del navegador. El MVP muestra la interfaz en español y los mensajes originales, sin traducción automática (issue #60).
 
 ## Documentación adicional
 

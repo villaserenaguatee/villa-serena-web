@@ -906,7 +906,7 @@ function TabHuespedes({ reserva, huesped, onAgregarAcompanante, onQuitarAcompana
           <Campo label="Tipo de documento">
             <select value={tipoDocumento} onChange={e => setTipoDocumento(e.target.value as 'DPI' | 'Pasaporte')} className={INPUT_CLS}>
               <option>DPI</option>
-              <option>Pasaporte</option>
+
             </select>
           </Campo>
           <Campo label="Número de documento">

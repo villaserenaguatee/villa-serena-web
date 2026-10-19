@@ -12,11 +12,11 @@ test('audit wiring keeps GET read-only and traces rejected POST without exposing
   try {
     const get = await GET(new Request('http://localhost:3054/api/publico/ofertas'));
     assert.equal(get.status, 200); assert.equal(logs.length, 0);
-    const post = await POST(new Request('http://localhost:3054/api/publico/reservas', { method: 'POST', headers: { Origin: 'http://localhost:3054', 'Content-Type': 'application/json', 'Idempotency-Key': 'private-attempt-key-1234', Cookie: 'private-cookie', 'X-Villa-Serena-Booking-Action': 'continue-payment' }, body: JSON.stringify({ huesped: { correo: 'private@example.test', numeroDocumento: 'private-document' }, borradorId: crypto.randomUUID() }) }));
+    const post = await POST(new Request('http://localhost:3054/api/publico/reservas', { method: 'POST', headers: { Origin: 'http://localhost:3054', 'Content-Type': 'application/json', 'Idempotency-Key': 'private-attempt-key-1234', Cookie: 'private-cookie', 'X-Villa-Serena-Booking-Action': 'continue-payment' }, body: JSON.stringify({ huesped: { correo: 'private@example.test', tipoDocumento: 'DPI', numeroDocumento: '0000000000001' }, borradorId: crypto.randomUUID() }) }));
     assert.equal(post.status, 403); assert.match(post.headers.get('X-Villa-Serena-Request-Id')!, /^[a-f0-9-]{36}$/);
     assert.deepEqual(calls, ['GET', 'POST']); assert.equal(logs.length, 2);
     assert.equal(JSON.parse(logs[1]).status, 403);
-    for (const value of ['private@example.test', 'private-document', 'private-cookie', 'private-attempt-key-1234']) assert.equal(logs.join('').includes(value), false);
+    for (const value of ['private@example.test', '0000000000001', 'private-cookie', 'private-attempt-key-1234']) assert.equal(logs.join('').includes(value), false);
   } finally {
     globalThis.fetch = originalFetch; console.info = originalInfo;
     if (mode === undefined) delete process.env.VILLA_SERENA_BFF_MODE; else process.env.VILLA_SERENA_BFF_MODE = mode;

@@ -20,9 +20,8 @@ export async function prepareStripeBooking(params: URLSearchParams, draftId: str
     input = { ofertaSlug: params.get('slug') || undefined, tipoHabitacionId: Number(params.get('tipoHabitacionId')), entrada: params.get('llegada') || '', salida: params.get('salida') || '',
       numeroHuespedes: Number(params.get('adultos')) + Number(params.get('ninos')), huesped: {
         nombreCompleto: `${params.get('nombre') || ''} ${params.get('apellidos') || ''}`.trim(), correo: params.get('correo') || '',
-        telefono: params.get('telefono') || '', nacionalidad: params.get('nacionalidad') || '', tipoDocumento: params.get('tipoDocumento') === 'Pasaporte' ? 'PASAPORTE' : 'DPI',
+        telefono: params.get('telefono') || '', tipoDocumento: 'DPI',
         numeroDocumento: params.get('documento') || '',
-        paisEmisorPasaporte: params.get('tipoDocumento') === 'Pasaporte' ? params.get('paisEmisorPasaporte') || undefined : undefined,
       } };
   }
   const attempt = await bookingAttempt(draftId, JSON.stringify({ flow: 'stripe', input }));

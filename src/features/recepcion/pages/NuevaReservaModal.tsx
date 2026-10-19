@@ -1,5 +1,4 @@
-import PassportIssuerSelect from '@/components/common/PassportIssuerSelect';
-import { validDocument, validNationalPhone, validPassportIssuer } from '@/lib/guestValidation';
+import { validDocument, validNationalPhone } from '@/lib/guestValidation';
 import ReceptionCloseButton from './ReceptionCloseButton';
 import { useEffect, useRef, useState } from 'react';
 import { ReceptionRequestError, receptionFieldErrors, searchGuests, getReceptionAvailability, getAvailableRoomReferences, getRooms } from '@/lib/api/reception';
@@ -20,7 +19,6 @@ interface NuevoHuespedForm {
   prefijo: string;
   correo: string;
   horaLlegada: string;
-  nacionalidad: string;
 }
 interface Props {
   conectado?: boolean;
@@ -87,7 +85,6 @@ telefono: '',
     prefijo: '+502',
     correo: '',
     horaLlegada: '15:00',
-    nacionalidad: 'Guatemala',
   });
   const [entrada, setEntrada] = useState(preset?.entrada ?? fechaHoyISO());
   const [salida, setSalida] = useState(preset?.salida ?? fechaRelativaISO(2));
@@ -166,7 +163,6 @@ telefono: '',
       if (!nh.documento.trim())
         e.documento = 'Documento obligatorio.';
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nh.correo.trim())) e.correo = 'Correo válido obligatorio.';
-      if (!nh.nacionalidad.trim()) e.nacionalidad = 'Nacionalidad obligatoria.';
       if (!nh.telefono.trim())
         e.telefono = 'Teléfono obligatorio.';
     }
@@ -178,7 +174,6 @@ telefono: '',
     }
     if (modoNuevoHuesped && !validDocument(nh.tipoDocumento, nh.documento)) e.documento = nh.tipoDocumento === 'DPI' ? 'El DPI debe contener exactamente 13 dígitos.' : 'Introduce solo letras y números, hasta el límite de almacenamiento de 30 caracteres.';
     if (modoNuevoHuesped && !validNationalPhone(nh.prefijo, nh.telefono)) e.telefono = 'Guatemala: 8 dígitos sin repetir +502. Otros países: número internacional válido, sin letras.';
-    if (modoNuevoHuesped && nh.tipoDocumento === 'Pasaporte' && !validPassportIssuer(nh.paisEmisorPasaporte)) e.paisEmisorPasaporte = 'Selecciona el país emisor del pasaporte.';
     setErrores(e);
     if (Object.keys(e).length > 0)
       return;
@@ -194,7 +189,8 @@ telefono: '',
         paisEmisorPasaporte: nh.tipoDocumento === 'Pasaporte' ? nh.paisEmisorPasaporte : undefined,
         telefono: `${nh.prefijo} ${nh.telefono.trim()}`,
         correo: nh.correo.trim(),
-        nacionalidad: nh.nacionalidad,
+        nacionalidad: '',
+
       });
       idHuesped = creado.id;
     }
@@ -305,10 +301,9 @@ telefono: '',
             <Campo label="Tipo de documento">
               <select value={nh.tipoDocumento} onChange={e => setNh(f => ({ ...f, tipoDocumento: e.target.value as TipoDocumento }))} className={INPUT_CLS}>
                 <option value="DPI">DPI</option>
-                <option value="Pasaporte">Pasaporte</option>
+
               </select>
             </Campo>
-            {nh.tipoDocumento === 'Pasaporte' && <Campo label="País emisor del pasaporte" error={errores.paisEmisorPasaporte}><PassportIssuerSelect value={nh.paisEmisorPasaporte} onChange={value => setNh(f => ({ ...f, paisEmisorPasaporte: value }))} className={INPUT_CLS} /></Campo>}
           <Campo label="Número de documento" error={errores.documento}>
               <input
                 aria-label="Número de documento"
@@ -354,9 +349,6 @@ telefono: '',
                   inputMode="tel"
                   className={`${INPUT_CLS} flex-1`} />
               </div>
-            </Campo>
-            <Campo label="Nacionalidad" error={errores.nacionalidad}>
-              <input aria-label="Nacionalidad" value={nh.nacionalidad} onChange={e => setNh(f => ({ ...f, nacionalidad: e.target.value }))} className={INPUT_CLS} />
             </Campo>
             <div className="rounded-xl border border-[#EEE7DA] p-4">
               <label className="flex items-center justify-between gap-3 cursor-pointer">
@@ -616,12 +608,6 @@ telefono: '',
                 <small className="text-[#AEBCC1]">Correo</small>
                 <b className="block">
                   {modoNuevoHuesped ? nh.correo : (hg?.correo || '—')}
-                </b>
-              </div>
-              <div>
-                <small className="text-[#AEBCC1]">Nacionalidad</small>
-                <b className="block">
-                  {modoNuevoHuesped ? nh.nacionalidad : (hg?.nacionalidad || '—')}
                 </b>
               </div>
               <div>

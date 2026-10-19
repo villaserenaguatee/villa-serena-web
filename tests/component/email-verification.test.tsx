@@ -9,7 +9,7 @@ const labels = {
 };
 
 describe.each(['ES', 'EN'] as const)('verificación de correo %s', lang => {
-  const text = labels[lang];
+  const text = labels.ES; // MVP ignores a previously saved EN preference.
   function mount(servicio?: EmailVerificationService, verificado = false) {
     localStorage.setItem('villa-serena-lang', lang);
     const onCambiar = vi.fn(), onVolver = vi.fn(), onVerificado = vi.fn();

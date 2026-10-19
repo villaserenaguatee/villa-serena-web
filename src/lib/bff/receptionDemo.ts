@@ -68,7 +68,7 @@ export function readReceptionState(): ReceptionState {
       state.rooms.some(r => !Number.isInteger(r?.id) || !['LIBRE', 'OCUPADA'].includes(r.ocupacion) || !['LIMPIA', 'SUCIA', 'EN_LIMPIEZA', 'FUERA_DE_SERVICIO'].includes(r.condicion)) ||
       new Set(state.entries.map(e => e.detail.codigo)).size !== state.entries.length || new Set(state.rooms.map(r => r.id)).size !== state.rooms.length ||
       (state.guests !== undefined && (!Array.isArray(state.guests) || state.guests.some(g => !Number.isInteger(g?.id) || g.id < 1 ||
-        ['nombreCompleto', 'correo', 'telefono', 'nacionalidad', 'numeroDocumento'].some(k => typeof g[k as keyof typeof g] !== 'string' || !String(g[k as keyof typeof g]).trim()) || !['DPI', 'PASAPORTE'].includes(g.tipoDocumento)) ||
+        ['nombreCompleto', 'correo', 'telefono', 'numeroDocumento'].some(k => typeof g[k as keyof typeof g] !== 'string' || !String(g[k as keyof typeof g]).trim()) || !['DPI', 'PASAPORTE'].includes(g.tipoDocumento)) ||
         new Set(state.guests.map(g => g.id)).size !== state.guests.length || new Set(state.guests.map(g => g.correo.toLowerCase())).size !== state.guests.length))) throw new Error('Estado inválido');
     // Recuperar asociaciones históricas omitidas por versiones anteriores del simulador.
     // Solo se usan reservas finalizadas originales y nunca se reemplaza una asociación existente.
@@ -114,15 +114,16 @@ function registeredGuests(state: ReceptionState): ReservationDetail['huesped'][]
 export function registerReceptionGuest(input: Record<string, unknown>): RegisteredGuest {
   const keys = ['nombreCompleto', 'correo', 'telefono', 'nacionalidad', 'tipoDocumento', 'numeroDocumento'];
   const limits: Record<string, number> = { nombreCompleto: 150, correo: 150, telefono: 30, nacionalidad: 60, tipoDocumento: 9, numeroDocumento: 30 };
-  if (Object.keys(input).some(k => !keys.includes(k)) || keys.some(k => typeof input[k] !== 'string' || !(input[k] as string).trim() || (input[k] as string).length > limits[k]) ||
+  if (Object.keys(input).some(k => !keys.includes(k)) || keys.filter(k => k !== 'nacionalidad').some(k => typeof input[k] !== 'string' || !(input[k] as string).trim() || (input[k] as string).length > limits[k]) ||
+    (input.nacionalidad !== undefined && (typeof input.nacionalidad !== 'string' || input.nacionalidad.length > 60)) ||
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(input.correo)) || !['DPI', 'PASAPORTE'].includes(String(input.tipoDocumento)))
-    fail('DATOS_INVALIDOS', 400, 'Completa los seis datos del huésped y un correo válido.');
+    fail('DATOS_INVALIDOS', 400, 'Completa los datos del huésped y un correo válido.');
   return receptionTransaction(state => {
     const guests = registeredGuests(state), correo = String(input.correo).trim().toLowerCase();
     const existing = guests.find(g => g.correo.toLowerCase() === correo);
     if (existing) return { yaExistia: true, huesped: structuredClone(existing) };
-    const data = Object.fromEntries(keys.map(k => [k, String(input[k]).trim()])) as GuestData;
-    const huesped = { ...data, correo, id: Math.max(0, ...guests.map(g => g.id)) + 1 };
+    const data = Object.fromEntries(keys.filter(k => k !== 'nacionalidad').map(k => [k, String(input[k]).trim()])) as GuestData;
+    const huesped = { ...data, nacionalidad: typeof input.nacionalidad === 'string' ? input.nacionalidad.trim() : '', correo, id: Math.max(0, ...guests.map(g => g.id)) + 1 };
     guests.push(huesped); return { yaExistia: false, huesped: structuredClone(huesped) };
   });
 }

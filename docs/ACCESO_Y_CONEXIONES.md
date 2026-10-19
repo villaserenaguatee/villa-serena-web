@@ -96,7 +96,7 @@ Conexiones:
 - comparte mensajes mediante `chatStore.ts`;
 - genera tareas de limpieza mediante `cleaningEvents.ts`;
 - consulta información de pagos mediante `paymentStore.ts`;
-- traduce mensajes mediante `/api/translate`.
+- muestra el mensaje original, sin traducción automática en el MVP (#60).
 
 ## Room Service
 
@@ -178,11 +178,8 @@ Conexiones:
 
 La implementación funcional actual usa almacenamiento del navegador para conservar información operativa entre pantallas y eventos personalizados para sincronizar los módulos dentro de la aplicación. Los archivos de `src/store/` son los puntos centrales de persistencia, eventos y sincronización entre módulos.
 
-## Traducción
+## Idioma del MVP (issue #60)
 
-La interfaz bilingüe utiliza los recursos de `src/i18n`. Los mensajes que requieren traducción dinámica utilizan `/api/translate`. Para habilitar DeepL se debe crear `.env.local` con:
-
-```env
-DEEPL_API_KEY=clave_del_proveedor
-DEEPL_API_URL=https://api-free.deepl.com/v2/translate
-```
+Interfaz en español y mensajes originales. La traducción automática y su ruta de
+proveedor están retiradas. No configurar claves para activarla por entorno.
+Ver [funciones retiradas y requisitos para retomarlas](ISSUE_60_MVP.md).

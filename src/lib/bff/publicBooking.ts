@@ -28,7 +28,7 @@ export function parseBooking(value: unknown): BookingInput {
     typeof value.expectedTotal !== 'number' || !Number.isFinite(value.expectedTotal) || value.expectedTotal < 0 ||
     !['hotel', 'card', 'bank'].includes(String(value.paymentMethod)) ||
     !text(g.name, 150) || !text(g.email, 150) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(g.email.trim()) ||
-    !text(g.phone, 30) || !text(g.nationality, 60) || !text(g.document, 30) || !['DPI', 'passport'].includes(String(g.documentType))) {
+    !text(g.phone, 30) || (g.nationality !== undefined && !text(g.nationality, 60, false)) || !text(g.document, 30) || !['DPI', 'passport'].includes(String(g.documentType))) {
     throw new AvailabilityError('INVALID_BOOKING', 400);
   }
   // An existing attempt can be recovered after midnight; new stays are checked in the transaction.
@@ -49,7 +49,7 @@ export function parseBooking(value: unknown): BookingInput {
   });
   return { ...availability, requestId: value.requestId, recoveryCode: value.recoveryCode as string | undefined, slug: value.slug, roomId: value.roomId,
     paymentMethod: value.paymentMethod as BookingInput['paymentMethod'], promoCode: value.promoCode.trim().toUpperCase(), expectedTotal: value.expectedTotal,
-    guest: { name: g.name.trim(), email: g.email.trim(), phone: g.phone.trim(), nationality: g.nationality.trim(),
+    guest: { name: g.name.trim(), email: g.email.trim(), phone: g.phone.trim(), ...(typeof g.nationality === 'string' && g.nationality.trim() ? {nationality: g.nationality.trim()} : {}),
       document: g.document.trim(), documentType: g.documentType as BookingInput['guest']['documentType'] },
     demo: { ...availability.demo, rates: Object.fromEntries(types.map(t => [t, (demo.rates as Record<string, number>)[t]])) as Record<TipoHabitacion, number>, promotions } };
 }
@@ -84,7 +84,7 @@ export function createBooking(input: BookingInput): BookingCreated {
     const now = new Date().toISOString();
     const matching = state.entries.find(e => e.compatibility.guest.tipoDocumento === (input.guest.documentType === 'passport' ? 'Pasaporte' : 'DPI') && e.compatibility.guest.documento === input.guest.document)?.compatibility.guest;
     const guest: Huesped = { id: matching?.id ?? `hu-${randomUUID()}`, creadoEn: matching?.creadoEn ?? now,
-      nombre: input.guest.name, correo: input.guest.email, telefono: input.guest.phone, nacionalidad: input.guest.nationality,
+      nombre: input.guest.name, correo: input.guest.email, telefono: input.guest.phone, nacionalidad: input.guest.nationality ?? matching?.nacionalidad ?? '',
       documento: input.guest.document, tipoDocumento: input.guest.documentType === 'passport' ? 'Pasaporte' : 'DPI' };
     const knownCodes = new Set([...demo.holds.map(h => h.code), ...state.entries.map(e => e.result.code)]);
     let code: string;

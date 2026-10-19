@@ -39,7 +39,7 @@ function mountPortal(lang: 'ES' | 'EN' = 'ES') {
     loading: false, login: vi.fn(), logout: vi.fn(),
   };
   const view = render(<AuthContext.Provider value={auth}>
-    <NextIntlClientProvider locale={lang === 'EN' ? 'en' : 'es'} messages={lang === 'EN' ? en : es} timeZone="America/Guatemala">
+    <NextIntlClientProvider locale="es" messages={es} timeZone="America/Guatemala">
       <HuespedApp onCambiarModulo={vi.fn()} />
     </NextIntlClientProvider>
   </AuthContext.Provider>);
@@ -51,7 +51,7 @@ async function navigate(user: ReturnType<typeof userEvent.setup>, name: RegExp) 
 }
 
 describe.each(['ES', 'EN'] as const)('estancia finalizada %s', lang => {
-  const english = lang === 'EN';
+  const english = false; // MVP remains Spanish for either saved preference.
   const tr = (spanish: string, translated: string) => english ? translated : spanish;
   test('habitación histórica muestra foto y tres acciones; no expone controles de estancia', async () => {
     localStorage.setItem('villa-serena-lang', lang); const props = roomProps(); const original = JSON.stringify(props.reserva);

@@ -55,7 +55,6 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
   const [apellidos, setApellidos] = useState("");
   const [tipoDocumento, setTipoDocumento] = useState("DPI");
   const [codigoPais, setCodigoPais] = useState("+502");
-  const [nacionalidad, setNacionalidad] = useState("");
   const [horaLlegada, setHoraLlegada] = useState("15:00");
   const [sinHoraLlegada, setSinHoraLlegada] = useState(false);
   const [erroresDatos, setErroresDatos] = useState<Record<string, string>>({});
@@ -109,14 +108,12 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
       setContacto({ nombre: "", correo: "", telefono: "", documento: "" });
       setApellidos("");
       setTipoDocumento("");
-      setNacionalidad("");
     }
     else {
       const partes = huesped.nombre.trim().split(/\s+/);
       setContacto({ nombre: partes.shift() || huesped.nombre, correo: huesped.correo, telefono: huesped.telefono.replace(/^\+?502\s*/, ""), documento: huesped.documento });
       setApellidos(partes.join(" "));
       setTipoDocumento(huesped.tipoDocumento);
-      setNacionalidad(huesped.nacionalidad);
     }
     setPaso("datos");
   }
@@ -134,8 +131,6 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
       e.documento = "Necesitamos tu documento de identidad.";
     if (!tipoDocumento)
       e.tipoDocumento = "Selecciona el tipo de documento.";
-    if (!nacionalidad.trim())
-      e.nacionalidad = "Escribe la nacionalidad.";
     setErroresDatos(e);
     return Object.keys(e).length === 0;
   }
@@ -359,7 +354,7 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
                 <select value={tipoDocumento} onChange={e => setTipoDocumento(e.target.value)} className={INPUT_CLS}>
                   <option value="">Seleccionar</option>
                   <option>DPI</option>
-                  <option>Pasaporte</option>
+
                 </select>
               </Campo>
               <Campo label="Número de documento" error={erroresDatos.documento}>
@@ -395,9 +390,6 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
                     inputMode="numeric"
                     className={INPUT_CLS} />
                 </div>
-              </Campo>
-              <Campo label="Nacionalidad" error={erroresDatos.nacionalidad}>
-                <input value={nacionalidad} onChange={e => setNacionalidad(e.target.value)} className={INPUT_CLS} placeholder="Nacionalidad" />
               </Campo>
               <Campo label="Hora estimada de llegada">
                 <input
@@ -454,7 +446,6 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
             <DatoRevision label={tipoDocumento || "Documento"} valor={`${tipoDocumento} · •••• ${contacto.documento.slice(-4)}`} />
             <DatoRevision label="Correo" valor={contacto.correo} />
             <DatoRevision label="Teléfono" valor={`${codigoPais} ${contacto.telefono}`} />
-            <DatoRevision label="Nacionalidad" valor={nacionalidad} />
             <DatoRevision label="Hora estimada de llegada" valor={sinHoraLlegada ? "Por confirmar" : horaLlegada} />
             <DatoRevision label="Habitación" valor={oferta.tipo} />
             <DatoRevision

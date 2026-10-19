@@ -201,7 +201,7 @@ test('lost response retry and failed local copy recover original booking without
   const b = browser(); try {
     const value = input(), params = new URLSearchParams({ slug: value.slug, habitacionId: value.roomId, llegada: arrival, salida: departure,
       adultos: '1', ninos: '0', total: '840', nombre: 'Test', apellidos: 'Guest', correo: value.guest.email, telefono: value.guest.phone,
-      nacionalidad: value.guest.nationality, documento: value.guest.document, tipoDocumento: 'DPI' });
+      nacionalidad: value.guest.nationality ?? '', documento: value.guest.document, tipoDocumento: 'DPI' });
     const query = saveBookingDraft(params), id = query.get('draft')!;
     b.storage.set('vs-habitaciones', JSON.stringify(value.demo.rooms)); b.storage.set('vs-reservas', '[]'); b.storage.set('vs-huespedes', '[]');
     let lost = true;
@@ -230,7 +230,7 @@ test('recovery refuses a missing or different booking instead of creating invent
 function guestParams(value = input()) {
   return new URLSearchParams({ slug: value.slug, habitacionId: value.roomId, llegada: value.arrival, salida: value.departure,
     adultos: String(value.adults), ninos: String(value.children), total: String(value.expectedTotal), nombre: 'Test', apellidos: 'Guest',
-    correo: value.guest.email, telefono: value.guest.phone, nacionalidad: value.guest.nationality, documento: value.guest.document, tipoDocumento: 'DPI' });
+    correo: value.guest.email, telefono: value.guest.phone, nacionalidad: value.guest.nationality ?? '', documento: value.guest.document, tipoDocumento: 'DPI' });
 }
 test('lost response followed by changed dates or price stays bound to original attempt', async () => {
   const b = browser(); try {

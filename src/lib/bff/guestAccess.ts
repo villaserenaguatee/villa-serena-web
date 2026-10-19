@@ -192,7 +192,7 @@ export function guestPortalData(access: string, refresh: string, selectedCode?: 
   if (entry) {
     const created = entry.created, guest = entry.guest;
     const id = `public-guest-${hash(identity.correo)}`;
-    const huesped: Huesped = { id, nombre: guest.nombreCompleto, correo: guest.correo, telefono: guest.telefono, nacionalidad: guest.nacionalidad, documento: guest.numeroDocumento, tipoDocumento: guest.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte', creadoEn: '' };
+    const huesped: Huesped = { id, nombre: guest.nombreCompleto, correo: guest.correo, telefono: guest.telefono, nacionalidad: guest.nacionalidad ?? '', documento: guest.numeroDocumento, tipoDocumento: guest.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte', creadoEn: '' };
     const status = demoStatus(created.codigo);
     const estados = { PENDIENTE_PAGO: 'pendiente', CONFIRMADA: 'confirmada', EN_ESTADIA: 'en-curso', CANCELADA: 'cancelada', FINALIZADA: 'finalizada' } as const;
     const reserva: Reserva = { id: `public-${created.codigo}`, codigo: created.codigo, codigoBff: created.codigo, huespedId: id, habitacionId: null, tipoHabitacion: entry.roomType!, fechaEntrada: created.entrada, fechaSalida: created.salida, personas: created.numeroHuespedes, estado: estados[status.estadoReserva], acompanantes: [], servicios: [], pagos: [], descuento: 0, creadoEn: '', canal: 'DIRECTO_WEB' };

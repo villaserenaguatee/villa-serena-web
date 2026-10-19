@@ -346,14 +346,7 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
             </Campo>
             <Campo label="Documento" error={errores.documento}>
               <div className="grid grid-cols-[150px_1fr] gap-2">
-                <select value={tipoDocumento} disabled className={`${INPUT_CLS} bg-[#F8F6F0]`}>
-                  <option value="DPI">
-                    <UiText text="DPI" />
-                  </option>
-                  <option value="Pasaporte">
-                    <UiText text="Pasaporte" />
-                  </option>
-                </select>
+                <input value={tipoDocumento} readOnly className={`${INPUT_CLS} bg-[#F8F6F0]`} />
                 <input
                   value={documento}
                   readOnly
@@ -492,7 +485,7 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
                       }}
                       className={INPUT_CLS}>
                       <option>DPI</option>
-                      <option>Pasaporte</option>
+
                     </select>
                     <input
                       value={documentoAcompanante}

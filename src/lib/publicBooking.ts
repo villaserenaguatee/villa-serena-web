@@ -37,8 +37,8 @@ export async function confirmarReservaPublica(params: URLSearchParams, promoCode
   const offer = publicRooms.find(r => params.get('slug') ? r.slug === params.get('slug') : r.name === params.get('habitacion'));
   if (!offer) throw new PublicBookingError('unavailable');
   const guest: BookingInput['guest'] = { name: `${params.get('nombre') || ''} ${params.get('apellidos') || ''}`.trim(),
-    email: params.get('correo') || '', phone: params.get('telefono') || '', nationality: params.get('nacionalidad') || '',
-    document: params.get('documento') || '', documentType: params.get('tipoDocumento') === 'Pasaporte' ? 'passport' : 'DPI' };
+    email: params.get('correo') || '', phone: params.get('telefono') || '',
+    document: params.get('documento') || '', documentType: 'DPI' };
   const request = { slug: offer.slug, roomId: params.get('habitacionId') || '', arrival: params.get('llegada') || '',
     departure: params.get('salida') || '', adults: Number(params.get('adultos') || params.get('huespedes') || 1),
     children: Number(params.get('ninos') || 0), guest, paymentMethod, promoCode: promoCode.trim().toUpperCase(), expectedTotal: Number(params.get('total')) };

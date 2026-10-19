@@ -1,5 +1,4 @@
-import PassportIssuerSelect from '@/components/common/PassportIssuerSelect';
-import { validDocument, validNationalPhone, validPassportIssuer } from '@/lib/guestValidation';
+import { validDocument, validNationalPhone } from '@/lib/guestValidation';
 import { searchGuests, registerGuest, searchReservations, receptionFieldErrors } from '@/lib/api/reception';
 import type { ReservationSummary } from '@/lib/bff/contracts/reception';
 import { reservationLabels } from '@/lib/receptionPresentation';
@@ -25,7 +24,6 @@ interface Form {
   paisEmisorPasaporte: string;
   telefono: string;
   correo: string;
-  nacionalidad: string;
   apellidos: string;
   prefijo: string;
 }
@@ -36,7 +34,6 @@ const FORM_VACIO: Form = {
   paisEmisorPasaporte: '',
   telefono: '',
   correo: '',
-  nacionalidad: 'Guatemalteca',
   apellidos: '',
   prefijo: '+502',
 };
@@ -76,18 +73,15 @@ export default function Huespedes({ conectado = false, huespedes: localGuests, r
     if (!form.apellidos.trim())
       e.apellidos = 'El apellido es obligatorio.';
     if (!form.documento.trim())
-      e.documento = 'El DPI o pasaporte es obligatorio.';
+      e.documento = 'El DPI es obligatorio.';
     if (!form.telefono.trim())
       e.telefono = 'El teléfono es obligatorio.';
     if (!form.correo.trim())
       e.correo = 'El correo es obligatorio.';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo.trim()))
       e.correo = 'Correo no válido.';
-    if (!form.nacionalidad)
-      e.nacionalidad = 'Selecciona la nacionalidad.';
-    if (!validDocument(form.tipoDocumento, form.documento)) e.documento = form.tipoDocumento === 'DPI' ? 'El DPI debe contener exactamente 13 dígitos.' : 'Introduce solo letras y números, hasta el límite de almacenamiento de 30 caracteres.';
+    if (!validDocument(form.tipoDocumento, form.documento)) e.documento = 'El DPI debe contener exactamente 13 dígitos.';
     if (!validNationalPhone(form.prefijo, form.telefono)) e.telefono = 'Guatemala: 8 dígitos sin repetir +502. Otros países: número internacional válido, sin letras.';
-    if (form.tipoDocumento === 'Pasaporte' && !validPassportIssuer(form.paisEmisorPasaporte)) e.paisEmisorPasaporte = 'Selecciona el país emisor del pasaporte.';
     setErrores(e);
     return Object.keys(e).length === 0;
   }
@@ -101,16 +95,15 @@ export default function Huespedes({ conectado = false, huespedes: localGuests, r
         paisEmisorPasaporte: form.tipoDocumento === 'Pasaporte' ? form.paisEmisorPasaporte : undefined,
       telefono: `${form.prefijo} ${form.telefono.trim()}`,
       correo: form.correo.trim(),
-      nacionalidad: form.nacionalidad,
     };
     if (queryLoading) return;
     setQueryError(''); setQueryLoading(true);
     try {
       if (conectado) {
-        const { huesped: g } = await registerGuest({ nombreCompleto: datos.nombre, tipoDocumento: datos.tipoDocumento === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: datos.documento, paisEmisorPasaporte: datos.paisEmisorPasaporte, correo: datos.correo, telefono: datos.telefono, nacionalidad: datos.nacionalidad });
+        const { huesped: g } = await registerGuest({ nombreCompleto: datos.nombre, tipoDocumento: datos.tipoDocumento === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: datos.documento, paisEmisorPasaporte: datos.paisEmisorPasaporte, correo: datos.correo, telefono: datos.telefono });
         setRemoteGuests(prev => [...prev.filter(h => h.id !== String(g.id)), { id: String(g.id), nombre: g.nombreCompleto, correo: g.correo, telefono: g.telefono, nacionalidad: g.nacionalidad, tipoDocumento: g.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte', documento: g.numeroDocumento, paisEmisorPasaporte: g.paisEmisorPasaporte, creadoEn: '' }]);
         setQ(datos.documento);
-      } else onRegistrar(datos);
+      } else onRegistrar({ ...datos, nacionalidad: '' });
     } catch (e) { const fields=receptionFieldErrors(e);setErrores(fields);if(Object.keys(fields).length)setRevisando(false);setQueryError(e instanceof Error ? e.message : 'No se pudo registrar el huésped.'); return; }
     finally { setQueryLoading(false); }
     setForm(FORM_VACIO);
@@ -216,10 +209,9 @@ export default function Huespedes({ conectado = false, huespedes: localGuests, r
           <Campo label="Tipo de documento">
             <select value={form.tipoDocumento} onChange={e => setForm(f => ({ ...f, tipoDocumento: e.target.value as TipoDocumento }))} className={INPUT_CLS}>
               <option>DPI</option>
-              <option>Pasaporte</option>
+
             </select>
           </Campo>
-          {form.tipoDocumento === 'Pasaporte' && <Campo label="País emisor del pasaporte" error={errores.paisEmisorPasaporte}><PassportIssuerSelect value={form.paisEmisorPasaporte} onChange={value => setForm(f => ({ ...f, paisEmisorPasaporte: value }))} className={INPUT_CLS} /></Campo>}
           <Campo label="Número de documento" error={errores.documento}>
             <input
               value={form.documento}
@@ -246,9 +238,6 @@ export default function Huespedes({ conectado = false, huespedes: localGuests, r
                 className={`${INPUT_CLS} flex-1`} />
             </div>
           </Campo>
-          <Campo label="Nacionalidad" error={errores.nacionalidad}>
-            <input value={form.nacionalidad} onChange={e => setForm(f => ({ ...f, nacionalidad: e.target.value }))} className={INPUT_CLS} />
-          </Campo>
         </div><div className="px-6 pb-6 flex justify-end">
             <button
               onClick={() => {
@@ -262,7 +251,6 @@ export default function Huespedes({ conectado = false, huespedes: localGuests, r
             {form.tipoDocumento === "Pasaporte" && <Dato k="País emisor del pasaporte" v={form.paisEmisorPasaporte} />}
             <Dato k="Correo" v={form.correo} />
             <Dato k="Teléfono" v={`${form.prefijo} ${form.telefono}`} />
-            <Dato k="Nacionalidad" v={form.nacionalidad} />
           </div><div className="px-7 pb-7 flex justify-end gap-3">
             <button onClick={() => setRevisando(false)} className="px-7 py-3 border border-[#18345C] text-[#18345C] rounded-md font-semibold">Editar</button>
             {queryError && <p role="alert" className="text-red-800">{queryError}</p>}
@@ -368,7 +356,7 @@ function PerfilHuesped({ soloLectura = false, huesped, reservas, habitaciones, o
             <Campo label="Tipo de documento">
               <select value={ed.tipoDocumento} onChange={e => setEd({ ...ed, tipoDocumento: e.target.value as TipoDocumento })} className={INPUT_CLS}>
                 <option>DPI</option>
-                <option>Pasaporte</option>
+
               </select>
             </Campo>
             <Campo label="Número de documento">
@@ -397,9 +385,6 @@ function PerfilHuesped({ soloLectura = false, huesped, reservas, habitaciones, o
                   inputMode="numeric"
                   className={`${INPUT_CLS} flex-1`} />
               </div>
-            </Campo>
-            <Campo label="Nacionalidad">
-              <input value={ed.nacionalidad} onChange={e => setEd({ ...ed, nacionalidad: e.target.value })} className={INPUT_CLS} />
             </Campo>
           </div>
           <div className="mt-3 flex justify-end gap-2">
