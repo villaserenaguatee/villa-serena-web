@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test';
 import { dirname, join } from 'node:path';
-import reception, { reporters } from './playwright.config';
+import reception, { reporters, projectPath } from './playwright.config';
 
 const stateDirectory = dirname(process.env.ISSUE48_RECEPTION_STATE_PATH!);
 process.env.ISSUE48_PUBLIC_CONTRACT_PATH = join(stateDirectory, 'public-contract.json');
@@ -12,7 +12,7 @@ export default defineConfig({
   ...reception,
   testIgnore: [],
   testMatch: '**/payment-*.spec.ts',
-  outputDir: 'test-results/payments',
+  outputDir: projectPath('test-results/payments'),
   reporter: reporters('payments'),
   webServer: {
     ...webServer,

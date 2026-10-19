@@ -1,13 +1,13 @@
 import { defineConfig } from '@playwright/test';
 import booking from './playwright.booking.config';
-import { reporters } from './playwright.config';
+import { reporters, projectPath } from './playwright.config';
 
 const webServer = booking.webServer;
 if (!webServer || Array.isArray(webServer)) throw new Error('Channels requires one demo server');
 export default defineConfig({
   ...booking,
   testMatch: ['**/channel-*.spec.ts', '**/login-credentials.spec.ts'],
-  outputDir: 'test-results/channels',
+  outputDir: projectPath('test-results/channels'),
   reporter: reporters('channels'),
   webServer: {
     ...webServer,

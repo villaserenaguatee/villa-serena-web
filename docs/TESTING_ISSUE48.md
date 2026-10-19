@@ -65,7 +65,7 @@ checkout: comparten puerto y `.next-dev`.
 Ejecutar TypeScript después del E2E, no mientras Next regenera `.next-dev/types`.
 
 `pnpm test:e2e` ejecuta Recepción, sesión del personal, pagos, reserva/portal, canales, cuenta y guard conectado de Recepción,
-en siete procesos Playwright consecutivos con servidores nuevos. `playwright.config.ts`
+en siete procesos Playwright consecutivos con servidores nuevos. `tests/config/playwright/playwright.config.ts`
 selecciona Recepción; los otros seis configs seleccionan explícitamente su bloque. Los
 reportes se guardan por bloque en `test-results/{reception,staff,payments,booking,channels,account,reception-api}` y
 `playwright-report/{reception,staff,payments,booking,channels,account,reception-api}`, sin sobrescribirse. No iniciar bloques a la vez.
@@ -359,7 +359,7 @@ Chromium ni el workflow remoto después de las correcciones finales.
 
 Se implementa `tests/e2e/account-demo.spec.ts`: seis escenarios en computadora y
 móvil, **12 casos** en total. `pnpm test:cuenta:browser` apunta al reemplazo;
-`playwright.account.config.ts` inicia su propio servidor demo y guarda reportes
+`tests/config/playwright/playwright.account.config.ts` inicia su propio servidor demo y guarda reportes
 JUnit/HTML en el bloque `account`. Se añade un job independiente de CI.
 No se ejecutan Playwright, Next ni Chromium localmente en esta etapa.
 
@@ -401,7 +401,7 @@ Son seis escenarios en computadora y móvil: **12 casos**. Ambos CJS se conserva
 hasta validar los reemplazos; siguen existiendo siete CJS, y los únicos orígenes
 sin reemplazo completo implementado son Recepción con variante API y operaciones.
 
-`pnpm test:cuenta:connected` usa `playwright.account-mock.config.ts`;
+`pnpm test:cuenta:connected` usa `tests/config/playwright/playwright.account-mock.config.ts`;
 `pnpm test:integration:mock` lo incluye separado del E2E demo. Playwright administra
 un servidor HTTP falso en `127.0.0.1:3049` y Next en `localhost:3048`, con
 `STAFF_AUTH_MODE=spring` y `API_URL` apuntando exclusivamente al transporte falso.
