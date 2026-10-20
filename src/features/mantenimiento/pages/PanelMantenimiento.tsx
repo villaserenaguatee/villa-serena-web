@@ -14,13 +14,14 @@ const PERIODOS: {
     { id: 'todo', label: 'Todo', dias: null },
   ];
 interface Props {
+  roomDataAvailable?: boolean;
   ordenes: OrdenTrabajo[];
   habitaciones: HabitacionHotel[];
-  incidencias: Incidencia[];
+  incidencias: Pick<Incidencia,'estado'>[];
   onLiberarHabitacion: (numero: string) => void;
   onAbrirOrden: (id: string) => void;
 }
-export default function PanelMantenimiento({ ordenes, habitaciones, incidencias, onLiberarHabitacion, onAbrirOrden, }: Props) {
+export default function PanelMantenimiento({ ordenes, habitaciones, incidencias, onLiberarHabitacion, onAbrirOrden, roomDataAvailable = true, }: Props) {
   const [periodo, setPeriodo] = useState<Periodo>('30d');
   const def = PERIODOS.find(p => p.id === periodo)!;
   const desde = def.dias === null ? null : fechaRelativaISO(-def.dias);
@@ -52,7 +53,7 @@ export default function PanelMantenimiento({ ordenes, habitaciones, incidencias,
     </div>
 
     <div className="px-4 sm:px-6 pt-5">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-6 gap-3">
         <Kpi valor={String(abiertas.length)} label="Trabajos en curso" />
         <Kpi valor={String(atrasadas.length)} label="Atrasadas" color={atrasadas.length ? '#991B1B' : '#166534'} />
         <Kpi valor={String(sinAtender.length)} label="Incidencias sin atender" color={sinAtender.length ? '#9A3412' : '#166534'} />
@@ -70,7 +71,7 @@ export default function PanelMantenimiento({ ordenes, habitaciones, incidencias,
         </Chip>)}
       </div>
 
-      {bloqueadas.length === 0 ? (<Vacio msg="Ninguna habitación está fuera de servicio en este momento." />) : (<div className="space-y-3">
+      {!roomDataAvailable ? <Vacio msg="Consulta las incidencias recibidas y sus tareas para revisar las habitaciones afectadas." /> : bloqueadas.length === 0 ? (<Vacio msg="Ninguna habitación está fuera de servicio en este momento." />) : (<div className="space-y-3">
         {bloqueadas.map(h => {
           const orden = ordenBloqueo(h.numero);
           const dias = orden ? Math.abs(diasHastaFecha(orden.creadaEn.slice(0, 10))) : null;
@@ -150,14 +151,14 @@ export default function PanelMantenimiento({ ordenes, habitaciones, incidencias,
     </div>)}
 
     <div className="px-4 sm:px-6 py-6 grid gap-4 lg:grid-cols-2">
-      <div className="bg-white border border-[#E5E0D8] rounded-xl px-4 py-4">
+      <div data-vs-card="mantenimiento" className="bg-white border border-[#E5E0D8] rounded-xl px-4 py-4">
         <h3 className="text-[16px] font-semibold text-[#18345C] mb-3">Trabajos por tipo de avería</h3>
         {porTipo.length === 0 ? (<p className="text-[14px] text-[#AEBCC1]">Sin trabajos en el período seleccionado.</p>) : (<div className="space-y-2.5">
           {porTipo.map(({ tipo, n }) => (<Barra key={tipo} label={tipo} valor={n} max={maxTipo} color="#18345C" />))}
         </div>)}
       </div>
 
-      <div className="bg-white border border-[#E5E0D8] rounded-xl px-4 py-4">
+      <div data-vs-card="mantenimiento" className="bg-white border border-[#E5E0D8] rounded-xl px-4 py-4">
         <h3 className="text-[16px] font-semibold text-[#18345C] mb-3">Trabajos por prioridad</h3>
         {delPeriodo.length === 0 ? (<p className="text-[14px] text-[#AEBCC1]">Sin trabajos en el período seleccionado.</p>) : (<div className="space-y-2.5">
           {porPrioridad.map(({ p, n }) => (<Barra key={p} label={PRIORIDAD_META[p].label} valor={n} max={maxPrioridad} color={PRIORIDAD_META[p].dot} />))}

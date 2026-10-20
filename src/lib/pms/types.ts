@@ -9,7 +9,7 @@ export interface Habitacion {
   id: string;
   numero: string;
   piso: number;
-  tipo: TipoHabitacion;
+  tipo: string;
   estado: EstadoHabitacion;
   personal: string | null;
   proximaLlegada: string | null;
@@ -17,6 +17,9 @@ export interface Habitacion {
   observaciones: string;
   foto: string;
   finalizadaEn?: string;
+  ocupacion?: string;
+  condicionReal?: string;
+  empleadoId?: number | null;
 }
 export type EstadoSolicitud = 'pendiente' | 'en-proceso' | 'en-limpieza' | 'finalizada' | 'entregado';
 export type TipoSolicitud = 'limpieza' | 'articulos';
@@ -94,6 +97,10 @@ export interface CambioEstado {
 }
 export interface Pedido {
   id: string;
+  reservaId?: string;
+  huespedId?: string;
+  habitacionId?: string;
+  codigoReserva?: string;
   numero: number;
   habitacionNumero: string;
   piso: number;
@@ -133,11 +140,13 @@ export interface HabitacionHotel {
 }
 export type TipoDocumento = 'DPI' | 'Pasaporte';
 export interface Huesped {
+  correoVerificacion?: { correo: string; estado: 'pendiente' | 'verificado' };
   id: string;
   nombre: string;
   foto?: string;
   tipoDocumento: TipoDocumento;
   documento: string;
+  paisEmisorPasaporte?: string;
   telefono: string;
   correo: string;
   nacionalidad: string;
@@ -152,6 +161,7 @@ export interface Acompanante {
 }
 export type MetodoPago = 'efectivo' | 'tarjeta' | 'transferencia';
 export interface Pago {
+  destino?: 'alojamiento' | 'consumos';
   id: string;
   fecha: string;
   monto: number;
@@ -168,9 +178,11 @@ export interface ServicioAdicional {
 }
 export interface Reserva {
   id: string;
+  canal?: 'DIRECTO_WEB' | 'RECEPCION' | 'BOOKING' | 'EXPEDIA';
+  /** Referencia del BFF para la copia de compatibilidad; conserva los códigos locales anteriores. */
+  codigoBff?: string;
   origenReserva?: 'publica';
   solicitudPublicaId?: string;
-  modalidadPago?: 'hotel' | 'en-linea';
   precioNoche?: number;
   habitacionPublica?: string;
   codigo: string;
@@ -185,6 +197,7 @@ export interface Reserva {
   estado: EstadoReserva;
   acompanantes: Acompanante[];
   servicios: ServicioAdicional[];
+  cargosAnulados?: (ServicioAdicional & { motivo: string; fechaAnulacion: string })[];
   pagos: Pago[];
   descuento: number;
   checkInEn?: string;
@@ -398,6 +411,7 @@ export interface Activo {
   estado: EstadoActivo;
 }
 export interface TareaPreventiva {
+  intervaloDias?: number;
   id: string;
   nombre: string;
   activoId: string | null;
@@ -566,7 +580,7 @@ export interface CargoHuesped {
   precioUnitario: number;
   fecha: string;
 }
-export type MetodoPagoHuesped = 'tarjeta' | 'debito' | 'puntos' | 'recepcion';
+export type MetodoPagoHuesped = 'tarjeta' | 'debito' | 'puntos';
 export interface DatosFiscales {
   nombre: string;
   nit: string;

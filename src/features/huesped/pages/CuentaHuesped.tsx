@@ -1,21 +1,24 @@
 import { UiText, useUiText } from "@/i18n/UiText";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { useEffect, useState } from "react";
-import type { Huesped, Reserva, HabitacionHotel, EstadoHabHotel, CargoHuesped, CategoriaCargo, DatosFiscales, PagoHuespedApp, MetodoPagoHuesped, } from "@/lib/pms/types";
+import { useTranslations } from "next-intl";
+import type { Huesped, Reserva, HabitacionHotel, EstadoHabHotel, CargoHuesped, CategoriaCargo, DatosFiscales, MetodoPagoHuesped, } from "@/lib/pms/types";
+import { filtrarCargosLegacyRestaurante } from '@/store/roomServiceSync';
 import { tarjetaPrincipal } from '@/store/paymentStore';
 import { leerPromociones } from '@/store/promotionStore';
 import { formatoFecha, formatoFechaHora } from "@/data/pms";
 import { fechaHotel, HOTEL } from "@/lib/hotel";
 import type { ResumenCuentaHuesped } from "@/features/huesped/pages/huespedUtils";
-import { dinero, Chip, Campo, INPUT_CLS, Cabecera, Tarjeta, Kpi, Aviso, Modal, BotonFiltro, BotonPrimario, BotonSecundario, CATEGORIAS_CARGO, METODO_PAGO_LABEL, puntosDeMonto, montoDePuntos, formatoPuntos, correoValido, formatoTarjeta, ultimos4, CardIcon, ReceiptIcon, StarIcon, CheckIcon, ClockIcon, MailIcon, BedIcon, } from "@/features/huesped/pages/huespedUtils";
+import { dinero, Chip, Campo, INPUT_CLS, Cabecera, Tarjeta, Kpi, Aviso, Modal, BotonFiltro, BotonPrimario, BotonSecundario, CATEGORIAS_CARGO, puntosDeMonto, montoDePuntos, formatoPuntos, correoValido, formatoTarjeta, CardIcon, ReceiptIcon, StarIcon, CheckIcon, ClockIcon, MailIcon, BedIcon, } from "@/features/huesped/pages/huespedUtils";
 interface Props {
+  abrirResena?: boolean;
+  onResenaAbierta?: () => void;
   huesped: Huesped;
   reserva: Reserva;
-  habitacion: HabitacionHotel;
+  habitacion: HabitacionHotel | undefined;
   estadoHabitacion: EstadoHabHotel;
   cargos: CargoHuesped[];
   cuenta: ResumenCuentaHuesped;
-  pagos: PagoHuespedApp[];
   fiscales: DatosFiscales;
   facturaEmitida: string | null;
   puntos: number;
@@ -31,7 +34,14 @@ interface Props {
   }) => void;
   onCheckOut: () => void;
 }
-export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabitacion, cargos, cuenta, pagos, fiscales, facturaEmitida, puntos, estanciaCerrada, onGuardarFiscales, onPagar, onCheckOut, }: Props) {
+export default function CuentaHuesped({ abrirResena = false, onResenaAbierta, huesped, reserva, habitacion, estadoHabitacion, cargos: cargosLegacy, cuenta, fiscales, facturaEmitida, puntos, estanciaCerrada, onGuardarFiscales, onPagar, onCheckOut, }: Props) {
+  const cargos: CargoHuesped[] = [
+    ...filtrarCargosLegacyRestaurante(cargosLegacy, reserva.id, huesped.id),
+    ...reserva.servicios.filter(s => s.id.startsWith('room-service-')).map(s => ({
+      id: s.id, concepto: s.descripcion, categoria: 'Restaurante' as const,
+      cantidad: s.cantidad, precioUnitario: s.precioUnitario, fecha: s.fecha,
+    })),
+  ];
   const ui = useUiText();
   const { en } = usePublicLanguage();
   const [filtro, setFiltro] = useState<CategoriaCargo | "todas">("todas");
@@ -44,8 +54,13 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
   const [mejoras, setMejoras] = useState("");
   const [autorizaPublicar, setAutorizaPublicar] = useState(false);
   const [opinionEnviada, setOpinionEnviada] = useState(false);
-  const [opinionOmitida, setOpinionOmitida] = useState(false);
   const [resenaAbierta, setResenaAbierta] = useState(false);
+  useEffect(() => {
+    if (abrirResena && estanciaCerrada) {
+      setResenaAbierta(true);
+      onResenaAbierta?.();
+    }
+  }, [abrirResena, estanciaCerrada, onResenaAbierta]);
   const [opinionCreadaEn, setOpinionCreadaEn] = useState<string | null>(null);
   const opinionKey = `vs-resena-estancia-${reserva.codigo}`;
   useEffect(() => {
@@ -71,6 +86,8 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
     const review = {
       id: `resena-${reserva.codigo}`,
       estanciaId: reserva.codigo,
+      reservaId: reserva.id,
+      huespedId: huesped.id,
       nombre: huesped.nombre,
       estrellas,
       experiencia: experiencia.trim(),
@@ -84,7 +101,7 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
       localStorage.setItem(opinionKey, JSON.stringify(review));
       const key = "vs-resenas-publicas";
       const prev = JSON.parse(localStorage.getItem(key) || "[]");
-      const next = [review, ...prev.filter((r: any) => r.estanciaId !== reserva.codigo)];
+      const next = [review, ...prev.filter((r: { estanciaId?: string }) => r.estanciaId !== reserva.codigo)];
       localStorage.setItem(key, JSON.stringify(next));
       window.dispatchEvent(new Event("vs-resenas-updated"));
     }
@@ -112,6 +129,7 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
       return;
     onGuardarFiscales(form);
   }
+  if (reserva.estado === 'cancelada') return <div className="p-5"><h1 data-vs-page-title="huesped" className="text-2xl font-semibold text-[#102747]">{en ? 'Cancelled reservation' : 'Reserva cancelada'}</h1><p>{reserva.codigo}</p><p>{formatoFecha(reserva.fechaEntrada)} — {formatoFecha(reserva.fechaSalida)}</p><p className="mt-3 text-sm text-[#52677F]">{en ? 'This reservation is part of your history. Stay services are unavailable.' : 'Esta reserva forma parte de tu historial. Los servicios de estancia no están disponibles.'}</p></div>;
   if (estanciaCerrada) {
     const totalRestaurante = cargos.filter(c => c.categoria === "Restaurante" || c.categoria === "Room service").reduce((s, c) => s + c.cantidad * c.precioUnitario, 0);
     const totalSpa = cargos.filter(c => c.categoria === "Spa y experiencias").reduce((s, c) => s + c.cantidad * c.precioUnitario, 0);
@@ -120,10 +138,10 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
       <div className="flex-1 overflow-y-auto bg-[#F8F6F0] p-4 sm:p-7" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
         <div className="mx-auto max-w-6xl">
           <div className="mb-5">
-            <h1 className="text-3xl font-semibold text-[#102747]">
+            <h1 data-vs-page-title="huesped" className="text-3xl font-semibold text-[#102747]">
               {en ? "Check-out completed" : "Check-out completado"}
             </h1>
-            <p className="mt-1 text-[#71839B]">{reserva.codigo} · Habitación {habitacion.numero}</p>
+            <p className="mt-1 text-[#71839B]">{reserva.codigo} · Habitación {(habitacion?.numero ?? '—')}</p>
           </div>
           <div className="mb-5 flex items-center gap-3 rounded-xl border border-[#C8E8D2] bg-[#EFFAF3] p-4 text-[#166534]">
             <span className="grid h-8 w-8 place-items-center rounded-full bg-[#278B52] text-white">
@@ -132,7 +150,7 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
             <p>Tu estancia finalizó correctamente el {formatoFechaHora(reserva.checkOutEn ?? new Date().toISOString())}.</p>
           </div>
           <div className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
-            <section className="rounded-xl border border-[#E5E0D8] bg-white p-5">
+            <section data-vs-card="huesped" className="rounded-xl border border-[#E5E0D8] bg-white p-5">
               <h2 className="border-b pb-3 text-xl font-semibold text-[#102747]">
                 {en ? "Final summary" : "Resumen final"}
               </h2>
@@ -154,7 +172,7 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
                 </div>
               </div>
             </section>
-            <section className="rounded-xl border border-[#E5E0D8] bg-white p-5 text-center">
+            <section data-vs-card="huesped" className="rounded-xl border border-[#E5E0D8] bg-white p-5 text-center">
               <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#EFFAF3] text-[#188149]">
                 <CheckIcon size={30} />
               </span>
@@ -168,25 +186,23 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
                 <button onClick={() => setVerComprobante(true)} className="w-full rounded-lg bg-[#B59A52] py-3 font-semibold text-white">▧ &nbsp; {en ? "View invoice" : "Ver factura"}</button>
                 <button onClick={() => setVerDetalleCuenta(true)} className="w-full rounded-lg bg-[#B59A52] py-3 font-semibold text-white">⇩ &nbsp; {en ? "Download receipt" : "Descargar comprobante"}</button>
                 <button
-                  onClick={() => window.alert(en ? `Invoice and receipt will be sent to ${form.correo || huesped.correo}.` : `La factura y el comprobante se enviarán a ${form.correo || huesped.correo}.`)}
-                  className="w-full rounded-lg border border-[#18345C] py-3 font-semibold text-[#18345C]">✉ &nbsp; {en ? "Send again by email" : "Enviar nuevamente por correo"}</button>
+                  disabled aria-describedby="demo-invoice-email-unavailable"
+                  className="w-full rounded-lg border border-[#18345C] py-3 font-semibold text-[#18345C] disabled:opacity-50">✉ &nbsp; {en ? "Send again by email" : "Enviar nuevamente por correo"}</button>
+                <p id="demo-invoice-email-unavailable" className="text-sm text-[#52677F]">{en ? 'Email resending is unavailable in this demonstration. No email has been sent.' : 'El reenvío por correo no está disponible en esta demostración. No se ha enviado ningún correo.'}</p>
               </div>
             </section>
           </div>
           <button
             type="button"
-            onClick={() => {
-              setOpinionOmitida(false);
-              setResenaAbierta(true);
-            }}
-            className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-[#B59A52] px-5 py-3 font-semibold text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl"
+            onClick={() => setResenaAbierta(true)}
+            className="fixed bottom-20 right-6 z-40 flex items-center gap-2 rounded-full bg-[#B59A52] px-5 py-3 font-semibold text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl lg:bottom-6"
             aria-label={en ? "Share your experience" : "Compartir tu experiencia"}>
             <span className="text-xl leading-none">★</span>
             <span>
               {opinionEnviada ? (en ? "View your review" : "Ver tu reseña") : (en ? "Share your experience" : "Compartir tu experiencia")}
             </span>
           </button>
-          <section className="mt-5 grid gap-5 rounded-xl border border-[#E5E0D8] bg-white p-5 sm:grid-cols-[180px_1fr]">
+          <section data-vs-card="huesped" className="mt-5 grid gap-5 rounded-xl border border-[#E5E0D8] bg-white p-5 sm:grid-cols-[180px_1fr]">
             <div className="flex items-center justify-center border-b pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-5">
               <img src="/villa-serena-logo.png" alt="Villa Serena Hotel" className="max-h-24 max-w-[150px] object-contain" />
             </div>
@@ -209,7 +225,7 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
                 </p>
                 <p>
                   <b>Habitación:</b>
-                  {habitacion.numero}
+                  {(habitacion?.numero ?? '—')}
                 </p>
                 <p>
                   <b>Correo:</b>
@@ -220,7 +236,7 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
                   {formatoPuntos(puntos)}
                 </p>
               </div>
-              <p className="mt-4 border-t pt-3 text-xs text-[#71839B]">Los datos finales de esta estancia permanecerán disponibles durante las 24 horas posteriores al check-out. Después de ese plazo, la cuenta quedará inactiva para iniciar sesión.</p>
+              <p className="mt-4 border-t pt-3 text-xs text-[#71839B]">Puedes volver a iniciar sesión para consultar el historial de tus reservas.</p>
             </div>
           </section>
 
@@ -231,7 +247,6 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
         habitacion={habitacion}
         cuenta={cuenta}
         cargos={cargos}
-        pagos={pagos}
         fiscales={fiscales.nit ? fiscales : form}
         factura={facturaEmitida}
         onCerrar={() => setVerComprobante(false)} />} {verDetalleCuenta && <ModalDetalleCuenta
@@ -240,10 +255,25 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
           habitacion={habitacion}
           cuenta={cuenta}
           cargos={cargos}
-          onCerrar={() => setVerDetalleCuenta(false)} />}</>;
+          onCerrar={() => setVerDetalleCuenta(false)} />}
+    {estanciaCerrada && resenaAbierta && (<OpinionCheckout
+      estrellas={estrellas}
+      setEstrellas={setEstrellas}
+      experiencia={experiencia}
+      setExperiencia={setExperiencia}
+      mejoras={mejoras}
+      setMejoras={setMejoras}
+      autorizaPublicar={autorizaPublicar}
+      setAutorizaPublicar={setAutorizaPublicar}
+      opinionEnviada={opinionEnviada}
+      setOpinionEnviada={setOpinionEnviada}
+      onCerrar={() => setResenaAbierta(false)}
+      onGuardar={guardarOpinion}
+      puedeEditar={puedeEditarOpinion} />)}
+    </>;
   }
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-    <Cabecera titulo="Cuenta y check-out" subtitulo={`${reserva.codigo} · habitación ${habitacion.numero} · salida ${formatoFecha(reserva.fechaSalida)}`}>
+    <Cabecera titulo="Cuenta y check-out" subtitulo={`${reserva.codigo} · habitación ${(habitacion?.numero ?? '—')} · salida ${formatoFecha(reserva.fechaSalida)}`}>
       {facturaEmitida && (<button
         onClick={() => setVerComprobante(true)}
         className="px-4 py-2.5 min-h-[44px] text-[14px] font-semibold border border-[#18345C] text-[#18345C] rounded-md hover:bg-[#18345C] hover:text-white transition-colors flex items-center gap-2">
@@ -255,7 +285,7 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
     <div className="px-4 sm:px-6 py-5 space-y-5">
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <ResumenCuenta icono={<BedIcon size={27} />} valor={dinero(cuenta.alojamiento + cuenta.extras - cuenta.descuento)} label="Total de la estancia" />
+        <ResumenCuenta icono={<BedIcon size={27} />} valor={dinero(cuenta.total)} label="Total de la estancia" />
         <ResumenCuenta icono={<CardIcon size={27} />} valor={dinero(cuenta.pagado)} label="Pagado" color="#166534" />
         <ResumenCuenta icono={<CheckIcon size={26} />} valor={dinero(cuenta.saldo)} label="Saldo por pagar" color={cuenta.saldo > 0 ? "#9A3412" : "#166534"} />
         <ResumenCuenta icono={<StarIcon size={28} />} valor={formatoPuntos(puntos)} label="Puntos de fidelidad" color="#8A6500" />
@@ -268,7 +298,7 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
             <UiText text="                 Check-out completado el " />
             {formatoFechaHora(reserva.checkOutEn ?? "")}
             <UiText text=". La habitación" />
-            {habitacion.numero}
+            {(habitacion?.numero ?? '—')}
             <UiText text=" pasó a “desocupada, pendiente de limpieza” y tu llave digital quedó                 desactivada.               " />
           </span>
         </span>
@@ -293,7 +323,7 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[15px] font-medium text-[#18345C]">
-                  {ui(`Alojamiento · habitación ${habitacion.numero}`)}
+                  {ui(`Alojamiento · habitación ${(habitacion?.numero ?? '—')}`)}
                 </p>
                 <p className="text-[13px] text-[#AEBCC1]">
                   {cuenta.noches}
@@ -404,7 +434,7 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
             </div>
           </Tarjeta>
 
-          {(pagos.length > 0 || reserva.pagos.length > 0) && (<Tarjeta titulo="Pagos registrados">
+          {(reserva.pagos.length > 0) && (<Tarjeta titulo="Pagos registrados">
             <div className="space-y-2">
               {reserva.pagos.map((p) => (<div key={p.id} className="flex items-center gap-3 bg-[#F8F6F0] border border-[#E5E0D8] rounded-lg px-3 py-2.5">
                 <span className="text-[#166534]">
@@ -412,10 +442,10 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-medium text-[#18345C]">
-                    <UiText text="Alojamiento pagado al reservar" />
+                    <UiText text="Pago registrado" />
                   </p>
                   <p className="text-[12px] text-[#AEBCC1]">
-                    {formatoFecha(p.fecha)}
+                    {formatoFechaHora(p.fecha)}
                     <UiText text=" · " />
                     {p.metodo}
                     <UiText text=" · " />
@@ -427,28 +457,6 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
                 </p>
               </div>))}
 
-              {pagos.map((p) => (<div key={p.id} className="flex items-center gap-3 bg-[#F0FAF4] border border-[#86EFAC] rounded-lg px-3 py-2.5">
-                <span className="text-[#166534]">
-                  <CheckIcon size={15} />
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-medium text-[#166534]">
-                    {ui(METODO_PAGO_LABEL[p.metodo])}
-                    {p.ultimos4 ? ` •••• ${p.ultimos4}` : ""}
-                  </p>
-                  <p className="text-[12px] text-[#166534]">
-                    {formatoFechaHora(p.fecha)}
-                    <UiText text=" · " />
-                    {p.comprobante}
-                    {p.puntosUsados
-                      ? ` · ${formatoPuntos(p.puntosUsados)} ${ui("puntos")}`
-                      : ""}
-                  </p>
-                </div>
-                <p className="text-[15px] font-semibold text-[#166534] shrink-0">
-                  {dinero(p.monto)}
-                </p>
-              </div>))}
             </div>
           </Tarjeta>)}
         </div>
@@ -470,7 +478,7 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
                   <UiText text="Pagar saldo" />
                 </BotonPrimario>
                 <p className="text-[12px] text-[#AEBCC1] mt-2 text-center">
-                  <UiText text="                       Pago seguro con tarjeta o puntos de fidelidad.                     " />
+                  <UiText text="El pago con tarjeta no está disponible en este momento." />
                 </p>
               </div>) : estanciaCerrada ? (<div className="mt-4 text-center">
                 <p className="text-[15px] font-semibold text-[#166534] flex items-center justify-center gap-1.5">
@@ -532,6 +540,7 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
     </div>
 
     {pagando && (<ModalPago
+      huespedId={huesped.id}
       saldo={cuenta.saldo}
       puntos={puntos}
       onCerrar={() => setPagando(false)}
@@ -545,7 +554,7 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
         <span className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-[#F5F1E8] text-[#18345C]">
           <BedIcon size={36} />
         </span>
-        <p className="text-xl font-semibold leading-snug text-[#18345C]">Al confirmar, finalizarás tu estancia en la habitación {habitacion.numero}.</p>
+        <p className="text-xl font-semibold leading-snug text-[#18345C]">Al confirmar, finalizarás tu estancia en la habitación {(habitacion?.numero ?? '—')}.</p>
       </div>
       {new Date() < new Date(`${reserva.fechaSalida}T00:00:00`) && <div className="mt-5 flex gap-4 rounded-xl border border-[#E9B949] bg-[#FFF9E8] p-5">
         <span className="text-3xl text-[#C47A00]">⚠</span>
@@ -575,11 +584,11 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
       <div className="mt-5 flex items-start gap-3 border-t border-[#E5E0D8] pt-4 text-[14px] text-[#52677F]">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#F5F1E8] font-serif text-lg font-bold text-[#18345C]">i</span>
         <p>
-          {en ? <>Room access, controls and stay services are disabled immediately after check-out.<br />Your account remains available for 24 hours only to review the completed stay and manage your review.</> : <>El acceso a la habitación, sus controles y los servicios de la estancia se desactiva inmediatamente al hacer check-out.<br />Tu cuenta permanecerá disponible solo durante 24 horas para consultar la estancia finalizada y gestionar tu reseña.</>}
+          {en ? <>Room access, controls and stay services are disabled immediately after check-out.<br />You can sign in again to view your reservation history.</> : <>El acceso a la habitación, sus controles y los servicios de la estancia se desactiva inmediatamente al hacer check-out.<br />Puedes volver a iniciar sesión para consultar el historial de tus reservas.</>}
         </p>
       </div>
 
-      <div className="flex gap-2 mt-5">
+      <div data-vs-actions="compact" className="flex gap-2 mt-5">
         <BotonSecundario onClick={() => setConfirmarSalida(false)} ancho>
           <UiText text="Volver" />
         </BotonSecundario>
@@ -592,21 +601,7 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
       </div>
     </Modal>)}
 
-    {estanciaCerrada && resenaAbierta && !opinionOmitida && (<OpinionCheckout
-      estrellas={estrellas}
-      setEstrellas={setEstrellas}
-      experiencia={experiencia}
-      setExperiencia={setExperiencia}
-      mejoras={mejoras}
-      setMejoras={setMejoras}
-      autorizaPublicar={autorizaPublicar}
-      setAutorizaPublicar={setAutorizaPublicar}
-      opinionEnviada={opinionEnviada}
-      setOpinionEnviada={setOpinionEnviada}
-      opinionOmitida={opinionOmitida}
-      setOpinionOmitida={setOpinionOmitida}
-      onGuardar={guardarOpinion}
-      puedeEditar={puedeEditarOpinion} />)}
+
 
     {verComprobante && (<ModalComprobante
       huesped={huesped}
@@ -614,19 +609,18 @@ export default function CuentaHuesped({ huesped, reserva, habitacion, estadoHabi
       habitacion={habitacion}
       cuenta={cuenta}
       cargos={cargos}
-      pagos={pagos}
       fiscales={fiscales.nit ? fiscales : form}
       factura={facturaEmitida}
       onCerrar={() => setVerComprobante(false)} />)}
   </div>);
 }
-function ResumenCuenta({ icono, valor, label, color = "#18345C" }: {
+export function ResumenCuenta({ icono, valor, label, color = "#18345C" }: {
   icono: React.ReactNode;
   valor: string;
   label: string;
   color?: string;
 }) {
-  return <div className="flex min-h-[92px] items-center gap-4 rounded-xl border border-[#E5E0D8] bg-white px-5 py-4">
+  return <div data-vs-card="huesped" className="flex min-h-[92px] items-center gap-4 rounded-xl border border-[#E5E0D8] bg-white px-5 py-4">
     <span className="text-[#B38B2E]">
       {icono}
     </span>
@@ -640,7 +634,7 @@ function ResumenCuenta({ icono, valor, label, color = "#18345C" }: {
     </div>
   </div>;
 }
-function OpinionCheckout({ estrellas, setEstrellas, experiencia, setExperiencia, mejoras, setMejoras, autorizaPublicar, setAutorizaPublicar, opinionEnviada, setOpinionEnviada, opinionOmitida, setOpinionOmitida, onGuardar, puedeEditar, }: {
+function OpinionCheckout({ estrellas, setEstrellas, experiencia, setExperiencia, mejoras, setMejoras, autorizaPublicar, setAutorizaPublicar, opinionEnviada, setOpinionEnviada, onCerrar, onGuardar, puedeEditar, }: {
   estrellas: number;
   setEstrellas: (valor: number) => void;
   experiencia: string;
@@ -651,8 +645,7 @@ function OpinionCheckout({ estrellas, setEstrellas, experiencia, setExperiencia,
   setAutorizaPublicar: (valor: boolean) => void;
   opinionEnviada: boolean;
   setOpinionEnviada: (valor: boolean) => void;
-  opinionOmitida: boolean;
-  setOpinionOmitida: (valor: boolean) => void;
+  onCerrar: () => void;
   onGuardar: () => void;
   puedeEditar: boolean;
 }) {
@@ -702,11 +695,14 @@ function OpinionCheckout({ estrellas, setEstrellas, experiencia, setExperiencia,
     authorized: "Autorizada para publicación con tu nombre, calificación y opinión.",
     edit: "Editar"
   };
-  if (opinionOmitida)
-    return null;
   if (opinionEnviada)
     return (<div className="fixed inset-0 z-[160] grid place-items-center bg-[#071D34]/55 p-4">
-      <section className="w-full max-w-lg rounded-2xl border border-[#E5E0D8] bg-white p-7 text-center shadow-2xl">
+      <section data-vs-card="huesped" className="relative w-full max-w-lg rounded-2xl border border-[#E5E0D8] bg-white p-7 text-center shadow-2xl">
+        <button
+          type="button"
+          aria-label={en ? "Close review" : "Cerrar reseña"}
+          onClick={onCerrar}
+          className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full border border-[#E5E0D8] text-xl text-[#52677F] hover:bg-[#F8F6F0]">×</button>
         <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#EFFAF3] text-[#188149]">✓</div>
         <p className="mt-4 text-xs font-semibold uppercase tracking-[.16em] text-[#B59A52]">
           {copy.mine}
@@ -748,11 +744,11 @@ function OpinionCheckout({ estrellas, setEstrellas, experiencia, setExperiencia,
       </section>
     </div>);
   return (<div className="fixed inset-0 z-[160] grid place-items-center bg-[#071D34]/55 p-4">
-    <section className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-[#E5E0D8] bg-white p-5 shadow-2xl sm:p-7">
+    <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="medium" className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-[#E5E0D8] bg-white p-5 shadow-2xl sm:p-7">
       <button
         type="button"
         aria-label={en ? "Close review" : "Cerrar reseña"}
-        onClick={() => setOpinionOmitida(true)}
+        onClick={onCerrar}
         className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full border border-[#E5E0D8] text-xl text-[#52677F] hover:bg-[#F8F6F0]">×</button>
       <div className="mx-auto max-w-3xl">
         <div className="text-center">
@@ -809,7 +805,7 @@ function OpinionCheckout({ estrellas, setEstrellas, experiencia, setExperiencia,
           </span>
         </label>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <button type="button" onClick={() => setOpinionOmitida(true)} className="rounded-lg border border-[#B59A52] px-5 py-3 font-semibold text-[#7A6327]">
+          <button type="button" onClick={onCerrar} className="rounded-lg border border-[#B59A52] px-5 py-3 font-semibold text-[#7A6327]">
             {copy.later}
           </button>
           <button
@@ -845,7 +841,8 @@ function Linea({ label, valor, color = "#6B7280", }: {
     </span>
   </div>);
 }
-function ModalPago({ saldo, puntos, onCerrar, onPagar, }: {
+function ModalPago({ huespedId, saldo, puntos, onCerrar, onPagar, }: {
+  huespedId: string;
   saldo: number;
   puntos: number;
   onCerrar: () => void;
@@ -859,19 +856,20 @@ function ModalPago({ saldo, puntos, onCerrar, onPagar, }: {
   }) => void;
 }) {
   const ui = useUiText();
+  const tBooking = useTranslations("publicBooking");
   const [metodo, setMetodo] = useState<MetodoPagoHuesped>("tarjeta");
   const [tarjeta, setTarjeta] = useState("");
   const [titular, setTitular] = useState("");
   const [vence, setVence] = useState("");
   const [cvv, setCvv] = useState("");
   const [errores, setErrores] = useState<Record<string, string>>({});
-  const [procesando, setProcesando] = useState(false);
+  const [errorPago, setErrorPago] = useState("");
   const [codigoPromocional, setCodigoPromocional] = useState("");
   const [codigoAplicado, setCodigoAplicado] = useState<string | null>(null);
   const [mensajeCodigo, setMensajeCodigo] = useState("");
   const [usarPuntos, setUsarPuntos] = useState(false);
-  const [usarGuardada, setUsarGuardada] = useState(true);
-  const guardada = tarjetaPrincipal();
+  const [usarGuardada, setUsarGuardada] = useState(() => !!tarjetaPrincipal(huespedId));
+  const guardada = tarjetaPrincipal(huespedId);
   const puntosNecesarios = puntosDeMonto(saldo);
   const puntosSuficientes = puntos >= puntosNecesarios;
   const promocionAplicada = codigoAplicado ? leerPromociones().find(p => p.codigo.toUpperCase() === codigoAplicado.toUpperCase() && p.activa && p.desde <= fechaHotel() && p.hasta >= fechaHotel()) : undefined;
@@ -881,31 +879,16 @@ function ModalPago({ saldo, puntos, onCerrar, onPagar, }: {
   const puntosAplicados = puntosDeMonto(descuentoPuntos);
   const montoTarjeta = Math.max(0, Math.round((saldo - descuentoCodigo - descuentoPuntos) * 100) / 100);
   function pagar() {
-    if (metodo === "recepcion") {
-      onPagar("recepcion", {});
-      onCerrar();
-      return;
-    }
     if (metodo === "puntos") {
       if (!puntosSuficientes)
         return;
       onPagar("puntos", {});
       return;
     }
+    setErrorPago("");
     if (usarGuardada) {
-      setProcesando(true);
-      window.setTimeout(() => {
-        onPagar(metodo, {
-          ultimos4: tarjetaPrincipal()?.ultimos4 ?? "",
-          puntosUsados: puntosAplicados,
-          descuentoPuntos,
-          descuentoCodigo,
-          codigoPromocional: codigoAplicado ?? undefined,
-          montoTarjeta
-        });
-        setProcesando(false);
-      },
-        900);
+      setErrores({});
+      setErrorPago(tBooking("paymentUnavailable"));
       return;
     }
     const e: Record<string, string> = {};
@@ -920,38 +903,23 @@ function ModalPago({ saldo, puntos, onCerrar, onPagar, }: {
     setErrores(e);
     if (Object.keys(e).length > 0)
       return;
-    setProcesando(true);
-    window.setTimeout(() => {
-      onPagar(metodo,
-        {
-          ultimos4: ultimos4(tarjeta),
-          puntosUsados: puntosAplicados,
-          descuentoPuntos,
-          descuentoCodigo,
-          codigoPromocional: codigoAplicado ?? undefined,
-          montoTarjeta,
-        });
-      setProcesando(false);
-    },
-      900);
+    // Registrar el pago solo tras una aprobación real del proveedor.
+    setErrorPago(tBooking("paymentUnavailable"));
   }
-  return (<Modal titulo="Pagar saldo pendiente" subtitulo={`Saldo a pagar: ${dinero(saldo)}`} onCerrar={onCerrar} ancho="sm:max-w-xl">
+  return (<Modal titulo="Pagar saldo pendiente" subtitulo={`Saldo a pagar: ${dinero(saldo)}`} onCerrar={onCerrar} ancho="sm:max-w-3xl">
     <div className="space-y-4">
       <div className="grid gap-2">
-        {(["tarjeta", "debito", "recepcion"] as MetodoPagoHuesped[]).map((m) => (<button
+        {(["tarjeta", "debito"] as MetodoPagoHuesped[]).map((m) => (<button
           key={m}
           onClick={() => setMetodo(m)}
           className={`px-3 py-3 min-h-[44px] text-[13px] font-semibold rounded-md border transition-colors ${metodo === m
             ? "bg-[#18345C] text-white border-[#18345C]"
             : "bg-white text-[#6B7280] border-[#E5E0D8] hover:bg-[#F8F6F0]"}`}>
-          {m === "tarjeta" ? (guardada ? `Usar tarjeta guardada · ${guardada.marca} •••• ${guardada.ultimos4}` : "Agregar nueva tarjeta") : m === "debito" ? "Agregar nueva tarjeta de débito" : "Pagar en recepción"}
+          {m === "tarjeta" ? (guardada ? `Usar tarjeta guardada · ${guardada.marca} •••• ${guardada.ultimos4}` : "Agregar nueva tarjeta") : "Agregar nueva tarjeta de débito"}
         </button>))}
       </div>
 
-      {metodo === "recepcion" ? (<div className="rounded-lg border border-[#E5E0D8] bg-[#FFF9E8] px-4 py-4 text-sm text-[#52677F]">
-        <b className="block text-[#18345C]">Pago pendiente en Recepción</b>
-        <p className="mt-1">El saldo no se marcará como pagado. Recepción debe registrar el pago para habilitar “Finalizar check-out”.</p>
-      </div>) : metodo === "puntos" ? (<div className="bg-[#F8F6F0] border border-[#E5E0D8] rounded-lg px-4 py-4">
+      {metodo === "puntos" ? (<div className="bg-[#F8F6F0] border border-[#E5E0D8] rounded-lg px-4 py-4">
         <p className="text-[15px] font-semibold text-[#18345C] flex items-center gap-2">
           <StarIcon size={16} />
           <UiText text=" Pago con puntos de fidelidad             " />
@@ -989,32 +957,9 @@ function ModalPago({ saldo, puntos, onCerrar, onPagar, }: {
           </Aviso>
         </div>)}
       </div>) : (<div className="space-y-4">
-        <div className="mx-auto flex aspect-[1.586/1] w-full max-w-[380px] flex-col justify-between rounded-[22px] bg-gradient-to-br from-[#102747] to-[#2B5A87] p-5 text-white shadow-xl">
-          <div className="flex items-center justify-between">
-            <b className="text-lg">Villa Serena</b>
-            <div className="flex items-center gap-3">
-              <b className="italic">VISA</b>
-              <span className="flex -space-x-2">
-                <i className="h-6 w-6 rounded-full bg-[#EB001B]" />
-                <i className="h-6 w-6 rounded-full bg-[#F79E1B]" />
-              </span>
-            </div>
-          </div>
-          <p className="text-lg tracking-[.24em] sm:text-xl">
-            {guardada ? `•••• •••• •••• ${guardada.ultimos4}` : "•••• •••• •••• ••••"}
-          </p>
-          <div className="flex justify-between gap-4 text-sm">
-            <span>
-              {guardada?.titular ?? "Sin tarjeta guardada"}
-            </span>
-            <span>
-              {guardada?.vencimiento ?? "—"}
-            </span>
-          </div>
-        </div>
-        <div className="rounded-xl border border-[#E5E0D8] bg-white p-4">
+        <div data-vs-card="huesped" className="rounded-xl border border-[#E5E0D8] bg-white p-4">
           <label className="flex cursor-pointer items-center gap-3 py-2">
-            <input type="radio" checked={usarGuardada} onChange={() => setUsarGuardada(true)} className="h-4 w-4 accent-[#18345C]" />
+            <input type="radio" disabled={!guardada} checked={usarGuardada && !!guardada} onChange={() => setUsarGuardada(true)} className="h-4 w-4 accent-[#18345C]" />
             <span>
               <b className="block text-[#18345C]">Usar tarjeta guardada</b>
               <small className="text-[#6B7280]">
@@ -1027,14 +972,14 @@ function ModalPago({ saldo, puntos, onCerrar, onPagar, }: {
             <b className="text-[#18345C]">Agregar otra tarjeta</b>
           </label>
         </div>
-        {!usarGuardada && <div className="overflow-hidden rounded-xl border border-[#D7DCE2] bg-white">
+        <div className="overflow-hidden rounded-xl border border-[#D7DCE2] bg-white">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E5E0D8] px-5 py-4">
             <div>
               <p className="font-semibold text-[#18345C]">
                 <UiText text="Datos de la tarjeta" />
               </p>
               <p className="mt-1 text-sm text-[#6B7280]">
-                <UiText text="El pago se procesará al confirmar." />
+                <UiText text="El pago con tarjeta no está disponible en este momento." />
               </p>
             </div>
             <div className="flex items-center gap-4 font-bold">
@@ -1045,8 +990,12 @@ function ModalPago({ saldo, puntos, onCerrar, onPagar, }: {
               </span>
             </div>
           </div>
-          <div className="grid gap-6 p-5 lg:grid-cols-[1fr_340px]">
-            <div className="space-y-4">
+          <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            {usarGuardada && guardada ? (<div className="min-w-0 space-y-3 text-sm text-[#18345C]">
+              <p>{guardada.marca} · •••• {guardada.ultimos4}</p>
+              <p>{guardada.titular}</p>
+              <p>{guardada.vencimiento}</p>
+            </div>) : (<div className="min-w-0 space-y-3">
               <Campo label="Número de tarjeta" error={errores.tarjeta}>
                 <input
                   value={tarjeta}
@@ -1075,16 +1024,9 @@ function ModalPago({ saldo, puntos, onCerrar, onPagar, }: {
                 </Campo>
               </div>
 
-              <Aviso tono="info">
-                <span className="flex items-start gap-2">
-                  <CardIcon />
-                  <span>
-                    <UiText text="Los datos viajan cifrados a la pasarela de pago; el hotel no los almacena." />
-                  </span>
-                </span>
-              </Aviso>
-            </div>
-            <div className="flex flex-col items-center justify-center">
+
+            </div>)}
+            <div className="min-w-0 flex flex-col items-center justify-center">
               <div className="flex aspect-[1.586/1] w-full max-w-[380px] flex-col justify-between rounded-2xl bg-[#18345C] p-5 text-white shadow-xl">
                 <div className="flex items-start justify-between">
                   <p className="font-serif text-xl font-bold tracking-wide">VILLA SERENA</p>
@@ -1092,30 +1034,30 @@ function ModalPago({ saldo, puntos, onCerrar, onPagar, }: {
                 </div>
                 <div className="h-9 w-12 rounded-lg bg-[#D8B94E]" />
                 <p className="text-base tracking-[0.22em] sm:text-lg">
-                  {tarjeta || "•••• •••• •••• ••••"}
+                  {usarGuardada && guardada ? `•••• •••• •••• ${guardada.ultimos4}` : tarjeta || "•••• •••• •••• ••••"}
                 </p>
                 <div className="flex justify-between gap-4 text-xs">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-[9px] uppercase tracking-widest text-[#AEBCC1]">Titular</p>
                     <p className="mt-1 truncate uppercase">
-                      {titular || "NOMBRE DEL TITULAR"}
+                      {usarGuardada && guardada ? guardada.titular : titular || "NOMBRE DEL TITULAR"}
                     </p>
                   </div>
                   <div>
                     <p className="text-[9px] uppercase tracking-widest text-[#AEBCC1]">Válida hasta</p>
                     <p className="mt-1">
-                      {vence || "MM/AA"}
+                      {usarGuardada && guardada ? guardada.vencimiento : vence || "MM/AA"}
                     </p>
                   </div>
                 </div>
               </div>
               <p className="mt-4 flex items-center gap-2 text-sm text-[#6B7280]">
                 <CardIcon size={15} />
-                <UiText text="Transacción protegida" />
+                <UiText text="Formulario de tarjeta" />
               </p>
             </div>
           </div>
-        </div>}
+        </div>
       </div>)}
 
       <div className="grid gap-4 rounded-xl border border-[#E5E0D8] bg-[#F8F6F0] p-4 lg:grid-cols-2">
@@ -1171,7 +1113,7 @@ function ModalPago({ saldo, puntos, onCerrar, onPagar, }: {
         </label>
       </div>
 
-      <div className="rounded-xl border border-[#E5E0D8] bg-white p-4 text-sm">
+      <div data-vs-card="huesped" className="rounded-xl border border-[#E5E0D8] bg-white p-4 text-sm">
         <div className="flex justify-between py-1 text-[#6B7280]">
           <span>
             <UiText text="Saldo de la cuenta" />
@@ -1195,7 +1137,7 @@ function ModalPago({ saldo, puntos, onCerrar, onPagar, }: {
         </div>}
         <div className="mt-2 flex justify-between border-t border-[#E5E0D8] pt-3 text-base font-semibold text-[#18345C]">
           <span>
-            <UiText text={metodo === "recepcion" ? "Saldo que quedará pendiente" : "Total a pagar con tarjeta"} />
+            <UiText text="Total a pagar" />
           </span>
           <span>
             {dinero(montoTarjeta)}
@@ -1203,24 +1145,24 @@ function ModalPago({ saldo, puntos, onCerrar, onPagar, }: {
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-1">
+      {errorPago && <p role="alert" className="text-sm text-[#991B1B]">{errorPago}</p>}
+      <div data-vs-actions="compact" className="flex justify-end gap-3 pt-1">
         <BotonSecundario onClick={onCerrar} ancho>
           <UiText text="Cancelar" />
         </BotonSecundario>
-        <BotonPrimario disabled={procesando || (metodo === "puntos" && !puntosSuficientes)} onClick={pagar}>
-          {ui(procesando ? "Procesando…" : metodo === "recepcion" ? "Registrar pago pendiente" : `Pagar ${dinero(montoTarjeta)}`)}
+        <BotonPrimario disabled={metodo === "puntos" && !puntosSuficientes} onClick={pagar}>
+          {ui(`Pagar ${dinero(montoTarjeta)}`)}
         </BotonPrimario>
       </div>
     </div>
   </Modal>);
 }
-function ModalComprobante({ huesped, reserva, habitacion, cuenta, cargos, pagos, fiscales, factura, onCerrar, }: {
+function ModalComprobante({ huesped, reserva, habitacion, cuenta, cargos, fiscales, factura, onCerrar, }: {
   huesped: Huesped;
   reserva: Reserva;
-  habitacion: HabitacionHotel;
+  habitacion: HabitacionHotel | undefined;
   cuenta: ResumenCuentaHuesped;
   cargos: CargoHuesped[];
-  pagos: PagoHuespedApp[];
   fiscales: DatosFiscales;
   factura: string | null;
   onCerrar: () => void;
@@ -1229,7 +1171,7 @@ function ModalComprobante({ huesped, reserva, habitacion, cuenta, cargos, pagos,
   const spa = cargos.filter(c => c.categoria === 'Spa y experiencias').reduce((s, c) => s + c.cantidad * c.precioUnitario, 0);
   const otros = Math.max(0, cuenta.extras - restaurante - spa);
   const facturaNumero = factura || `VS-FE-${reserva.codigo.replace('VS-', '')}`;
-  const verificacion = `${reserva.codigo.replace(/[^A-Z0-9]/g, '').slice(-6)}-${habitacion.numero}-2026`;
+  const verificacion = `${reserva.codigo.replace(/[^A-Z0-9]/g, '').slice(-6)}-${(habitacion?.numero ?? '—')}-2026`;
   const descargar = () => window.print();
   return (<Modal titulo="Factura preliminar" subtitulo="Documento preliminar · no es factura fiscal" onCerrar={onCerrar} ancho="sm:max-w-4xl">
     <div className="space-y-5 text-[#102747]">
@@ -1242,7 +1184,7 @@ function ModalComprobante({ huesped, reserva, habitacion, cuenta, cargos, pagos,
             <h3 className="text-lg font-semibold">Villa Serena Hotel</h3>
             <p>Huehuetenango, Guatemala</p>
             <p>NIT: {HOTEL.nit}</p>
-            <p>Correo: villaserenagt@gmail.com</p>
+            <p>Correo: hotelvillaserena.gt@gmail.com</p>
           </div>
           <div className="text-sm leading-relaxed sm:text-right">
             <h3 className="font-serif text-xl font-bold">FACTURA PRELIMINAR</h3>
@@ -1257,7 +1199,7 @@ function ModalComprobante({ huesped, reserva, habitacion, cuenta, cargos, pagos,
             </p>
             <p>
               <b>Habitación:</b>
-              {habitacion.numero}
+              {(habitacion?.numero ?? '—')}
             </p>
             <p>
               <b>Fecha de consulta:</b>
@@ -1294,7 +1236,7 @@ function ModalComprobante({ huesped, reserva, habitacion, cuenta, cargos, pagos,
             <span>Precio unitario</span>
             <span className="text-right">Subtotal</span>
           </div>
-          {[[`Alojamiento · Habitación ${habitacion.tipo} ${habitacion.numero}`, `${cuenta.noches} noches`, dinero(cuenta.precioNoche), dinero(cuenta.alojamiento)],
+          {[[`Alojamiento · Habitación ${(habitacion?.tipo ?? reserva.tipoHabitacion)} ${(habitacion?.numero ?? '—')}`, `${cuenta.noches} noches`, dinero(cuenta.precioNoche), dinero(cuenta.alojamiento)],
           ['Restaurante', '—', '—', dinero(restaurante)],
           ['Spa', '—', '—', dinero(spa)],
           ['Otros servicios', '—', '—', dinero(otros)]].map(row => <div key={row[0]} className="grid grid-cols-[1.7fr_.6fr_.7fr_.7fr] border-t px-3 py-2 text-xs sm:text-sm">
@@ -1351,7 +1293,7 @@ function ModalComprobante({ huesped, reserva, habitacion, cuenta, cargos, pagos,
 function ModalDetalleCuenta({ huesped, reserva, habitacion, cuenta, cargos, onCerrar }: {
   huesped: Huesped;
   reserva: Reserva;
-  habitacion: HabitacionHotel;
+  habitacion: HabitacionHotel | undefined;
   cuenta: ResumenCuentaHuesped;
   cargos: CargoHuesped[];
   onCerrar: () => void;
@@ -1364,7 +1306,7 @@ function ModalDetalleCuenta({ huesped, reserva, habitacion, cuenta, cargos, onCe
       fecha.setDate(fecha.getDate() + i);
       return {
         fecha: fecha.toISOString(),
-        descripcion: `Habitación ${habitacion.tipo} ${habitacion.numero} · Noche ${i + 1} de ${cuenta.noches}`,
+        descripcion: `Habitación ${(habitacion?.tipo ?? reserva.tipoHabitacion)} ${(habitacion?.numero ?? '—')} · Noche ${i + 1} de ${cuenta.noches}`,
         importe: cuenta.precioNoche
       };
     });
@@ -1380,7 +1322,7 @@ function ModalDetalleCuenta({ huesped, reserva, habitacion, cuenta, cargos, onCe
       </div>
       <div className="grid gap-3 rounded-lg border border-[#E5E0D8] bg-[#FAF9F6] p-4 sm:grid-cols-4">
         {[['Reserva', reserva.codigo],
-        ['Habitación', habitacion.numero],
+        ['Habitación', (habitacion?.numero ?? '—')],
         ['Huésped', huesped.nombre],
         ['Estancia', `${formatoFecha(reserva.fechaEntrada)} → ${formatoFecha(reserva.fechaSalida)}`]].map(([l, v]) => <div key={l} className="sm:border-r sm:last:border-0">
           <small className="text-[#71839B]">

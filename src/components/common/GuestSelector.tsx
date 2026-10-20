@@ -2,9 +2,9 @@
 import { Minus, Plus, Users } from 'lucide-react';
 import { useState } from 'react';
 import { usePublicLanguage } from './PublicLanguageToggle';
-export default function GuestSelector({ adults, children, onAdults, onChildren, max = 5, label = 'Huéspedes' }: {
+export default function GuestSelector({ adults, childCount, onAdults, onChildren, max = 5, label = 'Huéspedes' }: {
   adults: number;
-  children: number;
+  childCount: number;
   onAdults: (n: number) => void;
   onChildren: (n: number) => void;
   max?: number;
@@ -12,7 +12,7 @@ export default function GuestSelector({ adults, children, onAdults, onChildren, 
 }) {
   const { en } = usePublicLanguage();
   const [open, setOpen] = useState(false);
-  const total = adults + children;
+  const total = adults + childCount;
   const canAdd = total < max;
   return <div className="guest-select-control">
     <button type="button" className="guest-select-trigger" onClick={() => setOpen(!open)}>
@@ -20,7 +20,7 @@ export default function GuestSelector({ adults, children, onAdults, onChildren, 
       <span>
         {adults}
         {en ? (adults === 1 ? 'adult' : 'adults') : `adulto${adults === 1 ? '' : 's'}`}
-        {children > 0 ? ` · ${children} ${en ? (children === 1 ? 'child' : 'children') : `niño${children === 1 ? '' : 's'}`}` : ''}
+        {childCount > 0 ? ` · ${childCount} ${en ? (childCount === 1 ? 'child' : 'childCount') : `niño${childCount === 1 ? '' : 's'}`}` : ''}
       </span>
     </button>
     {open && <div className="guest-popover guest-popover-inline">
@@ -45,13 +45,13 @@ export default function GuestSelector({ adults, children, onAdults, onChildren, 
           {en ? 'Children' : 'Niños'}
         </span>
         <p>
-          <button type="button" onClick={() => onChildren(Math.max(0, children - 1))}>
+          <button type="button" onClick={() => onChildren(Math.max(0, childCount - 1))}>
             <Minus />
           </button>
           <b>
-            {children}
+            {childCount}
           </b>
-          <button type="button" disabled={!canAdd} onClick={() => canAdd && onChildren(children + 1)}>
+          <button type="button" disabled={!canAdd} onClick={() => canAdd && onChildren(childCount + 1)}>
             <Plus />
           </button>
         </p>

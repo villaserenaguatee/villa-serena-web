@@ -33,3 +33,7 @@ export function cuentaHuespedExpirada(email: string) {
   const access = leerAccesoPostCheckout(email);
   return Boolean(access && Date.now() >= new Date(access.expiresAt).getTime());
 }
+export function habilitarAccesoHuesped(email: string) {
+  if (typeof window === 'undefined' || !leerAccesoPostCheckout(email)) return;
+  localStorage.removeItem(GUEST_ACCESS_KEY);
+}

@@ -1,10 +1,14 @@
+import {validPublicDate} from "@/lib/publicStayValidation";
+import BilingualDateInput from "@/components/common/BilingualDateInput";
+import {ArrowLeft} from "lucide-react";
 import { UiText, useUiText } from "@/i18n/UiText";
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { OfertaHabitacion, HabitacionHotel, Reserva, Huesped, ReservaHuesped, TipoHabitacion, DatosContacto, } from "@/lib/pms/types";
 import { tarjetaPrincipal } from '@/store/paymentStore';
 import { fechaHoyISO, fechaRelativaISO, formatoFecha, nochesEntre, } from "@/data/pms";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
-import { dinero, Chip, Campo, INPUT_CLS, Cabecera, Tarjeta, Aviso, BotonPrimario, BotonSecundario, habitacionesDisponibles, correoValido, telefonoValido, formatoTarjeta, ultimos4, CalendarIcon, UserIcon, SearchIcon, CheckIcon, MailIcon, CardIcon, BedIcon, } from "@/features/huesped/pages/huespedUtils";
+import { dinero, Chip, Campo, INPUT_CLS, Cabecera, Tarjeta, Aviso, BotonPrimario, BotonSecundario, habitacionesDisponibles, correoValido, telefonoValido, formatoTarjeta, CalendarIcon, UserIcon, SearchIcon, CheckIcon, MailIcon, CardIcon, BedIcon, } from "@/features/huesped/pages/huespedUtils";
 type Paso = "buscar" | "datos" | "revisar" | "pago" | "listo";
 const PASOS: {
   id: Paso;
@@ -22,27 +26,13 @@ interface Props {
   reservas: Reserva[];
   huesped: Huesped;
   reservaWeb: ReservaHuesped | null;
-  onConfirmar: (datos: {
-    tipo: TipoHabitacion;
-    fechaEntrada: string;
-    fechaSalida: string;
-    personas: number;
-    adultos: number;
-    ninos: number;
-    contacto: DatosContacto;
-    tipoDocumento: string;
-    nacionalidad: string;
-    horaLlegada: string;
-    metodoPago: "tarjeta" | "hotel";
-    paraOtraPersona: boolean;
-    ultimos4: string;
-  }) => void;
   onNuevaBusqueda: () => void;
   onVolver?: () => void;
   onVerReservacion?: () => void;
 }
-export default function ReservarEstancia({ ofertas, habitaciones, reservas, huesped, reservaWeb, onConfirmar, onNuevaBusqueda, onVolver, onVerReservacion, }: Props) {
+export default function ReservarEstancia({ ofertas, habitaciones, reservas, huesped, reservaWeb, onNuevaBusqueda, onVolver, onVerReservacion, }: Props) {
   const ui = useUiText();
+  const tBooking = useTranslations("publicBooking");
   const { en } = usePublicLanguage();
   const [paso, setPaso] = useState<Paso>(reservaWeb ? "listo" : "buscar");
   const [entrada, setEntrada] = useState(fechaRelativaISO(7));
@@ -50,6 +40,7 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
   const [adultos, setAdultos] = useState(1);
   const [ninos, setNinos] = useState(0);
   const personas = adultos + ninos;
+  const [guestsAbove,setGuestsAbove] = useState(false);
   const [selectorHuespedesAbierto, setSelectorHuespedesAbierto] = useState(false);
   const [paraOtraPersona, setParaOtraPersona] = useState(false);
   const [buscado, setBuscado] = useState(false);
@@ -68,7 +59,6 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
   const [apellidos, setApellidos] = useState("");
   const [tipoDocumento, setTipoDocumento] = useState("DPI");
   const [codigoPais, setCodigoPais] = useState("+502");
-  const [nacionalidad, setNacionalidad] = useState("");
   const [horaLlegada, setHoraLlegada] = useState("15:00");
   const [sinHoraLlegada, setSinHoraLlegada] = useState(false);
   const [erroresDatos, setErroresDatos] = useState<Record<string, string>>({});
@@ -77,11 +67,10 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
   const [vence, setVence] = useState("");
   const [cvv, setCvv] = useState("");
   const [erroresPago, setErroresPago] = useState<Record<string, string>>({});
-  const [procesando, setProcesando] = useState(false);
-  const [metodoPago, setMetodoPago] = useState<"tarjeta" | "hotel">("tarjeta");
-  const [usarTarjetaGuardada, setUsarTarjetaGuardada] = useState(true);
+  const [errorPago, setErrorPago] = useState("");
+  const [usarTarjetaGuardada, setUsarTarjetaGuardada] = useState(() => !!tarjetaPrincipal(huesped.id));
   const [aceptaCondiciones, setAceptaCondiciones] = useState(false);
-  const guardada = tarjetaPrincipal();
+  const guardada = tarjetaPrincipal(huesped.id);
   const noches = nochesEntre(entrada, salida);
   const disponiblesPorTipo = useMemo(() => {
     const libres = habitacionesDisponibles(entrada, salida, habitaciones, reservas, { personas });
@@ -104,6 +93,7 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
     : null;
   const total = oferta ? oferta.precioNoche * noches : 0;
   function buscar() {
+    if(!validPublicDate(entrada)||!validPublicDate(salida)||!Number.isInteger(adultos)||adultos<1||!Number.isInteger(ninos)||ninos<0){setErrorBusqueda(en?"Select valid dates and guests.":"Selecciona fechas y huéspedes válidos.");return;}
     if (entrada < fechaHoyISO()) {
       setErrorBusqueda("La fecha de entrada no puede ser anterior a hoy.");
       return;
@@ -123,14 +113,12 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
       setContacto({ nombre: "", correo: "", telefono: "", documento: "" });
       setApellidos("");
       setTipoDocumento("");
-      setNacionalidad("");
     }
     else {
       const partes = huesped.nombre.trim().split(/\s+/);
       setContacto({ nombre: partes.shift() || huesped.nombre, correo: huesped.correo, telefono: huesped.telefono.replace(/^\+?502\s*/, ""), documento: huesped.documento });
       setApellidos(partes.join(" "));
       setTipoDocumento(huesped.tipoDocumento);
-      setNacionalidad(huesped.nacionalidad);
     }
     setPaso("datos");
   }
@@ -148,18 +136,16 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
       e.documento = "Necesitamos tu documento de identidad.";
     if (!tipoDocumento)
       e.tipoDocumento = "Selecciona el tipo de documento.";
-    if (!nacionalidad.trim())
-      e.nacionalidad = "Escribe la nacionalidad.";
     setErroresDatos(e);
     return Object.keys(e).length === 0;
   }
   function validarPago(): boolean {
     const e: Record<string, string> = {};
-    if (metodoPago === "tarjeta" && !usarTarjetaGuardada && tarjeta.replace(/\D/g, "").length !== 16)
+    if (!usarTarjetaGuardada && tarjeta.replace(/\D/g, "").length !== 16)
       e.tarjeta = "Escribe los 16 dígitos de la tarjeta.";
-    if (metodoPago === "tarjeta" && !usarTarjetaGuardada && !titular.trim())
+    if (!usarTarjetaGuardada && !titular.trim())
       e.titular = "Escribe el nombre tal como aparece en la tarjeta.";
-    if (metodoPago === "tarjeta" && !usarTarjetaGuardada) {
+    if (!usarTarjetaGuardada) {
       const coincidencia = /^(\d{2})\/(\d{2})$/.exec(vence);
       if (!coincidencia) {
         e.vence = "Usa el formato MM/AA.";
@@ -175,7 +161,7 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
           e.vence = "La tarjeta está vencida. Revisa la fecha.";
       }
     }
-    if (metodoPago === "tarjeta" && !usarTarjetaGuardada && !/^\d{3,4}$/.test(cvv))
+    if (!usarTarjetaGuardada && !/^\d{3,4}$/.test(cvv))
       e.cvv = "El código de seguridad tiene 3 o 4 dígitos.";
     if (!aceptaCondiciones)
       e.condiciones = "Debes aceptar los términos y condiciones de la estancia.";
@@ -183,29 +169,11 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
     return Object.keys(e).length === 0;
   }
   function pagar() {
+    setErrorPago("");
     if (!validarPago() || !tipoElegido)
       return;
-    setProcesando(true);
-    window.setTimeout(() => {
-      onConfirmar({
-        tipo: tipoElegido,
-        fechaEntrada: entrada,
-        fechaSalida: salida,
-        personas,
-        adultos,
-        ninos,
-        tipoDocumento,
-        nacionalidad,
-        horaLlegada: sinHoraLlegada ? "" : horaLlegada,
-        metodoPago,
-        paraOtraPersona,
-        contacto: { ...contacto, nombre: `${contacto.nombre} ${apellidos}`.trim(), telefono: `${codigoPais} ${contacto.telefono}`.trim() },
-        ultimos4: metodoPago === "hotel" ? "hotel" : usarTarjetaGuardada ? (tarjetaPrincipal()?.ultimos4 ?? "") : ultimos4(tarjeta),
-      });
-      setProcesando(false);
-      setPaso("listo");
-    },
-      900);
+    // No persistir la reserva ni avanzar sin aprobación real del proveedor.
+    setErrorPago(tBooking("paymentUnavailable"));
   }
   function empezarDeNuevo() {
     onNuevaBusqueda();
@@ -217,15 +185,15 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
     setVence("");
     setCvv("");
     setErroresPago({});
-    setMetodoPago("tarjeta");
-    setUsarTarjetaGuardada(true);
+    setErrorPago("");
+    setUsarTarjetaGuardada(!!tarjetaPrincipal(huesped.id));
     setAceptaCondiciones(false);
   }
-  return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
+  return (<div data-vs-reserve-another className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
     {onVolver && <div className="bg-white px-4 pt-4 sm:px-6">
-      <button onClick={onVolver} className="font-semibold text-[#18345C]">← Volver a Gestionar estancia</button>
+      <button onClick={onVolver} className="inline-flex min-h-11 items-center gap-2 font-semibold text-[#18345C]"><ArrowLeft size={24} aria-hidden="true"/>Volver a Gestionar estancia</button>
     </div>}
-    <Cabecera titulo="Reservar otra habitación" subtitulo="Consulta disponibilidad real y confirma tu habitación en línea" />
+    <Cabecera titulo="Reservar otra habitación" subtitulo="Consulta fechas y habitaciones en esta demostración local" />
 
     <div className="px-4 sm:px-6 pt-5">
       <div className="flex items-center gap-2 flex-wrap">
@@ -257,48 +225,42 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
 
       {paso === "buscar" && (<>
         <Tarjeta titulo="¿Para quién es esta habitación?">
-          <div className="grid max-w-xl grid-cols-2 gap-3">
+          <div className="grid max-w-sm grid-cols-2 gap-3">
             <button
               onClick={() => {
                 setParaOtraPersona(false);
                 setBuscado(false);
               }}
-              className={`rounded-lg border px-5 py-4 font-semibold ${!paraOtraPersona ? 'border-[#18345C] bg-[#18345C] text-white' : 'border-[#DCD7CD] bg-white text-[#18345C]'}`}>Para mí</button>
+              className={`rounded-lg border px-4 py-2.5 font-semibold ${!paraOtraPersona ? 'border-[#18345C] bg-[#18345C] text-white' : 'border-[#DCD7CD] bg-white text-[#18345C]'}`}>Para mí</button>
             <button
               onClick={() => {
                 setParaOtraPersona(true);
                 setBuscado(false);
               }}
-              className={`rounded-lg border px-5 py-4 font-semibold ${paraOtraPersona ? 'border-[#18345C] bg-[#18345C] text-white' : 'border-[#DCD7CD] bg-white text-[#18345C]'}`}>Para otra persona</button>
+              className={`rounded-lg border px-4 py-2.5 font-semibold ${paraOtraPersona ? 'border-[#18345C] bg-[#18345C] text-white' : 'border-[#DCD7CD] bg-white text-[#18345C]'}`}>Para otra persona</button>
           </div>
         </Tarjeta>
         <Tarjeta titulo={paraOtraPersona ? "¿Cuándo deseas hospedar a estas personas?" : "¿Cuándo quieres hospedarte?"}>
           <div className="grid gap-3 sm:grid-cols-4">
             <Campo label="Entrada">
-              <input type="date" value={entrada} min={fechaHoyISO()} onChange={(e) => setEntrada(e.target.value)} className={INPUT_CLS} />
+              <BilingualDateInput value={entrada} min={fechaHoyISO()} rangeStart={entrada} rangeEnd={salida} rangeEdge="arrival" onChange={value=>{setEntrada(value);if(salida<=value)setSalida("");setBuscado(false);}} />
             </Campo>
             <Campo label="Salida">
-              <input type="date" value={salida} min={entrada} onChange={(e) => setSalida(e.target.value)} className={INPUT_CLS} />
+              <BilingualDateInput value={salida} min={entrada||fechaHoyISO()} minExclusive rangeStart={entrada} rangeEnd={salida} rangeEdge="departure" onChange={value=>{setSalida(value);setBuscado(false);}} />
             </Campo>
-            <Campo label="Huéspedes">
-              <button onClick={() => setSelectorHuespedesAbierto(!selectorHuespedesAbierto)} className={`${INPUT_CLS} text-left`}>{adultos} {adultos === 1 ? 'adulto' : 'adultos'} · {ninos} {ninos === 1 ? 'niño' : 'niños'}</button>
-            </Campo>
+            <Campo label="Huéspedes"><div className="relative">
+ <button type="button" aria-expanded={selectorHuespedesAbierto} onClick={event=>{setGuestsAbove(event.currentTarget.getBoundingClientRect().bottom+220>window.innerHeight-80);setSelectorHuespedesAbierto(v=>!v);}} className={INPUT_CLS+" text-left"}>{adultos} {en?'adults':'adultos'} · {ninos} {en?'children':'niños'}</button>
+ {selectorHuespedesAbierto&&<div role="group" aria-label={en?'Guests':'Huéspedes'} className={`absolute left-0 z-30 w-full min-w-[230px] max-w-[calc(100vw-48px)] rounded-xl border border-[#E5E0D8] bg-white p-3 shadow-xl ${guestsAbove?"bottom-full mb-2":"top-full mt-2"}`}><ContadorHuesped label="Adultos" valor={adultos} minimo={1} onChange={setAdultos}/><div className="my-2 border-t"/><ContadorHuesped label="Niños" valor={ninos} minimo={0} onChange={setNinos}/><button type="button" onClick={()=>setSelectorHuespedesAbierto(false)} className="mt-3 w-full rounded-lg bg-[#D8B94E] py-2 font-semibold text-[#102747]">{en?'Confirm':'Confirmar'}</button></div>}
+ </div></Campo>
             <div className="flex items-end">
               <button
                 onClick={buscar}
                 className="w-full px-4 py-2.5 min-h-[44px] text-[15px] font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors flex items-center justify-center gap-2">
                 <SearchIcon size={15} />
-                <UiText text=" Buscar                   " />
+                {en ? "Search availability" : "Buscar disponibilidad"}
               </button>
             </div>
           </div>
-
-          {selectorHuespedesAbierto && <div className="mt-3 max-w-sm rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-xl">
-            <ContadorHuesped label="Adultos" valor={adultos} minimo={1} onChange={setAdultos} />
-            <div className="my-4 border-t" />
-            <ContadorHuesped label="Niños" valor={ninos} minimo={0} onChange={setNinos} />
-            <button onClick={() => setSelectorHuespedesAbierto(false)} className="mt-5 w-full rounded-lg bg-[#D8B94E] py-3 font-semibold text-[#102747]">Confirmar</button>
-          </div>}
 
           {errorBusqueda && (<div className="mt-3">
             <Aviso tono="error">
@@ -317,8 +279,8 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
         </Tarjeta>
 
         {buscado && (<>
-          <section className="rounded-xl border border-[#E5E0D8] bg-white p-5">
-            <div className="grid items-end gap-4 md:grid-cols-[1fr_1fr_1.5fr_auto_auto]">
+          <section data-vs-card="huesped" className="rounded-xl border border-[#E5E0D8] bg-white p-5">
+            <div className="grid items-end gap-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1.5fr_auto_auto]">
               <Campo label="Categoría">
                 <select value={categoriaFiltro} onChange={e => setCategoriaFiltro(e.target.value)} className={INPUT_CLS}>
                   <option value="todas">Todas</option>
@@ -391,7 +353,7 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
                 <select value={tipoDocumento} onChange={e => setTipoDocumento(e.target.value)} className={INPUT_CLS}>
                   <option value="">Seleccionar</option>
                   <option>DPI</option>
-                  <option>Pasaporte</option>
+
                 </select>
               </Campo>
               <Campo label="Número de documento" error={erroresDatos.documento}>
@@ -428,9 +390,6 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
                     className={INPUT_CLS} />
                 </div>
               </Campo>
-              <Campo label="Nacionalidad" error={erroresDatos.nacionalidad}>
-                <input value={nacionalidad} onChange={e => setNacionalidad(e.target.value)} className={INPUT_CLS} placeholder="Nacionalidad" />
-              </Campo>
               <Campo label="Hora estimada de llegada">
                 <input
                   type="time"
@@ -453,7 +412,8 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
               </Aviso>
             </div>
 
-            <div className="flex gap-2 mt-5">
+            {errorPago && <p role="alert" className="mt-2 text-sm text-[#991B1B]">{errorPago}</p>}
+            <div data-vs-actions="compact" className="flex gap-2 mt-5">
               <BotonSecundario onClick={() => setPaso("buscar")} ancho>
                 <UiText text="Volver" />
               </BotonSecundario>
@@ -485,7 +445,6 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
             <DatoRevision label={tipoDocumento || "Documento"} valor={`${tipoDocumento} · •••• ${contacto.documento.slice(-4)}`} />
             <DatoRevision label="Correo" valor={contacto.correo} />
             <DatoRevision label="Teléfono" valor={`${codigoPais} ${contacto.telefono}`} />
-            <DatoRevision label="Nacionalidad" valor={nacionalidad} />
             <DatoRevision label="Hora estimada de llegada" valor={sinHoraLlegada ? "Por confirmar" : horaLlegada} />
             <DatoRevision label="Habitación" valor={oferta.tipo} />
             <DatoRevision
@@ -514,12 +473,11 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
         <div className="space-y-5">
           <Tarjeta titulo="Selecciona el método de pago">
             <p className="mb-4 text-sm text-[#71839B]">Elige cómo deseas pagar tu reserva.</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-4 font-semibold ${metodoPago === 'tarjeta' ? 'border-[#18345C] bg-[#F3F7FC] text-[#18345C]' : 'border-[#E5E0D8]'}`}><input type="radio" name="metodo-pago" checked={metodoPago === 'tarjeta'} onChange={() => setMetodoPago('tarjeta')} className="accent-[#18345C]" />Tarjeta de crédito o débito</label>
-              <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-4 font-semibold ${metodoPago === 'hotel' ? 'border-[#18345C] bg-[#F3F7FC] text-[#18345C]' : 'border-[#E5E0D8]'}`}><input type="radio" name="metodo-pago" checked={metodoPago === 'hotel'} onChange={() => setMetodoPago('hotel')} className="accent-[#18345C]" />Pagar en Recepción</label>
+            <div className="flex items-center rounded-lg border border-[#18345C] bg-[#F3F7FC] p-4 font-semibold text-[#18345C]">
+              Tarjeta de crédito o débito
             </div>
 
-            {metodoPago === 'tarjeta' && <div className="mt-5">
+            <div className="mt-5">
               <div className="mx-auto flex aspect-[1.586/1] w-full max-w-[380px] flex-col justify-between rounded-[22px] bg-gradient-to-br from-[#102F56] to-[#28537E] p-5 text-white shadow-lg">
                 <div className="flex items-start justify-between">
                   <b className="text-lg">Villa Serena</b>
@@ -541,7 +499,7 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
               </div>
               <div className="mt-4 space-y-3 rounded-xl border border-[#E5E0D8] p-4">
                 <label className="flex cursor-pointer gap-3">
-                  <input type="radio" name="tarjeta-reserva" checked={usarTarjetaGuardada} onChange={() => setUsarTarjetaGuardada(true)} className="accent-[#18345C]" />
+                  <input type="radio" name="tarjeta-reserva" disabled={!guardada} checked={usarTarjetaGuardada && !!guardada} onChange={() => setUsarTarjetaGuardada(true)} className="accent-[#18345C]" />
                   <span>
                     <b className="block text-[#18345C]">Usar tarjeta guardada</b>
                     <small className="text-[#52677F]">
@@ -556,13 +514,13 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
                   onChange={() => setUsarTarjetaGuardada(false)}
                   className="accent-[#18345C]" />Agregar otra tarjeta</label>
               </div>
-            </div>}
+            </div>
 
-            {metodoPago === 'tarjeta' && !usarTarjetaGuardada && <section className="mt-5 rounded-xl border border-[#E5E0D8] p-5">
+            {!usarTarjetaGuardada && <section className="mt-5 rounded-xl border border-[#E5E0D8] p-5">
               <div className="mb-4 flex items-start justify-between">
                 <div>
-                  <h3 className="font-semibold text-[#18345C]">Pago en línea seguro</h3>
-                  <p className="text-xs text-[#71839B]">Los detalles de pago se procesarán al confirmar la reserva.</p>
+                  <h3 className="font-semibold text-[#18345C]">Formulario de tarjeta</h3>
+                  <p className="text-xs text-[#71839B]">El pago con tarjeta no está disponible en este momento.</p>
                 </div>
                 <b className="text-[#18345C]">●● &nbsp; VISA</b>
               </div>
@@ -624,18 +582,16 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
               </div>
             </section>}
 
-            {metodoPago === 'tarjeta' && <div className="mt-4">
+            <div className="mt-4">
               <Aviso tono="info">
                 <span className="flex items-start gap-2">
                   <CardIcon />
                   <span>
-                    <UiText text="                         El cobro se procesa a través de una pasarela certificada. Villa Serena no almacena el                         número completo de tu tarjeta.                       " />
+                    <UiText text="El pago con tarjeta no está disponible en este momento." />
                   </span>
                 </span>
               </Aviso>
-            </div>}
-
-            {metodoPago === 'hotel' && <div className="mt-5 rounded-xl border border-[#E7D49B] bg-[#FFF9E8] p-4 text-sm text-[#675224]"><b className="block text-[#18345C]">Pago pendiente en Recepción</b>No se realizará ningún cargo ahora. La reserva quedará con pago pendiente hasta que Recepción registre el pago.</div>}
+            </div>
 
             <label className="mt-5 flex cursor-pointer items-start gap-3 text-sm text-[#314860]">
               <input type="checkbox" checked={aceptaCondiciones} onChange={e => setAceptaCondiciones(e.target.checked)} className="mt-1 accent-[#18345C]" />
@@ -645,12 +601,12 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
               {erroresPago.condiciones}
             </p>}
 
-            <div className="flex gap-2 mt-5">
+            <div data-vs-actions="compact" className="flex gap-2 mt-5">
               <BotonSecundario onClick={() => setPaso("revisar")} ancho>
                 <UiText text="Volver" />
               </BotonSecundario>
-              <BotonPrimario ancho onClick={pagar} disabled={procesando}>
-                {procesando ? "Procesando…" : metodoPago === 'hotel' ? "Continuar" : "Pagar"}
+              <BotonPrimario ancho onClick={pagar}>
+                <UiText text="Pagar" />
               </BotonPrimario>
             </div>
           </Tarjeta>
@@ -661,7 +617,7 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
       {paso === "listo" && reservaWeb && (() => {
         const esParaOtraPersona = paraOtraPersona || reservaWeb.contacto.correo.toLowerCase() !== huesped.correo.toLowerCase();
         return (<div className="mx-auto max-w-5xl pb-10">
-          <div className="overflow-hidden rounded-2xl border border-[#E5E0D8] bg-white shadow-sm">
+          <div data-vs-card="huesped" className="overflow-hidden rounded-2xl border border-[#E5E0D8] bg-white shadow-sm">
             <div className="px-6 pb-5 pt-7 text-center">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#EAF7EE] text-[#188247]">
                 <CheckIcon size={22} />
@@ -690,11 +646,11 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
                   <DatoConfirmacion label="Entrada" valor={formatoFecha(reservaWeb.fechaEntrada)} />
                   <DatoConfirmacion label="Salida" valor={formatoFecha(reservaWeb.fechaSalida)} />
                   <DatoConfirmacion label="Ocupación" valor={`${reservaWeb.personas} ${reservaWeb.personas === 1 ? 'huésped' : 'huéspedes'}`} />
-                  <DatoConfirmacion label={reservaWeb.ultimos4 === "hotel" ? "Total a pagar" : "Total pagado"} valor={dinero(reservaWeb.total)} />
+                  <DatoConfirmacion label={/^\d{4}$/.test(reservaWeb.ultimos4) ? "Total pagado" : "Total de la reserva"} valor={dinero(reservaWeb.total)} />
                   <div className="col-span-2">
                     <DatoConfirmacion
                       label="Método de pago"
-                      valor={reservaWeb.ultimos4 === "hotel" ? "Pago en el hotel" : `Tarjeta de crédito •••• ${reservaWeb.ultimos4}`} />
+                      valor={/^\d{4}$/.test(reservaWeb.ultimos4) ? `Tarjeta de crédito •••• ${reservaWeb.ultimos4}` : "Pago sin confirmar"} />
                   </div>
                 </div>
               </section>
@@ -761,7 +717,7 @@ function TarjetaOferta({ oferta, noches, restantes, onElegir, }: {
   const ui = useUiText();
   const [foto, setFoto] = useState(0);
   const { en } = usePublicLanguage();
-  return (<div className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden flex flex-col">
+  return (<div data-vs-card="huesped" className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden flex flex-col">
     <div className="relative">
       <img src={oferta.fotos[foto]} alt={`Habitación ${oferta.tipo}`} className="w-full h-48 object-cover bg-[#F8F6F0]" />
 
@@ -853,7 +809,7 @@ function ResumenReserva({ oferta, entrada, salida, noches, personas, total, }: {
 }) {
   const ui = useUiText();
   return (<div className="lg:col-span-1">
-    <div className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden lg:sticky lg:top-0">
+    <div data-vs-card="huesped" className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden lg:sticky lg:top-0">
       <div className="flex items-center justify-center border-b border-[#E5E0D8] bg-white px-4 py-3">
         <img src="/villa-serena-logo.png" alt="Villa Serena Hotel" className="h-14 w-auto object-contain" />
       </div>

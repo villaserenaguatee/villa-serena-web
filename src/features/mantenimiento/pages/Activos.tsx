@@ -1,14 +1,16 @@
+import CompactFilter from "@/components/common/CompactFilter";
 import { useState } from 'react';
+import {validPublicDate} from '@/lib/publicStayValidation';
 import type { Activo, OrdenTrabajo, CategoriaActivo, EstadoActivo } from '@/lib/pms/types';
 import { formatoFecha } from '@/data/pms';
-import { Chip, dinero, ACTIVO_META, CATEGORIAS_ACTIVO, ESTADO_OT_META, costoRepuestos, Cabecera, Kpi, BotonFiltro, Vacio, Modal, BoxIcon, } from '@/features/mantenimiento/pages/mantUtils';
+import { Chip, dinero, ACTIVO_META, CATEGORIAS_ACTIVO, ESTADO_OT_META, costoRepuestos, Cabecera, Kpi, Vacio, Modal, BoxIcon, } from '@/features/mantenimiento/pages/mantUtils';
 const UMBRAL_RECURRENTE = 2;
 interface Props {
   activos: Activo[];
   ordenes: OrdenTrabajo[];
   onCambiarEstado: (id: string, estado: EstadoActivo) => void;
   onAbrirOrden: (id: string) => void;
-  onAgregarActivo: (a: Omit<Activo, 'id'>) => void;
+  onAgregarActivo: (a: Omit<Activo, 'id'>) => void | boolean | Promise<void | boolean>;
 }
 export default function Activos({ activos, ordenes, onCambiarEstado, onAbrirOrden, onAgregarActivo }: Props) {
   const [filtro, setFiltro] = useState<CategoriaActivo | 'todas'>('todas');
@@ -38,10 +40,7 @@ export default function Activos({ activos, ordenes, onCambiarEstado, onAbrirOrde
     </div>
 
     <div className="px-4 sm:px-6 pt-5 flex gap-2 flex-wrap">
-      <BotonFiltro activo={filtro === 'todas'} onClick={() => setFiltro('todas')}>Todas</BotonFiltro>
-      {CATEGORIAS_ACTIVO.map(c => (<BotonFiltro key={c} activo={filtro === c} onClick={() => setFiltro(c)}>
-        {c}
-      </BotonFiltro>))}
+      <CompactFilter label="Categoría" value={filtro} onChange={setFiltro}><option value="todas">Todas las categorías</option>{CATEGORIAS_ACTIVO.map(c=><option key={c} value={c}>{c}</option>)}</CompactFilter>
     </div>
 
     <div className="px-4 sm:px-6 py-5">
@@ -81,8 +80,8 @@ export default function Activos({ activos, ordenes, onCambiarEstado, onAbrirOrde
       </div>)}
     </div>
 
-    {nuevo && <NuevoActivo onCerrar={() => setNuevo(false)} onGuardar={a => {
-      onAgregarActivo(a);
+    {nuevo && <NuevoActivo onCerrar={() => setNuevo(false)} onGuardar={async a => {
+      if(await onAgregarActivo(a)===false)return false;
       setNuevo(false);
     }} />}
 
@@ -205,9 +204,10 @@ function NuevoActivo({ onCerrar, onGuardar }: {
     'Lavandería': 'LAV',
     'Otros': 'OTR'
   };
-  const codigo = `${pref[categoria] || 'ACT'}-${String(Date.now()).slice(-3)}`;
+    const codigo = `${pref[categoria] || 'ACT'}-${String(Date.now()).slice(-3)}`;
+    const [validationError,setValidationError]=useState('');
   const cls = 'mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white px-3 py-2.5 outline-none focus:border-[#B8C4D0]';
-  return <Modal titulo="Nuevo equipo" subtitulo={codigo} onCerrar={onCerrar}>
+  return <Modal titulo="Nuevo equipo" onCerrar={onCerrar}>
     <div className="grid gap-3 sm:grid-cols-2">
       <label>Nombre<input className={cls} value={nombre} onChange={e => setNombre(e.target.value)} /></label>
       <label>Categoría<select className={cls} value={categoria} onChange={e => setCategoria(e.target.value as CategoriaActivo)}>
@@ -219,18 +219,21 @@ function NuevoActivo({ onCerrar, onGuardar }: {
       <label>Marca<input className={cls} value={marca} onChange={e => setMarca(e.target.value)} /></label>
       <label>Modelo<input className={cls} value={modelo} onChange={e => setModelo(e.target.value)} /></label>
       <label>Fecha de instalación<input type="date" className={cls} value={fecha} onChange={e => setFecha(e.target.value)} /></label>
-      <label>Costo<input inputMode="decimal" className={cls} value={costo} onChange={e => setCosto(e.target.value.replace(/[^0-9.]/g, ''))} /></label>
+        <label>Costo<input type="number" min="0" step="0.01" inputMode="decimal" className={cls} value={costo} onChange={e => {setCosto(e.target.value);setValidationError('');}} /></label>
       <label>Estado<select className={cls} value={estado} onChange={e => setEstado(e.target.value as EstadoActivo)}>
         <option value="operativo">Operativo</option>
         <option value="en-reparacion">En reparación</option>
         <option value="fuera-servicio">Fuera de servicio</option>
       </select></label>
     </div>
-    <div className="mt-5 flex justify-end gap-2">
+      {validationError&&<p role="alert" className="mt-3 text-red-800">{validationError}</p>}
+      <div data-vs-actions="compact" className="mt-5 flex justify-end gap-2">
       <button onClick={onCerrar} className="rounded-lg border border-[#E5E0D8] px-4 py-2">Cancelar</button>
       <button
         disabled={!nombre.trim() || !ubicacion.trim() || !fecha}
-        onClick={() => onGuardar({
+          onClick={() => {
+            if(!validPublicDate(fecha)||!Number.isFinite(Number(costo))||Number(costo)<0){setValidationError('Revisa la fecha y utiliza un costo válido mayor o igual a cero.');return;}
+            onGuardar({
           nombre: nombre.trim(),
           categoria,
           ubicacion: ubicacion.trim(),
@@ -241,7 +244,7 @@ function NuevoActivo({ onCerrar, onGuardar }: {
           costo: Number(costo) || 0,
           instaladoEn: fecha,
           estado
-        })}
+          });}}
         className="rounded-lg bg-[#18345C] px-4 py-2 font-semibold text-white disabled:opacity-40">Guardar equipo</button>
     </div>
   </Modal>;

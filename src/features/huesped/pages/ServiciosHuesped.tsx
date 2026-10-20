@@ -3,7 +3,7 @@ import { UiText, useUiText } from "@/i18n/UiText";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { useEffect, useRef, useState } from "react";
 import { leerReservas, guardarReservas } from "@/store/reservationStore";
-import { leerHabitaciones } from "@/store/roomStore";
+import { transportesEstancia, aceptarTransporte, type SolicitudTransporte } from "@/store/transportStore";
 import type { ItemMenu, CategoriaMenu, ServicioCatalogo, CategoriaServicioHuesped, PedidoHuesped, MensajeChat, HabitacionHotel, LineaPedidoHuesped, TipoPedidoHuesped, } from "@/lib/pms/types";
 import { formatoHoraISO, minutosEntre, ALERGIAS_FRECUENTES, TELEFONO_RECEPCION, } from "@/data/pms";
 import { dinero, Chip, Campo, INPUT_CLS, Cabecera, Tarjeta, Aviso, Vacio, BotonFiltro, BotonPrimario, BotonSecundario, ESTADO_PEDIDO_META, PASOS_PEDIDO, pedidoActivo, totalPedido, CartIcon, ChatIcon, ClockIcon, CheckIcon, AlertIcon, PlusIcon, } from "@/features/huesped/pages/huespedUtils";
@@ -18,7 +18,8 @@ const PESTANAS: {
   ];
 type SeccionMenu = CategoriaMenu;
 const CATEGORIAS_MENU: SeccionMenu[] = ['Desayuno', 'Almuerzo', 'Entre horarios', 'Cena', 'Postres', 'Bebidas sin alcohol', 'Bebidas con alcohol'];
-const FOTO_HERO_GENERAL = "https://images.unsplash.com/photo-1595236629937-aadaf7c1d99d?auto=format&fit=crop&fm=jpg&q=88&w=1800";
+// Exact editorial backdrop from issue-4, stored locally; not a numbered-room photograph.
+export const FOTO_HERO_GENERAL = "/images/portal-original-services.jpg";
 const HERO_MENU: Record<SeccionMenu, {
   foto: string;
   frase: string;
@@ -234,6 +235,8 @@ interface Props {
   mensajes: MensajeChat[];
   escribiendo: boolean;
   habitacion: HabitacionHotel;
+  reserva: import("@/lib/pms/types").Reserva;
+  huespedId: string;
   estanciaCerrada: boolean;
   onCrearPedido: (datos: {
     tipo: TipoPedidoHuesped;
@@ -249,18 +252,18 @@ interface Props {
   onIrCuenta: () => void;
   modo?: "restaurante" | "servicios";
 }
-export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, escribiendo, habitacion, estanciaCerrada, onCrearPedido, onCancelarPedido, onEnviarMensaje, onIrCuenta, modo = "restaurante", }: Props) {
+export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, escribiendo, habitacion, reserva, huespedId, estanciaCerrada, onCrearPedido, onCancelarPedido, onEnviarMensaje, onIrCuenta, modo = "restaurante", }: Props) {
   const ui = useUiText();
   const [pedidoCancelar, setPedidoCancelar] = useState<string | null>(null);
   const [motivoCancelar, setMotivoCancelar] = useState("");
   const [pestana, setPestana] = useState<Pestana>(modo);
-  const [solicitudesTransporte, setSolicitudesTransporte] = useState<any[]>([]);
+  const [solicitudesTransporte, setSolicitudesTransporte] = useState<SolicitudTransporte[]>([]);
   useEffect(() => {
     if (typeof window === 'undefined')
       return;
     const cargar = () => {
       try {
-        setSolicitudesTransporte(JSON.parse(localStorage.getItem('vs-solicitudes-transporte') || '[]'));
+        setSolicitudesTransporte(transportesEstancia(reserva.id, huespedId));
       }
       catch {
         setSolicitudesTransporte([]);
@@ -394,17 +397,19 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
   function enviarPedidoServicio() {
     if (lineasServicio.length === 0)
       return;
-    onCrearPedido({
+    const numero = onCrearPedido({
       tipo: "servicio",
       lineas: lineasServicio,
       nota: notaServicio.trim(),
       alergias: "",
     });
+    if (!numero) return;
     const transportes = lineasServicio.filter(l => esTransporteConTarifa(l.refId));
     if (transportes.length && typeof window !== 'undefined') {
       const actuales = JSON.parse(localStorage.getItem('vs-solicitudes-transporte') || '[]');
       const nuevos = transportes.map(l => ({
         id: `tr-${Date.now()}-${l.refId}`,
+        reservaId: reserva.id, huespedId, habitacionId: habitacion.id, codigoReserva: reserva.codigo,
         refId: l.refId,
         servicio: l.nombre,
         habitacion: habitacion.numero,
@@ -623,24 +628,10 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
         {modo === 'servicios' && solicitudesTransporte.map(t => {
           const aceptada = t.aceptacionHuesped === 'aceptada';
           const aceptar = () => {
-            const aceptadaEn = new Date().toISOString();
-            const next = solicitudesTransporte.map(x => x.id === t.id ? { ...x, aceptacionHuesped: 'aceptada', aceptadaEn } : x);
-            setSolicitudesTransporte(next);
-            localStorage.setItem('vs-solicitudes-transporte', JSON.stringify(next));
-            const habitacionCentral = leerHabitaciones().find(h => h.numero === t.habitacion);
-            const reservas = leerReservas();
-            const estancia = habitacionCentral ? reservas.find(r => r.habitacionId === habitacionCentral.id && r.estado === 'en-curso') : undefined;
-            if (estancia && Number(t.tarifa) > 0) {
-              const servicioId = `transporte-${t.id}`;
-              if (!estancia.servicios.some(s => s.id === servicioId)) {
-                guardarReservas(reservas.map(r => r.id === estancia.id ? {
-                  ...r,
-                  servicios: [...r.servicios, { id: servicioId, tipo: 'Transporte', descripcion: t.servicio, cantidad: 1, precioUnitario: Number(t.tarifa), fecha: aceptadaEn }]
-                } : r));
-              }
-            }
+            if (aceptarTransporte(t.id, reserva.id, huespedId))
+              setSolicitudesTransporte(transportesEstancia(reserva.id, huespedId));
           };
-          return <section key={t.id} className="rounded-xl border border-[#E5E0D8] bg-white p-4">
+          return <section data-vs-card="huesped" key={t.id} className="rounded-xl border border-[#E5E0D8] bg-white p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="font-semibold text-[#18345C]">
@@ -677,7 +668,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
       </div>)}
     </div>
     {carritoAbierto && (<div className="fixed inset-0 z-50 flex justify-end bg-[#102747]/55" onClick={() => setCarritoAbierto(false)}>
-      <div className="h-full w-full max-w-md overflow-y-auto bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="small" className="h-full w-full max-w-md overflow-y-auto bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#E5E0D8] bg-white px-5 py-4">
           <div>
             <h2 className="text-xl font-semibold text-[#18345C]">
@@ -860,7 +851,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
     {servicioActivo && (<div
       className="fixed inset-0 z-[65] grid place-items-center bg-[#102747]/55 p-4"
       onMouseDown={(e) => e.target === e.currentTarget && setServicioActivo(null)}>
-      <section className="max-h-[82vh] w-full max-w-md overflow-y-auto rounded-xl bg-white shadow-2xl">
+      <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="small" className="max-h-[82vh] w-full max-w-md overflow-y-auto rounded-xl bg-white shadow-2xl">
 
         <header className="flex items-start justify-between border-b border-[#E5E0D8] px-4 py-3">
           <div>
@@ -1140,7 +1131,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
               detalleServicio.cantidad)}
           </p>)}
 
-          <div className="flex justify-end gap-2">
+          <div data-vs-actions="compact" className="flex justify-end gap-2">
             <button type="button" onClick={() => setServicioActivo(null)} className="rounded-lg border border-[#DDD7CD] px-4 py-2 text-[#526276]">
               {ui("Cancelar")}
             </button>
@@ -1182,7 +1173,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
       </section>
     </div>)}
     {productoActivo && (<div className="fixed inset-0 z-50 flex items-center justify-center bg-[#102747]/55 p-4" onClick={() => setProductoActivo(null)}>
-      <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="p-5">
           <div className="flex justify-between gap-3">
             <div>
@@ -1281,7 +1272,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
         setPedidoCancelar(null);
         setMotivoCancelar("");
       }}>
-      <section
+      <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="small"
         role="dialog"
         aria-modal="true"
         aria-labelledby="cancelar-pedido-titulo"
@@ -1308,7 +1299,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
           rows={3}
           placeholder={ui("Escribe el motivo aquí...")}
           className="mt-4 w-full resize-none rounded-lg border border-[#CCD3DB] p-3 outline-none focus:border-[#18345C] focus-visible:ring-2 focus-visible:ring-[#B79B45]/40" />
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <div data-vs-actions="compact" className="mt-5 flex flex-wrap justify-end gap-2">
           <button
             type="button"
             onClick={() => {
@@ -1334,7 +1325,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
     </div>}
   </div>);
 }
-function FilaCatalogo({ nombre, descripcion, precio, foto, etiqueta, disponible, motivoNoDisponible, cantidad, onCambiar, onAbrir, textoPrecio, textoAccion, cuadrado = false, }: {
+export function FilaCatalogo({ nombre, descripcion, precio, foto, etiqueta, disponible, motivoNoDisponible, cantidad, onCambiar, onAbrir, textoPrecio, textoAccion, cuadrado = false, }: {
   nombre: string;
   descripcion: string;
   precio: number;
@@ -1384,7 +1375,7 @@ function FilaCatalogo({ nombre, descripcion, precio, foto, etiqueta, disponible,
           {textoAccion ? textoAccion : <UiText text={onAbrir ? " Personalizar" : " Agregar"} />}
         </button>) : (<div className="flex items-center gap-2">
           <button
-            onClick={() => onCambiar(-1)}
+            disabled={!disponible} onClick={() => onCambiar(-1)}
             aria-label={ui("Quitar una unidad")}
             className="w-11 h-11 flex items-center justify-center rounded-md border border-[#E5E0D8] text-[#18345C] text-[18px] font-bold hover:bg-[#F8F6F0]">
             <UiText text="                 −               " />
@@ -1393,7 +1384,7 @@ function FilaCatalogo({ nombre, descripcion, precio, foto, etiqueta, disponible,
             {cantidad}
           </span>
           <button
-            onClick={() => onCambiar(1)}
+            disabled={!disponible} onClick={() => onCambiar(1)}
             aria-label={ui("Agregar una unidad")}
             className="w-11 h-11 flex items-center justify-center rounded-md border border-[#E5E0D8] text-[#18345C] text-[18px] font-bold hover:bg-[#F8F6F0]">
             <UiText text="                 +               " />
@@ -1412,7 +1403,7 @@ function SeguimientoPedido({ pedido, onCancelar, }: {
   const indice = PASOS_PEDIDO.indexOf(pedido.estado);
   const cancelado = pedido.estado === "cancelado";
   const transcurrido = minutosEntre(pedido.creadoEn, pedido.entregadoEn);
-  return (<div className="bg-white border border-[#E5E0D8] rounded-xl px-4 sm:px-5 py-4">
+  return (<div data-vs-card="huesped" className="bg-white border border-[#E5E0D8] rounded-xl px-4 sm:px-5 py-4">
     <div className="flex items-start gap-3 flex-wrap">
       <div className="w-10 h-10 rounded-lg bg-[#F8F6F0] flex items-center justify-center shrink-0 text-[#18345C]">
         <CartIcon size={18} />
@@ -1552,7 +1543,7 @@ export function ChatRecepcion({ mensajes, escribiendo, onEnviar, preguntas = [],
       URL.revokeObjectURL(adjunto.url);
     setAdjunto(null);
   }
-  return (<div className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden flex flex-col">
+  return (<div data-vs-card="huesped" className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden flex flex-col">
     <div className="px-4 sm:px-5 py-3.5 border-b border-[#E5E0D8] flex items-center gap-3">
       <div className="w-9 h-9 rounded-full bg-[#18345C] flex items-center justify-center text-white shrink-0">
         <ChatIcon size={16} />
@@ -1574,7 +1565,7 @@ export function ChatRecepcion({ mensajes, escribiendo, onEnviar, preguntas = [],
     </div>
 
     <div className="px-4 sm:px-5 py-4 space-y-3 h-[430px] overflow-y-auto bg-[#F8F6F0]">
-      <div className="max-w-2xl rounded-xl border border-[#E5E0D8] bg-white p-4">
+      <div data-vs-card="huesped" className="max-w-2xl rounded-xl border border-[#E5E0D8] bg-white p-4">
         <p className="font-semibold text-[#18345C]">
           <UiText text="¿En qué podemos ayudarte?" />
         </p>
@@ -1608,7 +1599,7 @@ export function ChatRecepcion({ mensajes, escribiendo, onEnviar, preguntas = [],
       })}
 
       {escribiendo && (<div className="flex justify-start">
-        <div className="bg-white border border-[#E5E0D8] rounded-2xl rounded-bl-sm px-3.5 py-2.5">
+        <div data-vs-card="huesped" className="bg-white border border-[#E5E0D8] rounded-2xl rounded-bl-sm px-3.5 py-2.5">
           <p className="text-[13px] text-[#AEBCC1]">
             <UiText text="Recepción está escribiendo…" />
           </p>
@@ -1631,7 +1622,7 @@ export function ChatRecepcion({ mensajes, escribiendo, onEnviar, preguntas = [],
           <UiText text="Quitar" />
         </button>
       </div>)}
-      <div className="flex gap-2">
+      <div data-vs-actions="compact" className="flex gap-2">
         <input
           ref={archivoRef}
           type="file"

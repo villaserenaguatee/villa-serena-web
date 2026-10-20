@@ -5,13 +5,17 @@ import { Chip, HAB_META, RESERVA_META, } from '@/features/recepcion/pages/recUti
 import { BedIcon } from '@/features/admin/pages/adminUtils';
 import { publicRoomForHotelType } from '@/data/publicRooms';
 interface Props {
+  conectado?: boolean;
+  condiciones?:Record<string,string>;
+  estadosCatalogo?:Record<string,string>;
+  fotos?: Record<string,string>;
   habitaciones: HabitacionHotel[];
   reservas: Reserva[];
   huespedes: Huesped[];
   onCambiarEstadoHab?: (id: string, estado: EstadoHabHotel) => void;
 }
 const ESTADOS: EstadoHabHotel[] = ['disponible', 'reservada', 'ocupada', 'en-limpieza', 'mantenimiento'];
-export default function PanelHabitaciones({ habitaciones, reservas, huespedes, onCambiarEstadoHab, }: Props) {
+export default function PanelHabitaciones({ habitaciones, reservas, huespedes, onCambiarEstadoHab, conectado=false, fotos, condiciones, estadosCatalogo, }: Props) {
   const [ahora, setAhora] = useState<Date | null>(null);
   const [piso, setPiso] = useState<'todos' | 1 | 2 | 3>('todos');
   const [filtro, setFiltro] = useState<EstadoHabHotel | 'todas'>('todas');
@@ -34,7 +38,7 @@ export default function PanelHabitaciones({ habitaciones, reservas, huespedes, o
     const proxima = reservas.find(r => r.habitacionId === h.id && (r.estado === 'confirmada' || r.estado === 'pendiente'));
     const huesped = enCurso ? huespedDe.get(enCurso.huespedId) : proxima ? huespedDe.get(proxima.huespedId) : null;
     const meta = HAB_META[h.estado];
-    const visual = publicRoomForHotelType(h.tipo);
+    const visual = conectado ? (fotos?.[h.id]?{image:fotos[h.id]}:null) : publicRoomForHotelType(h.tipo);
     return <button
       type="button"
       key={h.id}
@@ -55,9 +59,10 @@ export default function PanelHabitaciones({ habitaciones, reservas, huespedes, o
             </div>
           </div>
           <Chip cls={meta.chip}>
-            {meta.label}
+            {conectado&&h.estado==='disponible'?'Libre':meta.label}
           </Chip>
         </div>
+        {conectado&&condiciones?.[h.id]&&<p className="mt-3 border-t border-[#F0EBE3] pt-2 text-sm text-[#71839B]">{({LIMPIA:'Limpia',SUCIA:'Pendiente de limpieza',EN_LIMPIEZA:'En limpieza',FUERA_DE_SERVICIO:'Fuera de servicio'} as Record<string,string>)[condiciones[h.id]]??condiciones[h.id]}{estadosCatalogo?.[h.id]==='INACTIVO'?' · Inactiva':''}</p>}
         {(enCurso || proxima) && <p className="text-[12px] text-[#6B7280] mt-3 border-t border-[#F0EBE3] pt-2">
           {enCurso ? 'Ocupa: ' : 'Próxima: '}
           <span className="font-medium">
@@ -75,17 +80,17 @@ export default function PanelHabitaciones({ habitaciones, reservas, huespedes, o
         <div>
           <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Mapa de habitaciones</h1>
           <p className="text-[14px] text-[#AEBCC1] mt-1">
-            Estado en tiempo real · actualizado {ahora ? ahora.toLocaleTimeString() : '—'}
+            {conectado?'Datos del hotel':'Datos de este navegador'} · actualizado {ahora ? ahora.toLocaleTimeString() : '—'}
           </p>
         </div>
         <span className="flex items-center gap-2 text-[13px] text-[#166534] bg-[#F0FAF4] border border-[#86EFAC] rounded-md px-3 py-1.5">
           <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
-          En vivo
+          {conectado?'Hotel':'Local'}
         </span>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
-        {ESTADOS.map(e => (<Kpi key={e} valor={conteo(e)} label={HAB_META[e].label} color={HAB_META[e].dot} />))}
+        {ESTADOS.map(e => (<Kpi key={e} valor={conectado&&e==='reservada'?'—':conteo(e)} label={conectado&&e==='disponible'?'Libres':HAB_META[e].label} color={HAB_META[e].dot} />))}
         <Kpi valor={`${ocupacionPct}%`} label="Ocupación" color="#18345C" />
       </div>
     </div>
@@ -96,8 +101,8 @@ export default function PanelHabitaciones({ habitaciones, reservas, huespedes, o
       </BotonFiltro>))}
       <span className="w-px bg-[#E5E0D8] mx-1" />
       <BotonFiltro activo={filtro === 'todas'} onClick={() => setFiltro('todas')}>Todos</BotonFiltro>
-      {ESTADOS.map(e => (<BotonFiltro key={e} activo={filtro === e} onClick={() => setFiltro(e)}>
-        {HAB_META[e].label}
+      {ESTADOS.filter(e=>!conectado||e!=='reservada').map(e => (<BotonFiltro key={e} activo={filtro === e} onClick={() => setFiltro(e)}>
+        {conectado&&e==='disponible'?'Libres':HAB_META[e].label}
       </BotonFiltro>))}
     </div>
 
@@ -124,7 +129,7 @@ export default function PanelHabitaciones({ habitaciones, reservas, huespedes, o
         if (e.target === e.currentTarget)
           setSeleccionada(null);
       }}>
-      <section className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:max-w-xl sm:rounded-2xl sm:p-5">
+      <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:max-w-xl sm:rounded-2xl sm:p-5">
         <button type="button" onClick={() => setSeleccionada(null)} className="absolute right-5 top-4 text-2xl text-[#71839B]">×</button>
         <div className="mb-4 pr-8">
           <p className="text-[11px] uppercase tracking-widest text-[#B38719]">Mapa de habitaciones</p>
@@ -133,7 +138,7 @@ export default function PanelHabitaciones({ habitaciones, reservas, huespedes, o
         </div>
         <div className="space-y-5">
           {(() => {
-            const visual = publicRoomForHotelType(seleccionada.tipo);
+            const visual = conectado ? (fotos?.[seleccionada.id]?{image:fotos[seleccionada.id]}:null) : publicRoomForHotelType(seleccionada.tipo);
             return visual ? <img src={visual.image} alt={`Habitación ${seleccionada.numero}`} className="h-44 w-full rounded-xl object-cover" /> : null;
           })()}
           <div className="grid grid-cols-2 gap-3">
@@ -142,7 +147,7 @@ export default function PanelHabitaciones({ habitaciones, reservas, huespedes, o
             <Kpi valor={String(seleccionada.capacidad)} label="Capacidad" color="#18345C" />
             <Kpi valor={`Q ${seleccionada.precioNoche.toLocaleString()}`} label="Precio por noche" color="#18345C" />
           </div>
-          <div>
+          {onCambiarEstadoHab&&<div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#AEBCC1]">Cambiar estado de habitación</p>
             <p className="mb-3 text-sm text-[#71839B]">Administración puede actualizar el estado operativo desde este mapa.</p>
             <div className="flex flex-wrap gap-2">
@@ -157,7 +162,7 @@ export default function PanelHabitaciones({ habitaciones, reservas, huespedes, o
                 {HAB_META[e].label}
               </button>))}
             </div>
-          </div>
+          </div>}
         </div>
       </section>
     </div>)}

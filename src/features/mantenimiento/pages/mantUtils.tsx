@@ -1,3 +1,4 @@
+import FormOperationFeedback from '@/components/common/FormOperationFeedback';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { EstadoOT, TipoAveria, CategoriaActivo, EstadoActivo, FrecuenciaPreventivo, OrigenOT, OrdenTrabajo, } from '@/lib/pms/types';
@@ -114,7 +115,7 @@ export function Modal({ titulo, subtitulo, onCerrar, children, ancho = 'sm:max-w
   return (<div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-label={titulo}>
     <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
 
-    <div className={`relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full ${ancho} max-h-[92vh] overflow-y-auto`}>
+    <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="auto" className={`relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full ${ancho} max-h-[92vh] overflow-hidden flex flex-col`}>
       <div className="sticky top-0 bg-white border-b border-[#E5E0D8] px-4 sm:px-6 py-4 flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <h2 className="text-[20px] font-semibold text-[#18345C] leading-tight">
@@ -135,8 +136,8 @@ export function Modal({ titulo, subtitulo, onCerrar, children, ancho = 'sm:max-w
         </button>
       </div>
 
-      <div className="px-4 sm:px-6 py-5">
-        {children}
+      <div className="vs-dialog-body flex-1">
+        <FormOperationFeedback/>{children}
       </div>
     </div>
   </div>);
@@ -146,7 +147,7 @@ export function Kpi({ valor, label, color = '#18345C' }: {
   label: string;
   color?: string;
 }) {
-  return (<div className="bg-[#F8F6F0] border border-[#E5E0D8] rounded-lg px-3 py-2.5">
+  return (<div data-vs-metric="mantenimiento" className="bg-[#F8F6F0] border border-[#E5E0D8] rounded-lg px-3 py-2.5">
     <p className="text-[20px] font-bold leading-none" style={{ color }}>
       {valor}
     </p>
@@ -160,7 +161,7 @@ export function BotonFiltro({ activo, onClick, children, }: {
   onClick: () => void;
   children: ReactNode;
 }) {
-  return (<button
+  return (<button aria-pressed={activo} data-vs-filter="mantenimiento"
     onClick={onClick}
     className={`text-[13px] font-medium px-3 py-2 rounded-md border transition-colors ${activo
       ? 'bg-[#18345C] text-white border-[#18345C]'
@@ -171,7 +172,7 @@ export function BotonFiltro({ activo, onClick, children, }: {
 export function Vacio({ msg }: {
   msg: string;
 }) {
-  return (<div className="bg-white border border-[#E5E0D8] rounded-xl p-5 text-center">
+  return (<div data-vs-card="mantenimiento" className="bg-white border border-[#E5E0D8] rounded-xl p-5 text-center">
     <p className="text-[15px] text-[#AEBCC1]">
       {msg}
     </p>
@@ -182,10 +183,10 @@ export function Cabecera({ titulo, subtitulo, children, }: {
   subtitulo: string;
   children?: ReactNode;
 }) {
-  return (<div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
-    <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+  return (<div data-vs-page-header="mantenimiento" className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
+    <div className="flex items-start justify-between gap-3 flex-wrap">
       <div>
-        <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">
+        <h1 data-vs-page-title="mantenimiento" className="text-[32px] font-semibold text-[#18345C] leading-tight">
           {titulo}
         </h1>
         <p className="text-[14px] text-[#AEBCC1] mt-1">

@@ -1,0 +1,5 @@
+"use client";
+import Link from 'next/link';
+import VillaSerenaLogo from '@/components/common/VillaSerenaLogo';
+import {usePublicLanguage} from '@/components/common/PublicLanguageToggle';
+export default function PendingDraft(){const {en}=usePublicLanguage();return <main className="login-overlay-page"><section data-vs-ui="compact" className="floating-login-card"><VillaSerenaLogo compact/><h1>{en?'Request pending review':'Solicitud pendiente de comprobar'}</h1><p>{en?'Your draft details were discarded. A previous request may have reached the server. Contact Reception before submitting it again to avoid a duplicate booking.':'Los datos del borrador se descartaron. Una solicitud anterior podría haber llegado al servidor. Contacta a Recepción antes de enviarla otra vez para evitar una reserva duplicada.'}</p><p>{en?'No booking or payment has been cancelled or deleted.':'No se canceló ni eliminó ninguna reserva o pago.'}</p><Link href="/#contacto">{en?'Contact Reception':'Contactar a Recepción'}</Link></section></main>}

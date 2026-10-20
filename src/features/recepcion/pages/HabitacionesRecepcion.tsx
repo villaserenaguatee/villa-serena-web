@@ -1,238 +1,120 @@
-import { useState } from 'react';
-import { publicRoomForHotelType, money } from '@/data/publicRooms';
-import type { HabitacionHotel, Reserva, Huesped, EstadoHabHotel } from '@/lib/pms/types';
+import ReceptionCloseButton from './ReceptionCloseButton';
+import { statusBadge } from './statusStyle';
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { findRoomReservations } from '@/features/recepcion/roomReservations';
 import { formatoFecha } from '@/data/pms';
-import { Chip, HAB_META, HAB_TRANSICIONES, validarCambioEstadoHab, BedIcon, } from '@/features/recepcion/pages/recUtils';
-interface Props {
-  habitaciones: HabitacionHotel[];
-  reservas: Reserva[];
-  huespedes: Huesped[];
-  onCambiarEstado: (habId: string, nuevo: EstadoHabHotel) => void;
-  onVerReserva: (reservaId: string) => void;
-}
-const ESTADOS: EstadoHabHotel[] = ['disponible', 'reservada', 'ocupada', 'en-limpieza', 'mantenimiento'];
-export default function HabitacionesRecepcion({ habitaciones, reservas, huespedes, onCambiarEstado, onVerReserva }: Props) {
-  const [filtro, setFiltro] = useState<EstadoHabHotel | 'todas'>('todas');
-  const [aviso, setAviso] = useState<string>('');
-  const [seleccionada, setSeleccionada] = useState<HabitacionHotel | null>(null);
-  const [busqueda, setBusqueda] = useState('');
-  const [piso, setPiso] = useState<'todos' | 1 | 2 | 3>('todos');
-  const conteo = (e: EstadoHabHotel) => habitaciones.filter(h => h.estado === e).length;
-  const visibles = habitaciones
-    .filter(h => filtro === 'todas' || h.estado === filtro)
-    .filter(h => piso === 'todos' || h.piso === piso)
-    .filter(h => !busqueda || h.numero.includes(busqueda))
-    .sort((a, b) => a.numero.localeCompare(b.numero));
-  function intentarCambio(hab: HabitacionHotel,
-    nuevo: EstadoHabHotel) {
-    const error = validarCambioEstadoHab(hab, nuevo, reservas);
-    if (error) {
-      setAviso(`Habitación ${hab.numero}: ${error}`);
-      return;
-    }
-    setAviso('');
-    onCambiarEstado(hab.id, nuevo);
+import type { HabitacionHotel, Reserva, Huesped, EstadoHabHotel, TipoHabitacion } from '@/lib/pms/types';
+import { publicRoomForHotelType } from '@/data/publicRooms';
+import { getRooms, markRoomDirty } from '@/lib/api/reception';
+import { canMarkDirty, conditionLabels, reservationLabels } from '@/lib/receptionPresentation';
+import type { RoomState, ReservationSummary } from '@/lib/bff/contracts/reception';
+import { useTiempoReal } from '@/lib/tiempo-real/useTiempoReal';
+import ReportarIncidencia from '@/components/common/ReportarIncidencia';
+interface Props { habitaciones: HabitacionHotel[]; reservas: Reserva[]; huespedes: Huesped[]; onCambiarEstado: (id: string, nuevo: EstadoHabHotel) => void; onVerReserva: (id: string) => void; onVerReservaBff?: (codigo: string) => void; conectado?: boolean }
+const control = 'min-w-0 rounded-md border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#18345C]';
+export default function HabitacionesRecepcion(_props: Props) {
+  const conectado = _props.conectado ?? false;
+
+  const [reportar, setReportar] = useState<RoomState>();
+  const [selected, setSelected] = useState<number | null>(null);
+  const [reservations, setReservations] = useState<ReservationSummary[]>([]);
+  const [reservationError, setReservationError] = useState(''), [reservationLoading, setReservationLoading] = useState(false);
+  const [rooms, setRooms] = useState<RoomState[]>([]), [types, setTypes] = useState<RoomState['tipoHabitacion'][]>([]);
+  const cardsRef = useRef<HTMLDivElement>(null);
+  const [cardHeight, setCardHeight] = useState<number>();
+  useEffect(() => {
+    const container = cardsRef.current;
+    if (!container) return;
+    const contents = Array.from(container.querySelectorAll<HTMLElement>('[data-room-content]'));
+    const measure = () => {
+      const heights = contents.map(content => {
+        const image = content.parentElement?.querySelector('img');
+        return content.getBoundingClientRect().height + (image?.getBoundingClientRect().height ?? 0) + 2;
+      });
+      if (heights.length) setCardHeight(Math.ceil(Math.max(...heights)));
+    };
+    const observer = new ResizeObserver(measure);
+    contents.forEach(content => observer.observe(content));
+    measure();
+    return () => observer.disconnect();
+  }, [rooms, conectado]);
+  const [occupancy, setOccupancy] = useState(''), [condition, setCondition] = useState(''), [type, setType] = useState(''), [floor, setFloor] = useState('');
+  const [error, setError] = useState(''), [notice, setNotice] = useState(''), [loading, setLoading] = useState(false), [busy, setBusy] = useState<number | null>(null), [reload, setReload] = useState(0);
+  useTiempoReal('/topic/habitaciones', () => setReload(n => n + 1), () => setReload(n => n + 1), conectado, setError);
+  useEffect(() => {
+    const controller = new AbortController(); setLoading(true); setError(''); setRooms([]);
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries({ ocupacion: occupancy, condicion: condition, tipoHabitacionId: type, piso: floor })) if (value) query.set(key, value);
+    getRooms(query, controller.signal).then(value => { if (!controller.signal.aborted) { setRooms(value); setTypes(previous => Array.from(new Map([...previous, ...value.map(r => r.tipoHabitacion)].map(t => [t.id, t])).values()).sort((a, b) => a.id - b.id)); } }).catch(e => { if (!controller.signal.aborted) setError(e.message); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [occupancy, condition, type, floor, reload]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setReservations([]); setReservationError(''); setReservationLoading(false);
+    if (selected === null) return;
+    setReservationLoading(true);
+    findRoomReservations(selected, controller.signal).then(value => { if (!controller.signal.aborted) setReservations(value); })
+      .catch(e => { if (!controller.signal.aborted) setReservationError(e instanceof Error ? e.message : 'No se pudieron consultar las reservas de la habitación.'); })
+      .finally(() => { if (!controller.signal.aborted) setReservationLoading(false); });
+    return () => controller.abort();
+  }, [selected, reload, conectado]);
+  useEffect(() => {
+    if (selected === null) return;
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setSelected(null); };
+    window.addEventListener('keydown', escape);
+    return () => window.removeEventListener('keydown', escape);
+  }, [selected]);
+  const selectedRoom = rooms.find(room => room.id === selected);
+  function openRoom(id: number) {
+    setReservations([]); setReservationError(''); setReservationLoading(true); setSelected(id);
   }
-  return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-    <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
-      <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Estado de habitaciones</h1>
-      <p className="text-[15px] text-[#AEBCC1] mt-1">{habitaciones.length} habitaciones</p>
-
-      <div className="flex flex-col sm:flex-row gap-3 mt-4">
-        <div className="flex-1">
-          <input
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-            placeholder="Buscar habitación..."
-            className="w-full border border-[#E5E0D8] rounded-lg px-4 py-2.5 text-sm" />
+  async function dirty(room: RoomState) {
+    if (busy !== null) return; setBusy(room.id); setError(''); setNotice('');
+    try { await markRoomDirty(room.id); setNotice(`Habitación ${room.numero} marcada sucia.`); setReload(n => n + 1); }
+    catch (e) { setError(e instanceof Error ? e.message : 'No se pudo actualizar la habitación.'); }
+    finally { setBusy(null); }
+  }
+  return <div className="flex-1 overflow-y-auto bg-[#F8F6F0] text-[#18345C]">
+    <header data-vs-page-header="recepcion" className="border-b border-[#E5E0D8] bg-white px-4 py-4 sm:px-6"><div className="flex flex-wrap items-start justify-between gap-3"><div><h1 data-vs-page-title="recepcion" className="text-[32px] font-semibold">Estado de habitaciones</h1></div><button className={control} disabled={loading || busy !== null} onClick={() => setReload(n => n + 1)}>Actualizar</button></div>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="text-sm">Ocupación<select aria-label="Ocupación" className={`${control} w-full`} value={occupancy} onChange={e => setOccupancy(e.target.value)}><option value="">Todas</option><option value="LIBRE">Libre</option><option value="OCUPADA">Ocupada</option></select></label>
+        <label className="text-sm">Condición<select aria-label="Condición" className={`${control} w-full`} value={condition} onChange={e => setCondition(e.target.value)}><option value="">Todas</option>{Object.entries(conditionLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+        <label className="text-sm">Tipo<select aria-label="Tipo" className={`${control} w-full`} value={type} onChange={e => setType(e.target.value)}><option value="">Todos</option>{types.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}</select></label>
+        <label className="text-sm">Piso<select aria-label="Piso" className={`${control} w-full`} value={floor} onChange={e => setFloor(e.target.value)}><option value="">Todos</option>{[1, 2, 3].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
+      </div>
+    </header>
+    <div ref={cardsRef} className="space-y-3 p-4 sm:p-6">{error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-800">{error}</p>}{notice && <p role="status" className="rounded-lg bg-green-50 p-3">{notice}</p>}{loading ? <p>Consultando habitaciones…</p> : !error && !rooms.length && <p className="rounded-xl bg-white p-6 text-center">No hay habitaciones que coincidan con los filtros.</p>}
+      {Array.from(new Set(rooms.map(room => room.piso))).sort((a, b) => a - b).map(piso => {
+        const floorRooms = rooms.filter(room => room.piso === piso).sort((a, b) => a.numero.localeCompare(b.numero, 'es', { numeric: true }));
+        return <section key={piso} data-floor={piso} className="space-y-3 pb-3"><header className="flex items-center gap-3"><h2 className="text-sm font-semibold uppercase tracking-widest text-[#52677F]">Piso {piso}</h2><div className="h-px flex-1 bg-[#E5E0D8]" /><span className="text-xs text-[#52677F]">{floorRooms.length} habitaciones</span></header>
+      <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{floorRooms.map(room => <article data-vs-card="recepcion" key={room.id} data-room={room.numero} onClick={() => openRoom(room.id)} style={{ height: cardHeight }} className="flex cursor-pointer flex-col overflow-hidden rounded-xl border border-[#E5E0D8] bg-white">
+        <img className="h-24 w-full shrink-0 object-cover" src={publicRoomForHotelType(room.tipoHabitacion.nombre as TipoHabitacion).image} alt={room.tipoHabitacion.nombre} />
+        <div data-room-content className="flex shrink-0 flex-col gap-1 p-3"><h3 className="text-xl font-semibold"><button className="text-left" aria-label={`Abrir detalle de habitación ${room.numero}`} onClick={event => { event.stopPropagation(); openRoom(room.id); }}>Hab. {room.numero}</button></h3><p className="text-sm">{room.tipoHabitacion.nombre}</p><p className="flex flex-wrap items-start gap-1"><span className={statusBadge(room.ocupacion)}>{room.ocupacion === 'LIBRE' ? 'Libre' : 'Ocupada'}</span> <span className={statusBadge(room.condicion)}>{conditionLabels[room.condicion]}</span></p>
+          {room.llegaHoy && <p className="text-sm">Llega hoy</p>}{room.saleHoy && <p className="text-sm">Sale hoy</p>}{room.incidenciaPendiente && <p className="text-sm text-red-800">Incidencia pendiente</p>}
+          {(canMarkDirty(room) || conectado) && <div className="mt-2 flex flex-wrap gap-2">{canMarkDirty(room) && <button className="rounded-md border border-[#E5E0D8] bg-white px-2 py-1.5 text-xs text-[#18345C]" disabled={busy !== null} onClick={event => { event.stopPropagation(); void dirty(room); }}>Marcar sucia</button>}
+          {conectado && <button className="rounded-md border border-[#E5E0D8] bg-white px-2 py-1.5 text-xs text-[#18345C]" onClick={event => { event.stopPropagation(); setReportar(room); }}>Reportar daño</button>}</div>}
         </div>
-      </div>
-      <div className="flex gap-2 flex-wrap mt-3">
-        <BotonFiltro activo={piso === 'todos'} onClick={() => setPiso('todos')}>Todos los pisos</BotonFiltro>
-        {([1, 2, 3] as const).map(n => <BotonFiltro key={n} activo={piso === n} onClick={() => setPiso(n)}>Piso {n}</BotonFiltro>)}
-      </div>
-      <div className="flex gap-2 flex-wrap mt-3">
-        <BotonFiltro activo={filtro === 'todas'} onClick={() => setFiltro('todas')}>
-          Todas ({habitaciones.length})
-        </BotonFiltro>
-        {ESTADOS.map(e => (<BotonFiltro key={e} activo={filtro === e} onClick={() => setFiltro(e)}>
-          {HAB_META[e].label} ({conteo(e)})
-        </BotonFiltro>))}
-      </div>
+      </article>)}</div></section>;
+      })}
     </div>
-
-    {aviso && (<div className="mx-4 sm:mx-6 mt-4 bg-[#FEF2F2] border border-[#FCA5A5] text-[#991B1B] text-[13px] rounded-lg px-4 py-2.5">
-      {aviso}
-    </div>)}
-
-    <div className="px-4 sm:px-6 py-5">
-      <div className="space-y-8">
-        {([1, 2, 3] as const).map(n => {
-          const grupo = visibles.filter(h => h.piso === n);
-          if (!grupo.length)
-            return null;
-          return <section key={n}>
-            <div className="flex items-center gap-3 mb-3">
-              <p className="text-[12px] tracking-[.18em] text-[#AEBCC1] font-semibold">PISO {n}</p>
-              <div className="h-px bg-[#E5E0D8] flex-1" />
-              <span className="text-xs text-[#AEBCC1]">{grupo.length} habitaciones</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {grupo.map(h => {
-                const enCurso = reservas.find(r => r.habitacionId === h.id && r.estado === 'en-curso');
-                const reservada = reservas.find(r => r.habitacionId === h.id && ['confirmada', 'pendiente'].includes(r.estado));
-                const reserva = enCurso || reservada;
-                const huesped = reserva ? huespedes.find(x => x.id === reserva.huespedId) : null;
-                const meta = HAB_META[h.estado];
-                const visual = publicRoomForHotelType(h.tipo);
-                return (<button
-                  key={h.id}
-                  onClick={() => setSeleccionada(h)}
-                  className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden text-left hover:shadow-md transition-shadow">
-                  <div className="relative h-36">
-                    <img src={visual.image} alt={`Habitación ${h.numero}`} className="w-full h-full object-cover" />
-                    <span className={`absolute top-3 right-3 text-[10px] font-bold px-2 py-1 rounded-md ${meta.chip}`}>
-                      {meta.label}
-                    </span>
-                  </div>
-                  <div className="p-4">
-                    <div className="flex justify-between gap-2">
-                      <div>
-                        <p className="text-[22px] font-bold text-[#18345C] leading-none">
-                          {h.numero}
-                        </p>
-                        <p className="text-[12px] text-[#AEBCC1] mt-1">{visual.name} · Piso {h.piso}</p>
-                      </div>
-                      <span className="text-[#B38719] text-xs font-semibold">{money(visual.price)} / noche</span>
-                    </div>
-                    {reserva ? <div className="mt-3 pt-3 border-t text-[12px] text-[#6B7280]">
-                      <p className="font-semibold text-[#18345C]">
-                        {huesped?.nombre ?? 'Huésped'}
-                      </p>
-                      <p>{reserva.personas} huésped(es) · {formatoFecha(reserva.fechaEntrada)} → {formatoFecha(reserva.fechaSalida)}</p>
-                    </div> : <p className="mt-3 pt-3 border-t text-[12px] text-[#6B7280]">Hasta {visual.capacity} huéspedes · {visual.beds}</p>}
-                  </div>
-                </button>);
-              })}
-            </div>
-          </section>;
-        })}
-      </div>
-    </div>
-    {seleccionada && (() => {
-      const h = seleccionada;
-      const visual = publicRoomForHotelType(h.tipo);
-      const r = reservas.find(x => x.habitacionId === h.id && ['en-curso', 'confirmada', 'pendiente'].includes(x.estado));
-      const hu = r ? huespedes.find(x => x.id === r.huespedId) : null;
-      return <div
-        className="fixed inset-0 z-40 flex justify-end bg-black/20"
-        onMouseDown={e => {
-          if (e.target === e.currentTarget)
-            setSeleccionada(null);
-        }}>
-        <aside className="h-full w-full overflow-y-auto bg-white shadow-2xl sm:w-[460px]">
-          <div className="flex justify-between p-5">
-            <div>
-              <p className="text-xs tracking-widest text-[#B38719]">HABITACIÓN</p>
-              <h2 className="text-2xl font-bold text-[#102747]">Habitación {h.numero}</h2>
-            </div>
-            <button onClick={() => setSeleccionada(null)} className="text-2xl">×</button>
-          </div>
-          <img src={visual.image} alt={`Habitación ${h.numero}`} className="h-60 w-full object-cover" />
-          <div className="p-5">
-            <div className="flex items-start justify-between gap-4">
-              <h3 className="text-xl font-semibold text-[#102747]">
-                {visual.name}
-              </h3>
-              <Chip cls={HAB_META[h.estado].chip}>
-                {HAB_META[h.estado].label}
-              </Chip>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-[#F8F6F0] p-4 text-sm">
-              <DatoHabitacion etiqueta="Piso" valor={String(h.piso)} />
-              <DatoHabitacion etiqueta="Camas" valor={visual.beds} />
-              <DatoHabitacion etiqueta="Capacidad" valor={`Hasta ${visual.capacity} huéspedes`} />
-              <DatoHabitacion etiqueta="Tamaño" valor={`${visual.size} m²`} />
-            </div>
-            <p className="mt-4 text-lg font-bold text-[#102747]">
-              {money(visual.price)}
-              <span className="text-xs font-normal text-[#71839B]">por noche</span>
-            </p>
-            {h.estado === 'disponible' && <EstadoHabitacion titulo="Habitación disponible" texto="Lista para asignarse a una nueva reserva." tono="verde" />}
-            {h.estado === 'en-limpieza' && <EstadoHabitacion titulo="Limpieza en curso" texto="Pendiente de que el personal de limpieza finalice y libere la habitación." tono="naranja" />}
-            {h.estado === 'mantenimiento' && <EstadoHabitacion
-              titulo="En mantenimiento"
-              texto="Habitación bloqueada por Mantenimiento. No puede asignarse hasta que el área la libere."
-              tono="gris" />}
-            {r && <div className="mt-6 border-t pt-5">
-              <h4 className="font-semibold text-[#102747]">
-                {h.estado === 'ocupada' ? 'Huésped actual' : 'Próximo huésped'}
-              </h4>
-              <div className="mt-3 rounded-xl border border-[#E5E0D8] p-4">
-                <p className="font-semibold text-[#18345C]">
-                  {hu?.nombre ?? 'Huésped'}
-                </p>
-                <p className="mt-1 text-sm text-[#52677F]">
-                  {r.codigo}
-                </p>
-                <p className="text-sm text-[#52677F]">{formatoFecha(r.fechaEntrada)} → {formatoFecha(r.fechaSalida)}</p>
-                <p className="text-sm text-[#52677F]">{r.personas} huésped(es)</p>
-              </div>
-              <button onClick={() => {
-                setSeleccionada(null);
-                onVerReserva(r.id);
-              }} className="mt-3 w-full rounded-lg bg-[#102747] py-3 font-semibold text-white">Ver reserva completa</button>
-            </div>}
-            <div className="mt-6 border-t pt-5">
-              <h4 className="mb-3 font-semibold text-[#102747]">Características</h4>
-              <ul className="grid grid-cols-1 gap-2 text-sm text-gray-600 sm:grid-cols-2">
-                {visual.features.slice(0, 6).map(x => <li key={x}>✓ {x}</li>)}
-              </ul>
-            </div>
-          </div>
-        </aside>
-      </div>;
-    })()}
-  </div>);
-}
-function DatoHabitacion({ etiqueta, valor }: {
-  etiqueta: string;
-  valor: string;
-}) {
-  return <div>
-    <p className="text-[10px] uppercase tracking-wider text-[#AEBCC1]">
-      {etiqueta}
-    </p>
-    <p className="mt-1 font-semibold text-[#18345C]">
-      {valor}
-    </p>
+    {selectedRoom && <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/20 p-3" onMouseDown={event => { if (event.target === event.currentTarget) setSelected(null); }}>
+      <aside data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="small" role="dialog" aria-modal="true" aria-label={`Detalle de habitación ${selectedRoom.numero}`} className="reception-compact h-auto max-h-[90dvh] w-full max-w-[400px] overflow-y-auto rounded-2xl bg-white text-[#18345C] shadow-2xl">
+        <header className="flex items-center justify-between gap-3 p-4"><div><p className="text-xs tracking-widest text-[#B38719]">HABITACIÓN</p><h2 className="text-2xl font-bold">Habitación {selectedRoom.numero}</h2></div><ReceptionCloseButton autoFocus onClick={() => setSelected(null)} /></header>
+        <img src={publicRoomForHotelType(selectedRoom.tipoHabitacion.nombre as TipoHabitacion).image} alt={selectedRoom.tipoHabitacion.nombre} className="h-28 w-full object-cover" />
+        <div className="space-y-3 p-4"><h3 className="text-xl font-semibold">{selectedRoom.tipoHabitacion.nombre}</h3><p>Piso {selectedRoom.piso} · <span className={statusBadge(selectedRoom.ocupacion)}>{selectedRoom.ocupacion === 'LIBRE' ? 'Libre' : 'Ocupada'}</span> <span className={statusBadge(selectedRoom.condicion)}>{conditionLabels[selectedRoom.condicion]}</span></p>
+          {selectedRoom.llegaHoy && <p>Llega hoy</p>}{selectedRoom.saleHoy && <p>Sale hoy</p>}
+          {selectedRoom.incidenciaPendiente && <p className="text-red-800">Incidencia pendiente</p>}
+          {selectedRoom.incidenciaBloqueante && <div className="rounded-lg bg-red-50 p-3"><b>Incidencia de mantenimiento</b>{selectedRoom.incidenciaBloqueante.descripcion.replace(/ de prueba\.?/gi, '').replace(/\.$/, '').trim().toLocaleLowerCase('es') !== 'incidencia de mantenimiento' && <p>{selectedRoom.incidenciaBloqueante.descripcion.replace(/ de prueba\.?/gi, '').replace(/\.$/, '')}</p>}<p><span className={statusBadge('REPORTADA')}>{selectedRoom.incidenciaBloqueante.estado === 'REPORTADA' ? 'Reportada' : selectedRoom.incidenciaBloqueante.estado}</span></p><p className="mt-1 font-semibold">Habitación bloqueada</p></div>}
+          <section className="space-y-2 border-t border-[#E5E0D8] pt-3"><h3 className="font-semibold">Reservas asignadas</h3>
+            {reservationLoading ? <p role="status">Consultando reservas…</p> : reservationError ? <p role="alert">{reservationError}</p> : !reservations.length ? <p>No hay reservas activas asignadas a esta habitación.</p> : reservations.map(reservation => <div key={reservation.codigo} className="rounded-xl border border-[#E5E0D8] p-3">
+              <p className="font-semibold">{reservation.huespedPrincipal.nombreCompleto}</p><p>{reservation.codigo} · <span className={statusBadge(reservation.estado)}>{reservationLabels[reservation.estado]}</span></p><p>{formatoFecha(reservation.entrada)} → {formatoFecha(reservation.salida)}</p>
+              <Link href={`/recepcion/reservas/${encodeURIComponent(reservation.codigo)}`} onClick={() => { setSelected(null); if(conectado) _props.onVerReservaBff?.(reservation.codigo); }} className="mt-2 block w-full rounded-lg bg-[#102747] py-2 text-center font-semibold text-white">Ver reserva completa</Link>
+            </div>)}
+          </section>
+        </div>
+      </aside>
+    </div>}
+    {reportar && <ReportarIncidencia rooms={rooms} selected={reportar.id} cerrar={() => setReportar(undefined)} creado={() => setReload(n => n + 1)} />}
   </div>;
-}
-function EstadoHabitacion({ titulo, texto, tono }: {
-  titulo: string;
-  texto: string;
-  tono: 'verde' | 'naranja' | 'gris';
-}) {
-  const cls = tono === 'verde' ? 'border-[#86EFAC] bg-[#F0FAF4] text-[#166534]' : tono === 'naranja' ? 'border-[#FDBA74] bg-[#FFF7ED] text-[#9A3412]' : 'border-[#CBD5E1] bg-[#F1F5F9] text-[#475569]';
-  return <div className={`mt-5 rounded-xl border p-4 ${cls}`}>
-    <p className="font-semibold">
-      {titulo}
-    </p>
-    <p className="mt-1 text-sm">
-      {texto}
-    </p>
-  </div>;
-}
-function BotonFiltro({ activo, onClick, children, }: {
-  activo: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (<button
-    onClick={onClick}
-    className={`text-[13px] font-medium px-3 py-1.5 rounded-md border transition-colors ${activo
-      ? 'bg-[#18345C] text-white border-[#18345C]'
-      : 'bg-white text-[#6B7280] border-[#E5E0D8] hover:bg-[#F8F6F0]'}`}>
-    {children}
-  </button>);
 }

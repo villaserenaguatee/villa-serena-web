@@ -1,0 +1,42 @@
+const { chromium } = require('playwright');
+const { randomUUID, createHash } = require('node:crypto');
+const { readFileSync } = require('node:fs');
+const assert = require('node:assert/strict');
+const base = 'http://localhost:3035';
+(async () => {
+ const browser = await chromium.launch();
+ try { for (const width of [1440, 390]) {
+  const ctx = await browser.newContext({ viewport: { width, height: 900 } });
+  const input = { tipoHabitacionId: 1, entrada: '2027-06-15', salida: '2027-06-17', numeroHuespedes: 2, huesped: { nombreCompleto: 'Ana Morales', correo: 'ana.morales@correo.com', telefono: '55555555', nacionalidad: 'Guatemala', tipoDocumento: 'DPI', numeroDocumento: '1234567890101' } };
+  const response = await ctx.request.post(`${base}/api/publico/reservas`, { headers: { Origin: base, 'Idempotency-Key': randomUUID() }, data: input });
+  assert.equal(response.status(), 201); const created = await response.json();
+  const cookie = (await ctx.cookies()).find(c => c.name === 'vs_booking_context'); assert.ok(cookie.httpOnly);
+  assert.equal((await ctx.request.get(`${base}/api/reserva-contexto?codigo=VS-DEMO01`)).status(), 401);
+  const outsider = await browser.newContext(); assert.equal((await outsider.request.get(`${base}/api/reserva-contexto?codigo=${created.codigo}`)).status(), 401); await outsider.close();
+  const page = await ctx.newPage();
+  await page.goto(`${base}/reserva/detalle?codigo=${created.codigo}`);
+  await page.getByRole('heading', { name: 'Gestiona tu estancia' }).waitFor();
+  assert.equal(await page.getByLabel('Correo de la reserva', { exact: true }).count(), 0);
+  assert.ok((await page.locator('.guest-reservation-payment').innerText()).includes(String(created.total)));
+  await page.reload(); await page.getByRole('heading', { name: 'Gestiona tu estancia' }).waitFor();
+  await page.screenshot({ path: `.data/issue35-evidence/creation-summary-${width}.png`, fullPage: true });
+  await page.getByRole('link', { name: 'Acceder al portal del huésped' }).click();
+  await page.getByLabel('Correo de la reserva', { exact: true }).fill(input.huesped.correo);
+  assert.equal(new URL(page.url()).searchParams.get('codigo'), created.codigo);
+  await page.getByRole('button', { name: 'Solicitar código', exact: true }).click();
+  await page.getByLabel('Código de acceso').waitFor();
+  const file = `.data/guest-outbox/${createHash('sha256').update(input.huesped.correo).digest('hex')}.json`;
+  await page.getByLabel('Código de acceso').fill(JSON.parse(readFileSync(file, 'utf8')).codigo);
+  await page.getByRole('button', { name: 'Verificar código', exact: true }).click();
+  await page.waitForURL(`**/portal?codigo=${created.codigo}`);
+  await page.getByText(created.codigo, { exact: false }).first().waitFor();
+  await page.getByText('Habitación pendiente de asignación.', { exact: false }).waitFor();
+  assert.ok(!(await page.locator('body').innerText()).includes('VS-2026-01042'));
+  await page.goto(`${base}/reserva/detalle?codigo=${created.codigo}`);
+  await page.getByRole('link', { name: 'Acceder al portal del huésped' }).click();
+  await page.waitForURL(`**/portal?codigo=${created.codigo}`);
+  assert.equal(await page.getByLabel('Correo de la reserva', { exact: true }).count(), 0);
+  console.log(`${width}px: contexto HttpOnly, resumen sin OTP, total original, recarga, acceso por código y sesión válida; sin abrir otra estancia. ${created.codigo}`);
+  await ctx.close();
+ } } finally { await browser.close(); }
+})().catch(e => { console.error(e); process.exitCode = 1; });

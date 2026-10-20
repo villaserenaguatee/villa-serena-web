@@ -1,175 +1,63 @@
-import { useMemo, useState } from 'react';
-import type { Reserva, Huesped, HabitacionHotel, EstadoReserva } from '@/lib/pms/types';
+import ReservationTags from './ReservationTags';
+import { useEffect, useState, type FormEvent } from 'react';
+import type { Reserva, Huesped, HabitacionHotel } from '@/lib/pms/types';
 import { formatoFecha } from '@/data/pms';
-import { Chip, RESERVA_META, BedIcon, SearchIcon, PlusIcon, CalendarIcon } from '@/features/recepcion/pages/recUtils';
+import { SearchIcon, PlusIcon, CalendarIcon } from './recUtils';
 import { publicRoomForHotelType } from '@/data/publicRooms';
-interface Props {
-  reservas: Reserva[];
-  huespedes: Huesped[];
-  habitaciones: HabitacionHotel[];
-  onAbrir: (id: string) => void;
-  onNueva: () => void;
-}
-const ESTADOS: (EstadoReserva | 'todos')[] = ['todos', 'pendiente', 'confirmada', 'en-curso', 'finalizada', 'cancelada'];
-export default function Reservas({ reservas, huespedes, habitaciones, onAbrir, onNueva }: Props) {
-  const [q, setQ] = useState('');
-  const [buscarPor, setBuscarPor] = useState<'nombre' | 'codigo' | 'habitacion'>('nombre');
-  const [estado, setEstado] = useState<EstadoReserva | 'todos'>('todos');
-  const [fecha, setFecha] = useState('');
-  const huespedDe = useMemo(() => {
-    const m = new Map<string, Huesped>();
-    huespedes.forEach(h => m.set(h.id, h));
-    return m;
-  }, [huespedes]);
-  const filtradas = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    return reservas
-      .filter(r => {
-        const h = huespedDe.get(r.huespedId);
-        if (estado !== 'todos' && r.estado !== estado)
-          return false;
-        if (fecha && !(r.fechaEntrada <= fecha && fecha <= r.fechaSalida))
-          return false;
-        if (term) {
-          const hab = habitaciones.find(x => x.id === r.habitacionId);
-          const valor = buscarPor === 'codigo' ? r.codigo : buscarPor === 'habitacion' ? (hab?.numero ?? '') : (h?.nombre ?? '');
-          if (!valor.toLowerCase().includes(term))
-            return false;
-        }
-        return true;
-      })
-      .sort((a, b) => a.fechaEntrada.localeCompare(b.fechaEntrada));
-  },
-    [reservas, huespedDe, habitaciones, q, estado, fecha, buscarPor]);
-  return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-    <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
-      <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
-        <div>
-          <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Reservas</h1>
-          <p className="text-[15px] text-[#AEBCC1] mt-1">
-            {filtradas.length}
-            {filtradas.length === 1 ? 'reserva' : 'reservas'}
-          </p>
+import { searchReservations } from '@/lib/api/reception';
+import { channelLabels, reservationLabels } from '@/lib/receptionPresentation';
+import { validReceptionDate } from '@/lib/receptionValidation';
+import type { ReservationPage } from '@/lib/bff/contracts/reception';
+interface Props { reservas: Reserva[]; huespedes: Huesped[]; habitaciones: HabitacionHotel[]; refreshTick?: number; onAbrir: (codigo: string) => void; onNueva: () => void }
+const control = 'h-10 min-w-0 rounded-md border border-[#E5E0D8] bg-white px-3 py-2.5 text-sm text-[#18345C]';
+export default function Reservas({ onAbrir, onNueva, refreshTick }: Props) {
+  const [texto, setTexto] = useState(''), [codigo, setCodigo] = useState(''), [estado, setEstado] = useState(''), [canal, setCanal] = useState('');
+  const [desde, setDesde] = useState(''), [hasta, setHasta] = useState(''), [rapido, setRapido] = useState('');
+  const [query, setQuery] = useState(''), [result, setResult] = useState<ReservationPage | null>(null), [error, setError] = useState(''), [loading, setLoading] = useState(false), [reload, setReload] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController(); setLoading(true); setError(''); setResult(null);
+    searchReservations(new URLSearchParams(query), controller.signal).then(value => { if (!controller.signal.aborted) setResult(value); }).catch(e => { if (!controller.signal.aborted) setError(e.message); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [query, reload, refreshTick]);
+  function search(fast = rapido) {
+    if ((desde && !validReceptionDate(desde)) || (hasta && !validReceptionDate(hasta)) || (desde && hasta && hasta < desde)) { setError('Selecciona un rango de fechas válido.'); return; }
+    if (codigo.trim() && !/^VS-[A-Z0-9]{6}$/.test(codigo.trim().toUpperCase())) { setError('Indica el código completo de reserva (VS- y seis letras o números).'); return; }
+    const next = new URLSearchParams();
+    for (const [key, value] of Object.entries({ texto: texto.trim(), codigo: codigo.trim().toUpperCase(), estado, canal, desde, hasta, rapido: fast })) if (value) next.set(key, value);
+    setQuery(next.toString()); setReload(n => n + 1);
+  }
+  function submit(event: FormEvent) { event.preventDefault(); search(); }
+  function clear() { setTexto(''); setCodigo(''); setEstado(''); setCanal(''); setDesde(''); setHasta(''); setRapido(''); setQuery(''); setReload(n => n + 1); }
+  function paginate(page: number) { const next = new URLSearchParams(query); next.set('page', String(page)); setQuery(next.toString()); }
+  return <div className="flex-1 overflow-y-auto bg-[#F8F6F0] text-[#18345C]">
+    <div data-vs-page-header="recepcion" className="border-b border-[#E5E0D8] bg-white px-4 py-4 sm:px-6">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3"><div><h1 data-vs-page-title="recepcion" className="text-[32px] font-semibold">Reservas</h1></div><button onClick={onNueva} className="flex items-center gap-2 rounded-md bg-[#18345C] px-4 py-2.5 text-white"><PlusIcon />Nueva reserva</button></div>
+      <form data-vs-ui="compact" onSubmit={submit} className="max-w-[1040px] space-y-3">
+        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <label className="text-sm">Buscar por nombre o documento<div className="relative"><span className="absolute left-3 top-3"><SearchIcon size={15} /></span><input className={`${control} w-full pl-9`} value={texto} onChange={e => setTexto(e.target.value)} placeholder="Buscar huésped…" /></div></label>
+        <label className="text-sm">Código de reserva<input className={`${control} w-full`} value={codigo} onChange={e => setCodigo(e.target.value)} placeholder="VS-TEST01" /></label>
+        <label className="text-sm">Estado<select aria-label="Estado" className={`${control} w-full`} value={estado} onChange={e => setEstado(e.target.value)}><option value="">Todos</option>{Object.entries(reservationLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+          <span aria-hidden="true" className="invisible h-10 w-fit justify-self-start px-4">Buscar</span>
         </div>
-        <button
-          onClick={onNueva}
-          className="flex items-center gap-2 px-4 py-2.5 text-[15px] font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
-          <PlusIcon />
-          Nueva reserva
-        </button>
-      </div>
-
-      <div className="flex gap-3 flex-wrap">
-        <select
-          value={buscarPor}
-          onChange={e => setBuscarPor(e.target.value as 'nombre' | 'codigo' | 'habitacion')}
-          className="border border-[#E5E0D8] rounded-md px-3 py-2.5 text-sm bg-white">
-          <option value="nombre">Nombre</option>
-          <option value="codigo">Código</option>
-          <option value="habitacion">Habitación</option>
-        </select>
-        <div className="relative flex-1 min-w-[200px]">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#AEBCC1]">
-            <SearchIcon size={15} />
-          </span>
-          <input
-            type="text"
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            placeholder={`Buscar por ${buscarPor}…`}
-            className="w-full border border-[#E5E0D8] rounded-md pl-9 pr-3 py-2.5 text-sm text-[#1F2933] focus:outline-none focus:border-[#18345C] bg-white placeholder:text-[#AEBCC1]" />
+        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-4">
+<label className="text-sm">Origen de la reserva<select aria-label="Origen de la reserva" className={`${control} w-full`} value={canal} onChange={e => setCanal(e.target.value)}><option value="">Todos</option>{Object.entries(channelLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+<label className="text-sm">Inicio del período de estancia<input type="date" className={`${control} w-full`} value={desde} onChange={e => setDesde(e.target.value)} /></label>
+<label className="text-sm">Fin del período de estancia<input type="date" className={`${control} w-full`} value={hasta} onChange={e => setHasta(e.target.value)} /></label>
+          <label className="text-sm">Mostrar<select aria-label="Mostrar reservas" className={`${control} w-full`} value={rapido} onChange={e => { setRapido(e.target.value); search(e.target.value); }}><option value="">Todas las reservas</option><option value="LLEGAN_HOY">Llegadas de hoy</option><option value="SALEN_HOY">Salidas de hoy</option></select></label>
         </div>
-        <select
-          value={estado}
-          onChange={e => setEstado(e.target.value as EstadoReserva | 'todos')}
-          className="border border-[#E5E0D8] rounded-md px-3 py-2.5 text-sm text-[#1F2933] focus:outline-none focus:border-[#18345C] bg-white capitalize">
-          {ESTADOS.map(s => (<option key={s} value={s}>
-            {s === 'todos' ? 'Todos los estados' : s}
-          </option>))}
-        </select>
-        <input
-          type="date"
-          value={fecha}
-          onChange={e => setFecha(e.target.value)}
-          className="border border-[#E5E0D8] rounded-md px-3 py-2.5 text-sm text-[#1F2933] focus:outline-none focus:border-[#18345C] bg-white" />
-        {(q || estado !== 'todos' || fecha) && (<button onClick={() => {
-          setQ('');
-          setEstado('todos');
-          setFecha('');
-        }} className="text-[13px] text-[#AEBCC1] hover:text-[#18345C] font-medium">
-          Limpiar
-        </button>)}
-      </div>
-      <div className="mt-4 grid gap-2 text-xs text-[#52677F] sm:grid-cols-2 lg:grid-cols-5">
-        <EstadoAyuda nombre="Pendiente" texto="Requiere confirmar o asignar habitación" />
-        <EstadoAyuda nombre="Confirmada" texto="Aún no se ha realizado el check-in" />
-        <EstadoAyuda nombre="En curso" texto="Check-in realizado; falta el check-out" />
-        <EstadoAyuda nombre="Finalizada" texto="Check-out completado" />
-        <EstadoAyuda nombre="Cancelada" texto="No se hospedará; conserva el motivo" />
-      </div>
+        <button type="button" className="rounded-md border border-[#E5E0D8] bg-white px-3 py-1.5 text-sm text-[#18345C]" onClick={clear}>Restablecer</button>
+        <div><button className="h-10 w-fit justify-self-start rounded-md bg-[#18345C] px-4 text-white" disabled={loading}>Buscar</button></div>
+      </form>
     </div>
-
-    <div className="px-4 sm:px-6 py-5">
-      {filtradas.length === 0 ? (<div className="bg-white border border-[#E5E0D8] rounded-xl p-6 text-center">
-        <p className="text-[15px] text-[#AEBCC1]">No hay reservas que coincidan con la búsqueda.</p>
-      </div>) : (<div className="space-y-3">
-        {filtradas.map(r => {
-          const h = huespedDe.get(r.huespedId);
-          const hab = habitaciones.find(x => x.id === r.habitacionId);
-          const meta = RESERVA_META[r.estado];
-          const visual = imagenHabitacion(hab, r.tipoHabitacion);
-          return (<button
-            key={r.id}
-            onClick={() => onAbrir(r.id)}
-            className="w-full overflow-hidden text-left bg-white border border-[#E5E0D8] rounded-xl flex flex-col sm:flex-row items-stretch hover:border-[#18345C] transition-colors">
-            <img src={visual} alt={hab ? `Habitación ${hab.numero}` : `Categoría ${r.tipoHabitacion}`} className="h-36 w-full object-cover sm:h-auto sm:w-44" />
-            <div className="flex flex-1 min-w-0 items-center gap-4 p-4">
-              <div className="w-11 h-11 rounded-lg bg-[#F8F6F0] flex flex-col items-center justify-center shrink-0 text-[#18345C]">
-                <BedIcon size={16} />
-                <span className="text-[11px] font-bold mt-0.5">
-                  {hab?.numero ?? '—'}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-[16px] font-semibold text-[#18345C]">
-                    {h?.nombre ?? 'Huésped'}
-                  </p>
-                  <Chip cls={meta.chip}>
-                    {meta.label}
-                  </Chip>
-                </div>
-                <p className="text-[13px] text-[#6B7280] mt-1">
-                  {r.codigo} · Habitación {hab?.numero ?? 'sin asignar'} · {h?.tipoDocumento} •••• {h?.documento.slice(-4)}
-                </p>
-                <p className="text-[13px] text-[#AEBCC1] mt-1 flex items-center gap-1.5 flex-wrap">
-                  <CalendarIcon size={12} />
-                  {formatoFecha(r.fechaEntrada)} → {formatoFecha(r.fechaSalida)} · {r.personas} pers. · {r.tipoHabitacion}
-                </p>
-                {r.estado === 'cancelada' && <p className="mt-2 rounded-md bg-[#FEF2F2] px-2.5 py-1.5 text-xs text-[#991B1B]">
-                  <b>Motivo:</b>
-                  {r.motivoCancelacion || 'No se registró un motivo.'}
-                </p>}
-              </div>
-              <span className="text-[13px] text-[#18345C] font-semibold shrink-0">Ver ›</span>
-            </div>
-          </button>);
-        })}
-      </div>)}
+    <div className="space-y-3 px-4 py-4 sm:px-6">
+      {loading && <p role="status">Consultando reservas…</p>}{error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-800">{error}</p>}
+      {result && <p className="text-sm">{result.totalElementos} reservas</p>}
+      {result?.contenido.length === 0 && <p className="rounded-xl border border-[#E5E0D8] bg-white p-6 text-center">No hay reservas que coincidan con la búsqueda.</p>}
+      {result?.contenido.map(r => <button key={r.codigo} onClick={() => onAbrir(r.codigo)} className="flex w-full items-center gap-3 overflow-hidden rounded-xl border border-[#E5E0D8] bg-white p-3 text-left hover:border-[#18345C]">
+        <img src={publicRoomForHotelType(r.tipoHabitacion.nombre as Reserva['tipoHabitacion']).image} alt={`Tipo ${r.tipoHabitacion.nombre}`} className="h-16 w-16 shrink-0 rounded-lg object-cover sm:w-24" />
+        <div className="min-w-0 flex-1 space-y-1"><p className="font-semibold">{r.huespedPrincipal.nombreCompleto}</p><ReservationTags state={r.estado} label={reservationLabels[r.estado]} room={r.habitacion?.numero} category={r.tipoHabitacion.nombre} origin={channelLabels[r.canal]} /><p className="break-words text-sm">{r.codigo}</p><p className="flex flex-wrap items-center gap-1 text-sm text-[#52677F]"><CalendarIcon size={12} />{formatoFecha(r.entrada)} → {formatoFecha(r.salida)} · {r.numeroHuespedes} huéspedes</p>{r.identificadorExterno && <p className="break-all text-sm">{r.identificadorExterno}</p>}{r.estado === 'EN_ESTADIA' && <p className="text-sm">Saldo pendiente: Q {r.saldoPendiente.toFixed(2)}</p>}</div><span className="shrink-0 text-sm">Ver ›</span>
+      </button>)}
+      {result && result.totalPaginas > 1 && <div className="flex items-center justify-center gap-3"><button className={control} disabled={!result.page} onClick={() => paginate(result.page - 1)}>Anterior</button><span>{result.page + 1} / {result.totalPaginas}</span><button className={control} disabled={result.page + 1 >= result.totalPaginas} onClick={() => paginate(result.page + 1)}>Siguiente</button></div>}
     </div>
-  </div>);
-}
-function EstadoAyuda({ nombre, texto }: {
-  nombre: string;
-  texto: string;
-}) {
-  return <div className="rounded-lg bg-[#F8F6F0] px-3 py-2">
-    <b className="block text-[#18345C]">
-      {nombre}
-    </b>
-    {texto}
   </div>;
-}
-function imagenHabitacion(hab: HabitacionHotel | undefined, tipo: Reserva['tipoHabitacion']) {
-  return publicRoomForHotelType(hab?.tipo ?? tipo).image;
 }

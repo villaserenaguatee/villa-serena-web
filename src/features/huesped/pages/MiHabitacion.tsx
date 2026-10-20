@@ -1,12 +1,20 @@
+import {GuestRestriction} from './GuestRestriction';
+import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
+import { fotoHabitacion } from "@/store/roomStore";
 import { UiText, useUiText } from "@/i18n/UiText";
 import { useState } from "react";
-import type { HabitacionHotel, Domotica, TurnoAmenidad, ReservaAmenidad, } from "@/lib/pms/types";
-import { WIFI_RED, WIFI_PASSWORD } from "@/data/pms";
+import type { Reserva, HabitacionHotel, Domotica, TurnoAmenidad, ReservaAmenidad, } from "@/lib/pms/types";
+import { WIFI_RED, WIFI_PASSWORD, formatoFecha, formatoFechaHora } from "@/data/pms";
 import { Chip, Cabecera, Tarjeta, Aviso, BotonFiltro, BotonPrimario, CodigoQR, plazasLibres, turnoLleno, KeyIcon, DoorIcon, ThermoIcon, LightIcon, CurtainIcon, WifiIcon, CheckIcon, SparkIcon, } from "@/features/huesped/pages/huespedUtils";
 const TEMP_MIN = 16;
 const TEMP_MAX = 30;
 interface Props {
-  habitacion: HabitacionHotel;
+  conectado?:boolean;
+  reserva?: Reserva;
+  onCompartirExperiencia?: () => void;
+  onReservarEstancia?: () => void;
+  onVerCuentaFinal?: () => void;
+  habitacion?: HabitacionHotel;
   domotica: Domotica;
   turnos: TurnoAmenidad[];
   reservasAmenidad: ReservaAmenidad[];
@@ -23,12 +31,18 @@ interface Props {
   onCancelarTurno: (reservaId: string) => void;
   onIrCheckin: () => void;
 }
-export default function MiHabitacion({ habitacion, domotica, turnos, reservasAmenidad, llaveActiva, codigoLlave, estanciaCerrada, onActualizarDomotica, onActualizarLuz, onConectarWifi, onReservarTurno, onCancelarTurno, onIrCheckin, }: Props) {
+export default function MiHabitacion({ conectado=false, reserva, onCompartirExperiencia, onReservarEstancia, onVerCuentaFinal, habitacion, domotica, turnos, reservasAmenidad, llaveActiva, codigoLlave, estanciaCerrada, onActualizarDomotica, onActualizarLuz, onConectarWifi, onReservarTurno, onCancelarTurno, onIrCheckin, }: Props) {
   const ui = useUiText();
+  const { en } = usePublicLanguage();
   const [puerta, setPuerta] = useState<"cerrada" | "abriendo" | "abierta">("cerrada");
   const [verQR, setVerQR] = useState(false);
   const [verWifi, setVerWifi] = useState(false);
-  const bloqueado = !llaveActiva;
+  const bloqueado = conectado || !llaveActiva;
+  const pending=en?'Pending assignment':'Pendiente de asignación';
+  const unavailable=en?'Room controls are not connected. Contact Reception.':'Los controles de habitación no están conectados. Contacta a Recepción.';
+  const offline=en?'Not connected':'Sin conexión';
+  if(conectado){onActualizarDomotica=()=>{};onActualizarLuz=()=>{};onConectarWifi=()=>{};onReservarTurno=()=>{};onCancelarTurno=()=>{};}
+
   function abrirPuerta() {
     if (bloqueado || puerta !== "cerrada")
       return;
@@ -36,15 +50,54 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
     window.setTimeout(() => setPuerta("abierta"), 1200);
     window.setTimeout(() => setPuerta("cerrada"), 5000);
   }
-  return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-    <Cabecera titulo="Mi habitación" subtitulo={`Habitación ${habitacion.numero} · ${habitacion.tipo} · piso ${habitacion.piso}`} />
+  if (!conectado && reserva?.estado === 'finalizada') return <div className="flex-1 overflow-y-auto bg-[#F8F6F0]">
+    <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
+      <header className="space-y-2">
+        <Chip cls="border-[#D8B94E] bg-[#F8F1DE] text-[#7A6327]">{en ? 'Stay completed' : 'Estancia finalizada'}</Chip>
+        <h1 data-vs-page-title="huesped" className="text-2xl font-semibold text-[#18345C] sm:text-3xl">{en ? 'Thank you for staying at Villa Serena' : 'Gracias por hospedarte en Villa Serena'}</h1>
+        <p className="text-sm text-[#52677F]">{en ? 'Your room is now part of your stay history. Access and controls are deactivated.' : 'Tu habitación forma parte del historial de esta estancia. El acceso y los controles están desactivados.'}</p>
+      </header>
+      <section data-vs-card="huesped" className="grid gap-3 rounded-xl border border-[#E5E0D8] bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div><p className="text-xs text-[#72829A]">{en ? 'Reservation' : 'Reserva'}</p><p className="font-semibold text-[#18345C]">{reserva.codigo}</p></div>
+        <div><p className="text-xs text-[#72829A]">{en ? 'Arrival' : 'Entrada'}</p><p className="font-semibold text-[#18345C]">{formatoFecha(reserva.fechaEntrada)}</p></div>
+        <div><p className="text-xs text-[#72829A]">{en ? 'Departure' : 'Salida'}</p><p className="font-semibold text-[#18345C]">{formatoFecha(reserva.fechaSalida)}</p></div>
+        <div><p className="text-xs text-[#72829A]">{en ? 'Check-out' : 'Check-out'}</p><p className="font-semibold text-[#18345C]">{reserva.checkOutEn ? formatoFechaHora(reserva.checkOutEn) : (en ? 'Stay completed' : 'Estancia finalizada')}</p></div>
+      </section>
+      {conectado&&<GuestRestriction reason={unavailable}/>}
+      <section data-vs-card="huesped" className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-white sm:flex">
+        <img src={conectado ? '/images/demo-standard.jpg' : fotoHabitacion(habitacion?.numero??'')} alt={conectado ? (en ? 'Illustrative room catalogue photograph' : 'Fotografía ilustrativa del catálogo de habitaciones') : (en ? 'Room ' + (habitacion?.numero??pending) : 'Habitación ' + (habitacion?.numero??pending))} className="h-48 w-full object-cover sm:h-auto sm:w-64 sm:shrink-0" />
+        <div className="space-y-3 p-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#A77E20]">{en ? 'Your room during this stay' : 'Tu habitación durante esta estancia'}</p>
+          <h2 className="text-xl font-semibold text-[#18345C]">{en ? 'Room ' : 'Habitación '}{(habitacion?.numero??pending)}</h2>
+          <p className="text-[#52677F]">{(habitacion?.tipo??reserva?.tipoHabitacion??pending)} · {en ? 'Floor' : 'Piso'} {(habitacion?.piso??'—')} · {(habitacion?.capacidad??'—')} {en ? 'guests' : 'huéspedes'}</p>
+        </div>
+      </section>
+      <div className="flex flex-wrap gap-3">
+        <button type="button" onClick={onCompartirExperiencia} className="rounded-lg bg-[#B59A52] px-4 py-3 font-semibold text-white">{en ? 'Share your experience' : 'Compartir tu experiencia'}</button>
+        <button type="button" onClick={onReservarEstancia} className="rounded-lg bg-[#18345C] px-4 py-3 font-semibold text-white">{en ? 'Book another stay' : 'Reservar otra estancia'}</button>
+        <button type="button" onClick={onVerCuentaFinal} className="rounded-lg border border-[#18345C] px-4 py-3 font-semibold text-[#18345C]">{en ? 'View final account' : 'Ver cuenta final'}</button>
+      </div>
+    </div>
+  </div>;
+  if (!conectado && estanciaCerrada) return <div className="flex-1 overflow-y-auto bg-[#F8F6F0]">
+    <Cabecera titulo="Mi habitación" subtitulo={`Habitación ${(habitacion?.numero??pending)} · ${(habitacion?.tipo??reserva?.tipoHabitacion??pending)}`} />
+    <div className="p-4 space-y-3">
+      <Aviso tono="alerta"><UiText text="Tu estancia finalizó. Gracias por hospedarte con nosotros." /></Aviso>
+      <Tarjeta titulo="Mi habitación">
+        <p className="text-lg font-semibold text-[#18345C]">{(habitacion?.numero??pending)} · {(habitacion?.tipo??reserva?.tipoHabitacion??pending)}</p>
+        <p className="text-sm text-[#52677F]"><UiText text="Piso" /> {(habitacion?.piso??'—')} · {(habitacion?.capacidad??'—')} <UiText text="huéspedes" /></p>
+      </Tarjeta>
+    </div>
+  </div>;
+  return (<div data-guest-reference="room-38cf2a3" className="flex-1 min-w-0 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
+    <Cabecera titulo="Mi habitación" subtitulo={`${en?'Room':'Habitación'} ${(habitacion?.numero??pending)} · ${ui(habitacion?.tipo??reserva?.tipoHabitacion??pending)} · ${en?'Floor':'Piso'} ${(habitacion?.piso??'—')}`} />
 
     <div className="px-4 sm:px-5 py-3.5 space-y-3">
       {estanciaCerrada && (<Aviso tono="alerta">
         <UiText text="             Tu estancia finalizó: la llave digital y los controles de la habitación quedaron desactivados.           " />
       </Aviso>)}
 
-      {!estanciaCerrada && bloqueado && (<div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#F4D77B] bg-[#FFF9E5] px-3 py-2">
+      {!conectado && !estanciaCerrada && bloqueado && (<div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#F4D77B] bg-[#FFF9E5] px-3 py-2">
         <p className="text-[13px] font-medium text-[#18345C]">
           <UiText text="Completa tu check-in para activar la llave digital y los controles de la habitación." />
         </p>
@@ -56,11 +109,11 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
         </button>
       </div>)}
 
-      <section className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-white">
+      <section data-vs-card="huesped" className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-white">
         <div className="grid md:grid-cols-[220px_1fr]">
           <img
-            src="https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=900&h=520&fit=crop&auto=format"
-            alt={ui(`Habitación ${habitacion.numero}`)}
+            src="/images/demo-standard.jpg"
+            alt={ui(`Habitación ${(habitacion?.numero??pending)}`)}
             className="h-36 w-full object-cover md:h-full" />
           <div className="p-3.5">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -68,36 +121,37 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
                 <p className="text-[12px] uppercase tracking-[0.14em] text-[#AEBCC1]">
                   <UiText text="Tu alojamiento actual" />
                 </p>
-                <h2 className="mt-1 text-xl font-semibold text-[#18345C]">Habitación {habitacion.numero} · {habitacion.tipo}</h2>
-                <p className="mt-1 text-sm text-[#6B7280]">Piso {habitacion.piso} · Hasta {habitacion.capacidad} huéspedes</p>
+                <h2 className="mt-1 text-xl font-semibold text-[#18345C]">{en?'Room':'Habitación'} {(habitacion?.numero??pending)} · {(habitacion?.tipo??reserva?.tipoHabitacion??pending)}</h2>
+                <p className="mt-1 text-sm text-[#6B7280]">{en?'Floor':'Piso'} {(habitacion?.piso??'—')} · {conectado?reserva?.personas:(habitacion?.capacidad??'—')} {conectado&&reserva?.personas===1?(en?'guest':'huésped'):(en?'guests':'huéspedes')}</p>
               </div>
               <Chip cls={llaveActiva ? "border-[#86EFAC] bg-[#F0FAF4] text-[#166534]" : "border-[#F4D77B] bg-[#FFF9E5] text-[#7A5200]"}>
-                {ui(llaveActiva ? "Llave activa" : "Activando llave")}
+                {conectado?(en?'Unavailable':'No disponible'):ui(llaveActiva ? 'Llave activa' : 'Activando llave')}
               </Chip>
             </div>
             <p className="mt-2 text-sm leading-relaxed text-[#6B7280]">
-              {ui("Controla la puerta, temperatura, luces, cortinas y avisos de limpieza desde esta pantalla.")}
+              {conectado?unavailable:ui('Controla la puerta, temperatura, luces, cortinas y avisos de limpieza desde esta pantalla.')}
             </p>
             <div className="mt-3 grid grid-cols-3 gap-2 text-center">
               <div className="rounded-lg bg-[#F8F6F0] px-2 py-2">
-                <p className="font-semibold text-[#18345C]">{domotica.temperatura}°</p>
-                <p className="text-[11px] text-[#6B7280]">Temperatura</p>
+                <p className="font-semibold text-[#18345C]">{conectado?'—':domotica.temperatura+'°'}</p>
+                <p className="text-[11px] text-[#6B7280]">{ui("Temperatura")}</p>
               </div>
               <div className="rounded-lg bg-[#F8F6F0] px-2 py-2">
-                <p className="font-semibold text-[#18345C]">{domotica.luces.filter((l) => l.encendida).length}/{domotica.luces.length}</p>
-                <p className="text-[11px] text-[#6B7280]">Luces</p>
+                <p className="font-semibold text-[#18345C]">{conectado?'—':domotica.luces.filter((l) => l.encendida).length+'/'+domotica.luces.length}</p>
+                <p className="text-[11px] text-[#6B7280]">{ui("Luces")}</p>
               </div>
               <div className="rounded-lg bg-[#F8F6F0] px-2 py-2">
-                <p className="font-semibold text-[#18345C]">{domotica.cortinas}%</p>
-                <p className="text-[11px] text-[#6B7280]">Cortinas</p>
+                <p className="font-semibold text-[#18345C]">{conectado?'—':domotica.cortinas+'%'}</p>
+                <p className="text-[11px] text-[#6B7280]">{ui("Cortinas")}</p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
+      <fieldset disabled={conectado} className="min-w-0 space-y-3 border-0 p-0">
       <Tarjeta titulo="Acceso a la habitación">
-        {bloqueado ? (<div className="text-center py-3.5">
+        {bloqueado && !conectado ? (<div className="text-center py-3.5">
           <div className="w-10 h-10 rounded-full bg-[#F8F6F0] flex items-center justify-center mx-auto text-[#AEBCC1]">
             <KeyIcon size={22} />
           </div>
@@ -119,6 +173,7 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
         </div>) : (<div className="grid gap-3 sm:grid-cols-2 items-start">
           <div className="text-center">
             <button
+              disabled={bloqueado}
               onClick={abrirPuerta}
               className="w-28 h-28 rounded-full mx-auto flex flex-col items-center justify-center gap-1 transition-colors"
               style={{
@@ -158,10 +213,10 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
           <div>
             <p className="text-[15px] font-semibold text-[#18345C] flex items-center gap-2">
               <KeyIcon size={16} />
-              <UiText text=" Llave digital activa                 " />
+              {conectado?(en?'Digital key unavailable':'Llave digital no disponible'):<UiText text=" Llave digital activa                 "/>}
             </p>
             <p className="text-[14px] text-[#6B7280] mt-1">
-              <UiText text="                   Si la cerradura no responde por Bluetooth, muestra el código QR en el lector.                 " />
+              {conectado?unavailable:<UiText text="                   Si la cerradura no responde por Bluetooth, muestra el código QR en el lector.                 "/>}
             </p>
 
             {verQR && codigoLlave ? (<div className="mt-3 flex flex-col items-center gap-2">
@@ -183,7 +238,7 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
         <Tarjeta
           titulo="Temperatura"
           extra={<Interruptor
-            activo={domotica.climaEncendido}
+            activo={!conectado&&domotica.climaEncendido}
             disabled={bloqueado}
             onClick={() => onActualizarDomotica({
               climaEncendido: !domotica.climaEncendido,
@@ -203,13 +258,13 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
               <p className="text-[40px] font-bold leading-none" style={{
                 color: domotica.climaEncendido ? "#18345C" : "#AEBCC1",
               }}>
-                {domotica.temperatura}
+                {conectado?'—':domotica.temperatura}
                 <UiText text="°                 " />
               </p>
               <p className="text-[12px] text-[#AEBCC1] mt-1 flex items-center justify-center gap-1">
                 <ThermoIcon size={12} />
                 {" "}
-                {domotica.climaEncendido ? "Climatización activa" : "Apagada"}
+                {conectado?offline:ui(domotica.climaEncendido?'Climatización activa':'Apagada')}
               </p>
             </div>
 
@@ -228,7 +283,7 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
             type="range"
             min={TEMP_MIN}
             max={TEMP_MAX}
-            value={domotica.temperatura}
+            value={conectado?TEMP_MIN:domotica.temperatura}
             disabled={!domotica.climaEncendido || bloqueado}
             onChange={(e) => onActualizarDomotica({ temperatura: Number(e.target.value) })}
             className="w-full mt-4 accent-[#18345C]"
@@ -257,15 +312,15 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
                   {ui(l.nombre)}
                 </p>
                 <span className="text-[13px] text-[#AEBCC1]">
-                  {l.encendida ? `${l.intensidad}%` : "Apagada"}
+                  {conectado?'—':l.encendida?`${l.intensidad}%`:ui('Apagada')}
                 </span>
-                <Interruptor activo={l.encendida} disabled={bloqueado} onClick={() => onActualizarLuz(l.id, { encendida: !l.encendida })} />
+                <Interruptor activo={!conectado&&l.encendida} disabled={bloqueado} onClick={() => onActualizarLuz(l.id, { encendida: !l.encendida })} />
               </div>
               <input
                 type="range"
                 min={5}
                 max={100}
-                value={l.intensidad}
+                value={conectado?5:l.intensidad}
                 disabled={!l.encendida || bloqueado}
                 onChange={(e) => onActualizarLuz(l.id, {
                   intensidad: Number(e.target.value),
@@ -285,7 +340,7 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
               <UiText text="Apertura" />
             </p>
             <p className="text-[22px] font-bold text-[#18345C]">
-              {domotica.cortinas}
+              {conectado?'—':domotica.cortinas}
               <UiText text="%" />
             </p>
           </div>
@@ -295,7 +350,7 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
             min={0}
             max={100}
             step={5}
-            value={domotica.cortinas}
+            value={conectado?0:domotica.cortinas}
             disabled={bloqueado}
             onChange={(e) => onActualizarDomotica({ cortinas: Number(e.target.value) })}
             className="w-full mt-3 accent-[#18345C]"
@@ -329,7 +384,7 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
                 </p>
               </div>
               <Interruptor
-                activo={domotica.noMolestar}
+                activo={!conectado&&domotica.noMolestar}
                 disabled={bloqueado}
                 onClick={() => onActualizarDomotica({
                   noMolestar: !domotica.noMolestar,
@@ -352,7 +407,7 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
                 </p>
               </div>
               <Interruptor
-                activo={domotica.hacerHabitacion}
+                activo={!conectado&&domotica.hacerHabitacion}
                 disabled={bloqueado}
                 onClick={() => onActualizarDomotica({
                   hacerHabitacion: !domotica.hacerHabitacion,
@@ -372,7 +427,7 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
                     {ui("Wi-Fi del hotel")}
                   </p>
                   <p className="text-[12px] text-[#71839B]">
-                    {bloqueado ? ui("Disponible después del check-in") : ui("Red disponible durante tu estancia")}
+                    {conectado?offline:bloqueado?ui("Disponible después del check-in"):ui("Red disponible durante tu estancia")}
                   </p>
                 </div>
                 {!bloqueado && <button type="button" onClick={onConectarWifi} className="rounded-md bg-[#18345C] px-3 py-2 text-[12px] font-semibold text-white">
@@ -380,7 +435,7 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
                 </button>}
               </div>
               {bloqueado ? (<div className="mt-3 rounded-lg border border-[#E5E0D8] bg-white px-3 py-3 text-center text-sm text-[#7A8798]">
-                {ui("Completa el check-in para ver la red, contraseña y código QR.")}
+                {conectado?unavailable:ui('Completa el check-in para ver la red, contraseña y código QR.')}
               </div>) : (<div className="mt-3 grid gap-2 md:grid-cols-[1fr_1fr_140px] md:items-center">
                 <div className="rounded-lg border border-[#E5E0D8] bg-white px-3 py-3">
                   <p className="text-[10px] uppercase tracking-[.14em] text-[#8A96A3]">
@@ -417,6 +472,7 @@ export default function MiHabitacion({ habitacion, domotica, turnos, reservasAme
           </div>
         </Tarjeta>
       </div>
+      </fieldset>
     </div>
   </div>);
 }

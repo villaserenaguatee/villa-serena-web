@@ -1,15 +1,17 @@
 "use client";
+import ContactForm from '@/components/public/ContactForm';
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, CalendarDays, KeyRound, MessageCircle, ShieldCheck, Wifi, Smartphone, Mail, MapPin, Phone, Clock3, Search, BookOpen, HelpCircle, Users, Minus, Plus, ChevronDown, } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, KeyRound, MessageCircle, ShieldCheck, Wifi, Smartphone, Mail, MapPin, Phone, Clock3, Search, BookOpen, HelpCircle, Users, Minus, Plus, ChevronDown, ChevronLeft, ChevronRight, } from "lucide-react";
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
 import PublicLanguageToggle, { usePublicLanguage, } from "@/components/common/PublicLanguageToggle";
 import { UiText, useUiText } from "@/i18n/UiText";
 import BilingualDateInput from "@/components/common/BilingualDateInput";
-import { money, usePublicRooms } from "@/data/publicRooms";
-import { translatePublicContent } from "@/lib/translation/client";
+import { usePublicCatalog, usePublicHotel } from "@/lib/usePublicCatalog";
+import { publicSearchError } from "@/lib/publicStayValidation";
 import ScopedI18nProvider from "@/i18n/ScopedI18nProvider";
 import { validStay } from "@/lib/publicAvailability";
+
 const slides = [
   [
     "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1900&q=90",
@@ -50,6 +52,8 @@ const prefTextES: Record<string, string> = {
   Negocios: "Espacios prácticos y tranquilos para combinar descanso y trabajo.",
   Bienestar: "Habitaciones con ambientes tranquilos, terrazas o vistas que acompañan una visita de descanso.",
 };
+type PublicReview = { id?: string; name: string; country: string; countryEn: string; date: string; dateEn: string; rating: number; text: string; textEn: string; sample?: boolean };
+type SavedPublicReview = { id?: string; reservaId?: string; creadaEn: string; nombre?: string; pais?: string; estrellas: number; experiencia?: string; experienciaEn?: string; autorizaPublicar: boolean; verificada: boolean };
 const samplePublicReviews = [
   {
     id: "sample-1",
@@ -59,7 +63,7 @@ const samplePublicReviews = [
     date: "septiembre de 2026",
     dateEn: "September 2026",
     rating: 5,
-    text: "Una estancia muy tranquila. La habitación estaba impecable y la atención fue excelente.",
+    text: "Una estancia muy tranquila. La habitación estaba impecable y la atención fue excelente.",    textEn: "A very peaceful stay. The room was spotless and the service was excellent.",
     sample: true
   },
   {
@@ -71,6 +75,7 @@ const samplePublicReviews = [
     dateEn: "September 2026",
     rating: 5,
     text: "Nos gustó mucho el ambiente del hotel, el servicio y la comodidad de la habitación.",
+    textEn: "We really enjoyed the hotel atmosphere, the service and the comfort of the room.",
     sample: true
   },
   {
@@ -82,6 +87,7 @@ const samplePublicReviews = [
     dateEn: "August 2026",
     rating: 4,
     text: "El personal fue muy amable y todo estuvo muy ordenado. Volvería a hospedarme en Villa Serena.",
+    textEn: "The staff were very friendly and everything was well organized. I would stay at Villa Serena again.",
     sample: true
   },
 ];
@@ -98,7 +104,8 @@ export default function Home() {
   </ScopedI18nProvider>);
 }
 function HomeContent() {
-  const publicRooms = usePublicRooms();
+  const { rooms: publicRooms, loading: catalogLoading, error: catalogError } = usePublicCatalog();
+  const hotel = usePublicHotel();
   const ui = useUiText();
   const [slide, setSlide] = useState(0),
     [preference, setPreference] = useState("Descanso"),
@@ -110,16 +117,28 @@ function HomeContent() {
     [arrival, setArrival] = useState(""),
     [departure, setDeparture] = useState("");
   const [reviewPage, setReviewPage] = useState(0);
-  const [publicReviews, setPublicReviews] = useState<any[]>([]);
+  useEffect(() => {
+    const header = document.querySelector<HTMLElement>('[data-public-navigation]');
+    if (!header) return;
+    const update = () => {
+      header.classList.toggle('is-scrolled', window.scrollY > 12);
+      document.documentElement.style.setProperty('--public-nav-height', header.offsetHeight + 'px');
+    };
+    const resize = new ResizeObserver(update); resize.observe(header);
+    window.addEventListener('scroll', update, { passive: true }); update();
+    return () => { resize.disconnect(); window.removeEventListener('scroll', update); document.documentElement.style.removeProperty('--public-nav-height'); };
+  }, []);
+  const [reviewsPerPage,setReviewsPerPage]=useState(3);
+  const [searchError, setSearchError] = useState("");
+  const invalidSearch = publicSearchError(arrival, departure, adults, children, Math.max(0, ...publicRooms.map(room => room.capacity)));
+  const [publicReviews, setPublicReviews] = useState<PublicReview[]>([]);
   const [reviewTranslations, setReviewTranslations] = useState<Record<string, string>>({});
-  const [reviewOriginal, setReviewOriginal] = useState<Record<string, boolean>>({});
-  const [reviewTranslationBusy, setReviewTranslationBusy] = useState<string | null>(null);
   useEffect(() => {
     const cargarResenas = () => {
       try {
         const saved = JSON.parse(localStorage.getItem("vs-resenas-publicas") || "[]")
-          .filter((r: any) => r.autorizaPublicar && r.verificada && r.estrellas >= 1 && r.estrellas <= 5)
-          .map((r: any) => ({
+          .filter((r: SavedPublicReview) => r.autorizaPublicar && r.verificada && r.estrellas >= 1 && r.estrellas <= 5)
+          .map((r: SavedPublicReview) => ({
             id: r.id || `${r.reservaId || "stay"}-${r.creadaEn}`,
             name: r.nombre || "Huésped Villa Serena",
             country: r.pais || "Guatemala",
@@ -141,39 +160,14 @@ function HomeContent() {
     return () => window.removeEventListener("vs-resenas-updated", cargarResenas);
   },
     []);
-  async function alternarTraduccionResena(review: any) {
-    const key = review.id || `${review.name}-${review.date}`;
-    if (reviewOriginal[key]) {
-      setReviewOriginal(v => ({ ...v, [key]: false }));
-      return;
-    }
-    if (reviewTranslations[key]) {
-      setReviewOriginal(v => ({ ...v, [key]: true }));
-      return;
-    }
-    if (!review.text)
-      return;
-    setReviewTranslationBusy(key);
-    try {
-      const result = await translatePublicContent([review.text], "public-notice");
-      const translated = result.translations[0];
-      if (translated) {
-        setReviewTranslations(v => ({ ...v, [key]: translated }));
-        setReviewOriginal(v => ({ ...v, [key]: true }));
-      }
-    }
-    catch { }
-    finally {
-      setReviewTranslationBusy(null);
-    }
-  }
   const reviewAverage = publicReviews.length ? publicReviews.reduce((s, r) => s + r.rating, 0) / publicReviews.length : 0;
-  const reviewPages = Math.max(1, Math.ceil(publicReviews.length / 3));
+  const reviewPages = Math.max(1, Math.ceil(publicReviews.length / reviewsPerPage));
+  useEffect(()=>setReviewPage(p=>Math.min(p,reviewPages-1)),[reviewPages]);
   useEffect(() => {
     const t = setInterval(() => setSlide((s) => (s + 1) % slides.length), 6500);
     return () => clearInterval(t);
   }, []);
-  const recommended = useMemo(() => publicRooms.filter((r) => r.preferences.includes(preference)).slice(0, 3), [preference]);
+  const recommended = useMemo(() => publicRooms.filter((r) => r.preferences.includes(preference)).slice(0, 3), [preference, publicRooms]);
   const featured = publicRooms.filter((r) => ["deluxe-jardin", "suite-serena", "familiar-premium"].includes(r.slug));
   const searchHref = "/reservar/habitaciones?" +
     new URLSearchParams({
@@ -185,56 +179,36 @@ function HomeContent() {
     });
   const renderHelpAnswer = (key: string) => {
     const linkClass = "help-answer-link";
-    if (key === "availability") {
-      return en ? (<>
-        From <a className={linkClass} href="#inicio">
-          <UiText text="Inicio" />
-        </a>, select your arrival date, departure date and number of guests. Then select “<a className={linkClass} href="#buscar">
-          <UiText text="Comprobar disponibilidad" />
-        </a>” to view the rooms available for your stay.
-      </>) : (<>
-        Desde <a className={linkClass} href="#inicio">
-          <UiText text="Inicio" />
-        </a>, selecciona tu fecha de llegada, fecha de salida y número de huéspedes. Luego selecciona «<a className={linkClass} href="#buscar">
-          <UiText text="Comprobar disponibilidad" />
-        </a>» para consultar las habitaciones disponibles para tu estancia.
-      </>);
-    }
-    if (key === "rooms") {
-      return en ? (<>Select “<a className={linkClass} href="/catalogo">
-        <UiText text="Ver habitaciones" />
-      </a>” to browse the Villa Serena room catalog. You can explore rooms and filter by category, number of guests, floor and price range.</>) : (<>Selecciona «<a className={linkClass} href="/catalogo">
-        <UiText text="Ver habitaciones" />
-      </a>» para consultar el catálogo de Villa Serena. Puedes explorar las habitaciones y filtrar por categoría, número de huéspedes, piso y rango de precio.</>);
-    }
-    if (key === "book") {
-      return en ? (<> <a className={linkClass} href="#buscar">
-        <UiText text="Comprobar disponibilidad" />
-      </a> for your dates, choose an available room and select “Book room”. Enter your details, review your stay information, select a payment method and confirm your reservation.</>) : (<>«<a className={linkClass} href="#buscar">Comprobar disponibilidad</a>» para tus fechas, elige una habitación disponible y selecciona «Reservar habitación». Completa tus datos, revisa la información de tu estancia, selecciona el método de pago y confirma tu reserva.</>);
-    }
-    if (key === "services") {
-      return en ? (<>In “<a className={linkClass} href="#servicios">
-        <UiText text="Servicios y experiencias" />
-      </a>” you can find information about the Spa, Gym, Pool and Restaurant, including available details and opening hours for each service.</>) : (<>En «<a className={linkClass} href="#servicios">Servicios y experiencias</a>» puedes consultar información sobre Spa, Gimnasio, Piscina y Restaurante, incluyendo los detalles y horarios disponibles de cada servicio.</>);
-    }
-    if (key === "stay") {
-      return en ? (<>Select “<a className={linkClass} href="/login">
-        <UiText text="Gestionar mi estancia" />
-      </a>” to access the options available during your stay, including check-in, restaurant and services, room information, reservations and experiences, account and check-out.</>) : (<>Selecciona «<a className={linkClass} href="/login">
-        <UiText text="Gestionar mi estancia" />
-      </a>» para acceder a las opciones disponibles durante tu estancia, como check-in, restaurante y servicios, información de tu habitación, reservas y experiencias, cuenta y check-out.</>);
-    }
-    return en ? (<>Go to “<a className={linkClass} href="/login">
-      <UiText text="Gestionar mi estancia" />
-    </a>” to view the options available for your reservation. If you need assistance with a modification or cancellation, you can contact Reception.</>) : (<>Ingresa a «<a className={linkClass} href="/login">
-      <UiText text="Gestionar mi estancia" />
-    </a>» para consultar las opciones disponibles para tu reserva. Si necesitas asistencia con una modificación o cancelación, puedes contactar a Recepción.</>);
+    if (key === "availability") return en
+      ? <>From <a className={linkClass} href="#inicio">Home</a>, select your arrival date, departure date and number of guests. Then select <a className={linkClass} href="#buscar">Check availability</a> to view the rooms available for your stay.</>
+      : <>Desde <a className={linkClass} href="#inicio">Inicio</a>, selecciona tu fecha de llegada, fecha de salida y número de huéspedes. Luego selecciona <a className={linkClass} href="#buscar">Comprobar disponibilidad</a> para consultar las habitaciones disponibles para tu estancia.</>;
+    if (key === "rooms") return en
+      ? <>Select <a className={linkClass} href="/catalogo">View rooms</a> to browse the Villa Serena catalog. You can explore rooms and filter by category, number of guests and price range.</>
+      : <>Selecciona <a className={linkClass} href="/catalogo">Ver habitaciones</a> para consultar el catálogo de Villa Serena. Puedes explorar las habitaciones y filtrar por categoría, número de huéspedes y rango de precio.</>;
+    if (key === "book") return en
+      ? <>Use <a className={linkClass} href="#buscar">Check availability</a> to find a room for your dates and guests. Open its details and select Book room. Enter your details manually, review them and verify your email with the code sent to you before continuing to payment. Review the total and <a className={linkClass} href="/terminos">booking conditions</a>. Continue payment opens Recurrente, where you enter your card details in Guatemalan quetzales (GTQ). Your booking is confirmed only after payment is verified.</>
+      : <>Desde <a className={linkClass} href="#buscar">Comprobar disponibilidad</a>, busca una habitación para tus fechas y huéspedes. Abre su detalle y pulsa Reservar habitación. Completa tus datos manualmente, revísalos y verifica tu correo con el código recibido antes de pasar a Pago. Revisa el total y las <a className={linkClass} href="/terminos">condiciones de reserva</a>. Continuar pago abre Recurrente, donde introduces tu tarjeta para pagar en quetzales (GTQ). La reserva se confirma únicamente cuando se comprueba el pago.</>;
+    if (key === "services") return en
+      ? <>In <a className={linkClass} href="#servicios">Services and experiences</a>, select View information to read about the restaurant, spa, gym and pool. These public information windows do not make a booking or request a service. During your stay, the guest portal shows the options available for your booking status. Contact <a className={linkClass} href="#contacto">Reception</a> if you need assistance.</>
+      : <>En <a className={linkClass} href="#servicios">Servicios y experiencias</a>, pulsa Ver información para conocer el restaurante, spa, gimnasio y piscina. Estas ventanas informativas no realizan reservas ni solicitudes de servicios. Durante tu estancia, el portal muestra las opciones disponibles según el estado de tu reserva. Consulta a <a className={linkClass} href="#contacto">Recepción</a> si necesitas ayuda.</>;
+    if (key === "stay") return en
+      ? <>Open <a className={linkClass} href="/login">Sign in</a> and select Get your access code below the main button. Enter the email you used to book and select Send code. Check your inbox and spam folder, then return to sign in with that email and the six-digit code in Password or access code. It expires after 10 minutes and can be used only once; request another after the waiting period if needed. The booking code beginning VS- and the email verification code used before payment are not portal access codes. The portal shows your stay, check-in, services and account according to your booking status.</>
+      : <>Abre <a className={linkClass} href="/login">Iniciar sesión</a> y pulsa Obtén tu código de acceso, debajo del botón principal. Escribe el correo con el que reservaste y pulsa Enviar código. Revisa tu bandeja y Spam; vuelve al inicio de sesión e introduce ese correo y el código de seis dígitos en Contraseña o código de acceso. Vence en 10 minutos y se usa una sola vez; si lo necesitas, solicita otro al terminar la espera. El código de reserva que empieza con VS- y el código de verificación del correo previo al pago no sirven para entrar al portal. Allí puedes consultar estancia, check-in, servicios y cuenta según el estado de tu reserva.</>;
+    if (key === "payment") return en
+      ? <>Returning from Recurrente or closing its page does not confirm or immediately cancel a payment. The result page checks the booking and payment status. If it is pending, being verified or cannot be checked, use Check status and do not start another booking or payment for the same stay. Never assume a connection error means a rejected payment. If you closed the result page, contact <a className={linkClass} href="#contacto">Reception</a> with your booking code; if you do not have it, explain what happened before retrying. Read the <a className={linkClass} href="/privacidad">privacy policy</a> for information about payment data.</>
+      : <>Volver de Recurrente o cerrar su página no confirma ni cancela inmediatamente un pago. La pantalla de resultado consulta el estado de la reserva y del pago. Si sigue pendiente, en verificación o no puede consultarse, pulsa Consultar estado y no inicies otra reserva ni otro pago para la misma estancia. Un error de conexión no significa que el pago haya sido rechazado. Si cerraste el resultado, contacta a <a className={linkClass} href="#contacto">Recepción</a> con tu código de reserva; si no lo tienes, explica lo ocurrido antes de reintentar. Consulta la <a className={linkClass} href="/privacidad">política de privacidad</a> sobre los datos de pago.</>;
+    if (key === "password") return en
+      ? <>Staff sign in with their email and password. On <a className={linkClass} href="/login">Sign in</a>, select Forgot your password?, enter your staff email and select Send link. If it belongs to an active account, a temporary link is sent to set and confirm a new password. A configured, accessible mailbox is required. If the link expires or you cannot receive email, contact <a className={linkClass} href="mailto:hotelvillaserena.gt@gmail.com">the hotel</a>. Guests use an access code instead of this password recovery process.</>
+      : <>El personal entra con su correo y contraseña. En <a className={linkClass} href="/login">Iniciar sesión</a>, pulsa ¿Olvidaste tu contraseña?, introduce tu correo laboral y pulsa Enviar enlace. Si corresponde a una cuenta activa, recibirás un enlace temporal para establecer y confirmar una contraseña nueva. Necesitas una bandeja configurada y accesible. Si el enlace vence o no puedes recibir correo, contacta al <a className={linkClass} href="mailto:hotelvillaserena.gt@gmail.com">hotel</a>. Los huéspedes utilizan su código de acceso, no esta recuperación de contraseña.</>;
+    return en
+      ? <>Contact <a className={linkClass} href="#contacto">Reception</a> with your booking code. Guests cannot directly change or cancel bookings from the public website or portal. A change requires cancellation and a new booking, subject to availability. A full online payment refund applies when Reception executes the cancellation at least 48 hours before 15:00 on arrival day, Guatemala time; with less notice there is no refund. Sending the request within that period does not itself guarantee a refund. Read the <a className={linkClass} href="/terminos">cancellation and refund conditions</a>. For bookings through an external platform, contact that platform.</>
+      : <>Contacta a <a className={linkClass} href="#contacto">Recepción</a> con tu código de reserva. El huésped no puede modificar ni cancelar directamente desde la web pública o el portal. Un cambio requiere cancelar y crear otra reserva, sujeto a disponibilidad. Corresponde reembolso total del pago en línea si Recepción ejecuta la cancelación al menos 48 horas antes de las 15:00 del día de llegada, hora de Guatemala; con menos anticipación no hay reembolso. Enviar la solicitud dentro del plazo no garantiza por sí mismo el reembolso. Consulta las <a className={linkClass} href="/terminos">condiciones de cancelación y reembolso</a>. Si reservaste mediante una plataforma externa, contacta a esa plataforma.</>;
   };
   const { en } = usePublicLanguage();
+  useEffect(()=>{const mq=matchMedia('(max-width:700px)');const update=()=>{setReviewsPerPage(mq.matches?1:3);setReviewPage(0);};update();mq.addEventListener('change',update);return()=>mq.removeEventListener('change',update);},[]);
   return (<>
-    <PublicLanguageToggle />
     <main className="hotel-site">
-      <header className="hotel-nav">
+      <header className="hotel-nav" data-public-navigation>
         <VillaSerenaLogo light />
         <nav>
           <a href="#inicio">
@@ -260,6 +234,7 @@ function HomeContent() {
           <a href="#buscar" className="gold-button">
             {en ? "Book now" : "Reservar ahora"}
           </a>
+          <PublicLanguageToggle className="header-lang-toggle" />
         </div>
       </header>
 
@@ -279,13 +254,13 @@ function HomeContent() {
           <p>
             {en
               ? "Warm hospitality, comfortable rooms and thoughtful experiences for your stay."
-              : "Hospitalidad cercana, habitaciones cómodas y experiencias pensadas para acompañar tu estancia."}
+              : hotel?.descripcion ?? "Hospitalidad cercana, habitaciones cómodas y experiencias pensadas para acompañar tu estancia."}
           </p>
         </div>
-        <button className="carousel-arrow carousel-prev" onClick={() => setSlide((slide - 1 + slides.length) % slides.length)}>
+        <button type="button" aria-label={en ? "Previous slide" : "Imagen anterior"} className="carousel-arrow carousel-prev" onClick={() => setSlide((slide - 1 + slides.length) % slides.length)}>
           <ArrowLeft />
         </button>
-        <button className="carousel-arrow carousel-next" onClick={() => setSlide((slide + 1) % slides.length)}>
+        <button type="button" aria-label={en ? "Next slide" : "Imagen siguiente"} className="carousel-arrow carousel-next" onClick={() => setSlide((slide + 1) % slides.length)}>
           <ArrowRight />
         </button>
         <div className="carousel-dots">
@@ -356,16 +331,19 @@ function HomeContent() {
             </div>)}
           </div>
           <Link
-            className={!validStay(arrival, departure)
+            className={invalidSearch
               ? "availability-search disabled"
               : "availability-search"}
-            aria-disabled={!validStay(arrival, departure)}
-            href={validStay(arrival, departure) ? searchHref : "#"}>
+            aria-describedby={searchError ? 'public-search-error' : undefined}
+            style={{ pointerEvents: 'auto' }}
+            onClick={(event) => { setSearchError(invalidSearch || ""); if (invalidSearch) event.preventDefault(); }}
+            href={!invalidSearch ? searchHref : "#buscar"}>
             {en ? "Check availability" : "Comprobar disponibilidad"}
             {" "}
             <ArrowRight size={16} />
           </Link>
         </div>
+        {searchError && <p id="public-search-error" role="alert">{searchError}</p>}
       </section>
 
       <section id="habitaciones" className="hotel-section rooms-section">
@@ -386,6 +364,7 @@ function HomeContent() {
             <ArrowRight size={15} />
           </Link>
         </div>
+        {catalogLoading && <p role="status">{en ? "Loading rooms..." : "Cargando habitaciones..."}</p>}{catalogError && <p role="alert">{catalogError}</p>}
         <div className="public-room-grid">
           {featured.map((r) => (<article key={r.slug} className="public-room-card">
             <Link href={`/habitaciones/${r.slug}`} className="room-photo">
@@ -401,19 +380,12 @@ function HomeContent() {
               <p>
                 {ui(r.beds)}
                 <UiText text=" · " />
-                {r.size}
-                <UiText text=" m² · " />
+                {Number.isFinite(r.size) && r.size > 0 && <>{r.size}<UiText text=" m² · " /></>}
                 {r.capacity}
-                {en ? "guests" : "huéspedes"}
+                {en ? " guests" : " huéspedes"}
               </p>
               <footer>
-                <b>
-                  {money(r.price)}
-                  <small>
-                    <UiText text=" / " />
-                    {en ? "night" : "noche"}
-                  </small>
-                </b>
+                <b>Q{r.price.toFixed(2)} <small>{en ? "/ night" : "/ noche"}</small></b>
                 <Link href={`/habitaciones/${r.slug}`}>
                   {en ? "View room" : "Ver habitación"}
                   <UiText text=" →" />
@@ -424,7 +396,7 @@ function HomeContent() {
         </div>
       </section>
 
-      <section className="preference-section">
+      <section id="estancias" className="preference-section">
         <span className="section-kicker">
           {en ? "A STAY FOR YOU" : "VILLA SERENA SE ADAPTA A TI"}
         </span>
@@ -459,32 +431,23 @@ function HomeContent() {
             i) => (<article className="recommend-mini" key={r.slug}>
               <Link href={`/habitaciones/${r.slug}`}>
                 <img src={r.image} alt={ui(r.name)} />
+                {i === 0 && (<span className="recommend-photo-badge">
+                  {en ? "Recommended for you" : "Recomendada para ti"}
+                </span>)}
               </Link>
               <div>
-                {i === 0 && (<span className="section-kicker">
-                  {en ? "RECOMMENDED FOR YOU" : "RECOMENDADA PARA TI"}
-                </span>)}
                 <h3>
                   {ui(r.name)}
                 </h3>
                 <p>
                   {ui(r.beds)}
                   <UiText text=" · " />
-                  {r.size}
-                  <UiText text=" m² · " />
+                  {Number.isFinite(r.size) && r.size > 0 && <>{r.size}<UiText text=" m² · " /></>}
                   {r.capacity}
-                  {en ? "guests" : "huéspedes"}
+                  {en ? " guests" : " huéspedes"}
                 </p>
                 <div className="recommend-bottom">
-                  <b>
-                    {en ? "From" : "Desde"}
-                    {money(r.price)}
-                    {" "}
-                    <small>
-                      <UiText text="/ " />
-                      {en ? "night" : "noche"}
-                    </small>
-                  </b>
+                  <b>Q{r.price.toFixed(2)} <small>{en ? "/ night" : "/ noche"}</small></b>
                   <Link href={`/habitaciones/${r.slug}`}>
                     {en ? "View room" : "Ver habitación"}
                     {" "}
@@ -567,7 +530,7 @@ function HomeContent() {
       {serviceOpen && (<div className="booking-modal-backdrop" onMouseDown={() => {
         setServiceOpen(null);
       }}>
-        <section className="service-info-modal service-info-rich" onMouseDown={(e) => e.stopPropagation()}>
+        <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="service-info-modal service-info-rich" onMouseDown={(e) => e.stopPropagation()}>
           <button className="booking-modal-close" onClick={() => {
             setServiceOpen(null);
           }}>
@@ -802,8 +765,8 @@ function HomeContent() {
           <div className="contact-details">
             <span>
               <Mail />
-              <a href="mailto:villaserenagt@gmail.com">
-                <UiText text="villaserenagt@gmail.com" />
+              <a href="mailto:hotelvillaserena.gt@gmail.com">
+                <UiText text="hotelvillaserena.gt@gmail.com" />
               </a>
             </span>
             <span>
@@ -817,80 +780,46 @@ function HomeContent() {
               </a>
             </span>
           </div>
-          <div className="help-links help-accordion">
+          <div id="ayuda" className="help-links help-accordion">
             <h3>
               <UiText text="Ayuda" />
             </h3>
             {[
-              ["availability",
-                "¿Cómo comprobar disponibilidad?",
-                "Desde Inicio, selecciona tu fecha de llegada, fecha de salida y número de huéspedes. Luego selecciona «Comprobar disponibilidad» para consultar las habitaciones disponibles para tu estancia."],
-              ["rooms",
-                "¿Dónde puedo ver todas las habitaciones?",
-                "Selecciona «Ver habitaciones» para consultar el catálogo de Villa Serena. Puedes explorar las habitaciones y filtrar por categoría, número de huéspedes, piso y rango de precio."],
-              ["book",
-                "¿Cómo reservar una estancia?",
-                "Comprueba la disponibilidad para tus fechas, elige una habitación disponible y selecciona «Reservar habitación». Completa tus datos, revisa la información de tu estancia, selecciona el método de pago y confirma tu reserva."],
-              ["services",
-                "¿Qué servicios y experiencias ofrece el hotel?",
-                "En «Servicios y experiencias» puedes consultar información sobre Spa, Gimnasio, Piscina y Restaurante, incluyendo los detalles y horarios disponibles de cada servicio."],
-              ["stay",
-                "¿Cómo gestiono mi estancia?",
-                "Selecciona «Gestionar mi estancia» para acceder a las opciones disponibles durante tu estancia, como check-in, restaurante y servicios, información de tu habitación, reservas y experiencias, cuenta y check-out."],
-              ["changes",
-                "¿Cómo modifico o cancelo una reserva?",
-                "Ingresa a «Gestionar mi estancia» para consultar las opciones disponibles para tu reserva. Si necesitas asistencia con una modificación o cancelación, puedes contactar a Recepción."],
+              ["availability", "¿Cómo comprobar disponibilidad?"],
+              ["rooms", "¿Dónde puedo ver todas las habitaciones?"],
+              ["book", "¿Cómo reservar una estancia?"],
+              ["services", "¿Qué servicios y experiencias ofrece el hotel?"],
+              ["stay", "¿Cómo gestiono mi estancia?"],
+              ["changes", "¿Cómo modifico o cancelo una reserva?"],
+              ["payment", "¿Qué hago si mi pago queda pendiente?"],
+              ["password", "¿Cómo recupero mi contraseña de personal?"],
             ].map(([k, t]) => (<article key={k}>
-              <button onClick={() => setHelpOpen(helpOpen === k ? null : k)}>
+              <button type="button" id={`help-question-${k}`} aria-expanded={helpOpen === k} aria-controls={`help-answer-${k}`} onClick={() => setHelpOpen(helpOpen === k ? null : k)}>
                 <HelpCircle />
-                <UiText text={t} />
+                {en ? ({availability:'How do I check availability?',rooms:'Where can I see all rooms?',book:'How do I book a stay?',services:'What services and experiences does the hotel offer?',stay:'How do I manage my stay?',changes:'How do I change or cancel a booking?',payment:'What if my payment is pending?',password:'How do staff reset their password?'} as Record<string,string>)[k] : t}
                 <ChevronDown className={helpOpen === k ? "help-chevron open" : "help-chevron"} aria-hidden />
               </button>
-              {helpOpen === k && (<div>
+              <div hidden={helpOpen !== k} id={`help-answer-${k}`} role="region" aria-labelledby={`help-question-${k}`}>
                 <p>
                   {renderHelpAnswer(k)}
                 </p>
-              </div>)}
+              </div>
             </article>))}
           </div>
         </div>
-        <form
-          className="contact-compact"
-          onSubmit={(e) => {
-            e.preventDefault();
-            alert(en ? "Thank you. We have received your message." : "Gracias. Hemos recibido tu mensaje.");
-          }}>
-          <h3>
-            <UiText text="Sugerencias y consultas" />
-          </h3>
-          <label>
-            <UiText text="Nombre" />
-            <input required />
-          </label>
-          <label>
-            <UiText text="Correo" />
-            <input required type="email" />
-          </label>
-          <label>
-            <UiText text="Mensaje" />
-            <textarea required />
-          </label>
-          <button className="gold-button">
-            <UiText text="Enviar mensaje" />
-          </button>
-        </form>
+        <ContactForm />
       </section>
-      <section className="guest-experiences" aria-labelledby="guest-experiences-title">
+      <section id="resenas" className="guest-experiences" aria-labelledby="guest-experiences-title">
 
         <div className="guest-experiences-body">
           <span className="section-kicker">
-            {publicReviews.every((r: any) => r.sample) ? (en ? "REVIEW PREVIEW" : "VISTA DE RESEÑAS") : (en ? "REAL EXPERIENCES" : "EXPERIENCIAS REALES")}
+            {publicReviews.every((r) => r.sample) ? (en ? "REVIEW PREVIEW" : "VISTA DE RESEÑAS") : (en ? "REAL EXPERIENCES" : "EXPERIENCIAS REALES")}
           </span>
           <h2 id="guest-experiences-title">
             {en ? "Experiences from our guests" : "Experiencias de nuestros huéspedes"}
           </h2>
           <p>
-            {publicReviews.every((r: any) => r.sample) ? (en ? "Sample reviews are shown so you can preview how this section looks." : "Se muestran reseñas de muestra para visualizar cómo se verá esta sección.") : (en ? "Verified reviews from guests who enjoyed their stay at Villa Serena." : "Opiniones verificadas de huéspedes que vivieron su estancia en Villa Serena.")}
+            {publicReviews.every((r) => r.sample) ? (en ? "Sample reviews are shown so you can preview how this section looks." : "Se muestran reseñas de muestra para visualizar cómo se verá esta sección.") : (en ? "Verified reviews from guests who enjoyed their stay at Villa Serena." : "Opiniones verificadas de huéspedes que vivieron su estancia en Villa Serena.")}
           </p>
           {publicReviews.length === 0 ? <div className="review-empty">
             <ShieldCheck size={22} />
@@ -908,25 +837,23 @@ function HomeContent() {
                   {en ? "out of 5" : "de 5"}
                 </small>
               </strong>
-              <span aria-label={`${reviewAverage.toFixed(1)} de 5 estrellas`}>★★★★★</span>
+              <span aria-label={`${reviewAverage.toFixed(1)} ${en ? "out of 5 stars" : "de 5 estrellas"}`}>★★★★★</span>
               <i>
               </i>
               <b>
                 <ShieldCheck size={16} />
-                {publicReviews.every((r: any) => r.sample) ? (en ? "Sample reviews" : "Reseñas de muestra") : (en ? "Verified reviews" : "Opiniones verificadas")}
+                {publicReviews.every((r) => r.sample) ? (en ? "Sample reviews" : "Reseñas de muestra") : (en ? "Verified reviews" : "Opiniones verificadas")}
               </b>
             </div>
             <div className="review-carousel">
               <button
                 className="review-arrow review-arrow-left"
                 aria-label={en ? "Previous reviews" : "Opiniones anteriores"}
-                onClick={() => setReviewPage((reviewPage - 1 + reviewPages) % reviewPages)}>‹</button>
+                onClick={() => setReviewPage((reviewPage - 1 + reviewPages) % reviewPages)}><ChevronLeft size={20} aria-hidden/></button>
               <div className="review-grid">
-                {publicReviews.slice(reviewPage * 3, reviewPage * 3 + 3).map(review => {
-                  const key = review.id || `${review.name}-${review.date}`;
-                  const mostrandoTraduccion = Boolean(reviewOriginal[key] && reviewTranslations[key]);
-                  return <article key={key} className="review-card">
-                    <div className="review-stars" aria-label={`${review.rating} de 5 estrellas`}>
+                {publicReviews.slice(reviewPage * reviewsPerPage, reviewPage * reviewsPerPage + reviewsPerPage).map(review => {
+                  const key = review.id || `${review.name}-${review.date}`;                  return <article key={key} className="review-card">
+                    <div className="review-stars" aria-label={`${review.rating} ${en ? "out of 5 stars" : "de 5 estrellas"}`}>
                       {[1, 2, 3, 4, 5].map(n => <span key={n} className={n <= review.rating ? 'filled' : ''}>★</span>)}
                     </div>
                     <div className="review-person">
@@ -949,18 +876,16 @@ function HomeContent() {
                       {review.sample ? (en ? "Sample review" : "Reseña de muestra") : (en ? "Verified stay" : "Estancia verificada")}
                     </em>
                     <p>
-                      {mostrandoTraduccion ? reviewTranslations[key] : review.text}
+                      {en ? review.textEn || reviewTranslations[key] || 'This review is not available in English yet.' : review.text}
                     </p>
-                    {review.text && <button type="button" className="review-translate" disabled={reviewTranslationBusy === key} onClick={() => alternarTraduccionResena(review)}>
-                      {reviewTranslationBusy === key ? (en ? "Translating…" : "Traduciendo…") : mostrandoTraduccion ? (en ? "View original" : "Ver original") : (en ? "Translate review" : "Traducir reseña")}
-                    </button>}
+
                   </article>;
                 })}
               </div>
               <button
                 className="review-arrow review-arrow-right"
                 aria-label={en ? "Next reviews" : "Opiniones siguientes"}
-                onClick={() => setReviewPage((reviewPage + 1) % reviewPages)}>›</button>
+                onClick={() => setReviewPage((reviewPage + 1) % reviewPages)}><ChevronRight size={20} aria-hidden/></button>
             </div>
             <div className="review-dots">
               {Array.from({ length: reviewPages }, (_, page) => page).map(page => <button
@@ -1003,8 +928,8 @@ function HomeContent() {
           <span>
             <UiText text="Huehuetenango, Guatemala" />
           </span>
-          <a href="mailto:villaserenagt@gmail.com">
-            <UiText text="villaserenagt@gmail.com" />
+          <a href="mailto:hotelvillaserena.gt@gmail.com">
+            <UiText text="hotelvillaserena.gt@gmail.com" />
           </a>
           <a href="tel:+50277642580">+502 7764-2580</a>
         </div>

@@ -1,5 +1,6 @@
 import type { Habitacion, Solicitud, Incidencia, ObjetoOlvidado, EntradaHistorial, ItemMenu, Pedido, TurnoRS, TipoHabitacion, HabitacionHotel, Huesped, Reserva, SolicitudHuesped, ReglaTarifa, Promocion, Empleado, Insumo, MovimientoInsumo, OrdenTrabajo, Activo, TareaPreventiva, Repuesto, EstadoOT, CambioEstadoOT, OfertaHabitacion, ServicioCatalogo, PedidoHuesped, MensajeChat, Domotica, TurnoAmenidad, ReservaAmenidad, CargoHuesped, CheckInWeb, DatosFiscales, AreaAmenidad, } from "@/lib/pms/types";
 import { TARIFAS_PREDETERMINADAS } from '@/store/tarifasStore';
+import { fechaHotel } from '@/lib/hotel';
 const CAPACIDAD_TIPO: Record<TipoHabitacion, number> = {
   Standard: 2,
   Superior: 2,
@@ -9,20 +10,12 @@ const CAPACIDAD_TIPO: Record<TipoHabitacion, number> = {
 };
 export const MONEDA = 'Q ';
 export function fechaHoyISO(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return fechaHotel();
 }
 export function fechaRelativaISO(dias: number): string {
-  const d = new Date();
-  d.setHours(12, 0, 0, 0);
-  d.setDate(d.getDate() + dias);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  const d = new Date(`${fechaHoyISO()}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
 }
 export function nochesEntre(entrada: string,
   salida: string): number {
@@ -686,7 +679,6 @@ export const ENCARGADO_MANT = "Rodrigo Paz";
 export const TAREAS_PREVENTIVAS_INICIALES: TareaPreventiva[] = [];
 export const REPUESTOS_INICIALES: Repuesto[] = [];
 export const ORDENES_INICIALES: OrdenTrabajo[] = [];
-export const HUESPED_PORTAL_ID = "hu-ana";
 export const RESERVA_HUESPED_INICIAL: Reserva = {
   ...RESERVAS_INICIALES.find((r) => r.id === "re-1")!,
 };
@@ -782,10 +774,12 @@ export const CATALOGO_HABITACIONES_PUBLICO: OfertaHabitacion[] = [
     { es: "Check-out tardío", en: "Late checkout" }],
   },
 ];
-let _correlativoReservaWeb = 1200;
-export function siguienteCodigoReservaWeb(): string {
-  _correlativoReservaWeb += 1;
-  return `RES-${_correlativoReservaWeb}`;
+export function siguienteCodigoReservaWeb(codigosExistentes: string[]): string {
+  const maximo = codigosExistentes.reduce((max, codigo) => {
+    const match = /^RES-(\d+)$/.exec(codigo);
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 1200);
+  return `RES-${maximo + 1}`;
 }
 export const PETICIONES_ESPECIALES = [
   "Cuna para bebé",

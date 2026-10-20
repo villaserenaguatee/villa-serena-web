@@ -1,0 +1,226 @@
+name: Web tests
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  TZ: America/Guatemala
+  STAFF_AUTH_MODE: demo
+  VILLA_SERENA_BFF_MODE: demo
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  api-contract:
+    name: api-contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: web
+      - name: Leer revisión fijada
+        id: contract
+        working-directory: web
+        run: |
+          node --input-type=module -e 'import {readContractConfig} from "./scripts/contrato-api.mjs"; import {appendFileSync} from "node:fs"; const c=readContractConfig(); appendFileSync(process.env.GITHUB_OUTPUT, `repository=${c.repository}\nrevision=${c.revision}\n`);'
+      - uses: actions/checkout@v6
+        with:
+          repository: ${{ steps.contract.outputs.repository }}
+          ref: ${{ steps.contract.outputs.revision }}
+          path: contract-docs
+          token: ${{ secrets.DOCS_READ_TOKEN || github.token }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.0.0
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+          cache-dependency-path: |
+            web/pnpm-lock.yaml
+            contract-docs/pnpm-lock.yaml
+      - name: Instalar herramientas de docs con su lockfile
+        working-directory: contract-docs
+        run: pnpm install --frozen-lockfile
+      - name: Instalar web con su lockfile
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+      - name: Comprobar tipos y adaptador del contrato
+        working-directory: web
+        env:
+          API_CONTRACT_DOCS_DIR: ${{ github.workspace }}/contract-docs
+        run: |
+          pnpm check:api
+          pnpm test:contract
+
+  checks:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: typecheck
+            command: pnpm exec tsc --noEmit
+          - name: lint
+            command: pnpm lint
+          - name: i18n
+            command: pnpm check:i18n
+          - name: unit
+            command: pnpm test:unit
+          - name: component
+            command: pnpm test:component
+          - name: node-bff
+            command: pnpm test:bff
+          - name: node-cuenta
+            command: pnpm test:cuenta
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.0.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: ${{ matrix.command }}
+      - uses: actions/upload-artifact@v7
+        if: always() && (matrix.name == 'unit' || matrix.name == 'component')
+        with:
+          name: ${{ matrix.name }}-results
+          path: test-results/*.xml
+          retention-days: 7
+          if-no-files-found: ignore
+
+  integration-mock:
+    name: integration-mock-${{ matrix.suite }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: account
+            command: pnpm test:cuenta:connected
+          - suite: operations-orders
+            command: pnpm test:operaciones:orders
+          - suite: operations-rooms
+            command: pnpm test:operaciones:rooms
+          - suite: operations-maintenance
+            command: pnpm test:operaciones:maintenance
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.0.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: ${{ matrix.command }}
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: integration-mock-${{ matrix.suite }}-results
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  e2e-demo:
+    name: e2e-demo-${{ matrix.suite }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: staff
+            command: pnpm test:staff:browser
+          - suite: payments
+            command: pnpm test:payments:browser
+          - suite: booking
+            command: pnpm test:booking:browser
+          - suite: channels
+            command: pnpm test:channels:browser
+          - suite: account
+            command: pnpm test:cuenta:browser
+          - suite: reception-api
+            command: pnpm test:reception:api
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.0.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: ${{ matrix.command }}
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: e2e-demo-${{ matrix.suite }}-results
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  reception:
+    name: e2e-demo-reception-${{ matrix.shard }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.0.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:reception:browser --shard=${{ matrix.shard }}/3
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: e2e-demo-reception-${{ matrix.shard }}-results
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  reception-result:
+    name: e2e-demo-reception
+    needs: reception
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every reception shard to pass
+        env:
+          RECEPTION_RESULT: ${{ needs.reception.result }}
+        run: test "$RECEPTION_RESULT" = success

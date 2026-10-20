@@ -1,3 +1,4 @@
+import ReceptionCloseButton from './ReceptionCloseButton';
 import { useState } from 'react';
 import type { HabitacionHotel, Huesped, ObjetoOlvidado, Reserva } from '@/lib/pms/types';
 interface Props {
@@ -12,7 +13,16 @@ export default function ObjetosRecepcion({ objetos, habitaciones, reservas, hues
   const [filtro, setFiltro] = useState<'pendientes' | 'devueltos'>('pendientes');
   const [objetoCorreo, setObjetoCorreo] = useState<ObjetoOlvidado | null>(null);
   const [busqueda, setBusqueda] = useState('');
-  const visibles = objetos.filter(o => o.origen === 'limpieza').filter(o => filtro === 'devueltos' ? o.estado === 'devuelto' : o.estado !== 'devuelto').filter(o => `${o.descripcion} ${o.habitacionNumero}`.toLowerCase().includes(busqueda.toLowerCase()));
+  const [piso, setPiso] = useState('');
+  const [habitacion, setHabitacion] = useState('');
+  const pisos = [...new Set(habitaciones.map(h => h.piso))].sort((a, b) => a - b);
+  const habitacionesDelPiso = habitaciones.filter(h => !piso || String(h.piso) === piso)
+    .slice().sort((a, b) => a.numero.localeCompare(b.numero, undefined, { numeric: true }));
+  const visibles = objetos.filter(o => o.origen === 'limpieza')
+    .filter(o => filtro === 'devueltos' ? o.estado === 'devuelto' : o.estado !== 'devuelto')
+    .filter(o => o.descripcion.toLowerCase().includes(busqueda.trim().toLowerCase()))
+    .filter(o => !piso || habitaciones.some(h => h.numero === o.habitacionNumero && String(h.piso) === piso))
+    .filter(o => !habitacion || o.habitacionNumero === habitacion);
   function datos(o: ObjetoOlvidado) {
     const h = habitaciones.find(x => x.numero === o.habitacionNumero);
     const r = h ? reservas.find(x => x.habitacionId === h.id && (x.estado === 'en-curso' || x.estado === 'confirmada')) : undefined;
@@ -20,10 +30,10 @@ export default function ObjetosRecepcion({ objetos, habitaciones, reservas, hues
     return { h, r, huesped };
   }
   return <div className="flex-1 overflow-y-auto bg-[#F8F6F0]">
-    <header className="border-b border-[#E5E0D8] bg-white px-4 py-5 sm:px-6">
+    <header data-vs-page-header="recepcion" className="border-b border-[#E5E0D8] bg-white px-4 py-5 sm:px-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[30px] font-semibold leading-tight text-[#18345C]">Objetos olvidados</h1>
+          <h1 data-vs-page-title="recepcion" className="text-[30px] font-semibold leading-tight text-[#18345C]">Objetos olvidados</h1>
           <p className="mt-1 text-sm text-[#AEBCC1]">{objetos.filter(o => o.origen === 'limpieza' && o.estado !== 'devuelto').length} por entregar</p>
         </div>
         <div className="flex gap-2">
@@ -35,16 +45,33 @@ export default function ObjetosRecepcion({ objetos, habitaciones, reservas, hues
             className={`rounded-lg border px-3.5 py-2 text-sm font-semibold ${filtro === 'devueltos' ? 'border-[#18345C] bg-[#18345C] text-white' : 'border-[#E5E0D8] bg-white text-[#52677F]'}`}>Devueltos</button>
         </div>
       </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_180px_200px]">
+      <label className="flex flex-col gap-1 text-sm text-[#18345C]">Nombre
       <input
         value={busqueda}
         onChange={e => setBusqueda(e.target.value)}
-        placeholder="Buscar objeto o habitación..."
-        className="mt-3 w-full rounded-lg border border-[#E5E0D8] px-3.5 py-2.5 text-sm outline-none focus:border-[#18345C]" />
+        placeholder="Buscar objeto…"
+        aria-label="Buscar objeto"
+        className="h-10 w-full rounded-lg border border-[#E5E0D8] px-3 text-sm outline-none focus:border-[#18345C]" />
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-[#18345C]">Piso
+      <select aria-label="Piso" value={piso} onChange={e => { setPiso(e.target.value); setHabitacion(''); }} className="h-10 w-full rounded-lg border border-[#E5E0D8] bg-white px-3 text-sm text-[#18345C] outline-none focus:border-[#18345C]">
+        <option value="">Todos</option>
+        {pisos.map(p => <option key={p} value={p}>Piso {p}</option>)}
+      </select>
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-[#18345C]">Habitación
+      <select aria-label="Habitación" value={habitacion} onChange={e => setHabitacion(e.target.value)} className="h-10 w-full rounded-lg border border-[#E5E0D8] bg-white px-3 text-sm text-[#18345C] outline-none focus:border-[#18345C]">
+        <option value="">Todas</option>
+        {habitacionesDelPiso.map(h => <option key={h.id} value={h.numero}>Hab. {h.numero}</option>)}
+      </select>
+      </label>
+      </div>
     </header>
     <main className="grid grid-cols-1 gap-3 p-4 sm:p-5 xl:grid-cols-2">
       {visibles.map(o => {
         const { h, r, huesped } = datos(o);
-        return <article key={o.id} className="rounded-xl border border-[#E5E0D8] bg-white p-4">
+        return <article data-vs-card="recepcion" key={o.id} className="rounded-xl border border-[#E5E0D8] bg-white p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h2 className="font-semibold text-[#18345C]">
@@ -95,7 +122,7 @@ export default function ObjetosRecepcion({ objetos, habitaciones, reservas, hues
               <p className="text-[10px] uppercase tracking-[.18em] text-[#B38719]">Notificación de contacto</p>
               <h2 className="text-2xl font-semibold text-[#18345C]">Objeto encontrado</h2>
             </div>
-            <button onClick={() => setObjetoCorreo(null)} className="text-2xl text-[#71839B]">×</button>
+            <ReceptionCloseButton onClick={() => setObjetoCorreo(null)} />
           </header>
           <div className="space-y-3 p-5 text-sm">
             <div className="rounded-xl bg-[#F8F6F0] p-4">
@@ -116,7 +143,7 @@ export default function ObjetosRecepcion({ objetos, habitaciones, reservas, hues
               <p className="mt-2">El artículo se encuentra resguardado en Recepción. Puede comunicarse con nosotros o pasar a recogerlo presentando un documento de identificación.</p>
               <p className="mt-2">Atentamente,<br />Villa Serena Hotel · Recepción</p>
             </div>
-            <div className="flex justify-end gap-2">
+            <div data-vs-actions="compact" className="flex justify-end gap-2">
               <button onClick={() => setObjetoCorreo(null)} className="rounded-lg border border-[#E5E0D8] px-4 py-2.5">Cancelar</button>
               <button
                 onClick={() => {

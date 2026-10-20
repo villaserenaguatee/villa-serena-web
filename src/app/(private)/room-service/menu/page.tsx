@@ -1,4 +1,2 @@
-import { redirect } from 'next/navigation';
-export default function Page() {
-  redirect('/room-service');
-}
+import { RoomServiceRoleApp } from '@/app/router/RoleEntrypoints';
+export default function Page() { return <RoomServiceRoleApp conectado={process.env.STAFF_AUTH_MODE === 'spring'}/>; }

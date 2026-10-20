@@ -1,3 +1,4 @@
+import type {ReactNode} from 'react';
 import { UiText, useUiText } from "@/i18n/UiText";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { useState } from "react";
@@ -41,9 +42,10 @@ const PAISES_TELEFONO = [
   ["🇯🇵", "+81", "Japón"],
 ];
 interface Props {
+  connectedDocuments?:ReactNode;
   huesped: Huesped;
   reserva: Reserva;
-  habitacion: HabitacionHotel;
+  habitacion?: HabitacionHotel;
   checkin: CheckInWebEstado;
   estanciaCerrada: boolean;
   onCompletar: (datos: {
@@ -60,8 +62,9 @@ interface Props {
   onIrHabitacion: () => void;
   onContactarRecepcion: () => void;
 }
-export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin, estanciaCerrada, onCompletar, onGuardarOcupantes, onIrHabitacion, onContactarRecepcion, }: Props) {
+export default function CheckInWebScreen({ connectedDocuments, huesped, reserva, habitacion, checkin, estanciaCerrada, onCompletar, onGuardarOcupantes, onIrHabitacion, onContactarRecepcion, }: Props) {
   const ui = useUiText();
+  const connected=connectedDocuments!==undefined;
   const { en } = usePublicLanguage();
   const [paso, setPaso] = useState(1);
   const [nombre, setNombre] = useState(huesped.nombre);
@@ -85,9 +88,10 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
   const [erroresAcompanante, setErroresAcompanante] = useState<Record<string, string>>({});
   const fechaUI = (fecha: string) => new Date(`${fecha}T12:00:00`).toLocaleDateString(en ? "en-US" : "es-GT", { day: "numeric", month: "short", year: "numeric" });
   const [archivo, setArchivo] = useState<DocumentoCargado | null>(checkin.documento);
-  const [documentoFrente, setDocumentoFrente] = useState<DocumentoCargado | null>(null);
-  const [documentoReverso, setDocumentoReverso] = useState<DocumentoCargado | null>(null);
-  const [documentoUnico, setDocumentoUnico] = useState<DocumentoCargado | null>(checkin.documento);
+  const documentosGuardados = checkin.documentos?.length ? checkin.documentos : checkin.documento ? [checkin.documento] : [];
+  const [documentoFrente, setDocumentoFrente] = useState<DocumentoCargado | null>(documentosGuardados.find(d => d.lado === 'frente') ?? (tipoDocumento === 'DPI' ? documentosGuardados[0] : null) ?? null);
+  const [documentoReverso, setDocumentoReverso] = useState<DocumentoCargado | null>(documentosGuardados.find(d => d.lado === 'reverso') ?? (tipoDocumento === 'DPI' ? documentosGuardados[1] : null) ?? null);
+  const [documentoUnico, setDocumentoUnico] = useState<DocumentoCargado | null>(tipoDocumento === 'Pasaporte' ? documentosGuardados[0] ?? null : null);
   const [errorArchivo, setErrorArchivo] = useState("");
   const [aceptado, setAceptado] = useState(false);
   const completado = checkin.estado === "aprobado";
@@ -122,17 +126,17 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
       return;
     }
     setErrorArchivo("");
-    const cargado = { nombre: f.name, formato, pesoKb, previewUrl: URL.createObjectURL(f), lado };
-    setArchivo(cargado);
-    if (lado === "frente") {
-      setDocumentoFrente(cargado);
-    }
-    else if (lado === "reverso") {
-      setDocumentoReverso(cargado);
-    }
-    else {
-      setDocumentoUnico(cargado);
-    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") return;
+      const cargado: DocumentoCargado = { nombre: f.name, formato, pesoKb, previewUrl: reader.result, lado };
+      setArchivo(cargado);
+      if (lado === "frente") setDocumentoFrente(cargado);
+      else if (lado === "reverso") setDocumentoReverso(cargado);
+      else setDocumentoUnico(cargado);
+    };
+    reader.onerror = () => setErrorArchivo("No se pudo leer el documento. Selecciona el archivo nuevamente.");
+    reader.readAsDataURL(f);
   }
   function validarAcompanante(): boolean {
     const e: Record<string, string> = {};
@@ -150,6 +154,7 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
     return Object.keys(e).length === 0;
   }
   function agregarAcompanante() {
+    if(connected)return;
     if (acompanantes.length >= Math.max(0, adultos + ninos - 1))
       return;
     if (!validarAcompanante())
@@ -169,34 +174,39 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
     setMostrarFormularioAcompanante(false);
   }
   function finalizar() {
+    if(connected)return;
     const documentos = tipoDocumento === "DPI" ? [documentoFrente, documentoReverso].filter(Boolean) as DocumentoCargado[] : documentoUnico ? [documentoUnico] : [];
     if (documentos.length === 0 || (tipoDocumento === "DPI" && documentos.length !== 2) || !aceptado)
       return;
-    onCompletar({ documento: documentos[0], documentos, peticiones: [], notaPeticiones: "" });
+    try {
+      onCompletar({ documento: documentos[0], documentos, peticiones: [], notaPeticiones: "" });
+    } catch {
+      setErrorArchivo("No se pudieron guardar los documentos. El almacenamiento puede estar lleno; selecciona archivos más livianos e intenta nuevamente.");
+    }
   }
-  if (pendiente) {
+  if (!connected&&pendiente) {
     return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-      <Cabecera titulo="Check-in enviado" subtitulo={`${en ? "Room" : "Habitación"} ${habitacion.numero} · ${reserva.codigo}`} />
+      <Cabecera titulo={en ? 'Documents saved locally' : 'Documentos guardados en este navegador'} subtitulo={`${en ? "Room" : "Habitación"} ${(habitacion?.numero??(en?'Pending assignment':'Pendiente de asignación'))} · ${reserva.codigo}`} />
       <div className="px-4 sm:px-6 py-8 max-w-3xl">
-        <div className="overflow-hidden rounded-2xl border border-[#E5E0D8] bg-white shadow-sm">
+        <div data-vs-card="huesped" className="overflow-hidden rounded-2xl border border-[#E5E0D8] bg-white shadow-sm">
           <div className="bg-[#F0FAF4] px-6 py-8 text-center border-b border-[#BBE2C8]">
             <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#198754] bg-white text-[#198754]">
               <CheckIcon size={28} />
             </span>
             <h2 className="mt-4 text-2xl font-semibold text-[#18345C]">
-              <UiText text="Recibimos tu check-in" />
+              {en ? 'Identity document' : 'Documento de identidad'}
             </h2>
             <p className="mx-auto mt-2 max-w-xl text-[15px] text-[#6B7280]">
-              <UiText text="Recepción verificará tu documento y te avisaremos por correo cuando tu llave digital esté disponible." />
+              {en ? 'Document saved. Present it at Reception for verification.' : 'Documento guardado. Preséntalo en Recepción para su verificación.'}
             </p>
           </div>
           <div className="grid gap-4 p-6 sm:grid-cols-[1fr_auto] sm:items-center">
             <div>
               <span className="inline-flex rounded-full bg-[#FFF6D8] px-3 py-1 text-[12px] font-semibold text-[#78450A]">
-                <UiText text="Pendiente de revisión" />
+                {en ? 'Local storage only' : 'Solo almacenamiento local'}
               </span>
               <p className="mt-3 text-[14px] text-[#6B7280]">
-                <UiText text="No necesitas enviar nuevamente la información." />
+                {en ? 'Keep the original files until server upload is available.' : 'Conserva los archivos originales hasta que esté disponible la subida al servidor.'}
               </p>
             </div>
             <button onClick={() => onIrHabitacion()} className="rounded-lg border border-[#18345C] px-5 py-3 font-semibold text-[#18345C]">
@@ -207,9 +217,10 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
       </div>
     </div>);
   }
-  if (completado) {
+  if (!connected&&completado) {
     return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-      <Cabecera titulo="Check-in completado" subtitulo={`${en ? "Room" : "Habitación"} ${habitacion.numero} · ${reserva.codigo}`} />
+      <Cabecera titulo="Check-in completado" subtitulo={`${en ? "Room" : "Habitación"} ${(habitacion?.numero??(en?'Pending assignment':'Pendiente de asignación'))} · ${reserva.codigo}`} />
+      <p role="status" className="px-4 pt-3 text-sm text-[#52677F]">{en ? 'Document saved. Present it at Reception for verification.' : 'Documento guardado. Preséntalo en Recepción para su verificación.'}</p>
 
       <div className="px-4 sm:px-6 py-5 space-y-5 max-w-3xl">
         {estanciaCerrada ? (<Aviso tono="alerta">
@@ -234,7 +245,7 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
               <p className="text-[17px] font-semibold text-[#18345C] flex items-center justify-center sm:justify-start gap-2">
                 <KeyIcon size={18} />
                 <UiText text=" Habitación " />
-                {habitacion.numero}
+                {(habitacion?.numero??(en?'Pending assignment':'Pendiente de asignación'))}
               </p>
               <p className="text-[14px] text-[#6B7280] mt-1">
                 <UiText text="                   Muestra este código en el lector de la puerta o usa la apertura por Bluetooth desde la                   sección “Mi habitación”.                 " />
@@ -284,7 +295,7 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
     <Cabecera
       titulo="Check-in"
-      subtitulo={`${reserva.codigo} · ${en ? "Arrival" : "Llegada"} ${fechaUI(reserva.fechaEntrada)} · ${en ? "Room" : "Habitación"} ${habitacion.numero}`} />
+      subtitulo={`${reserva.codigo} · ${en ? "Arrival" : "Llegada"} ${fechaUI(reserva.fechaEntrada)} · ${en ? "Room" : "Habitación"} ${(habitacion?.numero??(en?'Pending assignment':'Pendiente de asignación'))}`} />
 
     <div className="checkin-layout px-4 sm:px-6 py-5">
       <div className="checkin-main space-y-5">
@@ -292,7 +303,7 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
           <span className="flex items-start gap-2">
             <MailIcon />
             <span>
-              <UiText text="Completa tus datos antes de llegar. Recepción verificará la información y te notificaremos cuando tu llave digital esté disponible." />
+              {connected?(en?'Your documents are private and will be reviewed by Reception.':'Tus documentos son privados y serán revisados por Recepción.'):(en?'Documents are saved in this browser.':'Los documentos se guardan en este navegador.')}
             </span>
           </span>
         </Aviso>
@@ -335,14 +346,7 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
             </Campo>
             <Campo label="Documento" error={errores.documento}>
               <div className="grid grid-cols-[150px_1fr] gap-2">
-                <select value={tipoDocumento} disabled className={`${INPUT_CLS} bg-[#F8F6F0]`}>
-                  <option value="DPI">
-                    <UiText text="DPI" />
-                  </option>
-                  <option value="Pasaporte">
-                    <UiText text="Pasaporte" />
-                  </option>
-                </select>
+                <input value={tipoDocumento} readOnly className={`${INPUT_CLS} bg-[#F8F6F0]`} />
                 <input
                   value={documento}
                   readOnly
@@ -368,7 +372,7 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
               <p className="text-[11px] uppercase tracking-widest text-[#AEBCC1]">
                 <UiText text="Tu reserva" />
               </p>
-              <p className="mt-1 text-lg font-semibold text-[#18345C]">{ui("Habitación")} {habitacion.numero} · {ui(habitacion.tipo)}</p>
+              <p className="mt-1 text-lg font-semibold text-[#18345C]">{ui("Habitación")} {(habitacion?.numero??(en?'Pending assignment':'Pendiente de asignación'))} · {ui((habitacion?.tipo??reserva.tipoHabitacion))}</p>
             </div>
             <img
               src="https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=700&h=360&fit=crop"
@@ -416,7 +420,7 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
                   <UiText text="Adultos" />
                 </span>
                 <strong className="mt-1 block text-lg text-[#18345C]">
-                  {adultos}
+                  {connected && reserva.adultos === undefined ? '—' : adultos}
                 </strong>
               </div>
               <div className="rounded-lg border border-[#E5E0D8] bg-[#F8F6F0] px-4 py-3">
@@ -424,7 +428,7 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
                   <UiText text="Niños" />
                 </span>
                 <strong className="mt-1 block text-lg text-[#18345C]">
-                  {ninos}
+                  {connected && reserva.ninos === undefined ? '—' : ninos}
                 </strong>
               </div>
             </div>
@@ -446,7 +450,7 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
 
             {acompanantes.length < Math.max(0, adultos + ninos - 1) && (<button
               type="button"
-              onClick={() => setMostrarFormularioAcompanante(true)}
+              disabled={connected} onClick={() => { if (!connected) setMostrarFormularioAcompanante(true); }}
               className="mt-4 w-full rounded-lg border border-[#18345C] bg-white px-4 py-3 text-sm font-semibold text-[#18345C]">
               {ui("+ Agregar huésped")}
             </button>)}
@@ -481,7 +485,7 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
                       }}
                       className={INPUT_CLS}>
                       <option>DPI</option>
-                      <option>Pasaporte</option>
+
                     </select>
                     <input
                       value={documentoAcompanante}
@@ -504,7 +508,7 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
                       onChange={e => setTelefonoAcompanante(e.target.value.replace(/\D/g, '').slice(0, 8))}
                       placeholder="0000 0000"
                       className={`${INPUT_CLS} flex-1`} />
-                    {paisAbierto && <div className="absolute left-0 top-full z-50 mt-1 w-80 max-w-[85vw] overflow-hidden rounded-lg border bg-white shadow-xl">
+                    {paisAbierto && <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="absolute left-0 top-full z-50 mt-1 w-80 max-w-[85vw] overflow-hidden rounded-lg border bg-white shadow-xl">
                       <div className="border-b p-2">
                         <input autoFocus value={busquedaPais} onChange={e => setBusquedaPais(e.target.value)} placeholder={ui("Buscar país o código")} className={INPUT_CLS} />
                       </div>
@@ -534,7 +538,7 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
                 </Campo>
               </div>
 
-              <div className="mt-6 flex gap-3">
+              <div data-vs-actions="compact" className="mt-6 flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -545,7 +549,7 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
                   className="flex-1 rounded-lg border border-[#18345C] px-4 py-3 text-sm font-semibold text-[#18345C]">
                   {ui("Cancelar")}
                 </button>
-                <button type="button" onClick={agregarAcompanante} className="flex-1 rounded-lg bg-[#18345C] px-4 py-3 text-sm font-semibold text-white">
+                <button type="button" disabled={connected} onClick={agregarAcompanante} className="flex-1 rounded-lg bg-[#18345C] px-4 py-3 text-sm font-semibold text-white">
                   {ui("Agregar acompañante")}
                 </button>
               </div>
@@ -556,8 +560,9 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
             <BotonPrimario
               ancho
               onClick={() => {
-                if (adultos + ninos > habitacion.capacidad) {
-                  setErrores(e => ({ ...e, ocupacion: `Máximo ${habitacion.capacidad} huéspedes.` }));
+                if(connected){setPaso(2);return;}
+                if (adultos + ninos > (habitacion?.capacidad??reserva.personas)) {
+                  setErrores(e => ({ ...e, ocupacion: `Máximo ${(habitacion?.capacidad??reserva.personas)} huéspedes.` }));
                   return;
                 }
                 if (acompanantes.length > Math.max(0, adultos + ninos - 1)) {
@@ -577,7 +582,8 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
           </div>
         </Tarjeta>)}
 
-        {paso === 2 && (<Tarjeta titulo="Documento de identidad">
+        {paso===2&&connected?<div className="space-y-5">{connectedDocuments}<div data-vs-actions="compact" className="flex gap-2"><BotonSecundario ancho onClick={()=>setPaso(1)}>Volver</BotonSecundario><BotonPrimario ancho onClick={()=>setPaso(3)}>Continuar</BotonPrimario></div></div>:null}
+        {paso === 2 && !connected && (<Tarjeta titulo="Documento de identidad">
           <p className="text-[14px] text-[#6B7280]">
             {ui("Sube una foto legible de tu documento y asegúrate de que todos los datos sean visibles.")}
           </p>
@@ -627,7 +633,7 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
               </span>
             </Aviso>
           </div>}
-          <div className="flex gap-2 mt-5">
+          <div data-vs-actions="compact" className="flex gap-2 mt-5">
             <BotonSecundario onClick={() => setPaso(1)} ancho>
               <UiText text="Volver" />
             </BotonSecundario>
@@ -650,28 +656,30 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
           </ul>
 
           <label className="mt-4 flex items-start gap-3 cursor-pointer">
-            <input type="checkbox" checked={aceptado} onChange={(e) => setAceptado(e.target.checked)} className="mt-1 w-4 h-4 accent-[#18345C]" />
+            <input type="checkbox" disabled={connected} checked={aceptado} onChange={(e) => setAceptado(e.target.checked)} className="mt-1 w-4 h-4 accent-[#18345C]" />
 
             <span className="text-[14px] text-[#1F2933]">
               <UiText text="He leído y acepto los términos y condiciones de la estancia." />
             </span>
           </label>
 
-          <div className="flex gap-2 mt-5">
+          <div data-vs-actions="compact" className="flex gap-2 mt-5">
             <BotonSecundario onClick={() => setPaso(2)} ancho>
               <UiText text="Volver" />
             </BotonSecundario>
-            <BotonPrimario ancho disabled={!aceptado} onClick={() => setPaso(4)}>
+            <BotonPrimario ancho disabled={!connected&&!aceptado} onClick={() => setPaso(4)}>
               <UiText text="                 Continuar               " />
             </BotonPrimario>
           </div>
         </Tarjeta>)}
 
         {paso === 4 && (<Tarjeta titulo="Revisa tu check-in">
+          {errorArchivo && <Aviso tono="error">{ui(errorArchivo)}</Aviso>}
           <div className="grid gap-3 sm:grid-cols-2">
             <ResumenDato label="Huésped" valor={nombre} />
             <ResumenDato label="Documento" valor={`${tipoDocumento} · ${documento}`} />
             <ResumenDato label="Contacto" valor={`${telefono} · ${correo}`} />
+            {connected ? <div className="sm:col-span-2">{connectedDocuments}</div> : <>
             <div className="rounded-lg border border-[#E5E0D8] bg-[#F8F6F0] p-4 sm:col-span-2">
               <p className="text-[11px] uppercase tracking-widest text-[#AEBCC1]">Documento cargado</p>
               {tipoDocumento === "DPI" ? (<div className="mt-3 grid gap-4 sm:grid-cols-2">
@@ -694,27 +702,28 @@ export default function CheckInWebScreen({ huesped, reserva, habitacion, checkin
                 </p>
               </div>)}
             </div>
+            </>}
           </div>
           <div className="mt-4">
             <Aviso tono="info">
               <UiText text="Recepción revisará la información antes de activar tu llave digital." />
             </Aviso>
           </div>
-          <div className="flex gap-2 mt-5">
+          <div data-vs-actions="compact" className="flex gap-2 mt-5">
             <BotonSecundario onClick={() => setPaso(3)} ancho>Volver</BotonSecundario>
-            <BotonPrimario ancho onClick={finalizar}>Enviar check-in para revisión</BotonPrimario>
+            <BotonPrimario ancho disabled={connected} onClick={finalizar}>{en ? 'Save' : 'Guardar'}</BotonPrimario>
           </div>
         </Tarjeta>)}
       </div>
       <aside className="checkin-booking">
         <Tarjeta titulo="Tu reserva">
-          <img src={fotoHabitacion(habitacion.tipo)} alt={ui("Habitación reservada")} className="checkin-booking-photo" />
+          <img src={connected ? '/images/demo-standard.jpg' : fotoHabitacion((habitacion?.tipo??reserva.tipoHabitacion))} alt={connected ? (en ? 'Illustrative room catalogue photograph' : 'Fotografía ilustrativa del catálogo de habitaciones') : ui("Habitación reservada")} className="checkin-booking-photo" />
           <h3 className="mt-3 text-lg font-semibold text-[#18345C]">
             {ui("Habitación")}
-            {habitacion.numero}
+            {(habitacion?.numero??(en?'Pending assignment':'Pendiente de asignación'))}
           </h3>
           <p className="text-sm text-[#71839B]">
-            {ui(habitacion.tipo)}
+            {ui((habitacion?.tipo??reserva.tipoHabitacion))}
           </p>
           <div className="checkin-booking-grid">
             <span>

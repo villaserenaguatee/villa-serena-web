@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { Habitacion, Solicitud, EstadoHabitacion } from "@/lib/pms/types";
-type FiltroPiso = "todos" | "1" | "2" | "3";
+type FiltroPiso = string;
 type FiltroEstado = "todos" | "limpia" | "pendiente" | "en-limpieza" | "prioritarias";
 const ESTADO_CONFIG = {
   limpia: {
@@ -29,6 +29,7 @@ function obtenerTipoHabitacion(tipo: string): string {
   return tipo;
 }
 function obtenerEstadoLimpieza(hab: Habitacion): EstadoLimpiezaVisual {
+  if(hab.condicionReal)return hab.condicionReal==='LIMPIA'?'limpia':hab.condicionReal==='EN_LIMPIEZA'?'en-limpieza':'pendiente';
   const total = hab.tareas.length;
   const completadas = hab.tareas.filter((t) => t.completada).length;
   if (hab.estado === "limpia" && total > 0 && completadas === total) {
@@ -40,7 +41,7 @@ function obtenerEstadoLimpieza(hab: Habitacion): EstadoLimpiezaVisual {
   return "en-limpieza";
 }
 function esPrioritaria(hab: Habitacion) {
-  return Boolean(hab.proximaLlegada) && obtenerEstadoLimpieza(hab) !== "limpia";
+  return hab.estado!=='fuera-servicio' && Boolean(hab.proximaLlegada) && obtenerEstadoLimpieza(hab) !== "limpia";
 }
 function TarjetaHabitacion({ hab, onClick }: {
   hab: Habitacion;
@@ -60,7 +61,7 @@ function TarjetaHabitacion({ hab, onClick }: {
     type="button"
     onClick={onClick}
     className="
-        text-left w-full rounded-xl
+        text-left min-w-0 w-full rounded-xl
         border
         border-[#E5E0D8]
         bg-white
@@ -70,8 +71,8 @@ function TarjetaHabitacion({ hab, onClick }: {
         flex-col
         justify-center
       ">
-    <img src={hab.foto} alt={`Habitación ${hab.numero}`} className="w-full h-24 object-cover rounded-lg mb-3" />
-    <div className="flex items-start justify-between gap-3">
+    {hab.foto && <img src={hab.foto} alt={`Habitación ${hab.numero}`} className="w-full h-24 object-cover rounded-lg mb-3" />}
+    <div className="flex flex-wrap items-start justify-between gap-2">
       <div>
         <div className="flex items-center gap-2">
           <span className="w-8 h-8 rounded-lg bg-[#F8F6F0] flex items-center justify-center shrink-0">
@@ -101,10 +102,11 @@ function TarjetaHabitacion({ hab, onClick }: {
         <p className="text-[14px] text-[#6B7280] mt-1 ml-10">
           {obtenerTipoHabitacion(hab.tipo)}
         </p>
+        {hab.ocupacion && <p className="text-xs text-[#6B7280] mt-1 ml-10">{hab.ocupacion==='OCUPADA'?'Ocupada':hab.ocupacion==='FUERA_SERVICIO'?'Fuera de servicio':'Libre'}</p>}
       </div>
 
       <span
-        className="text-[10px] sm:text-[11px] font-semibold px-2.5 py-1 rounded-md uppercase tracking-wide whitespace-nowrap"
+        className="text-[10px] sm:text-[11px] font-semibold px-2.5 py-1 rounded-md uppercase tracking-wide whitespace-normal break-words max-w-full"
         style={{
           color: cfg.text,
           backgroundColor: cfg.bg,
@@ -237,7 +239,7 @@ function PanelDetalle({ hab, solicitudes, usuarioActual, onClose, onComenzarLimp
   return (<div className="absolute inset-0 z-20 flex items-stretch justify-end">
     <div className="absolute inset-0 bg-black/25" onClick={onClose} />
 
-    <div className="
+    <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="
           relative
           z-10
           w-full
@@ -513,6 +515,7 @@ function PanelDetalle({ hab, solicitudes, usuarioActual, onClose, onComenzarLimp
   </div>);
 }
 interface Props {
+  detalleConectado?: (hab: Habitacion, cerrar: () => void) => ReactNode;
   habitaciones: Habitacion[];
   solicitudes: Solicitud[];
   onComenzarLimpieza: (id: string) => void;
@@ -527,7 +530,7 @@ interface Props {
   soloDetalle?: boolean;
   onCerrarSoloDetalle?: () => void;
 }
-export default function Mapa({ habitaciones, solicitudes, onComenzarLimpieza, onFinalizarLimpieza, onToggleTarea, onGuardarObservaciones, onIrIncidencias, usuarioActual = "Personal de limpieza", habitacionInicialNumero = null, onHabitacionInicialProcesada, soloDetalle = false, onCerrarSoloDetalle, }: Props) {
+export default function Mapa({ habitaciones, solicitudes, onComenzarLimpieza, onFinalizarLimpieza, onToggleTarea, onGuardarObservaciones, onIrIncidencias, usuarioActual = "Personal de limpieza", habitacionInicialNumero = null, onHabitacionInicialProcesada, soloDetalle = false, onCerrarSoloDetalle, detalleConectado }: Props) {
   const [filtroPiso, setFiltroPiso] = useState<FiltroPiso>("todos");
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("todos");
   const [habitacionSeleccionada, setHabitacionSeleccionada] = useState<Habitacion | null>(null);
@@ -541,11 +544,11 @@ export default function Mapa({ habitaciones, solicitudes, onComenzarLimpieza, on
     if (filtroEstado === "prioritarias") {
       return esPrioritaria(h);
     }
-    return obtenerEstadoLimpieza(h) === filtroEstado;
+    return h.estado!=='fuera-servicio' && obtenerEstadoLimpieza(h) === filtroEstado;
   });
   const stats = {
     limpias: habitaciones.filter((h) => obtenerEstadoLimpieza(h) === "limpia").length,
-    pendientes: habitaciones.filter((h) => obtenerEstadoLimpieza(h) === "pendiente").length,
+    pendientes: habitaciones.filter((h) => h.estado!=='fuera-servicio' && obtenerEstadoLimpieza(h) === "pendiente").length,
     enLimpieza: habitaciones.filter((h) => obtenerEstadoLimpieza(h) === "en-limpieza").length,
     prioritarias: habitaciones.filter((h) => esPrioritaria(h)).length,
   };
@@ -576,7 +579,7 @@ export default function Mapa({ habitaciones, solicitudes, onComenzarLimpieza, on
       `}
     </style>
 
-    <div className="
+    <div data-vs-page-header="limpieza" className="
           px-4
           sm:px-6
           py-4
@@ -594,7 +597,7 @@ export default function Mapa({ habitaciones, solicitudes, onComenzarLimpieza, on
             mb-4
           ">
         <div>
-          <h1 className="
+          <h1 data-vs-page-title="limpieza" className="
                 text-xl
                 sm:text-2xl
                 font-semibold
@@ -658,7 +661,7 @@ export default function Mapa({ habitaciones, solicitudes, onComenzarLimpieza, on
       </div>
 
       <div className="flex gap-2 flex-wrap mb-2">
-        {(["todos", "1", "2", "3"] as FiltroPiso[]).map((p) => (<button
+        {(["todos", ...Array.from(new Set(habitaciones.map(h=>h.piso))).sort((a,b)=>a-b).map(String)]).map((p) => (<button
           key={p}
           onClick={() => setFiltroPiso(p)}
           className={`
@@ -723,7 +726,7 @@ export default function Mapa({ habitaciones, solicitudes, onComenzarLimpieza, on
     </div>
 
     <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
-      {[1, 2, 3].map((piso) => {
+      {Array.from(new Set(habitaciones.map(h=>h.piso))).sort((a,b)=>a-b).map((piso) => {
         const habsPiso = filtradas.filter((h) => h.piso === piso);
         if (habsPiso.length === 0) {
           return null;
@@ -751,9 +754,9 @@ export default function Mapa({ habitaciones, solicitudes, onComenzarLimpieza, on
                     grid
                     grid-cols-1
                     sm:grid-cols-2
-                    md:grid-cols-3
-                    lg:grid-cols-4
-                    xl:grid-cols-5
+                    md:grid-cols-2
+                    lg:grid-cols-3
+                    2xl:grid-cols-4
                     gap-3
                   ">
             {habsPiso.map((h) => (<TarjetaHabitacion key={h.id} hab={h} onClick={() => setHabitacionSeleccionada(h)} />))}
@@ -765,7 +768,7 @@ export default function Mapa({ habitaciones, solicitudes, onComenzarLimpieza, on
         No hay habitaciones que coincidan con los filtros seleccionados.
       </div>)}
     </div>
-    {habitacionSeleccionada && (<PanelDetalle
+    {habitacionSeleccionada && detalleConectado ? detalleConectado(habitaciones.find(h=>h.id===habitacionSeleccionada.id)??habitacionSeleccionada,()=>setHabitacionSeleccionada(null)) : habitacionSeleccionada && (<PanelDetalle
       hab={habitacionSeleccionada}
       solicitudes={solicitudes}
       usuarioActual={usuarioActual}

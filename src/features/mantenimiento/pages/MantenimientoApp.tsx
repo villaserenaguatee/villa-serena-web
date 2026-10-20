@@ -1,3 +1,4 @@
+import {useDemoSection} from '@/hooks/useDemoSection';
 import { useEffect, useMemo, useState } from 'react';
 import type { Modulo, SeccionMant, OrdenTrabajo, Incidencia, Activo, ActivoHotel, TareaPreventiva, Repuesto, HabitacionHotel, Empleado, EstadoOT, TipoAveria, PrioridadIncidencia, } from '@/lib/pms/types';
 import { siguienteCodigoOT, generarId, ahoraISO, fechaHoyISO, fechaRelativaISO, } from '@/data/pms';
@@ -95,7 +96,7 @@ export default function MantenimientoApp({ onCambiarModulo }: Props) {
   const empleadoActual = empleados.find(e => e.id === user?.id && e.activo);
   const encargadoMantenimiento = empleadoActual?.nombre ?? 'Mantenimiento';
   const [perfilAbierto, setPerfilAbierto] = useState(false);
-  const [seccion, setSeccion] = useState<SeccionMant>('panel');
+  const [seccion, setSeccion] = useDemoSection<SeccionMant>('panel', user?.id ? `vs-demo-section:mantenimiento:${user.id}` : undefined, SECCIONES.map(s=>s.id));
   const [ordenes, setOrdenes] = useState<OrdenTrabajo[]>(() => {
     try {
       const raw = localStorage.getItem('vs-ordenes-mantenimiento');
@@ -495,7 +496,7 @@ export default function MantenimientoApp({ onCambiarModulo }: Props) {
         return (<Activos activos={activos} ordenes={ordenes} onCambiarEstado={cambiarEstadoActivo} onAgregarActivo={agregarActivo} onAbrirOrden={setOrdenAbiertaId} />);
     }
   })();
-  return (<div className="w-full h-screen flex flex-col overflow-hidden" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
+  return (<div data-vs-workspace="mantenimiento" className="w-full h-screen flex flex-col overflow-hidden" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
     <style>
       {`
         @import url('https://fonts.googleapis.com/css2?family=Afacad:wght@400;500;600;700&display=swap');
@@ -504,18 +505,18 @@ export default function MantenimientoApp({ onCambiarModulo }: Props) {
 
     <div className="flex-1 flex overflow-hidden">
 
-      <nav className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
+      <nav data-vs-sidebar="mantenimiento" className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
         <div className="px-5 pt-5 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
           <img src="/villa-serena-logo.png" alt="Villa Serena Hotel" className="mx-auto mb-2 w-32 max-h-24 object-contain" />
           <p className="text-white text-xl font-bold leading-tight" style={{ letterSpacing: '0.02em' }}>Villa Serena</p>
-          <p className="text-xs mt-1" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>Mantenimiento</p>
+          <p className="mt-2 text-xl font-semibold leading-6" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>Mantenimiento</p>
         </div>
 
         <div className="vs-scroll-clean flex-1 py-3 overflow-y-auto">
           {SECCIONES.map(s => {
             const active = seccion === s.id;
             const badge = s.id === 'incidencias' ? incidenciasSinOrden.length : s.id === 'ordenes' ? ordenesAtrasadas.length : 0;
-            return (<button
+            return (<button data-vs-active={active}
               key={s.id}
               onClick={() => setSeccion(s.id)}
               className="w-full flex items-center gap-3 px-5 py-3 text-left transition-colors relative"
@@ -534,11 +535,11 @@ export default function MantenimientoApp({ onCambiarModulo }: Props) {
           })}
         </div>
 
-        <div className="px-4 py-4 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
+        <div className="px-4 py-2 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
           <button
             onClick={() => setPerfilAbierto(true)}
-            className="w-full flex items-center gap-3 rounded-lg p-2 text-left hover:bg-[#18345C] transition-colors"
-            title="Abrir mi perfil">
+            className="w-full min-h-16 flex items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-[#18345C] transition-colors"
+            title={encargadoMantenimiento}>
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
               style={{ backgroundColor: '#D8B94E', color: '#102747' }}>RP</div>
@@ -547,20 +548,21 @@ export default function MantenimientoApp({ onCambiarModulo }: Props) {
                 {encargadoMantenimiento}
               </p>
               <p className="text-[10px] truncate" style={{ color: '#AEBCC1' }}>Encargado de mantenimiento</p>
-              <p className="text-[9px] mt-0.5" style={{ color: '#D8B94E' }}>Perfil</p>
+              <p className="text-[14px] leading-5 no-underline" style={{ color: '#D8B94E' }}>Perfil</p>
             </div>
           </button>
         </div>
       </nav>
 
-      <div className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
-        <div className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: '#102747' }}>
+      <div data-vs-shell-main="mantenimiento" className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
+        <div data-vs-topbar="mantenimiento" className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: '#102747' }}>
           <p className="lg:hidden text-white text-lg font-bold">Villa Serena</p>
           <span className="lg:hidden text-[#AEBCC1] text-xs">·</span>
           <p className="text-[#AEBCC1] text-xs font-medium truncate flex-1">
             {SECCIONES.find(s => s.id === seccion)?.label}
           </p>
           <div className="lg:hidden flex gap-1.5">
+            <button type="button" onClick={() => setPerfilAbierto(true)} className="rounded-md border border-[#52677F] px-3 py-1.5 text-xs text-white">Perfil</button>
             <ModuloSwitcher actual="mantenimiento" onCambiar={onCambiarModulo} variant="inline" />
           </div>
         </div>
@@ -569,11 +571,11 @@ export default function MantenimientoApp({ onCambiarModulo }: Props) {
           {contenido}
         </div>
 
-        <div className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
+        <div data-vs-mobile-nav="mantenimiento" className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
           {SECCIONES.map(s => {
             const active = seccion === s.id;
             const badge = s.id === 'incidencias' ? incidenciasSinOrden.length : s.id === 'ordenes' ? ordenesAtrasadas.length : 0;
-            return (<button
+            return (<button data-vs-active={active}
               key={s.id}
               onClick={() => setSeccion(s.id)}
               className="flex-1 min-w-[64px] flex flex-col items-center justify-center py-2 gap-0.5 relative transition-colors"

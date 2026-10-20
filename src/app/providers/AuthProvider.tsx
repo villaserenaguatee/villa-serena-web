@@ -1,81 +1,66 @@
 'use client';
 import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { loginLocal } from '@/lib/auth/local-auth';
-import { leerEmpleados, EMPLEADOS_EVENT } from '@/store/employeeStore';
+import { loginLocal, reconstruirSesion } from '@/lib/auth/local-auth';
+import { EMPLEADOS_EVENT } from '@/store/employeeStore';
+import { HUESPEDES_EVENT } from '@/store/guestStore';
+import { sessionUser } from '@/lib/auth/staff-contract';
+import { staffLogin, staffRequest } from '@/lib/auth/staff-client';
+import type { Employee } from '@/lib/auth/staff-contract';
 import type { SessionUser } from '@/lib/auth/types';
 interface AuthContextValue {
   user: SessionUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<SessionUser>;
-  logout: () => void;
+  localDemo?: boolean;
+  login: (email: string, password: string, staffOnly?: boolean) => Promise<SessionUser>;
+  logout: () => Promise<void>;
 }
 export const AuthContext = createContext<AuthContextValue | null>(null);
 const KEY = 'villa-serena-session';
-export function AuthProvider({ children }: {
-  children: ReactNode;
-}) {
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [loading, setLoading] = useState(true);
+export function AuthProvider({ children, localDemo = false }: { children: ReactNode; localDemo?: boolean }) {
+  const demoEnabled = localDemo && typeof window !== 'undefined' && ['localhost','127.0.0.1','[::1]'].includes(window.location.hostname);
+  const [user, setUser] = useState<SessionUser | null>(null), [loading, setLoading] = useState(true);
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        const session = JSON.parse(raw) as SessionUser;
-        if (session.role !== 'huesped') {
-          const empleado = leerEmpleados().find(e => e.id === session.id || e.correo.toLowerCase() === session.email.toLowerCase());
-          if (!empleado || !empleado.activo) {
-            localStorage.removeItem(KEY);
-            setUser(null);
-          }
-          else
-            setUser(session);
-        }
-        else
-          setUser(session);
-      }
-    }
-    finally {
-      setLoading(false);
-    }
-  },
-    []);
-  useEffect(() => {
-    const syncEmpleado = () => {
-      const current = user;
-      if (!current || current.role === 'huesped')
-        return;
-      const empleado = leerEmpleados().find(e => e.id === current.id || e.correo.toLowerCase() === current.email.toLowerCase());
-      if (!empleado || !empleado.activo) {
-        localStorage.removeItem(KEY);
-        setUser(null);
-        return;
-      }
-      if (current.name !== empleado.nombre || current.email !== empleado.correo) {
-        const next = { ...current, id: empleado.id, name: empleado.nombre, email: empleado.correo };
-        localStorage.setItem(KEY, JSON.stringify(next));
-        setUser(next);
-      }
+    let active = true;
+    const sync = async () => {
+      // Conserva el portal demo del huésped. Ninguna sesión local autoriza al personal.
+      let guest: SessionUser | null = null;
+      try {
+        const raw = localStorage.getItem(KEY);
+        const local = demoEnabled && raw ? reconstruirSesion(JSON.parse(raw)) : null;
+        if (local?.role === 'huesped') guest = local;
+        else if (raw) localStorage.removeItem(KEY);
+      } catch { localStorage.removeItem(KEY); }
+      try {
+        const employee = await staffRequest<Employee>('yo');
+        if (active) setUser(sessionUser(employee));
+      } catch { if (active) setUser(guest); }
+      finally { if (active) setLoading(false); }
     };
-    window.addEventListener(EMPLEADOS_EVENT, syncEmpleado);
-    window.addEventListener('storage', syncEmpleado);
+    const storage = (event: StorageEvent) => { if (event.key === null || event.key === KEY || event.key === 'vs-huespedes') void sync(); };
+    const focus = () => { void sync(); };
+    void sync();
+    const timer = window.setInterval(focus, 4 * 60 * 1000);
+    window.addEventListener('focus', focus); window.addEventListener('storage', storage);
+    window.addEventListener(EMPLEADOS_EVENT, focus); window.addEventListener(HUESPEDES_EVENT, focus);
     return () => {
-      window.removeEventListener(EMPLEADOS_EVENT, syncEmpleado);
-      window.removeEventListener('storage', syncEmpleado);
+      active = false; window.clearInterval(timer);
+      window.removeEventListener('focus', focus); window.removeEventListener('storage', storage);
+      window.removeEventListener(EMPLEADOS_EVENT, focus); window.removeEventListener(HUESPEDES_EVENT, focus);
     };
-  },
-    [user]);
-  const login = useCallback(async (email: string, password: string) => {
-    const next = await loginLocal(email, password);
-    localStorage.setItem(KEY, JSON.stringify(next));
-    setUser(next);
-    return next;
-  }, []);
-  const logout = useCallback(() => {
-    localStorage.removeItem(KEY);
-    setUser(null);
-  }, []);
-  const value = useMemo(() => ({ user, loading, login, logout }), [user, loading, login, logout]);
-  return <AuthContext.Provider value={value}>
-    {children}
-  </AuthContext.Provider>;
+  }, [demoEnabled]);
+  const login = useCallback(async (email: string, password: string, staffOnly = false) => {
+    let next: SessionUser;
+    if (demoEnabled && !staffOnly && email.trim().toLowerCase() === 'anamorales@gmail.com' && !window.location.pathname.startsWith('/panel')) {
+      next = await loginLocal(email, password); localStorage.setItem(KEY, JSON.stringify(next));
+    } else {
+      next = sessionUser(await staffLogin({ correo: email, contrasena: password })); localStorage.removeItem(KEY);
+    }
+    setUser(next); return next;
+  }, [demoEnabled]);
+  const logout = useCallback(async () => {
+    if (user?.role !== 'huesped') await staffRequest<void>('logout', {});
+    localStorage.removeItem(KEY); setUser(null);
+  }, [user]);
+  const value = useMemo(() => ({ user, loading, login, logout, localDemo: demoEnabled }), [user, loading, login, logout, demoEnabled]);
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

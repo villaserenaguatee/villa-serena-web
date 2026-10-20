@@ -1,13 +1,19 @@
 'use client';
+import ApprovedCleaningDetail from './ApprovedCleaningDetail';
+import {useRoomTypeImages} from '@/lib/useRoomTypeImages';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import type { Pantalla, Modulo, Habitacion, Solicitud, Incidencia, ObjetoOlvidado, EntradaHistorial, EstadoHabitacion } from '@/lib/pms/types';
 import { generarId, horaActual } from '@/data/pms';
+import { useLimpieza, type SolicitudAviso } from '@/features/limpieza/useLimpieza';
 import Inicio from '@/features/limpieza/pages/InicioLimpieza';
 import Mapa from '@/features/limpieza/pages/MapaHabitaciones';
 import Solicitudes from '@/features/limpieza/pages/SolicitudesLimpieza';
 import Incidencias from '@/features/limpieza/pages/IncidenciasLimpieza';
+import IncidenciasConectadas from '@/features/mantenimiento/pages/IncidenciasConectadas';
 import Objetos from '@/features/limpieza/pages/ObjetosOlvidados';
+import ObjetosLimpiezaConectados from './ObjetosLimpiezaConectados';
+import HistorialSolicitudesConectado from './HistorialSolicitudesConectado';
 import Historial from '@/features/limpieza/pages/HistorialLimpieza';
 import RoomServiceApp from '@/features/roomservice/pages/RoomServiceApp';
 import RecepcionApp from '@/features/recepcion/pages/RecepcionApp';
@@ -77,12 +83,13 @@ function Sidebar({ pantalla, setPantalla, solPendientes, incPendientes, onCambia
   onEditarPerfil: () => void;
 }) {
   const { user } = useAuth();
-  const empleadosActuales = leerEmpleados();
+  const empleadosActuales = user?.staff ? [] : leerEmpleados();
   const empleadoLimpieza = empleadosActuales.find(e => e.id === user?.id && e.activo);
-  const nombreLimpieza = empleadoLimpieza?.nombre ?? 'Limpieza';
+  const nombreLimpieza = user?.staff?.nombre ?? empleadoLimpieza?.nombre ?? 'Limpieza';
   const perfilKey = empleadoLimpieza?.correo ? `vs-perfil-personal-${empleadoLimpieza.correo.toLowerCase()}` : '';
   const [perfil, setPerfil] = useState({ nombre: nombreLimpieza, foto: empleadoLimpieza?.foto || '' });
   useEffect(() => {
+    if(user?.staff){setPerfil({nombre:nombreLimpieza,foto:''});return;}
     const cargar = () => {
       try {
         const p = JSON.parse(localStorage.getItem(perfilKey) || '{}');
@@ -99,9 +106,9 @@ function Sidebar({ pantalla, setPantalla, solPendientes, incPendientes, onCambia
     window.addEventListener('vs-profile-updated', actualizar);
     return () => window.removeEventListener('vs-profile-updated', actualizar);
   },
-    [perfilKey]);
+    [perfilKey,nombreLimpieza,user?.staff]);
   const iniciales = perfil.nombre.split(/\s+/).filter(Boolean).map(x => x[0]).slice(0, 2).join('').toUpperCase();
-  return (<nav className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
+  return (<nav data-vs-sidebar="limpieza" className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
 
     <div className="px-5 pt-6 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
       <img src="/villa-serena-logo.png" alt="Villa Serena" className="mx-auto h-24 w-32 object-contain mb-3" />
@@ -109,7 +116,7 @@ function Sidebar({ pantalla, setPantalla, solPendientes, incPendientes, onCambia
         Villa Serena
       </p>
       <p className="text-xs mt-1" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>
-        Módulo de Limpieza
+        Limpieza
       </p>
     </div>
 
@@ -117,7 +124,7 @@ function Sidebar({ pantalla, setPantalla, solPendientes, incPendientes, onCambia
       {PANTALLAS.map(id => {
         const active = pantalla === id;
         const badge = id === 'solicitudes' ? solPendientes : id === 'incidencias' ? incPendientes : 0;
-        return (<button
+        return (<button data-vs-active={active}
           key={id}
           onClick={() => setPantalla(id)}
           className="w-full flex items-center gap-3 px-5 py-3 text-left transition-colors relative group"
@@ -139,10 +146,10 @@ function Sidebar({ pantalla, setPantalla, solPendientes, incPendientes, onCambia
       })}
     </div>
 
-    <div className="px-4 py-4 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
+    <div className="px-4 py-2 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
       <button
         onClick={onEditarPerfil}
-        className="w-full flex items-center gap-3 rounded-lg p-2 text-left hover:bg-[#18345C] transition-colors"
+        className="w-full min-h-16 flex items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-[#18345C] transition-colors"
         title="Abrir mi perfil">
         {perfil.foto ? <img src={perfil.foto} alt={perfil.nombre} className="h-9 w-9 shrink-0 rounded-full object-cover" /> : <div
           className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
@@ -154,22 +161,30 @@ function Sidebar({ pantalla, setPantalla, solPendientes, incPendientes, onCambia
             {perfil.nombre}
           </p>
           <p className="text-[10px] truncate" style={{ color: '#AEBCC1' }}>Limpieza · turno {empleadoLimpieza?.turno ?? '—'}</p>
-          <p className="text-[9px] mt-0.5" style={{ color: '#D8B94E' }}>Perfil</p>
+          <p className="text-[14px] leading-5 no-underline" style={{ color: '#D8B94E' }}>Perfil</p>
         </div>
       </button>
     </div>
   </nav>);
 }
-export default function App() {
+interface Props {
+  onCambiarModulo?: (m: Modulo) => void;
+  conectado?: boolean;
+}
+export default function App({ onCambiarModulo, conectado = false }: Props = {}) {
   const { user } = useAuth();
-  const empleadosActuales = leerEmpleados();
+  const empleadosActuales = user?.staff ? [] : leerEmpleados();
   const empleadoLimpieza = empleadosActuales.find(e => e.id === user?.id && e.activo);
-  const nombreLimpieza = empleadoLimpieza?.nombre ?? 'Limpieza';
+  const nombreLimpieza = user?.name ?? empleadoLimpieza?.nombre ?? 'Limpieza';
   const perfilKey = empleadoLimpieza?.correo ? `vs-perfil-personal-${empleadoLimpieza.correo.toLowerCase()}` : '';
   const [modulo, setModulo] = useState<Modulo>('limpieza');
   const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [pantalla, setPantalla] = useState<Pantalla>('inicio');
-  const [habitaciones, setHabitaciones] = useState<Habitacion[]>(() => leerHabitacionesLimpieza());
+  const roomTypeImages=useRoomTypeImages();
+  const [navigationReady,setNavigationReady]=useState(false);
+  useEffect(()=>{const url=new URL(window.location.href);const saved=url.searchParams.get('seccion')??url.pathname.split('/')[2];if(PANTALLAS.includes(saved as Pantalla))setPantalla(saved as Pantalla);setNavigationReady(true);},[]);
+  useEffect(()=>{if(!navigationReady)return;const url=new URL(window.location.href);url.searchParams.set('seccion',pantalla);history.replaceState(null,'',url.pathname+url.search+url.hash);},[pantalla,navigationReady]);
+  const [habitaciones, setHabitaciones] = useState<Habitacion[]>(() => conectado ? [] : leerHabitacionesLimpieza());
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [incidencias, setIncidencias] = useState<Incidencia[]>([]);
   const [objetos, setObjetos] = useState<ObjetoOlvidado[]>([]);
@@ -177,15 +192,27 @@ export default function App() {
   const [habitacionAbrir, setHabitacionAbrir] = useState<string | null>(null);
   const [solicitudAbrir, setSolicitudAbrir] = useState<string | null>(null);
   const [usuarioActual, setUsuarioActual] = useState(nombreLimpieza);
-  useEffect(() => { guardarEstadoLimpieza(habitaciones); }, [habitaciones]);
+  const [toasts, setToasts] = useState<SolicitudAviso[]>([]);
+
+  const remoto = useLimpieza(
+    conectado,
+    { id: user?.id, nombre: usuarioActual },
+    aviso => {
+      setToasts(prev => [aviso, ...prev].slice(0, 5));
+      window.setTimeout(() => setToasts(prev => prev.filter(t => t.id !== aviso.id)), 8000);
+    }
+  );
+  useEffect(() => { if(!conectado)guardarEstadoLimpieza(habitaciones); }, [habitaciones,conectado]);
   useEffect(() => {
+    if(conectado)return;
     const sincronizarHabitaciones = () => setHabitaciones(leerHabitacionesLimpieza());
     window.addEventListener(HABITACIONES_EVENT, sincronizarHabitaciones);
     return () => window.removeEventListener(HABITACIONES_EVENT, sincronizarHabitaciones);
   },
-    []);
+    [conectado]);
   useEffect(() => {
     const cargarPerfil = () => {
+      if(conectado){setUsuarioActual(nombreLimpieza);return;}
       try {
         const perfil = perfilKey ? JSON.parse(localStorage.getItem(perfilKey) || '{}') : {};
         setUsuarioActual(perfil.nombre || nombreLimpieza);
@@ -206,6 +233,7 @@ export default function App() {
     [perfilKey, nombreLimpieza, empleadoLimpieza?.correo]);
   useEffect(() => {
     const incorporar = () => {
+      if(conectado)return;
       const automaticas = leerTareasLimpiezaSalida();
       if (!automaticas.length)
         return;
@@ -385,7 +413,9 @@ export default function App() {
     registrarObjetoOlvidado(compartido);
     agregarHistorial({ habitacionNumero: obj.habitacionNumero, tipo: 'Objeto registrado', fechaHora: obj.fechaHora, estado: 'Guardado', responsable: usuarioActual });
   }
-  const solPendientes = solicitudes.filter(s => s.estado === 'pendiente').length;
+  const solPendientes = conectado
+    ? remoto.solicitudes.filter(s => s.estado === 'PENDIENTE').length
+    : solicitudes.filter(s => s.estado === 'pendiente').length;
   const incPendientes = incidencias.filter(i => i.estado === 'pendiente').length;
   const screenContent = (() => {
     switch (pantalla) {
@@ -402,10 +432,21 @@ export default function App() {
           }}
           onComenzarLimpieza={comenzarLimpieza}
           onAbrirHabitacion={abrirHabitacionDesdeInicio}
-          usuarioActual={usuarioActual} />);
+          usuarioActual={usuarioActual}
+          conectado={conectado}
+          habitacionesConectadas={remoto.habitaciones}
+          solicitudesConectadas={remoto.solicitudes}
+          onIniciarLimpieza={id => void remoto.iniciar(id)}
+          onInterrumpirLimpieza={id => void remoto.interrumpir(id)}
+          onTerminarLimpieza={id => void remoto.terminar(id)}
+          onTomarSolicitud={id => void remoto.tomar(id)}
+          onAtenderSolicitud={id => void remoto.atender(id)}
+          estaACargo={remoto.estaACargo}
+          busy={remoto.busy} />);
       case 'mapa':
         return (<Mapa
-          habitaciones={habitaciones}
+          habitaciones={conectado ? remoto.mapa.map(h=>({id:String(h.id),numero:h.numero,piso:h.piso,tipo:h.tipo,estado:h.condicion==='FUERA_DE_SERVICIO'?'fuera-servicio':h.condicion==='LIMPIA'?'limpia':h.condicion==='EN_LIMPIEZA'?'en-limpieza':'pendiente',personal:h.responsable,proximaLlegada:null,tareas:[],observaciones:'',foto:roomTypeImages[h.tipo]??'',ocupacion:h.ocupacion,condicionReal:h.condicion,empleadoId:h.empleadoId})) : habitaciones}
+          detalleConectado={conectado ? (h,cerrar)=><ApprovedCleaningDetail hab={h} onClose={cerrar}><p className="mt-3">{h.tipo} · Piso {h.piso}</p><p className="mt-3">{h.ocupacion==='OCUPADA'?'Ocupada':h.condicionReal==='FUERA_DE_SERVICIO'?'Fuera de servicio':'Libre'} · {h.condicionReal==='LIMPIA'?'Limpia':h.condicionReal==='SUCIA'?'Pendiente':h.condicionReal==='FUERA_DE_SERVICIO'?'Fuera de servicio':'En limpieza'}</p>{h.personal&&<p className="mt-3">Responsable: {h.personal}</p>}<div className="mt-6 flex gap-3 flex-wrap">{h.ocupacion==='LIBRE'&&h.condicionReal==='SUCIA'&&<button disabled={remoto.busy} onClick={()=>void remoto.iniciar(Number(h.id))} className="rounded-lg bg-[#18345C] text-white px-4 py-2">Iniciar limpieza</button>}{h.condicionReal==='EN_LIMPIEZA'&&remoto.estaACargo({id:h.empleadoId??undefined})&&<><button disabled={remoto.busy} onClick={()=>void remoto.interrumpir(Number(h.id))} className="border rounded-lg px-4 py-2">Interrumpir limpieza</button><button disabled={remoto.busy} onClick={()=>void remoto.terminar(Number(h.id))} className="rounded-lg bg-[#18345C] text-white px-4 py-2">Finalizar limpieza</button></>}<button onClick={()=>{cerrar();setPantalla('incidencias');}} className="border border-[#18345C] rounded-lg px-4 py-2">Reportar incidencia</button></div>{remoto.error&&<p role="alert" className="mt-4 text-red-700">{remoto.error}</p>}</ApprovedCleaningDetail> : undefined}
           solicitudes={solicitudes}
           onComenzarLimpieza={comenzarLimpieza}
           onFinalizarLimpieza={finalizarLimpieza}
@@ -421,10 +462,16 @@ export default function App() {
           onCerrarDetalle={() => setSolicitudAbrir(null)}
           onAtenderArticulo={atenderArticulo}
           onConfirmarEntrega={confirmarEntregaArticulo}
-          onAbrirLimpieza={abrirLimpiezaDesdeSolicitud} />);
-      case 'incidencias': return <Incidencias incidencias={incidencias} habitaciones={habitaciones} onRegistrar={registrarIncidencia} />;
-      case 'objetos': return <Objetos objetos={objetos} habitaciones={habitaciones} onRegistrar={registrarObjeto} />;
-      case 'historial': return <Historial historial={historial} habitaciones={habitaciones} usuarioActual={usuarioActual} />;
+          onAbrirLimpieza={abrirLimpiezaDesdeSolicitud}
+          conectado={conectado}
+          solicitudesConectadas={remoto.solicitudes}
+          onTomarSolicitud={id => void remoto.tomar(id)}
+          onAtenderSolicitud={id => void remoto.atender(id)}
+          estaACargo={remoto.estaACargo}
+          busy={remoto.busy} />);
+      case 'incidencias': return conectado ? <IncidenciasConectadas soloReportar/> : <Incidencias incidencias={incidencias} habitaciones={habitaciones} onRegistrar={registrarIncidencia} />;
+      case 'objetos': return conectado ? <ObjetosLimpiezaConectados/> : <Objetos objetos={objetos} habitaciones={habitaciones} onRegistrar={registrarObjeto} />;
+      case 'historial': if(conectado)return <HistorialSolicitudesConectado/>;return <Historial historial={historial} habitaciones={habitaciones} usuarioActual={usuarioActual} />;
     }
   })();
   if (modulo === 'roomservice') {
@@ -442,7 +489,7 @@ export default function App() {
   if (modulo === 'huesped') {
     return <HuespedApp onCambiarModulo={setModulo} />;
   }
-  return (<div className="w-full h-screen flex flex-col overflow-hidden" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
+  return (<div data-vs-workspace="limpieza" className="w-full h-screen flex flex-col overflow-hidden" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
     <style>
       {`
         @import url('https://fonts.googleapis.com/css2?family=Afacad:wght@400;500;600;700&display=swap');
@@ -462,7 +509,7 @@ export default function App() {
         onCambiarModulo={setModulo}
         onEditarPerfil={() => setPerfilAbierto(true)} />
 
-      <div className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
+      <div data-vs-shell-main="limpieza" className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
 
         <div className="lg:hidden flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: '#102747' }}>
           <p className="text-white text-lg font-bold" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
@@ -473,6 +520,7 @@ export default function App() {
             {NAV_LABELS_SIDEBAR[pantalla]}
           </p>
           <div className="flex gap-1.5 shrink-0">
+            <button className="text-xs text-white" onClick={() => setPerfilAbierto(true)}>Mi perfil</button>
             <ModuloSwitcher actual="limpieza" onCambiar={setModulo} variant="inline" />
           </div>
           {(solPendientes + incPendientes) > 0 && (<span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: '#D8B94E', color: '#102747' }}>
@@ -480,32 +528,44 @@ export default function App() {
           </span>)}
         </div>
 
-        <div className="flex-1 flex overflow-hidden relative">
-          {screenContent}
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          {conectado && remoto.error && (
+            <div role="alert" className="bg-red-50 border border-red-200 text-red-800 p-3 mx-4 my-2 rounded-md text-sm flex items-center justify-between z-10 shrink-0">
+              <span>{remoto.error}</span>
+              <button type="button" onClick={() => remoto.setError('')} className="text-red-600 font-bold ml-2">✕</button>
+            </div>
+          )}
+          {conectado && remoto.loading && (
+            <p role="status" className="p-3 text-sm text-[#71839B] shrink-0">Consultando datos de limpieza…</p>
+          )}
 
-          {(pantalla === 'solicitudes' || pantalla === 'inicio') && habitacionAbrir && (<Mapa
-            habitaciones={habitaciones}
-            solicitudes={solicitudes}
-            onComenzarLimpieza={comenzarLimpieza}
-            onFinalizarLimpieza={finalizarLimpieza}
-            onActualizarEstado={actualizarEstado}
-            onToggleTarea={toggleTarea}
-            onGuardarObservaciones={guardarObservaciones}
-            onIrIncidencias={() => {
-              setHabitacionAbrir(null);
-              setPantalla('incidencias');
-            }}
-            habitacionInicialNumero={habitacionAbrir}
-            onHabitacionInicialProcesada={() => { }}
-            soloDetalle
-            onCerrarSoloDetalle={() => setHabitacionAbrir(null)} />)}
+          <div className="flex-1 flex overflow-hidden relative">
+            {screenContent}
+
+            {(pantalla === 'solicitudes' || pantalla === 'inicio') && habitacionAbrir && (<Mapa
+              habitaciones={habitaciones}
+              solicitudes={solicitudes}
+              onComenzarLimpieza={comenzarLimpieza}
+              onFinalizarLimpieza={finalizarLimpieza}
+              onActualizarEstado={actualizarEstado}
+              onToggleTarea={toggleTarea}
+              onGuardarObservaciones={guardarObservaciones}
+              onIrIncidencias={() => {
+                setHabitacionAbrir(null);
+                setPantalla('incidencias');
+              }}
+              habitacionInicialNumero={habitacionAbrir}
+              onHabitacionInicialProcesada={() => { }}
+              soloDetalle
+              onCerrarSoloDetalle={() => setHabitacionAbrir(null)} />)}
+          </div>
         </div>
 
-        <div className="lg:hidden flex shrink-0 border-t" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
+        <div data-vs-mobile-nav="limpieza" className="lg:hidden flex shrink-0 border-t" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
           {PANTALLAS.map(id => {
             const active = pantalla === id;
             const badge = id === 'solicitudes' ? solPendientes : id === 'incidencias' ? incPendientes : 0;
-            return (<button
+            return (<button data-vs-active={active}
               key={id}
               type="button"
               onClick={() => {
@@ -531,6 +591,43 @@ export default function App() {
         </div>
       </div>
     </div>
+    {toasts.length > 0 && (
+      <div className="fixed bottom-4 right-4 z-50 space-y-2 w-[calc(100%-2rem)] sm:w-80">
+        {toasts.map(t => (
+          <div
+            key={t.id}
+            role="status"
+            className="w-full text-left bg-white border border-[#18345C] rounded-xl shadow-2xl px-4 py-3 flex items-start gap-3 animate-[fadein_0.2s_ease-out]">
+            <span className="w-9 h-9 rounded-lg bg-[#EFF6FF] text-[#1E40AF] flex items-center justify-center shrink-0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-semibold text-[#18345C]">
+                Nueva solicitud de {t.tipo === 'LIMPIEZA' ? 'limpieza' : 'artículos'}
+              </p>
+              <p className="text-[13px] text-[#6B7280] mt-0.5">
+                Habitación {t.habitacionNumero} · Piso {t.piso}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setPantalla('solicitudes');
+                  setToasts(prev => prev.filter(x => x.id !== t.id));
+                }}
+                className="text-[12px] text-[#18345C] font-semibold underline mt-1">
+                Ver solicitudes
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))}
+              className="text-[#AEBCC1] hover:text-[#18345C] text-xs">
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+    )}
     <StaffProfileModal
       open={perfilAbierto}
       onClose={() => setPerfilAbierto(false)}

@@ -10,6 +10,7 @@ const MOTIVOS_RAPIDOS = [
 ];
 type Modo = null | 'resolver' | 'cancelar' | 'reprogramar' | 'repuesto';
 interface Props {
+  busy?:boolean;
   orden: OrdenTrabajo;
   repuestos: Repuesto[];
   onCerrar: () => void;
@@ -25,7 +26,7 @@ interface Props {
   }) => void;
   onQuitarRepuesto: (ordenId: string, indice: number) => void;
 }
-export default function DetalleOrden({ orden, repuestos, onCerrar, onAvanzar, onCancelar, onReprogramar, onAgregarRepuesto, onQuitarRepuesto, }: Props) {
+export default function DetalleOrden({ orden, repuestos, onCerrar, onAvanzar, onCancelar, onReprogramar, onAgregarRepuesto, onQuitarRepuesto, busy=false }: Props) {
   const [modo, setModo] = useState<Modo>(null);
   const em = ESTADO_OT_META[orden.estado];
   const pm = PRIORIDAD_META[orden.prioridad];
@@ -49,7 +50,7 @@ export default function DetalleOrden({ orden, repuestos, onCerrar, onAvanzar, on
       </span>
     </span>}
     onCerrar={onCerrar}>
-    <div className="space-y-5">
+    <fieldset disabled={busy} className="min-w-0 space-y-5">
 
       <div className="flex items-center gap-2 flex-wrap">
         <Chip cls={em.chip}>
@@ -160,7 +161,7 @@ export default function DetalleOrden({ orden, repuestos, onCerrar, onAvanzar, on
           {ACCION_AVANZAR_OT[orden.estado]}
         </button>
 
-        <div className="flex gap-2">
+        <div data-vs-actions="compact" className="flex gap-2">
           <button
             onClick={() => setModo('reprogramar')}
             className="flex-1 px-4 py-2.5 min-h-[44px] text-[14px] font-semibold border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-[#F8F6F0] transition-colors">
@@ -210,7 +211,7 @@ export default function DetalleOrden({ orden, repuestos, onCerrar, onAvanzar, on
           })}
         </div>
       </div>
-    </div>
+    </fieldset>
   </Modal>);
 }
 function Dato({ label, valor, alerta }: {
@@ -253,8 +254,8 @@ function FormResolver({ onGuardar, onCancelar, }: {
     const n = unidad === 'horas' ? valor * 60 : valor;
     if (!tiempo.trim())
       e.minutos = 'Indica el tiempo empleado.';
-    else if (!Number.isFinite(n) || n <= 0)
-      e.minutos = 'Debe ser un número mayor que cero.';
+    else if (!Number.isFinite(n) || n < 0)
+      e.minutos = 'Debe ser un número igual o mayor que cero.';
     setErrores(e);
     if (Object.keys(e).length > 0)
       return;
@@ -274,7 +275,7 @@ function FormResolver({ onGuardar, onCancelar, }: {
 
     <Campo label="Tiempo empleado" error={errores.minutos}>
       <div className="grid grid-cols-[1fr_140px] gap-2">
-        <input type="number" min={1} value={tiempo} onChange={e => setTiempo(e.target.value)} className={INPUT_CLS} placeholder="Ej. 45" />
+        <input type="number" min={0} value={tiempo} onChange={e => setTiempo(e.target.value)} className={INPUT_CLS} placeholder="Ej. 45" />
         <select value={unidad} onChange={e => setUnidad(e.target.value as 'minutos' | 'horas')} className={INPUT_CLS}>
           <option value="minutos">Minutos</option>
           <option value="horas">Horas</option>
@@ -282,7 +283,7 @@ function FormResolver({ onGuardar, onCancelar, }: {
       </div>
     </Campo>
 
-    <div className="flex gap-2">
+    <div data-vs-actions="compact" className="flex gap-2">
       <button
         onClick={onCancelar}
         className="flex-1 px-4 py-2.5 min-h-[44px] text-[14px] font-semibold border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-white transition-colors">
@@ -339,7 +340,7 @@ function FormCancelar({ onGuardar, onCancelar, }: {
         placeholder="Por qué se cancela este trabajo" />
     </Campo>
 
-    <div className="flex gap-2">
+    <div data-vs-actions="compact" className="flex gap-2">
       <button
         onClick={onCancelar}
         className="flex-1 px-4 py-2.5 min-h-[44px] text-[14px] font-semibold border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-white transition-colors">
@@ -386,7 +387,7 @@ function FormReprogramar({ fechaActual, onGuardar, onCancelar, }: {
       <input value={motivo} onChange={e => setMotivo(e.target.value)} className={INPUT_CLS} placeholder="Ej. a la espera del repuesto" />
     </Campo>
 
-    <div className="flex gap-2">
+    <div data-vs-actions="compact" className="flex gap-2">
       <button
         onClick={onCancelar}
         className="flex-1 px-4 py-2.5 min-h-[44px] text-[14px] font-semibold border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-white transition-colors">
@@ -478,7 +479,7 @@ function FormRepuesto({ repuestos, onGuardar, onCancelar, }: {
       <input type="number" min={1} value={cantidad} onChange={e => setCantidad(e.target.value.replace(/\D/g, ""))} className={INPUT_CLS} />
     </Campo>
 
-    <div className="flex gap-2">
+    <div data-vs-actions="compact" className="flex gap-2">
       <button
         onClick={onCancelar}
         className="flex-1 px-4 py-2.5 min-h-[44px] text-[14px] font-semibold border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-white transition-colors">

@@ -1,4 +1,2 @@
-import { redirect } from 'next/navigation';
-export default function Page() {
-  redirect('/limpieza');
-}
+import {LimpiezaRoleApp} from '@/app/router/RoleEntrypoints';
+export default function Page(){return <LimpiezaRoleApp conectado={process.env.STAFF_AUTH_MODE==='spring'}/>;}

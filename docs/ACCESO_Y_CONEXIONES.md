@@ -2,20 +2,22 @@
 
 ## Inicio de sesión
 
-La ruta de acceso es `/login`.
+El personal entra desde `/panel/login`; el huésped, desde `/login`.
 
 ### Cuentas por área
 
 | Rol | Correo | Acceso |
 | --- | --- | --- |
-| Administración | `admin@villaserena.gt` | Contraseña no vacía |
-| Recepción | `recepcion@villaserena.gt` | Contraseña no vacía |
-| Limpieza | `limpieza@villaserena.gt` | Contraseña no vacía |
-| Room Service | `roomservice@villaserena.gt` | Contraseña no vacía |
-| Mantenimiento | `mantenimiento@villaserena.gt` | Contraseña no vacía |
+| Administración | `admin@villaserena.gt` | `VillaSerena26` |
+| Recepción | `recepcion@villaserena.gt` | `VillaSerena26` |
+| Limpieza | `limpieza@villaserena.gt` | `VillaSerena26` |
+| Room Service | `roomservice@villaserena.gt` | `VillaSerena26` |
+| Mantenimiento | `mantenimiento@villaserena.gt` | `VillaSerena26` |
 | Huésped | `anamorales@gmail.com` | `demo123` |
 
-Los empleados activos registrados en Administración se autentican con su correo y `demo123` en la implementación local actual. Un empleado inactivo no puede iniciar sesión.
+Las cuentas de prueba del personal usan `VillaSerena26` en el BFF. Un empleado inactivo no puede iniciar sesión. Estas credenciales no configuran el acceso real de Spring.
+
+La sesión demo del huésped incluye un `guestId` explícito vinculado a su registro en `guestStore`. El portal resuelve el perfil y sus reservas por ese ID; si la sesión o el huésped asociado no son válidos, no muestra datos de otra cuenta.
 
 ## Web pública
 
@@ -34,8 +36,12 @@ Funciones principales:
 Conexiones:
 
 - `publicAvailability.ts` consulta habitaciones, reservas y tarifas;
-- `publicBooking.ts` registra huéspedes y reservas;
-- `portalReceptionSync.ts` comunica la reserva pública con Recepción.
+- `publicBooking.ts` valida la solicitud y crea la reserva únicamente después de una aprobación de pago;
+- `reservationStore.ts` conserva las reservas del navegador;
+- `guestStore.ts` conserva los huéspedes del navegador;
+- `roomStore.ts` conserva las habitaciones del hotel.
+
+El flujo público no tiene un BFF ni una pasarela de pago conectados. La función `processCardPayment` en `publicBooking.ts` es el punto de integración pendiente. El checkout no debe crear ni confirmar una reserva a partir de la validación local de los campos de tarjeta; la confirmación requiere una reserva persistida y un pago confirmado. Los datos antiguos de `vs-portal-recepcion` se migran una sola vez a `vs-reservas` y `vs-huespedes`.
 
 ## Recepción
 
@@ -60,7 +66,7 @@ Conexiones:
 - `guestStore.ts`: huéspedes;
 - `roomStore.ts`: habitaciones;
 - `tarifasStore.ts`: tarifas;
-- `portalReceptionSync.ts`: Portal del huésped;
+- `guestStore.ts`: huéspedes compartidos con el Portal del huésped;
 - `cleaningEvents.ts`: tareas posteriores al check-out;
 - `maintenanceEvents.ts`: incidencias de mantenimiento;
 - `lostFoundEvents.ts`: objetos olvidados;
@@ -90,7 +96,7 @@ Conexiones:
 - comparte mensajes mediante `chatStore.ts`;
 - genera tareas de limpieza mediante `cleaningEvents.ts`;
 - consulta información de pagos mediante `paymentStore.ts`;
-- traduce mensajes mediante `/api/translate`.
+- muestra el mensaje original, sin traducción automática en el MVP (#60).
 
 ## Room Service
 
@@ -172,11 +178,8 @@ Conexiones:
 
 La implementación funcional actual usa almacenamiento del navegador para conservar información operativa entre pantallas y eventos personalizados para sincronizar los módulos dentro de la aplicación. Los archivos de `src/store/` son los puntos centrales de persistencia, eventos y sincronización entre módulos.
 
-## Traducción
+## Idioma del MVP (issue #60)
 
-La interfaz bilingüe utiliza los recursos de `src/i18n`. Los mensajes que requieren traducción dinámica utilizan `/api/translate`. Para habilitar DeepL se debe crear `.env.local` con:
-
-```env
-DEEPL_API_KEY=clave_del_proveedor
-DEEPL_API_URL=https://api-free.deepl.com/v2/translate
-```
+Interfaz en español y mensajes originales. La traducción automática y su ruta de
+proveedor están retiradas. No configurar claves para activarla por entorno.
+Ver [funciones retiradas y requisitos para retomarlas](ISSUE_60_MVP.md).

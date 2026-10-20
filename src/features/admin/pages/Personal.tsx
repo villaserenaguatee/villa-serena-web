@@ -1,3 +1,4 @@
+import type { SolicitudCorreccion } from '@/store/correctionStore';
 import { useEffect, useMemo, useState } from 'react';
 import type { Empleado, RolPersonal, TurnoPersonal, PermisoModulo, EstadoAsistencia, } from '@/lib/pms/types';
 import { generarId } from '@/data/pms';
@@ -21,7 +22,7 @@ export default function Personal({ empleados, onAgregar, onCambiarAsistencia, on
   const [creando, setCreando] = useState(false);
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
   const [versionFotos, setVersionFotos] = useState(0);
-  const [solicitudes, setSolicitudes] = useState<any[]>([]);
+  const [solicitudes, setSolicitudes] = useState<SolicitudCorreccion[]>([]);
   const [verSolicitudes, setVerSolicitudes] = useState(false);
   useEffect(() => {
     const cargar = () => {
@@ -69,7 +70,7 @@ export default function Personal({ empleados, onAgregar, onCambiarAsistencia, on
         catch { }
       }
     }
-    const next = solicitudes.map(x => x.id === id ? { ...x, estado: aprobar ? 'aprobada' : 'rechazada', resueltaEn: new Date().toISOString() } : x);
+    const next = solicitudes.map(x => x.id === id ? { ...x, estado: (aprobar ? 'aprobada' : 'rechazada') as SolicitudCorreccion['estado'], resueltaEn: new Date().toISOString() } : x);
     localStorage.setItem('vs-correcciones-personal', JSON.stringify(next));
     setSolicitudes(next);
     window.dispatchEvent(new Event('vs-correcciones-personal-updated'));
@@ -291,7 +292,7 @@ function FormNuevo({ onCancelar, onGuardar, }: {
   }
   return (<div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4">
     <div className="absolute inset-0 bg-black/40" onClick={onCancelar} />
-    <div className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[88vh] overflow-y-auto">
+    <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[88vh] overflow-y-auto">
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#E5E0D8]">
         <h2 className="text-xl font-semibold text-[#18345C]">Nuevo empleado</h2>
         <button onClick={onCancelar} className="text-[#AEBCC1] hover:text-[#1F2933] p-1 text-lg leading-none">✕</button>
@@ -393,7 +394,7 @@ function FormNuevo({ onCancelar, onGuardar, }: {
           {err}
         </p>}
       </div>
-      <div className="flex flex-wrap justify-end gap-2 px-4 pb-4">
+      <div data-vs-actions="compact" className="flex flex-wrap justify-end gap-2 px-4 pb-4">
         <button onClick={onCancelar} className="min-h-11 px-4 text-sm border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-[#F8F6F0] transition-colors">
           Cancelar
         </button>
@@ -455,7 +456,7 @@ function FichaEmpleado({ empleado: e, foto, onCerrar, onCambiarAsistencia, onTog
     if (x.target === x.currentTarget)
       onCerrar();
   }}>
-    <aside className="h-full w-full max-w-xl overflow-y-auto bg-white shadow-2xl">
+    <aside data-vs-ui="compact" data-vs-drawer="compact" className="h-full w-full max-w-xl overflow-y-auto bg-white shadow-2xl">
       <header className="sticky top-0 z-10 flex items-start justify-between border-b bg-white p-5">
         <div className="flex items-center gap-4">
           <Avatar nombre={e.nombre} foto={foto} grande />

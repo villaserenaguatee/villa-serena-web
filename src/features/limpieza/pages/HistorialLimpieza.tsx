@@ -74,10 +74,10 @@ export default function Historial({ historial, habitaciones, usuarioActual = 'Pe
     setHasta('');
   }
   return <div className="flex-1 overflow-y-auto bg-[#F8F6F0]">
-    <header className="border-b border-[#E5E0D8] bg-white px-4 py-5 sm:px-6">
+    <header data-vs-page-header="limpieza" className="border-b border-[#E5E0D8] bg-white px-4 py-5 sm:px-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-[32px] font-semibold leading-tight text-[#18345C]">Historial</h1>
+          <h1 data-vs-page-title="limpieza" className="text-[32px] font-semibold leading-tight text-[#18345C]">Historial</h1>
           <p className="mt-1 text-sm text-[#AEBCC1]">{visibles.length} {visibles.length === 1 ? 'registro' : 'registros'} · Actividad de {usuarioActual}</p>
         </div>
         <button onClick={limpiar} className="rounded-lg border border-[#D9DDE2] bg-white px-3 py-2 text-sm font-medium text-[#71839B] hover:text-[#18345C]">Limpiar filtros</button>
@@ -122,7 +122,7 @@ export default function Historial({ historial, habitaciones, usuarioActual = 'Pe
       {visibles.length ? <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {visibles.map(e => {
           const h = habitaciones.find(x => x.numero === e.habitacionNumero);
-          return <article key={e.id} className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-white sm:flex">
+          return <article data-vs-card="limpieza" key={e.id} className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-white sm:flex">
             <img src={h?.foto || '/villa-serena-logo.png'} alt={`Habitación ${e.habitacionNumero}`} className="h-44 w-full object-cover sm:h-auto sm:w-48" />
             <div className="flex min-w-0 flex-1 flex-col justify-between p-4">
               <div className="flex items-start justify-between gap-3">

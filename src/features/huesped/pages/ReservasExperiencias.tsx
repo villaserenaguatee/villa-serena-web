@@ -1,7 +1,13 @@
+import { approvedExperienceEnglish } from "./approvedExperienceEnglish";
+import { leerReservas } from "@/store/reservationStore";
+import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { useMemo, useState } from "react";
-import type { ReservaAmenidad, TurnoAmenidad, } from "@/lib/pms/types";
+import type { Reserva, ReservaAmenidad, TurnoAmenidad, } from "@/lib/pms/types";
 import { Cabecera } from "@/features/huesped/pages/huespedUtils";
 import { useUiText } from "@/i18n/UiText";
+type ExperienciaLocal = { id: string; reservaId: string; huespedId: string; nombre: string; precio: string; fecha: string; hora: string; personas: number; estado: string };
+// Legacy-only formatter retained for the existing unit contract; connected mode remains disabled.
+export function crearExperienciaLocal(id: string, reservaId: string, huespedId: string, opcion: { nombre: string; precio: string }, fecha: string, hora: string, personas: number): ExperienciaLocal { return { id, reservaId, huespedId, nombre: opcion.nombre, precio: opcion.precio, fecha: fecha || "Por coordinar", hora: hora || "Por coordinar", personas, estado: "Pendiente" }; }
 type Categoria = "Todos" | "Restaurante" | "Spa" | "Piscina" | "Experiencias" | "Transporte";
 type Opcion = {
   id: string;
@@ -51,7 +57,7 @@ const PRESENTACION: Record<Categoria, {
     frase: "Muévete con comodidad con traslados coordinados durante tu estancia.",
   },
 };
-const OPCIONES: Opcion[] = [
+export const OPCIONES: Opcion[] = [
   {
     id: "mesa",
     categoria: "Restaurante",
@@ -228,7 +234,13 @@ const OPCIONES: Opcion[] = [
     precio: "Tarifa del hotel",
   },
 ];
-export default function ReservasExperiencias({ turnos, reservas, onReservar, onCancelar, onCargoConfirmado, }: {
+export function puedeCrearExperiencia(reservaId: string, huespedId: string) {
+  return leerReservas().some(r => r.id === reservaId && r.huespedId === huespedId && r.estado === "en-curso");
+}
+export default function ReservasExperiencias({ connected=false,reserva, huespedId, turnos, reservas, onReservar, onCancelar, onCargoConfirmado, }: {
+  connected?:boolean;
+  reserva: Reserva;
+  huespedId: string;
   turnos: TurnoAmenidad[];
   reservas: ReservaAmenidad[];
   onReservar: (id: string, personas: number, detalle?: string) => void;
@@ -236,14 +248,17 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
   onCargoConfirmado?: (id: string, nombre: string, monto: number) => void;
 }) {
   const ui = useUiText();
+  const { en } = usePublicLanguage();
+  const disponible = !connected&&reserva.estado === "en-curso" && puedeCrearExperiencia(reserva.id, huespedId);
+  const [rechazada, setRechazada] = useState(false);
   const [cat, setCat] = useState<Categoria>("Todos");
   const [activo, setActivo] = useState<Opcion | null>(null);
   const [fecha, setFecha] = useState("");
   const [hora, setHora] = useState("");
   const [personas, setPersonas] = useState(1);
   const [nota, setNota] = useState("");
-  const [mis, setMis] = useState(false);
-  const [locales, setLocales] = useState<any[]>([]);
+  const [mis, setMis] = useState(!disponible);
+  const [locales, setLocales] = useState<ExperienciaLocal[]>([]);
   const lista = OPCIONES.filter((x) => cat === "Todos" || x.categoria === cat);
   const turnosArea = useMemo(() => activo?.area
     ? turnos.filter((t) => t.area === activo.area)
@@ -252,6 +267,9 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
     .filter((t) => !fecha || t.fecha === fecha)
     .filter((t) => t.aforo - t.ocupados > 0);
   function abrir(o: Opcion) {
+    if (connected) return;
+    if (!puedeCrearExperiencia(reserva.id, huespedId)) { setRechazada(true); return; }
+    setRechazada(false);
     setActivo(o);
     setFecha("");
     setHora("");
@@ -262,6 +280,8 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
     setNota("");
   }
   function confirmar() {
+    if(connected)return;
+    if (!puedeCrearExperiencia(reserva.id, huespedId)) { setActivo(null); setRechazada(true); return; }
     if (!activo)
       return;
     const id = `exp-${Date.now()}`;
@@ -274,6 +294,8 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
       setLocales((v) => [
         {
           id,
+          reservaId: reserva.id,
+          huespedId,
           nombre: activo.nombre,
           fecha: fecha || "Por coordinar",
           hora: hora || "Por coordinar",
@@ -297,6 +319,10 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
     <Cabecera titulo="Reservas y experiencias" subtitulo="Agenda restaurante, spa, piscina, experiencias y transporte durante tu estancia." />
 
     <div className="space-y-5 p-4 sm:p-6">
+      {connected ? <div role="status" className="rounded-xl border border-[#D8B94E] bg-[#FFF9E5] p-4 text-[#18345C]">{en ? 'Contact Reception to arrange an experience.' : 'Contacta a Recepción para coordinar una experiencia.'}</div> : (!disponible || rechazada) && <div role="status" className="rounded-xl border border-[#D8B94E] bg-[#FFF9E5] p-4 text-[#18345C]">
+        <p className="font-semibold">{reserva.estado === "finalizada" ? (en ? "Your stay has ended" : "Tu estancia ha finalizado") : reserva.estado === "cancelada" ? (en ? "Your reservation is cancelled" : "Tu reserva está cancelada") : (en ? "Bookings require an active stay" : "Las reservas requieren una estancia activa")}</p>
+        <p className="mt-1 text-sm">{reserva.codigo} · {en ? "You can view your booking history. New bookings are unavailable for this stay." : "Puedes consultar Mis reservas y el historial. No se pueden crear nuevas reservas para esta estancia."}</p>
+      </div>}
 
       <section className="relative min-h-[190px] overflow-hidden rounded-xl border border-[#E5E0D8] bg-[#18345C] shadow-sm">
 
@@ -339,11 +365,11 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
         {ui("Mis reservas")}
 
         <span className="ml-2 rounded-full bg-[#FFF7DD] px-2 py-1 text-xs">
-          {reservas.length + locales.length}
+          {connected?'—':reservas.length+locales.length}
         </span>
       </button>
 
-      {mis && (<section className="rounded-xl border border-[#E5E0D8] bg-white p-4">
+      {mis && (<section data-vs-card="huesped" className="rounded-xl border border-[#E5E0D8] bg-white p-4">
 
         <h2 className="text-lg font-semibold text-[#18345C]">
           {ui("Mis reservas")}
@@ -354,7 +380,7 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
           {reservas.length +
             locales.length ===
             0 && (<p className="text-sm text-[#71839B]">
-              {ui("Todavía no tienes reservas.")}
+              {connected?(en?'Contact Reception to arrange your activities.':'Contacta a Recepción para coordinar tus actividades.'):ui('Todavía no tienes reservas.')}
             </p>)}
 
           {locales.map((r) => (<div key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#E9E5DC] p-3">
@@ -392,7 +418,7 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
                 {ui("Confirmada")}
               </span>
 
-              <button onClick={() => onCancelar(r.id)} className="text-xs font-semibold text-[#A33A3A]">
+              <button disabled={!disponible} onClick={() => { if (puedeCrearExperiencia(reserva.id, huespedId)) onCancelar(r.id); }} className="text-xs font-semibold text-[#A33A3A]">
                 {ui("Cancelar")}
               </button>
 
@@ -417,27 +443,27 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
 
-        {lista.map((o) => (<article key={o.id} className="flex flex-col rounded-xl border border-[#E5E0D8] bg-white p-4 shadow-sm">
+        {lista.map((o) => (<article data-vs-card="huesped" key={o.id} className="flex flex-col rounded-xl border border-[#E5E0D8] bg-white p-4 shadow-sm">
 
           <span className="text-xs font-semibold uppercase tracking-wide text-[#9A7A22]">
             {ui(o.categoria)}
           </span>
 
           <h3 className="mt-2 text-xl font-semibold text-[#18345C]">
-            {ui(o.nombre)}
+            {en&&approvedExperienceEnglish[o.id]?approvedExperienceEnglish[o.id].nombre:ui(o.nombre)}
           </h3>
 
           <p className="mt-1.5 text-sm leading-5 text-[#66758A]">
-            {ui(o.descripcion)}
+            {en&&approvedExperienceEnglish[o.id]?approvedExperienceEnglish[o.id].descripcion:ui(o.descripcion)}
           </p>
 
           <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#52677F]">
 
-            {o.duracion && (<span className="rounded-full bg-[#F8F6F0] px-2 py-1">
+            {!connected&&o.duracion && (<span className="rounded-full bg-[#F8F6F0] px-2 py-1">
               {o.duracion}
             </span>)}
 
-            {o.personas && (<span className="rounded-full bg-[#F8F6F0] px-2 py-1">
+            {!connected&&o.personas && (<span className="rounded-full bg-[#F8F6F0] px-2 py-1">
               {ui(o.personas)}
             </span>)}
 
@@ -446,10 +472,10 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
           <div className="mt-auto flex items-center justify-between gap-3 pt-4">
 
             <b className="text-[#18345C]">
-              {ui(o.precio)}
+              {connected?(en?'Contact Reception':'Consultar en Recepción'):ui(o.precio)}
             </b>
 
-            <button onClick={() => abrir(o)} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">
+            <button disabled={!disponible} onClick={() => abrir(o)} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
               {ui(o.categoria ===
                 "Transporte"
                 ? "Reservar traslado"
@@ -464,7 +490,7 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
 
     </div>
 
-    {activo && (<div
+    {activo && disponible && (<div
       className="fixed inset-0 z-[80] grid place-items-center bg-[#071D34]/55 p-4"
       onMouseDown={(e) => e.target === e.currentTarget &&
         setActivo(null)}>
@@ -602,7 +628,7 @@ export default function ReservasExperiencias({ turnos, reservas, onReservar, onC
             {ui(activo.precio)}
           </b>
 
-          <button onClick={confirmar} className="rounded-lg bg-[#18345C] px-5 py-3 font-semibold text-white">
+          <button disabled={!disponible} onClick={confirmar} className="rounded-lg bg-[#18345C] px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
             {ui("Confirmar reserva")}
           </button>
 
@@ -619,7 +645,7 @@ function Horario({ titulo, lv, sd, }: {
   lv: string;
   sd: string;
 }) {
-  return (<div className="rounded-xl border border-[#E5E0D8] bg-white px-4 py-3 shadow-sm">
+  return (<div data-vs-card="huesped" className="rounded-xl border border-[#E5E0D8] bg-white px-4 py-3 shadow-sm">
 
     <b className="block text-[#B38719]">
       {titulo}

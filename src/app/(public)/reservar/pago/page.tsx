@@ -1,39 +1,43 @@
 "use client";
+import PreviousBookingRequest from '@/components/public/PreviousBookingRequest';
+import BookingTermsContent from '@/components/common/BookingTermsContent';
+import PrivacyPolicyContent from '@/components/common/PrivacyPolicyContent';
+import BookingSummaryCard from '@/components/public/BookingSummaryCard';
 import { UiText, useUiText } from "@/i18n/UiText";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, LockKeyhole, X } from "lucide-react";
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
-import { money, usePublicRooms } from "@/data/publicRooms";
-import { agregarTarjeta } from "@/store/paymentStore";
-import { leerPromociones } from "@/store/promotionStore";
-import { fechaHotel } from "@/lib/hotel";
-import { confirmarReservaPublica, PublicBookingError } from "@/lib/publicBooking";
+
+import { usePublicCatalog, usePublicQuotes } from "@/lib/usePublicCatalog";
+import { preparePublicBookingPayment } from "@/lib/publicBookingPayment";
+import { useBookingDraft, readBookingDraft, BookingAttemptPendingError } from "@/lib/bookingDraft";
+import { bookingEmail } from '@/lib/bookingEmail';
 export default function Pago() {
-  const publicRooms = usePublicRooms();
+  const { rooms: publicRooms } = usePublicCatalog();
   const ui = useUiText();
   const bookingText = useTranslations("publicBooking");
-  const savingRef = useRef(false);
-  const [saving, setSaving] = useState(false);
-  const [bookingError, setBookingError] = useState("");
   const { en } = usePublicLanguage();
-  const r = useRouter(), sp = useSearchParams();
-  const [method, setMethod] = useState<"card" | "hotel">("card"),
+  const r = useRouter(), query = useSearchParams();
+  const draft = useBookingDraft(query.toString());
+  const [draftCheckedFor, setDraftCheckedFor] = useState<string | null>(null);
+  useEffect(() => { setDraftCheckedFor(query.toString()); }, [query]);
+  const draftChecked = draftCheckedFor === query.toString();
+  const sp = draft ?? new URLSearchParams(query.toString());
+  const busy = useRef(false);
+  const [canRecover, setCanRecover] = useState(false);
+  const [reservationCode, setReservationCode] = useState('');
+  const [emailVerified, setEmailVerified] = useState(false), [verificationChecked, setVerificationChecked] = useState(false);
+  const [saving, setSaving] = useState(false),
     [accepted, setAccepted] = useState(false),
-    [card, setCard] = useState(""),
-    [holder, setHolder] = useState(""),
-    [expiry, setExpiry] = useState(""),
-    [cvv, setCvv] = useState(""),
     [legal, setLegal] = useState<'terms' | 'privacy' | null>(null),
-    [promo, setPromo] = useState(""),
-    [promoPct, setPromoPct] = useState(0),
-    [promoMsg, setPromoMsg] = useState(""),
-    [guardarTarjeta, setGuardarTarjeta] = useState(false);
-  const room = publicRooms.find((x) => x.name === (sp.get("habitacion") || ""));
-  const total = Number(sp.get("total") || room?.price || 0);
-  const promoTotal = Math.max(0, total * (1 - promoPct / 100));
+    [paymentError, setPaymentError] = useState("");
+  const room = publicRooms.find((x) => sp.get("slug") ? x.slug === sp.get("slug") : x.name === (sp.get("habitacion") || ""));
+  const quoteResult = usePublicQuotes(sp.get("llegada") || "", sp.get("salida") || "", Number(sp.get("adultos") || sp.get("huespedes") || 1), Number(sp.get("ninos") || 0), room?.capacity ?? 0);
+  const quote = quoteResult.quotes.find(q => q.ofertaSlug === room?.slug);
+  const total = quote?.total ?? 0;
   const nights = useMemo(() => {
     const a = sp.get("llegada"), b = sp.get("salida");
     if (!a || !b)
@@ -41,46 +45,51 @@ export default function Pago() {
     return Math.max(1, Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / 86400000));
   },
     [sp]);
-  const canPay = accepted &&
-    (method === "hotel" ||
-      (card.replace(/\s/g, "").length === 16 &&
-        holder.trim().length > 2 &&
-        /^\d{2}\/\d{2}$/.test(expiry) &&
-        cvv.length >= 3));
-  async function finish() {
-    if (!canPay || savingRef.current)
-      return;
-    savingRef.current = true;
-    setSaving(true);
-    setBookingError("");
+  const canPay = accepted && Boolean(draft) && Boolean(quote) && !canRecover && emailVerified;
+  useEffect(() => {
+    setEmailVerified(false); setVerificationChecked(false);
+    if (!draft) return;
+    let active = true;
+    bookingEmail('estado', { correo: draft.get('correo') || '', borrador: query.get('draft') || '' }, en).then(result => { if (active) setEmailVerified(result.verificado === true); }).catch(() => { /* Keep creation disabled; offer verification below. */ }).finally(() => { if (active) setVerificationChecked(true); });
+    return () => { active = false; };
+  }, [draft, query, en]);
+  useEffect(() => {
+    const attempt = readBookingDraft(query.get("draft") || "")?.attempt;
+    setCanRecover(Boolean(attempt));
+    setReservationCode(attempt?.code ?? '');
+  }, [draft, query]);
+  async function recoverPrevious() {
+    if (busy.current) return;
+    busy.current = true; setSaving(true); setPaymentError("");
     try {
-      if (method === "card") {
-        if (guardarTarjeta) {
-          const limpio = card.replace(/\s/g, '');
-          agregarTarjeta({ marca: limpio.startsWith('4') ? 'Visa' : 'Tarjeta', ultimos4: limpio.slice(-4), titular: holder, vencimiento: expiry, principal: true });
-        }
-        r.push("/reservar/confirmacion?" + new URLSearchParams(Object.fromEntries(sp.entries())));
-        return;
-      }
-      const reservation = await confirmarReservaPublica(new URLSearchParams(sp.toString()), method, promo.trim());
-      const query = new URLSearchParams(sp.toString());
-      query.set("reserva", reservation.codigo);
-      query.set("reservaId", reservation.id);
-      r.push("/reservar/confirmacion?" + query);
+      r.push(await preparePublicBookingPayment(sp, query.get("draft") || "", true));
+    }
+    catch (error) { setPaymentError(error instanceof Error ? error.message : bookingText("saveFailed")); }
+    finally { setReservationCode(readBookingDraft(query.get('draft') || '')?.attempt?.code ?? ''); busy.current = false; setSaving(false); }
+  }
+  async function finish() {
+    if (!canPay || busy.current)
+      return;
+    busy.current = true;
+    setSaving(true);
+    setPaymentError("");
+    try {
+      r.push(await preparePublicBookingPayment(sp, query.get("draft") || ""));
     }
     catch (error) {
-      setBookingError(error instanceof PublicBookingError ? error.code : "saveFailed");
+      setCanRecover(Boolean(readBookingDraft(query.get("draft") || "")?.attempt));
+      setPaymentError(
+        error instanceof BookingAttemptPendingError ? bookingText('requestUncertain') : error instanceof Error ? error.message : bookingText("saveFailed"),
+      );
     }
     finally {
-      savingRef.current = false;
+      setReservationCode(readBookingDraft(query.get('draft') || '')?.attempt?.code ?? '');
+      busy.current = false;
       setSaving(false);
     }
   }
-  function exp(v: string) {
-    const n = v.replace(/\D/g, "").slice(0, 4);
-    return n.length > 2 ? n.slice(0, 2) + "/" + n.slice(2) : n;
-  }
-  return (<main className="reserve-public booking-checkout">
+  return (<main className="reserve-public booking-checkout payment-page">{!canRecover&&<PreviousBookingRequest/>}
+    {draft && verificationChecked && !emailVerified && !reservationCode && <p role="alert" className="mx-auto max-w-3xl p-4">{en ? 'Verify your email before creating this booking.' : 'Verifica tu correo antes de crear esta reserva.'} <a href={'/reservar/verificar?' + query.toString()} className="underline">{en ? 'Verify email' : 'Verificar correo'}</a></p>}
     <header className="reserve-nav">
       <button className="icon-back" onClick={() => r.back()} aria-label={ui("Volver")}>
         <ArrowLeft />
@@ -88,226 +97,29 @@ export default function Pago() {
       <VillaSerenaLogo />
     </header>
     <div className="checkout-layout">
-      <aside className="booking-summary-card">
-        <h2>
-          <UiText text="Tu reserva" />
-        </h2>
-        {room && <img src={room.image} alt={ui(room.name)} />}
-        <h3>
-          {ui(sp.get("habitacion") ?? "")}
-        </h3>
-        <div className="summary-dates">
-          <span>
-            <small>
-              <UiText text="Llegada" />
-            </small>
-            <b>
-              {sp.get("llegada")}
-            </b>
-          </span>
-          <span>
-            <small>
-              <UiText text="Salida" />
-            </small>
-            <b>
-              {sp.get("salida")}
-            </b>
-          </span>
-          <span>
-            <small>
-              <UiText text="Adultos" />
-            </small>
-            <b>
-              {sp.get("adultos") || sp.get("huespedes") || "1"}
-            </b>
-          </span>
-          <span>
-            <small>
-              <UiText text="Niños" />
-            </small>
-            <b>
-              {sp.get("ninos") || "0"}
-            </b>
-          </span>
-          <span>
-            <small>
-              <UiText text="Noches" />
-            </small>
-            <b>
-              {nights}
-            </b>
-          </span>
-          {room && (<span>
-            <small>
-              <UiText text="Precio / noche" />
-            </small>
-            <b>
-              {money(room.price)}
-            </b>
-          </span>)}
-        </div>
-        <div className="promo-public">
-          <label htmlFor="booking-promo-code">
-            {en ? "Promo code" : "Código promocional"}
-          </label>
-          <div className="promo-public-controls">
-            <input
-              id="booking-promo-code"
-              type="text"
-              value={promo}
-              onChange={(e) => {
-                setPromo(e.target.value.toUpperCase());
-                setPromoPct(0);
-                setPromoMsg("");
-              }}
-              placeholder={en ? "Promo code" : "Código promocional"} />
-            <button
-              type="button"
-              onClick={() => {
-                const hoy = fechaHotel();
-                const activa = leerPromociones().find(p => p.activa && p.codigo.toUpperCase() === promo.trim().toUpperCase() && p.desde <= hoy && p.hasta >= hoy);
-                const pct = activa?.descuentoPct || 0;
-                setPromoPct(pct);
-                setPromoMsg(pct
-                  ? en
-                    ? `${pct}% discount applied`
-                    : `${pct}% de descuento aplicado`
-                  : en
-                    ? "Invalid or inactive code"
-                    : "Código no válido o inactivo");
-              }}>
-              <UiText text="Aplicar" />
-            </button>
-          </div>
-          {promoMsg && <small>
-            {promoMsg}
-          </small>}
-        </div>
-        <div className="summary-total">
-          <span>
-            {promoPct
-              ? en
-                ? "Total with discount"
-                : "Total con descuento"
-              : en
-                ? "Estimated total"
-                : "Total estimado"}
-          </span>
-          <b>
-            {money(promoTotal)}
-          </b>
-        </div>
-      </aside>
-      <section className="reserve-form-card reserve-form-wide checkout-form">
-        <span className="reserve-kicker">
-          <UiText text="ÚLTIMO PASO" />
-        </span>
+      <BookingSummaryCard image={room?.image} name={room?.name || sp.get("habitacion") || ""} category={room?.type} arrival={sp.get("llegada") || ""} departure={sp.get("salida") || ""} adults={Number(sp.get("adultos") || sp.get("huespedes") || 1)} childCount={Number(sp.get("ninos") || 0)} nights={nights} nightlyPrice={room?.price} total={total} note={room?.inventoryNote}/>
+      <div className="booking-form-column">
+      <section data-vs-ui="compact" className="reserve-form-card reserve-form-wide checkout-form">
+        <span className="reserve-kicker">{en ? "Last step" : "Último paso"}</span>
         <h1>
-          <UiText text="Selecciona el método de pago" />
+          {en ? "Card payment" : "Pago con tarjeta"}
         </h1>
         <p>
-          <UiText text="Elige cómo deseas garantizar tu reserva." />
+          {en ? "Continue to Recurrente to enter your card and complete payment." : "Continúa a Recurrente para ingresar tu tarjeta y completar el pago"}
         </p>
-        <div className="payment-methods">
-          <label>
-            <input type="radio" checked={method === "card"} onChange={() => setMethod("card")} />
-            <UiText text=" Tarjeta de crédito o débito" />
-          </label>
-          <label>
-            <input type="radio" checked={method === "hotel"} onChange={() => setMethod("hotel")} />
-            <UiText text=" Pagar en Recepción" />
-          </label>
-        </div>
-        {method === "card" && (<>
-          <div className="online-payment-head">
-            <div>
-              <b>
-                <UiText text="Pago en línea seguro" />
-              </b>
-              <span>
-                <UiText text="Los detalles de pago se procesarán al confirmar la reserva." />
-              </span>
-            </div>
-            <div className="card-brands">
-              <span className="mastercard-mark">
-                <i />
-                <i />
-              </span>
-              <b className="visa-mark">
-                <UiText text="VISA" />
-              </b>
-            </div>
-          </div>
-          <div className="card-payment-layout">
-            <div className="card-payment-form">
-              <label>
-                <UiText text="Número de tarjeta" />
-                <input
-                  inputMode="numeric"
-                  maxLength={19}
-                  value={card}
-                  onChange={(e) => setCard(e.target.value
-                    .replace(/\D/g, "")
-                    .slice(0, 16)
-                    .replace(/(.{4})/g, "$1 ")
-                    .trim())}
-                  placeholder="0000 0000 0000 0000" />
-              </label>
-              <label>
-                <UiText text="Nombre del titular" />
-                <input value={holder} onChange={(e) => setHolder(e.target.value)} placeholder={ui("Nombre como aparece en la tarjeta")} />
-              </label>
-              <div className="payment-grid">
-                <label>
-                  <UiText text="Vencimiento" />
-                  <input value={expiry} onChange={(e) => setExpiry(exp(e.target.value))} placeholder="MM/AA" maxLength={5} />
-                </label>
-                <label>
-                  <UiText text="CVV" />
-                  <input type="password" inputMode="numeric" value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))} maxLength={4} />
-                </label>
-              </div>
-            </div>
-            <div className="visual-card-wrap">
-              <div className="visual-card">
-                <div className="visual-card-top">
-                  <b>
-                    <UiText text="VILLA SERENA" />
-                  </b>
-                  <span>
-                    <UiText text="HOTEL" />
-                  </span>
-                </div>
-                <div className="visual-chip" />
-                <strong>
-                  {card || "•••• •••• •••• ••••"}
-                </strong>
-                <div className="visual-card-bottom">
-                  <span>
-                    <small>
-                      <UiText text="TITULAR" />
-                    </small>
-                    {holder || ui("NOMBRE DEL TITULAR")}
-                  </span>
-                  <span>
-                    <small>
-                      <UiText text="VÁLIDA HASTA" />
-                    </small>
-                    {expiry || "MM/AA"}
-                  </span>
-                </div>
-              </div>
-              <span className="reservation-secure">
-                <LockKeyhole />
-                <UiText text=" Reserva segura" />
-              </span>
-            </div>
-          </div>
-          <label className="terms-check">
-            <input type="checkbox" checked={guardarTarjeta} onChange={e => setGuardarTarjeta(e.target.checked)} />
-            <UiText text="Guardar esta tarjeta para futuras reservas" />
-          </label>
-        </>)}
+        <p className="payment-processor"><LockKeyhole size={16} aria-hidden="true" /><span>{en ? "Payment processed by Recurrente" : "Pago procesado por Recurrente"}</span></p>
+        {draftChecked && !draft && <p className="payment-draft-error" role="alert">{en ? "Your details are unavailable or expired. Return to the guest form." : "Tus datos no están disponibles o vencieron. Vuelve al formulario de huésped."}</p>}
+        {quoteResult.error && !canRecover && <p role="alert">{quoteResult.error}</p>}
+        {quoteResult.loading && <p role="status">{en ? "Checking price..." : "Consultando precio..."}</p>}
+        <section className="payment-cancellation" aria-labelledby="payment-cancellation-title">
+          <h2 id="payment-cancellation-title">{en?'Cancellations and refunds':'Cancelaciones y reembolsos'}</h2>
+          <p>{en?'To cancel a confirmed booking, contact Reception.':'Para cancelar una reserva confirmada, contacta a Recepción.'}</p>
+          <dl>
+            <div><dt>{en?'Full refund':'Reembolso total'}</dt><dd>{en?'When Reception cancels at least 48 hours before 3:00 p.m. on your arrival date.':'Cuando Recepción cancela al menos 48 horas antes de las 15:00 del día de llegada.'}</dd></div>
+            <div><dt>{en?'No refund':'Sin reembolso'}</dt><dd>{en?'When cancellation takes place less than 48 hours before that time.':'Cuando la cancelación se realiza con menos de 48 horas de anticipación.'}</dd></div>
+          </dl>
+          <p className="payment-cancellation-note">{en?'Guatemala local time. Sending a request before the deadline does not guarantee a refund.':'Hora de Guatemala. Enviar una solicitud dentro del plazo no garantiza el reembolso.'}</p>
+        </section>
         <label className="terms-check">
           <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
           <span>
@@ -324,16 +136,21 @@ export default function Pago() {
             <UiText text="." />
           </span>
         </label>
-        {bookingError && <p className="password-error" role="alert">
-          {bookingText(bookingError)}
+        {reservationCode && <p role="status">{en ? 'Reservation code' : 'Código de reserva'}: <strong>{reservationCode}</strong></p>}
+        {paymentError && <p className="password-error" role="alert">
+          {paymentError}
         </p>}
+        {canRecover && <button className="reserve-secondary" disabled={saving} onClick={recoverPrevious}>
+          {en ? "Recover previous attempt" : "Recuperar intento anterior"}
+        </button>}
         <button className="reserve-primary" disabled={!canPay || saving} onClick={finish}>
-          <UiText text="Confirmar reserva" />
+          {saving ? (en ? "Processing..." : "Procesando...") : (en ? "Continue payment" : "Continuar pago")}
         </button>
       </section>
+      </div>
     </div>
     {legal && (<div className="booking-modal-backdrop" onMouseDown={() => setLegal(null)}>
-      <section className="legal-modal" onMouseDown={(e) => e.stopPropagation()}>
+      <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="legal-modal" onMouseDown={(e) => e.stopPropagation()}>
         <button className="booking-modal-close" onClick={() => setLegal(null)} aria-label={ui("Cerrar")}>
           <X />
         </button>
@@ -360,61 +177,16 @@ export default function Pago() {
               {sp.get("salida")}
             </span>
           </div>
-          <h3>
-            <UiText text="Condiciones de la reserva" />
-          </h3>
-          <p>
-            <UiText text="La reserva queda sujeta a disponibilidad y a las condiciones de la tarifa seleccionada." />
-          </p>
-          <h3>
-            <UiText text="Cancelaciones y modificaciones" />
-          </h3>
-          <p>
-            <UiText text="Las condiciones aplicables a cancelaciones, modificaciones y posibles reembolsos se mostrarán antes de confirmar la reserva." />
-          </p>
-          <h3>
-            <UiText text="No presentación" />
-          </h3>
-          <p>
-            <UiText text="Las condiciones correspondientes se indicarán junto con la tarifa seleccionada." />
-          </p>
+          <BookingTermsContent />
+          <a className="legal-more" href="/terminos">{en?"Read full terms":"Leer términos completos"}</a>
         </>) : (<>
-          <span className="section-kicker">
-            <UiText text="VILLA SERENA" />
-          </span>
-          <h2>
-            <UiText text="Política de privacidad" />
-          </h2>
-          <p>
-            <UiText text="Villa Serena utiliza la información proporcionada para gestionar reservas, prestar los servicios solicitados y facilitar la atención durante la estancia." />
-          </p>
-          <h3>
-            <UiText text="Información y uso" />
-          </h3>
-          <p>
-            <UiText text="Podemos solicitar datos de identificación, contacto y reserva para confirmar la estancia, atender solicitudes, gestionar pagos y mantener comunicaciones relacionadas con la reserva." />
-          </p>
-          <h3>
-            <UiText text="Protección de la información" />
-          </h3>
-          <p>
-            <UiText text="Villa Serena procura mantener medidas adecuadas para proteger la información personal y prevenir accesos o usos no autorizados." />
-          </p>
-          <h3>
-            <UiText text="Contacto" />
-          </h3>
-          <p>
-            <UiText text="Villa Serena · Huehuetenango, Guatemala" />
-            <br />
-            <a href="mailto:villaserenagt@gmail.com">
-              <UiText text="villaserenagt@gmail.com" />
-            </a>
-          </p>
+          <PrivacyPolicyContent />
           <a className="legal-more" href="/privacidad">
             <UiText text="Leer política completa" />
           </a>
         </>)}
       </section>
     </div>)}
+
   </main>);
 }

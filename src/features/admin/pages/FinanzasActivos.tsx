@@ -1,19 +1,26 @@
+import FormOperationFeedback from '@/components/common/FormOperationFeedback';
+import {validPublicDate} from '@/lib/publicStayValidation';
 import { fechaHotel } from "@/lib/hotel";
 import { useMemo, useState } from 'react';
 import type { ActivoHotel, CompraHotel, Empleado, GastoHotel, Reserva } from '@/lib/pms/types';
 import { dinero, INPUT_CLS } from '@/features/admin/pages/adminUtils';
 import { exportXlsx } from '@/lib/pms/exportXlsx';
+type NominaFila = { e: Empleado; base: number; extras: number; descuentos: number; neto: number };
 type Tab = 'resumen' | 'caja' | 'gastos' | 'nomina' | 'activos' | 'reportes';
-export default function FinanzasActivos({ empleados, reservas, compras, gastos, activos, onAgregarGasto, onAgregarActivo }: {
+export default function FinanzasActivos({ empleados, reservas, compras, gastos, activos, onAgregarGasto, onAgregarActivo, soloOperaciones = false, nominaConectada, pagosConectados, reportesConectados }: {
+  nominaConectada?:React.ReactNode;
+  pagosConectados?:React.ReactNode;
+  reportesConectados?:React.ReactNode;
   empleados: Empleado[];
   reservas: Reserva[];
   compras: CompraHotel[];
   gastos: GastoHotel[];
   activos: ActivoHotel[];
-  onAgregarGasto: (g: Omit<GastoHotel, 'id'>) => void;
-  onAgregarActivo: (a: Omit<ActivoHotel, 'id'>) => void;
+  onAgregarGasto: (g: Omit<GastoHotel, 'id'>) => void | boolean | Promise<void | boolean>;
+  onAgregarActivo: (a: Omit<ActivoHotel, 'id'>) => void | boolean | Promise<void | boolean>;
+  soloOperaciones?: boolean;
 }) {
-  const [tab, setTab] = useState<Tab>('resumen');
+  const [tab, setTab] = useState<Tab>(soloOperaciones ? 'gastos' : 'resumen');
   const [modal, setModal] = useState<'gasto' | 'activo' | null>(null);
   const [nominaPagada, setNominaPagada] = useState<string[]>([]);
   const nomina = useMemo(() => empleados.filter(e => e.activo).map(e => {
@@ -29,7 +36,7 @@ export default function FinanzasActivos({ empleados, reservas, compras, gastos, 
     Tab,
     string
   ][] = [['resumen', 'Resumen'], ['caja', 'Caja'], ['gastos', 'Gastos'], ['nomina', 'Nómina'], ['activos', 'Activos'], ['reportes', 'Reportes']];
-  return <div className="flex-1 overflow-y-auto bg-[#F8F6F0] p-4 sm:p-6">
+  return <div className="min-w-0 w-full flex-1 overflow-y-auto bg-[#F8F6F0] p-4 sm:p-6">
     <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 className="text-3xl font-semibold text-[#18345C]">Finanzas</h1>
@@ -41,11 +48,11 @@ export default function FinanzasActivos({ empleados, reservas, compras, gastos, 
       </div>
     </div>
     <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
-      {tabs.map(([id, l]) => <button
+      {tabs.filter(([id])=>!soloOperaciones||['gastos','activos'].includes(id)||(id==='nomina'&&nominaConectada)||(id==='caja'&&pagosConectados)||(id==='reportes'&&reportesConectados)).map(([id, l]) => <button
         key={id}
         onClick={() => setTab(id)}
         className={`whitespace-nowrap rounded-md border px-3 py-2 text-sm font-medium ${tab === id ? 'border-[#18345C] bg-[#18345C] text-white' : 'border-[#E0DAD0] bg-white text-[#52677F]'}`}>
-        {l}
+        {id==='caja'&&pagosConectados?'Pagos registrados':l}
       </button>)}
     </div>
     {tab === 'resumen' && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -54,18 +61,18 @@ export default function FinanzasActivos({ empleados, reservas, compras, gastos, 
       <Kpi l="Saldo" v={dinero(ingresos - totalGastos - totalNomina)} />
       <Kpi l="Pagos pendientes" v={String(compras.filter(c => c.estado === 'pendiente').length)} />
     </div>}
-    {tab === 'caja' && <Caja ingresos={ingresos} compras={compras} gastos={gastos} nomina={totalNomina} />}
+    {tab === 'caja' && (pagosConectados??<Caja ingresos={ingresos} compras={compras} gastos={gastos} nomina={totalNomina} />)}
     {tab === 'gastos' && <Gastos compras={compras} gastos={gastos} />}
-    {tab === 'nomina' && <Nomina filas={nomina} pagados={nominaPagada} onPagar={id => setNominaPagada(v => v.includes(id) ? v : [...v, id])} />}
+    {tab === 'nomina' && (nominaConectada??<Nomina filas={nomina} pagados={nominaPagada} onPagar={id => setNominaPagada(v => v.includes(id) ? v : [...v, id])} />)}
     {tab === 'activos' && <Activos activos={activos} />}
-    {tab === 'reportes' && <Reportes ingresos={ingresos} compras={compras} gastos={gastos} nominaFilas={nomina.filter(n => nominaPagada.includes(n.e.id))} activos={activos} />}
+    {tab === 'reportes' && (reportesConectados??<Reportes ingresos={ingresos} compras={compras} gastos={gastos} nominaFilas={nomina.filter(n => nominaPagada.includes(n.e.id))} activos={activos} />)}
     {modal && <Modal close={() => setModal(null)}>
-      {modal === 'gasto' ? <FormGasto cancel={() => setModal(null)} save={g => {
-        onAgregarGasto(g);
+      {modal === 'gasto' ? <FormGasto cancel={() => setModal(null)} save={async g => {
+        if(await onAgregarGasto(g)===false)return false;
         setModal(null);
         setTab('gastos');
-      }} /> : <FormActivo cancel={() => setModal(null)} save={a => {
-        onAgregarActivo(a);
+      }} /> : <FormActivo cancel={() => setModal(null)} save={async a => {
+        if(await onAgregarActivo(a)===false)return false;
         setModal(null);
         setTab('activos');
       }} />}
@@ -152,11 +159,11 @@ function Gastos({ compras, gastos }: {
   </Tabla>;
 }
 function Nomina({ filas, pagados, onPagar }: {
-  filas: any[];
+  filas: NominaFila[];
   pagados: string[];
-  onPagar: (id: string) => void;
+  onPagar: (id: string) => void | boolean | Promise<void | boolean>;
 }) {
-  const [detalle, setDetalle] = useState<any | null>(null);
+  const [detalle, setDetalle] = useState<NominaFila | null>(null);
   return <><div className="grid gap-3">
     {filas.map(n => <div key={n.e.id} className="grid items-center gap-3 rounded-xl border border-[#E5E0D8] bg-white p-4 sm:grid-cols-[1fr_repeat(4,120px)_auto]">
       <button onClick={() => setDetalle(n)} className="text-left">
@@ -256,7 +263,7 @@ function Reportes({ ingresos, compras, gastos, nominaFilas, activos }: {
   ingresos: number;
   compras: CompraHotel[];
   gastos: GastoHotel[];
-  nominaFilas: any[];
+  nominaFilas: NominaFila[];
   activos: ActivoHotel[];
 }) {
   const egresosCompras = compras.filter(c => c.estado === 'pagada').reduce((s, c) => s + c.total, 0);
@@ -331,14 +338,14 @@ function Tabla({ heads, children }: {
   </div>;
 }
 function FormGasto({ cancel, save }: {
-  cancel: () => void;
-  save: (g: Omit<GastoHotel, 'id'>) => void;
+  cancel: () => void | boolean | Promise<void | boolean>;
+  save: (g: Omit<GastoHotel, 'id'>) => void | boolean | Promise<void | boolean>;
 }) {
   const [fecha, setFecha] = useState(fechaHotel()), [categoria, setCategoria] = useState('Servicios'), [concepto, setConcepto] = useState(''), [comprobante, setComprobante] = useState(''), [monto, setMonto] = useState('');
   return <Form
     titulo="Registrar gasto"
     cancel={cancel}
-    save={() => concepto && Number(monto) > 0 && save({ fecha, categoria, concepto, comprobante, monto: Number(monto), origen: 'manual' })}>
+    save={() => concepto.trim() && validPublicDate(fecha) && Number.isFinite(Number(monto)) && Number(monto) > 0 && save({ fecha, categoria, concepto, comprobante, monto: Number(monto), origen: 'manual' })}>
     <Campo l="Fecha">
       <input type="date" className={INPUT_CLS} value={fecha} onChange={e => setFecha(e.target.value)} />
     </Campo>
@@ -356,13 +363,13 @@ function FormGasto({ cancel, save }: {
       <input className={INPUT_CLS} value={comprobante} onChange={e => setComprobante(e.target.value)} />
     </Campo>
     <Campo l="Monto">
-      <input type="number" className={INPUT_CLS} value={monto} onChange={e => setMonto(e.target.value)} />
+      <input type="number" min="0" step="0.01" required className={INPUT_CLS} value={monto} onChange={e => setMonto(e.target.value)} />
     </Campo>
   </Form>;
 }
 function FormActivo({ cancel, save }: {
-  cancel: () => void;
-  save: (a: Omit<ActivoHotel, 'id'>) => void;
+  cancel: () => void | boolean | Promise<void | boolean>;
+  save: (a: Omit<ActivoHotel, 'id'>) => void | boolean | Promise<void | boolean>;
 }) {
   const [codigo, setCodigo] = useState(''),
   [nombre, setNombre] = useState(''),
@@ -374,7 +381,7 @@ function FormActivo({ cancel, save }: {
   return <Form
     titulo="Registrar activo"
     cancel={cancel}
-    save={() => codigo && nombre && Number(costo) > 0 && save({ codigo, nombre, categoria, ubicacion, fechaCompra, costo: Number(costo), estado, vinculadoMantenimiento: categoria !== 'Mobiliario' })}>
+    save={() => codigo.trim() && nombre.trim() && ubicacion.trim() && validPublicDate(fechaCompra) && Number.isFinite(Number(costo)) && Number(costo) >= 0 && save({ codigo, nombre, categoria, ubicacion, fechaCompra, costo: Number(costo), estado, vinculadoMantenimiento: categoria !== 'Mobiliario' })}>
     <Campo l="Código">
       <input className={INPUT_CLS} value={codigo} onChange={e => setCodigo(e.target.value)} />
     </Campo>
@@ -402,28 +409,34 @@ function FormActivo({ cancel, save }: {
       <input type="date" className={INPUT_CLS} value={fechaCompra} onChange={e => setFecha(e.target.value)} />
     </Campo>
     <Campo l="Costo">
-      <input type="number" className={INPUT_CLS} value={costo} onChange={e => setCosto(e.target.value)} />
+      <input type="number" min="0" step="0.01" required className={INPUT_CLS} value={costo} onChange={e => setCosto(e.target.value)} />
     </Campo>
   </Form>;
 }
 function Form({ titulo, cancel, save, children }: {
   titulo: string;
-  cancel: () => void;
-  save: () => void;
+  cancel: () => void | boolean | Promise<void | boolean>;
+  save: () => unknown;
   children: React.ReactNode;
 }) {
-  return <div>
+  const [formError, setFormError] = useState('');
+  return <form data-vs-ui="compact" onSubmit={async event => {
+    event.preventDefault(); setFormError('');
+    const result = await save();
+    if (result === false || result === '') setFormError('Revisa los campos obligatorios, la fecha y los importes.');
+  }} onChange={() => setFormError('')}>
     <h2 className="mb-4 text-2xl font-semibold text-[#18345C]">
       {titulo}
     </h2>
     <div className="grid gap-3 sm:grid-cols-2">
-      {children}
+      {children}<FormOperationFeedback/>
     </div>
-    <div className="mt-4 flex flex-wrap justify-end gap-2">
-      <button onClick={cancel} className="min-h-11 rounded-md border px-4 py-2 text-sm">Cancelar</button>
-      <button onClick={save} className="min-h-11 rounded-md bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">Guardar</button>
+    <div data-vs-actions="compact" className="mt-4 flex flex-wrap justify-end gap-2">
+      <button type="button" onClick={cancel} className="min-h-11 rounded-md border px-4 py-2 text-sm">Cancelar</button>
+      <button type="submit" className="min-h-11 rounded-md bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">Guardar</button>
     </div>
-  </div>;
+    {formError && <p role="alert" className="mt-2 text-red-800">{formError}</p>}
+  </form>;
 }
 function Campo({ l, children }: {
   l: string;
@@ -438,12 +451,12 @@ function Campo({ l, children }: {
 }
 function Modal({ children, close }: {
   children: React.ReactNode;
-  close: () => void;
+  close: () => void | boolean | Promise<void | boolean>;
 }) {
   return <div
     onMouseDown={e => e.target === e.currentTarget && close()}
     className="fixed inset-0 z-50 flex items-end justify-center bg-[#071D34]/50 sm:items-center sm:p-4">
-    <section className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 sm:max-w-lg sm:rounded-2xl sm:p-5">
+    <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 sm:max-w-lg sm:rounded-2xl sm:p-5">
       <button onClick={close} className="absolute right-5 top-4 text-2xl">×</button>
       {children}
     </section>

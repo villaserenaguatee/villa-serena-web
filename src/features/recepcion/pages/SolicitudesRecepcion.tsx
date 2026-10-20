@@ -1,8 +1,12 @@
+import ReceptionCloseButton from './ReceptionCloseButton';
+import { confirmarTarifaTransporte as confirmarTarifaCanonica, leerTransportes } from "@/store/transportStore";
 import { useEffect, useMemo, useState } from 'react';
 import type { SolicitudHuesped, Huesped, Reserva, EstadoSolicitudHuesped, PrioridadSolicitud, AreaSolicitud, } from '@/lib/pms/types';
 import { formatoFechaHora } from '@/data/pms';
 import { guardarReservas, leerReservas } from '@/store/reservationStore';
-import { Chip, SOLICITUD_META, PRIORIDAD_META, Campo, INPUT_CLS, PlusIcon, CloseIcon, } from '@/features/recepcion/pages/recUtils';
+import { Chip, SOLICITUD_META, PRIORIDAD_META, Campo, INPUT_CLS, PlusIcon, } from '@/features/recepcion/pages/recUtils';
+type ExtensionLocal = { id: string; huesped: string; habitacion: string; salidaActual: string; nuevaSalida: string; noches: number; estimacion: number; motivo?: string; estado: string };
+type CorreccionLocal = { id: string; huesped: string; dato: string; actual: string; nuevo: string; motivo?: string; estado: string };
 const PRIORIDADES: PrioridadSolicitud[] = ['alta', 'media', 'baja'];
 const TIPOS_SOLICITUD: {
   nombre: string;
@@ -43,18 +47,18 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
   const [area, setArea] = useState<AreaSolicitud>('Recepción');
   const [prioridad, setPrioridad] = useState<PrioridadSolicitud>('media');
   const [err, setErr] = useState('');
-  const [solicitudExtension, setSolicitudExtension] = useState<any>(null);
+  const [solicitudExtension, setSolicitudExtension] = useState<ExtensionLocal | null>(null);
   const [detalleExtension, setDetalleExtension] = useState(false);
   const [estadoPortal, setEstadoPortal] = useState<Record<string, EstadoSolicitudHuesped>>({});
-  const [correcciones, setCorrecciones] = useState<any[]>([]);
-  const [transportes, setTransportes] = useState<any[]>([]);
+  const [correcciones, setCorrecciones] = useState<CorreccionLocal[]>([]);
+  const [transportes, setTransportes] = useState<ReturnType<typeof leerTransportes>>([]);
   const [tarifasTransporte, setTarifasTransporte] = useState<Record<string, string>>({});
   useEffect(() => {
     const cargar = () => {
       try {
         setSolicitudExtension(JSON.parse(localStorage.getItem('vs-solicitud-extension') || 'null'));
         setCorrecciones(JSON.parse(localStorage.getItem('vs-correcciones-huesped') || '[]'));
-        setTransportes(JSON.parse(localStorage.getItem('vs-solicitudes-transporte') || '[]'));
+        setTransportes(leerTransportes());
       }
       catch { }
     };
@@ -67,9 +71,7 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
     const tarifa = Number(tarifasTransporte[id]);
     if (!Number.isFinite(tarifa) || tarifa <= 0)
       return;
-    const actualizados = transportes.map(t => t.id === id ? { ...t, tarifa, estadoTarifa: 'confirmada', confirmadaEn: new Date().toISOString() } : t);
-    setTransportes(actualizados);
-    localStorage.setItem('vs-solicitudes-transporte', JSON.stringify(actualizados));
+    if (confirmarTarifaCanonica(id, tarifa)) setTransportes(leerTransportes());
   }
   function aceptarCancelacionExtension() {
     if (!solicitudExtension)
@@ -153,10 +155,10 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
   const pendientes = visibles.filter(s => s.estado !== 'atendida').length + gestionesPortal.filter(g => (estadoPortal[g.actividad.id] ?? 'pendiente') !== 'atendida').length + correcciones.filter(c => c.estado === 'pendiente').length + transportes.filter(t => t.estadoTarifa === 'pendiente').length + (extensionPendiente ? 1 : 0);
   const totalGestiones = visibles.length + gestionesPortal.length + correcciones.length + transportes.length + (extensionPendiente ? 1 : 0);
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-    <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
+    <div data-vs-page-header="recepcion" className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
       <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
         <div>
-          <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Gestiones de Recepción</h1>
+          <h1 data-vs-page-title="recepcion" className="text-[32px] font-semibold text-[#18345C] leading-tight">Gestiones de Recepción</h1>
           <p className="text-[15px] text-[#AEBCC1] mt-1">{pendientes} sin atender · {totalGestiones} asignadas a Recepción</p>
         </div>
         <button
@@ -302,14 +304,14 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
           </div>
         </div>;
       })}
-      {visibles.length === 0 && gestionesPortal.length === 0 && correcciones.length === 0 && transportes.length === 0 && !extensionPendiente ? (<div className="bg-white border border-[#E5E0D8] rounded-xl p-6 text-center">
+      {visibles.length === 0 && gestionesPortal.length === 0 && correcciones.length === 0 && transportes.length === 0 && !extensionPendiente ? (<div data-vs-card="recepcion" className="bg-white border border-[#E5E0D8] rounded-xl p-6 text-center">
         <p className="text-[15px] text-[#AEBCC1]">No hay gestiones pendientes para Recepción.</p>
       </div>) : (visibles.map(s => {
         const h = huespedDe.get(s.huespedId);
         const pm = PRIORIDAD_META[s.prioridad];
         const sm = SOLICITUD_META[s.estado];
         const siguiente = SIGUIENTE[s.estado];
-        return (<div key={s.id} className="bg-white border border-[#E5E0D8] rounded-xl p-4">
+        return (<div data-vs-card="recepcion" key={s.id} className="bg-white border border-[#E5E0D8] rounded-xl p-4">
           <div className="flex items-start gap-3">
             <span className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: pm.dot }} />
             <div className="flex-1 min-w-0">
@@ -351,9 +353,7 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
             <h2 className="text-xl font-semibold text-[#18345C]">Solicitud de extensión</h2>
             <p className="text-sm text-[#71839B]">Revisa disponibilidad, fechas e importe.</p>
           </div>
-          <button onClick={() => setDetalleExtension(false)} className="text-[#93A3B3]">
-            <CloseIcon />
-          </button>
+          <ReceptionCloseButton onClick={() => setDetalleExtension(false)} />
         </header>
         <div className="grid gap-3 p-5 sm:grid-cols-2 text-sm">
           <div>
@@ -409,9 +409,7 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
       <div className="relative z-10 bg-[#FFFEFC] rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#E5E0D8] sticky top-0 bg-white">
           <h2 className="text-[22px] font-semibold text-[#18345C]">Nueva solicitud</h2>
-          <button onClick={() => setCreando(false)} className="text-[#AEBCC1] hover:text-[#1F2933] p-1">
-            <CloseIcon />
-          </button>
+          <ReceptionCloseButton onClick={() => setCreando(false)} />
         </div>
 
         <div className="px-5 py-4 space-y-3">
@@ -488,7 +486,7 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
           </p>}
         </div>
 
-        <div className="px-5 pb-6 flex gap-3">
+        <div data-vs-actions="compact" className="px-5 pb-6 flex gap-3">
           <button
             onClick={() => setCreando(false)}
             className="flex-1 py-3 text-sm border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-[#F8F6F0] transition-colors">

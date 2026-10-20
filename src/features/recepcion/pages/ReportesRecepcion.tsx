@@ -1,3 +1,4 @@
+import ReceptionCloseButton from './ReceptionCloseButton';
 import { useMemo, useState } from 'react';
 import type { HabitacionHotel, Huesped, Reserva } from '@/lib/pms/types';
 type Area = 'Limpieza' | 'Room Service' | 'Mantenimiento';
@@ -69,13 +70,13 @@ export default function ReportesRecepcion({ habitaciones, reservas, huespedes }:
   return <div className="flex-1 overflow-y-auto bg-[#F8F6F0] p-5">
     <div className="flex items-center justify-between">
       <div>
-        <h1 className="text-3xl font-semibold text-[#18345C]">Reportes</h1>
+        <h1 data-vs-page-title="recepcion" className="text-3xl font-semibold text-[#18345C]">Reportes</h1>
         <p className="text-sm text-[#71839B]">Solicitudes operativas para Limpieza, Room Service y Mantenimiento.</p>
       </div>
       <button onClick={() => setAbierto(true)} className="rounded-lg bg-[#18345C] px-4 py-2.5 font-semibold text-white">+ Nuevo reporte</button>
     </div>
     <div className="mt-5 grid gap-3 lg:grid-cols-2">
-      {items.map(r => <article key={r.id} className="flex gap-4 rounded-xl border bg-white p-4">
+      {items.map(r => <article data-vs-card="recepcion" key={r.id} className="flex gap-4 rounded-xl border bg-white p-4">
         <img src={fotoHabitacion(r.habitacion)} alt="" className="h-24 w-32 rounded-lg object-cover" />
         <div>
           <div className="flex flex-wrap gap-2">
@@ -96,13 +97,13 @@ export default function ReportesRecepcion({ habitaciones, reservas, huespedes }:
           </p>
         </div>
       </article>)}
-      {!items.length && <div className="rounded-xl border border-dashed bg-white p-6 text-center text-[#93A3B3]">No hay reportes registrados.</div>}
+      {!items.length && <div data-vs-card="recepcion" className="rounded-xl border border-dashed bg-white p-6 text-center text-[#93A3B3]">No hay reportes registrados.</div>}
     </div>
     {abierto && <div className="fixed inset-0 z-50 grid place-items-center bg-[#071D34]/45 p-4">
       <section className="w-full max-w-lg rounded-2xl border border-[#E1DDD4] bg-white shadow-2xl">
         <header className="flex justify-between border-b px-4 py-3">
           <h2 className="text-xl font-semibold text-[#18345C]">Nuevo reporte</h2>
-          <button onClick={() => setAbierto(false)} aria-label="Cerrar nuevo reporte">×</button>
+          <ReceptionCloseButton onClick={() => setAbierto(false)} />
         </header>
         <div className="grid gap-3 p-4 sm:grid-cols-2">
           <label>Piso<select
@@ -142,7 +143,7 @@ export default function ReportesRecepcion({ habitaciones, reservas, huespedes }:
             className="mt-1 w-full rounded-lg border border-[#D9D5CC] bg-white p-2 outline-none focus:border-[#B58B2A]" /></label>
           <label>Prioridad<select
             value={prioridad}
-            onChange={e => setPrioridad(e.target.value as any)}
+            onChange={e => setPrioridad(e.target.value as Reporte['prioridad'])}
             className="mt-1 w-full rounded-lg border border-[#D9D5CC] bg-white p-2 outline-none focus:border-[#B58B2A]">
             <option>Alta</option>
             <option>Media</option>
@@ -154,7 +155,7 @@ export default function ReportesRecepcion({ habitaciones, reservas, huespedes }:
             rows={3}
             className="mt-1 w-full rounded-lg border border-[#D9D5CC] bg-white p-2 outline-none focus:border-[#B58B2A]" /></label>
         </div>
-        <footer className="flex justify-end gap-2 border-t px-4 py-3">
+        <footer data-vs-actions="compact" className="flex justify-end gap-2 border-t px-4 py-3">
           <button onClick={() => setAbierto(false)} className="rounded-lg border border-[#D9D5CC] px-4 py-2 text-[#18345C]">Cancelar</button>
           <button onClick={guardar} className="rounded-lg bg-[#18345C] px-4 py-2 font-semibold text-white">Registrar reporte</button>
         </footer>

@@ -1,3 +1,5 @@
+import type {ReactNode} from 'react';
+import {GuestRestriction} from './GuestRestriction';
 import { UiText, useUiText } from "@/i18n/UiText";
 import { useState } from "react";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
@@ -54,11 +56,13 @@ function Icono({ tipo, size = 28, }: {
   }
   return (<svg {...p}>
     <circle cx="12" cy="12" r="9" fill="currentColor" stroke="none" />
-    <path d="M7 15v-1.5A5 5 0 0 1 17 13.5V15M8.5 12.5V9a3.5 3.5 0 0 1 7 0v3.5M6 16h12" stroke="white" />
-    <path d="M9 19h6" stroke="white" />
+    <path d="M7 15v-1.5A5 5 0 0 1 17 13.5V15M8.5 12.5V9a3.5 3.5 0 0 1 7 0v3.5M6 16h12" stroke="#18345C" />
+    <path d="M9 19h6" stroke="#18345C" />
   </svg>);
 }
-export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEditar, onEliminar, }: {
+export default function ChatHuesped({ habilitado=true, transport, nombreHuesped, mensajes, onEnviar, onEditar, onEliminar, }: {
+  habilitado?:boolean;
+  transport?:{text:string;setText:(s:string)=>void;send:(s:string)=>Promise<void>;busy:boolean;loading:boolean;error:string;blockedReason:string;renderText:(m:MensajeChat)=>ReactNode};
   nombreHuesped: string;
   mensajes: MensajeChat[];
   onEnviar: (texto: string) => void | Promise<void>;
@@ -67,7 +71,8 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
 }) {
   const ui = useUiText();
   const { en } = usePublicLanguage();
-  const [texto, setTexto] = useState("");
+  const [localTexto,setLocalTexto]=useState("");
+  const texto=transport?.text??localTexto;const setTexto=transport?.setText??setLocalTexto;
   const [archivo, setArchivo] = useState<string | null>(null);
   const [mostrarPreguntas, setMostrarPreguntas] = useState(true);
   const [menuId, setMenuId] = useState<string | null>(null);
@@ -76,8 +81,9 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
   const [eliminarId, setEliminarId] = useState<string | null>(null);
   const mensajesVisibles = mensajes.filter((m) => !m.eliminadoPara?.includes("huesped"));
   function enviar(valor = texto.trim()) {
-    if (!valor)
+    if (!habilitado || transport?.busy || !valor)
       return;
+    if(transport){void transport.send(valor);setMostrarPreguntas(false);return;}
     void onEnviar(valor);
     setTexto("");
     setMostrarPreguntas(false);
@@ -85,7 +91,7 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
   function abrirEdicion(mensaje: MensajeChat) {
     setMenuId(null);
     setEditandoId(mensaje.id);
-    setEditandoTexto(mensaje.textoEs ?? mensaje.texto);
+    setEditandoTexto(mensaje.texto);
   }
   function confirmarEdicion() {
     if (!editandoId || !editandoTexto.trim())
@@ -95,27 +101,28 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
     setEditandoTexto("");
   }
   return (<div
-    className="flex-1 overflow-hidden bg-[#F8F6F0]"
+    data-guest-reference="chat-38cf2a3"
+    className="flex-1 min-w-0 overflow-y-auto bg-[#F8F6F0]"
     style={{
       fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif',
     }}
     onClick={() => setMenuId(null)}>
-    <header className="relative border-b border-[#E5E0D8] bg-white px-6 py-6 sm:px-8">
+    <header data-vs-page-header="huesped" className="relative border-b border-[#E5E0D8] bg-white px-6 py-6 sm:px-8">
       <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#B38B2C]">
-        <UiText text="Comunicación durante tu estancia" />
+        {en?'Communication during your stay':'Comunicación durante tu estancia'}
       </p>
 
-      <h1 className="mt-1 text-[34px] font-semibold leading-tight text-[#18345C]">
+      <h1 data-vs-page-title="huesped" className="mt-1 text-[34px] font-semibold leading-tight text-[#18345C]">
         <UiText text="Chat con recepción" />
       </h1>
 
       <p className="mt-1 text-[17px] text-[#7890B0]">
-        <UiText text="Comunícate con recepción durante tu estancia." />
+        {en?'Contact Reception during your stay.':'Comunícate con recepción durante tu estancia.'}
       </p>
     </header>
 
     <div className="mx-auto max-w-[720px] px-4 py-4 sm:px-5 lg:py-5">
-      <section className="flex h-[min(540px,calc(100vh-225px))] flex-col overflow-hidden rounded-2xl border border-[#E5E0D8] bg-white shadow-[0_8px_28px_rgba(16,39,71,0.06)]">
+      <section data-vs-card="huesped" className="flex h-[min(540px,calc(100vh-225px))] flex-col overflow-hidden rounded-2xl border border-[#E5E0D8] bg-white shadow-[0_8px_28px_rgba(16,39,71,0.06)]">
 
         <header className="flex items-center justify-between gap-3 border-b border-[#E5E0D8] px-4 py-3 sm:px-5">
           <div className="flex items-center gap-3">
@@ -129,8 +136,8 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
               </h2>
 
               <p className="mt-0.5 flex items-center gap-2 text-[14px] text-[#188247]">
-                <span className="h-3 w-3 rounded-full bg-[#159447]" />
-                <UiText text="En línea" />
+                <span className={`h-3 w-3 rounded-full ${transport?"bg-[#AEBCC1]":"bg-[#159447]"}`} />
+                {transport?(en?'Messages about your stay':'Mensajes de tu estancia'):<UiText text="En línea"/>}
               </p>
             </div>
           </div>
@@ -138,40 +145,41 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
 
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#FBFAF7] px-4 py-3 sm:px-5">
 
-          <div className="flex items-center gap-4">
+          {mensajesVisibles.length > 0 && <div className="flex items-center gap-4">
             <span className="h-px flex-1 bg-[#E5E0D8]" />
 
             <span className="rounded-full border border-[#E5E0D8] bg-white px-5 py-1.5 text-sm text-[#18345C]">
-              {en ? "Today" : "Hoy"}
+              {transport?(en?'Conversation':'Conversación'):(en?'Today':'Hoy')}
             </span>
 
             <span className="h-px flex-1 bg-[#E5E0D8]" />
+          </div>}
+
+          <div className="flex items-start gap-2">
+            <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#18345C] text-white">
+              <Icono tipo="recepcion" size={19} />
+            </div>
+
+            <div>
+              <div className="rounded-xl rounded-bl-sm bg-[#F1F1F1] px-3 py-2 text-[14px] text-[#18345C]">
+                {en
+                  ? `Hello, ${nombreHuesped}. How can we help you?`
+                  : `Hola, ${nombreHuesped}. ¿En qué podemos ayudarte?`}
+              </div>
+
+              <p className="mt-1 pl-2 text-[11px] text-[#7890B0]">
+                {!transport&&horaHotel()}
+              </p>
+            </div>
           </div>
 
           {mostrarPreguntas && (<div className="space-y-3">
-
-            <div className="flex items-start gap-2">
-              <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#18345C] text-white">
-                <Icono tipo="recepcion" size={19} />
-              </div>
-
-              <div>
-                <div className="rounded-xl rounded-bl-sm bg-[#F1F1F1] px-3 py-2 text-[14px] text-[#18345C]">
-                  {en
-                    ? `Hello, ${nombreHuesped}. How can we help you?`
-                    : `Hola, ${nombreHuesped}. ¿En qué podemos ayudarte?`}
-                </div>
-
-                <p className="mt-1 pl-2 text-[11px] text-[#7890B0]">
-                  {horaHotel()}
-                </p>
-              </div>
-            </div>
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {(en ? PREGUNTAS_EN : PREGUNTAS_ES).map((pregunta) => (<button
                 key={pregunta}
                 type="button"
+                disabled={!habilitado||transport?.busy}
                 onClick={() => enviar(pregunta)}
                 className="flex min-h-10 items-center justify-between rounded-xl border border-[#E1E4E8] bg-white px-3 py-2 text-left text-[12px] font-medium text-[#18345C] shadow-sm transition hover:border-[#B38B2C] hover:bg-[#FFFDF7]">
                 <span>
@@ -191,9 +199,7 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
               ? en
                 ? "This message was deleted"
                 : "Este mensaje fue eliminado"
-              : en
-                ? m.textoEn ?? m.texto
-                : m.textoEs ?? m.texto;
+              : m.texto;
             return (<div key={m.id} className={`flex ${mio ? "justify-end" : "justify-start"}`}>
               <div className={`group relative max-w-[74%] rounded-2xl px-3.5 py-2.5 text-[14px] ${m.eliminadoParaTodos
                 ? "border border-dashed border-[#C9CED5] bg-[#F2F3F4] italic text-[#7A8798]"
@@ -208,7 +214,7 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
                     autoFocus
                     className="w-full rounded-lg border border-[#D7DCE2] bg-white p-2 text-[#18345C] outline-none" />
 
-                  <div className="mt-2 flex justify-end gap-2">
+                  <div data-vs-actions="compact" className="mt-2 flex justify-end gap-2">
                     <button type="button" onClick={() => setEditandoId(null)} className="rounded-md border px-3 py-1 text-xs text-[#52677F]">
                       {en ? "Cancel" : "Cancelar"}
                     </button>
@@ -218,9 +224,9 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
                     </button>
                   </div>
                 </div>) : (<>
-                  <p>
-                    {contenido}
-                  </p>
+                  <div>
+                    {transport?transport.renderText(m):contenido}
+                  </div>
 
                   {m.editado && (<span className={`text-[10px] ${mio
                     ? "text-[#C9D8E8]"
@@ -235,9 +241,11 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
                   </p>
                 </>)}
 
-                {!m.eliminadoParaTodos &&
+                {!transport && mio && !m.eliminadoParaTodos &&
                   editandoId !== m.id && (<button
                     type="button"
+                    disabled={Boolean(transport)}
+                    title={transport?(en?'Editing and deleting are not available.':'Editar y eliminar no están disponibles.'):undefined}
                     onClick={(e) => {
                       e.stopPropagation();
                       setMenuId(menuId === m.id ? null : m.id);
@@ -252,14 +260,14 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
                   </button>)}
 
                 {menuId === m.id &&
-                  !m.eliminadoParaTodos && (<div
+                  mio &&
+                  !m.eliminadoParaTodos && (<div data-vs-card="huesped"
                     onClick={(e) => e.stopPropagation()}
                     className="absolute right-0 top-6 z-20 w-44 overflow-hidden rounded-xl border border-[#E5E0D8] bg-white text-sm text-[#18345C] shadow-xl">
                     <button
                       type="button"
-                      disabled={!mio}
                       onClick={() => abrirEdicion(m)}
-                      className="block w-full px-4 py-2.5 text-left hover:bg-[#F8F6F0] disabled:cursor-not-allowed disabled:opacity-40">
+                      className="block w-full px-4 py-2.5 text-left hover:bg-[#F8F6F0]">
                       {en ? "Edit" : "Editar"}
                     </button>
 
@@ -278,6 +286,9 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
           })}
         </div>
 
+        {transport?.loading&&<p role="status" className="px-4 text-sm">{en?'Loading messages…':'Consultando mensajes…'}</p>}
+        {transport?.error&&<p role="alert" className="px-4 text-sm text-red-800">{transport.error}</p>}
+        {transport?.blockedReason&&<GuestRestriction reason={transport.blockedReason}/>}
         <footer className="border-t border-[#E5E0D8] bg-white px-4 py-3 sm:px-5">
 
           {archivo && (<div className="mb-3 rounded-lg bg-[#F8F6F0] px-3 py-2 text-sm text-[#52677F]">
@@ -286,19 +297,21 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
 
           <div className="flex items-center gap-3">
 
-            <label className="cursor-pointer text-[#18345C]" title={ui("Adjuntar archivo")}>
-              <input type="file" className="hidden" onChange={(e) => setArchivo(e.target.files?.[0]?.name ?? null)} />
+            <label className={`text-[#18345C] ${transport?"cursor-not-allowed opacity-40":"cursor-pointer"}`} title={transport?(en?"Attachments are not available":"Los adjuntos no est?n disponibles"):ui("Adjuntar archivo")}>
+              <input disabled={Boolean(transport)} type="file" className="hidden" onChange={(e) => setArchivo(e.target.files?.[0]?.name ?? null)} />
 
               <Icono tipo="clip" size={29} />
             </label>
 
-            <label className="cursor-pointer text-[#18345C]" title={ui("Adjuntar imagen")}>
-              <input type="file" className="hidden" accept="image/*" onChange={(e) => setArchivo(e.target.files?.[0]?.name ?? null)} />
+            <label className="cursor-pointer text-[#18345C]" title={transport?(en?"Image attachments are not available":"Los adjuntos de imagen no est?n disponibles"):ui("Adjuntar imagen")}>
+              <input disabled={Boolean(transport)} type="file" className="hidden" accept="image/*" onChange={(e) => setArchivo(e.target.files?.[0]?.name ?? null)} />
 
               <Icono tipo="imagen" size={28} />
             </label>
 
             <input
+              maxLength={2000}
+              disabled={!habilitado||transport?.busy}
               value={texto}
               onChange={(e) => setTexto(e.target.value)}
               onKeyDown={(e) => {
@@ -314,7 +327,7 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
             <button
               type="button"
               onClick={() => enviar()}
-              disabled={!texto.trim()}
+              disabled={!habilitado||transport?.busy||!texto.trim()}
               className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#18345C] text-white disabled:cursor-not-allowed disabled:opacity-40">
               <Icono tipo="enviar" size={31} />
             </button>
@@ -323,7 +336,7 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
       </section>
     </div>
 
-    {eliminarId && (<div className="fixed inset-0 z-[130] grid place-items-center bg-[#071D34]/45 p-4">
+    {eliminarId && mensajesVisibles.some(m => m.id === eliminarId && m.autor === "huesped") && (<div className="fixed inset-0 z-[130] grid place-items-center bg-[#071D34]/45 p-4">
       <section className="w-full max-w-[420px] rounded-2xl bg-white p-5 shadow-2xl">
         <h2 className="text-xl font-semibold text-[#18345C]">
           {en
@@ -337,7 +350,7 @@ export default function ChatHuesped({ nombreHuesped, mensajes, onEnviar, onEdita
             : "Elige dónde quieres eliminar este mensaje."}
         </p>
 
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <div data-vs-actions="compact" className="mt-5 flex flex-wrap justify-end gap-2">
           <button
             type="button"
             onClick={() => {

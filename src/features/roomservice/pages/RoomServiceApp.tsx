@@ -1,7 +1,9 @@
+import {useDemoSection} from '@/hooks/useDemoSection';
 import { useEffect, useMemo, useState } from 'react';
 import type { Modulo, Pedido, ItemMenu, LineaPedido, NotificacionRS, SeccionRS, EstadoPedido, } from '@/lib/pms/types';
+import { usePathname, useRouter } from 'next/navigation';
 import { generarId, ahoraISO, formatoHoraISO, turnoActual, siguienteNumeroPedido, pisoDeHabitacion, } from '@/data/pms';
-import { SIGUIENTE_ESTADO, esTerminal, BellIcon, BedIcon, ClockIcon } from '@/features/roomservice/pages/rsUtils';
+import { SIGUIENTE_ESTADO, BellIcon, BedIcon, ClockIcon } from '@/features/roomservice/pages/rsUtils';
 import ModuloSwitcher from '@/components/common/ModuloSwitcher';
 import StaffProfileModal from '@/components/common/StaffProfileModal';
 import { EMPLEADOS_EVENT, leerEmpleados } from '@/store/employeeStore';
@@ -12,8 +14,10 @@ import NuevoPedidoModal from '@/features/roomservice/pages/NuevoPedidoModal';
 import MenuCatalogo from '@/features/roomservice/pages/MenuCatalogo';
 import HistorialPedidos from '@/features/roomservice/pages/HistorialPedidos';
 import Cargos from '@/features/roomservice/pages/Cargos';
-import { EVENTO_PEDIDO_RS, actualizarPedidoPortal, guardarPedidoRoomService, leerPedidosPortal } from '@/store/roomServiceSync';
+import { EVENTO_PEDIDO_RS, EVENTO_ESTADO_RS, PEDIDOS_RS_KEY, relacionEstanciaRoomService, actualizarPedidoPortal, guardarPedidoRoomService, leerPedidosPortal } from '@/store/roomServiceSync';
 import { MENU_EVENT, actualizarDisponibilidadMenu, leerMenu } from '@/store/menuStore';
+import { useRoomService } from '@/features/roomservice/useRoomService';
+import MenuOperativo from './MenuOperativo';
 const SECCIONES: {
   id: SeccionRS;
   label: string;
@@ -59,11 +63,13 @@ function SeccionIcon({ id, size = 18 }: {
 }
 interface Props {
   onCambiarModulo: (m: Modulo) => void;
+  conectado?: boolean;
 }
-export default function RoomServiceApp({ onCambiarModulo }: Props) {
-  const [empleados, setEmpleados] = useState(() => leerEmpleados());
+export default function RoomServiceApp({ onCambiarModulo, conectado = false }: Props) {
+  const [empleados, setEmpleados] = useState(() => conectado ? [] : leerEmpleados());
   const { user } = useAuth();
   useEffect(() => {
+    if (conectado) return;
     const sincronizar = () => setEmpleados(leerEmpleados());
     window.addEventListener(EMPLEADOS_EVENT, sincronizar);
     window.addEventListener('storage', sincronizar);
@@ -74,11 +80,12 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
   },
     []);
   const empleadoRS = empleados.find(e => e.id === user?.id && e.activo);
-  const encargadoRS = empleadoRS?.nombre ?? 'Room Service';
+  const encargadoRS = conectado ? user?.name ?? 'Room Service' : empleadoRS?.nombre ?? 'Room Service';
   const [perfilAbierto, setPerfilAbierto] = useState(false);
-  const [pedidos, setPedidos] = useState<Pedido[]>(() => leerPedidosPortal());
-  const [menu, setMenu] = useState<ItemMenu[]>(() => leerMenu());
+  const [pedidosLocales, setPedidos] = useState<Pedido[]>(() => conectado ? [] : leerPedidosPortal());
+  const [menu, setMenu] = useState<ItemMenu[]>(() => conectado ? [] : leerMenu());
   useEffect(() => {
+    if (conectado) return;
     const sincronizarMenu = () => setMenu(leerMenu());
     window.addEventListener(MENU_EVENT, sincronizarMenu);
     window.addEventListener('storage', sincronizarMenu);
@@ -87,70 +94,69 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
       window.removeEventListener('storage', sincronizarMenu);
     };
   },
-    []);
-  const [seccion, setSeccion] = useState<SeccionRS>('resumen');
+    [conectado]);
+  const pathname = usePathname(), router = useRouter();
+  const fromPath = (path: string): SeccionRS => SECCIONES.find(s => path === `/room-service/${s.id}`)?.id ?? 'resumen';
+  const [seccion, setSeccionActual] = useDemoSection<SeccionRS>(fromPath(pathname), !conectado && user?.id ? `vs-demo-section:room-service:${user.id}` : undefined, SECCIONES.map(s=>s.id));
+  function setSeccion(section: SeccionRS) {
+    setSeccionActual(section);
+    if (!conectado) return;
+    const target = section === 'resumen' ? '/room-service' : `/room-service/${section}`;
+    if (pathname !== target) router.push(target);
+  }
+  useEffect(() => { if(conectado || pathname!=='/room-service')setSeccionActual(fromPath(pathname)); }, [pathname,conectado,setSeccionActual]);
   const [pedidoAbierto, setPedidoAbierto] = useState<string | null>(null);
   const [mostrarNuevo, setMostrarNuevo] = useState(false);
   const [notificaciones, setNotificaciones] = useState<NotificacionRS[]>([]);
   const [toasts, setToasts] = useState<NotificacionRS[]>([]);
   const [panelNotif, setPanelNotif] = useState(false);
   const turno = useMemo(() => turnoActual(), []);
+  const remoto = useRoomService(conectado, pedido => {
+    const notif: NotificacionRS = { id: generarId(), pedidoId: pedido.id, habitacionNumero: pedido.habitacionNumero, hora: pedido.creadoEn, leida: false };
+    setNotificaciones(prev => [notif, ...prev].slice(0, 100));
+    setToasts(prev => [notif, ...prev].slice(0, 5));
+    window.setTimeout(() => setToasts(prev => prev.filter(t => t.id !== notif.id)), 8000);
+  });
+  const pedidos = conectado ? remoto.pedidos : pedidosLocales;
   useEffect(() => {
+    if (conectado) return;
     const recibir = (event: Event) => {
       const pedido = (event as CustomEvent<Pedido>).detail;
       if (!pedido)
         return;
-      setPedidos(prev => [pedido, ...prev.filter(p => p.id !== pedido.id)]);
+      setPedidos(leerPedidosPortal());
       const notif: NotificacionRS = { id: generarId(), pedidoId: pedido.id, habitacionNumero: pedido.habitacionNumero, hora: pedido.creadoEn, leida: false };
       setNotificaciones(prev => [notif, ...prev]);
       setToasts(prev => [notif, ...prev]);
       window.setTimeout(() => setToasts(prev => prev.filter(t => t.id !== notif.id)), 8000);
     };
+    const sincronizar = () => setPedidos(leerPedidosPortal());
+    const storage = (e: StorageEvent) => { if (e.key === PEDIDOS_RS_KEY || e.key === null) sincronizar(); };
     window.addEventListener(EVENTO_PEDIDO_RS, recibir);
-    return () => window.removeEventListener(EVENTO_PEDIDO_RS, recibir);
+    window.addEventListener(EVENTO_ESTADO_RS, sincronizar);
+    window.addEventListener('storage', storage);
+    sincronizar();
+    return () => {
+      window.removeEventListener(EVENTO_PEDIDO_RS, recibir);
+      window.removeEventListener(EVENTO_ESTADO_RS, sincronizar);
+      window.removeEventListener('storage', storage);
+    };
   },
-    []);
+    [conectado]);
   const pedidoActual = pedidos.find(p => p.id === pedidoAbierto) ?? null;
   const noLeidas = notificaciones.filter(n => !n.leida).length;
   const nuevosTurno = pedidos.filter(p => p.turno === turno && p.estado === 'nuevo').length;
   function avanzarEstado(id: string) {
-    const actual = pedidos.find(p => p.id === id);
+    if (conectado) { void remoto.avanzar(id); return; }
+    const actual = leerPedidosPortal().find(p => p.id === id);
     const proximo = actual ? SIGUIENTE_ESTADO[actual.estado] : undefined;
-    if (actual && proximo)
-      actualizarPedidoPortal(id, proximo);
-    setPedidos(prev => prev.map(p => {
-      if (p.id !== id)
-        return p;
-      const siguiente = SIGUIENTE_ESTADO[p.estado];
-      if (!siguiente)
-        return p;
-      const ahora = ahoraISO();
-      return {
-        ...p,
-        estado: siguiente,
-        entregadoEn: siguiente === 'entregado' ? ahora : p.entregadoEn,
-        historial: [...p.historial, { estado: siguiente, fechaHora: ahora }],
-      };
-    }));
+    if (proximo) actualizarPedidoPortal(id, proximo);
+    setPedidos(leerPedidosPortal());
   }
-  function cancelarPedido(id: string,
-    motivo: string) {
-    const actual = pedidos.find(p => p.id === id);
-    if (actual)
-      actualizarPedidoPortal(id, 'cancelado', motivo);
-    setPedidos(prev => prev.map(p => {
-      if (p.id !== id)
-        return p;
-      if (esTerminal(p.estado))
-        return p;
-      const ahora = ahoraISO();
-      return {
-        ...p,
-        estado: 'cancelado' as EstadoPedido,
-        motivoCancelacion: motivo,
-        historial: [...p.historial, { estado: 'cancelado', fechaHora: ahora, motivo }],
-      };
-    }));
+  function cancelarPedido(id: string, motivo: string) {
+    if (conectado) { void remoto.cancelar(id, motivo); return; }
+    actualizarPedidoPortal(id, 'cancelado', motivo);
+    setPedidos(leerPedidosPortal());
   }
   function crearPedidoTelefonico(datos: {
     habitacionNumero: string;
@@ -161,6 +167,7 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
   }) {
     const ahora = ahoraISO();
     const nuevo: Pedido = {
+      ...relacionEstanciaRoomService(datos.habitacionNumero),
       id: generarId(),
       numero: siguienteNumeroPedido(),
       habitacionNumero: datos.habitacionNumero,
@@ -175,8 +182,8 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
       creadoEn: ahora,
       historial: [{ estado: 'nuevo', fechaHora: ahora }],
     };
-    guardarPedidoRoomService(nuevo);
-    setPedidos(prev => [nuevo, ...prev.filter(p => p.id !== nuevo.id)]);
+    if (!guardarPedidoRoomService(nuevo)) return;
+    setPedidos(leerPedidosPortal());
     setMostrarNuevo(false);
     setSeccion('pedidos');
   }
@@ -190,9 +197,10 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
     setNotificaciones(prev => prev.map(n => (n.id === notif.id ? { ...n, leida: true } : n)));
     setToasts(prev => prev.filter(t => t.id !== notif.id));
     setPanelNotif(false);
-    setPedidoAbierto(notif.pedidoId);
+    abrirDetalle(notif.pedidoId);
   }
   function abrirDetalle(id: string) {
+    if (conectado) { void remoto.abrir(id).then(() => setPedidoAbierto(id)).catch(() => setPedidoAbierto(null)); return; }
     setPedidoAbierto(id);
   }
   const contenido = (() => {
@@ -238,7 +246,7 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
                 Operación del día
               </p>
 
-              <h1 className="mt-1 text-2xl font-semibold text-[#18345C]">
+              <h1 data-vs-page-title="roomservice" className="mt-1 text-2xl font-semibold text-[#18345C]">
                 Resumen de Room Service
               </h1>
 
@@ -247,8 +255,8 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
               </p>
             </div>
 
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              {estados.map((x) => (<button
+            <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+              {estados.map((x) => (<button data-vs-queue-metric="roomservice"
                 key={x.estado}
                 onClick={() => setSeccion('pedidos')}
                 className="min-h-[112px] rounded-xl border border-[#E5E0D8] bg-white p-5 flex flex-col items-center justify-center text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#D8B94E] hover:shadow-md">
@@ -264,7 +272,7 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
 
             <div className="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-2">
 
-              <div className="rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm">
+              <div data-vs-card="roomservice" className="rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EEE8DF] pb-4">
                   <div>
                     <h2 className="text-lg font-semibold text-[#18345C]">
@@ -308,7 +316,7 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
                         {formatoHoraISO(p.creadoEn)}
                       </p>
                     </div>
-                  </button>))) : (<div className="flex min-h-[220px] items-center justify-center">
+                  </button>))) : (<div data-vs-empty="roomservice" className="flex min-h-[220px] items-center justify-center">
                     <div className="text-center">
                       <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#F8F6F0] text-[#B38719]">
                         <ClockIcon size={22} />
@@ -326,7 +334,7 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm">
+              <div data-vs-card="roomservice" className="rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EEE8DF] pb-4">
                   <div>
                     <h2 className="text-lg font-semibold text-[#18345C]">
@@ -376,7 +384,7 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
                         {formatoHoraISO(p.creadoEn)}
                       </p>
                     </div>
-                  </button>))) : (<div className="flex min-h-[220px] items-center justify-center">
+                  </button>))) : (<div data-vs-empty="roomservice" className="flex min-h-[220px] items-center justify-center">
                     <div className="text-center">
                       <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#F8F6F0] text-[#B38719]">
                         <ClockIcon size={22} />
@@ -395,7 +403,7 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
               </div>
             </div>
 
-            <div className="mt-5 rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm">
+            <div data-vs-card="roomservice" className="mt-5 rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm">
               <div className="mb-4">
                 <h2 className="text-lg font-semibold text-[#18345C]">
                   Resumen operativo
@@ -443,16 +451,16 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
         </section>);
       }
       case 'pedidos':
-        return (<PedidosPendientes pedidos={pedidos} turno={turno} onAbrirDetalle={abrirDetalle} onNuevoTelefonico={() => setMostrarNuevo(true)} />);
+        return (<PedidosPendientes pedidos={pedidos} turno={turno} conectado={conectado} onAbrirDetalle={abrirDetalle} onNuevoTelefonico={conectado ? undefined : () => setMostrarNuevo(true)} />);
       case 'menu':
-        return <MenuCatalogo menu={menu} onMarcarAgotado={marcarAgotado} onReactivar={reactivarItem} />;
+        return conectado ? <MenuOperativo menu={remoto.menu} busy={remoto.busy} agotar={id => void remoto.agotar(id)} /> : <MenuCatalogo menu={menu} onMarcarAgotado={marcarAgotado} onReactivar={reactivarItem} />;
       case 'cargos':
         return <Cargos pedidos={pedidos} onAbrirDetalle={abrirDetalle} />;
       case 'historial':
         return <HistorialPedidos pedidos={pedidos} turno={turno} />;
     }
   })();
-  return (<div className="w-full h-screen flex flex-col overflow-hidden" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
+  return (<div data-vs-workspace="roomservice" className="w-full h-screen flex flex-col overflow-hidden" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
     <style>
       {`
         @import url('https://fonts.googleapis.com/css2?family=Afacad:wght@400;500;600;700&display=swap');
@@ -461,7 +469,7 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
 
     <div className="flex-1 flex overflow-hidden">
 
-      <nav className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
+      <nav data-vs-sidebar="roomservice" className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
         <div className="px-4 pt-5 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
           <img src="/villa-serena-logo.png" alt="Villa Serena" className="h-32 w-44 object-contain mx-auto mb-2" />
           <p className="text-white text-xl font-bold leading-tight" style={{ letterSpacing: '0.02em' }}>Villa Serena</p>
@@ -471,10 +479,10 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
         </div>
 
         <div className="vs-scroll-clean flex-1 py-3 overflow-y-auto">
-          {SECCIONES.map(s => {
+          {SECCIONES.filter(s => !conectado || !['cargos', 'historial'].includes(s.id)).map(s => {
             const active = seccion === s.id;
             const badge = s.id === 'pedidos' ? nuevosTurno : 0;
-            return (<button
+            return (<button data-vs-active={active}
               key={s.id}
               onClick={() => setSeccion(s.id)}
               className="w-full flex items-center gap-3 px-5 py-3 text-left transition-colors relative"
@@ -493,10 +501,10 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
           })}
         </div>
 
-        <div className="mt-auto px-4 py-5 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
+        <div className="mt-auto px-4 py-2 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
           <button
             onClick={() => setPerfilAbierto(true)}
-            className="w-full flex items-center gap-3 rounded-lg p-2 text-left hover:bg-[#18345C] transition-colors"
+            className="w-full min-h-16 flex items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-[#18345C] transition-colors"
             title="Abrir mi perfil">
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
@@ -506,15 +514,15 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
                 {encargadoRS}
               </p>
               <p className="text-[10px] truncate" style={{ color: '#AEBCC1' }}>Room Service · turno de {turno}</p>
-              <p className="text-[10px] mt-0.5" style={{ color: '#D8B94E' }}>Abrir perfil</p>
+              <p className="text-[14px] leading-5 no-underline" style={{ color: '#D8B94E' }}>Perfil</p>
             </div>
           </button>
         </div>
       </nav>
 
-      <div className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
+      <div data-vs-shell-main="roomservice" className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
 
-        <div className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: '#102747' }}>
+        <div data-vs-topbar="roomservice" className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: '#102747' }}>
           <p className="lg:hidden text-white text-lg font-bold">Villa Serena</p>
           <span className="lg:hidden text-[#AEBCC1] text-xs">·</span>
           <p className="text-[#AEBCC1] text-xs font-medium truncate flex-1">
@@ -522,6 +530,7 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
           </p>
 
           <div className="lg:hidden flex gap-1.5 shrink-0">
+            <button className="text-xs text-white" onClick={() => setPerfilAbierto(true)}>Mi perfil</button>
             <ModuloSwitcher actual="roomservice" onCambiar={onCambiarModulo} variant="inline" />
           </div>
 
@@ -537,7 +546,7 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
 
             {panelNotif && (<>
               <div className="fixed inset-0 z-20" onClick={() => setPanelNotif(false)} />
-              <div className="absolute right-0 mt-2 w-72 max-h-96 overflow-y-auto bg-white border border-[#E5E0D8] rounded-xl shadow-2xl z-30">
+              <div data-vs-card="roomservice" className="absolute right-0 mt-2 w-72 max-h-96 overflow-y-auto bg-white border border-[#E5E0D8] rounded-xl shadow-2xl z-30">
                 <div className="px-4 py-3 border-b border-[#E5E0D8]">
                   <p className="text-[14px] font-semibold text-[#18345C]">Notificaciones</p>
                 </div>
@@ -568,14 +577,16 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
         </div>
 
         <div className="flex-1 flex overflow-hidden relative">
+          {conectado && remoto.error && <p role="alert" className="bg-red-50 text-red-800 p-3">{remoto.error}</p>}
+          {conectado && remoto.loading && <p role="status" className="p-3">Consultando pedidos…</p>}
           {contenido}
         </div>
 
-        <div className="lg:hidden flex shrink-0 border-t" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
-          {SECCIONES.map(s => {
+        <div data-vs-mobile-nav="roomservice" className="lg:hidden flex shrink-0 border-t" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
+          {SECCIONES.filter(s => !conectado || !['cargos', 'historial'].includes(s.id)).map(s => {
             const active = seccion === s.id;
             const badge = s.id === 'pedidos' ? nuevosTurno : 0;
-            return (<button
+            return (<button data-vs-active={active}
               key={s.id}
               onClick={() => setSeccion(s.id)}
               className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 relative transition-colors min-w-0"
@@ -609,7 +620,7 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
         <div className="min-w-0 flex-1">
           <p className="text-[14px] font-semibold text-[#18345C]">Nuevo pedido de Room Service</p>
           <p className="text-[13px] text-[#6B7280] mt-0.5">
-            Habitación {t.habitacionNumero} · {formatoHoraISO(t.hora)}
+            Habitación {t.habitacionNumero} · Piso {pedidos.find(p => p.id === t.pedidoId)?.piso ?? pisoDeHabitacion(t.habitacionNumero)} · {formatoHoraISO(t.hora)}
           </p>
           <p className="text-[12px] text-[#18345C] font-medium mt-1">Toca para ver el detalle</p>
         </div>
@@ -618,6 +629,8 @@ export default function RoomServiceApp({ onCambiarModulo }: Props) {
 
     {pedidoActual && (<DetallePedido
       pedido={pedidoActual}
+      conectado={conectado}
+      busy={remoto.busy}
       onCerrar={() => setPedidoAbierto(null)}
       onAvanzarEstado={avanzarEstado}
       onCancelar={(id, motivo) => cancelarPedido(id, motivo)} />)}
