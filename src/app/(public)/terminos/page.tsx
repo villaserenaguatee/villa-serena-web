@@ -1,14 +1,13 @@
 "use client";
 import BookingTermsContent from '@/components/common/BookingTermsContent';
-import { useRouter } from 'next/navigation';
+import LegalBackButton from '@/components/common/LegalBackButton';
 import VillaSerenaLogo from '@/components/common/VillaSerenaLogo';
 import PublicLanguageToggle, { usePublicLanguage } from '@/components/common/PublicLanguageToggle';
 export default function Terminos() {
-  const router = useRouter();
   const { en } = usePublicLanguage();
   return <><PublicLanguageToggle /><main className="legal-page">
     <header>
-      <button onClick={() => router.back()} className="icon-back legal-back" aria-label={en ? 'Back' : 'Volver'}>←</button>
+      <LegalBackButton />
       <VillaSerenaLogo />
     </header>
     <article>

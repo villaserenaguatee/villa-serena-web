@@ -65,9 +65,9 @@ export default function Disponibilidad({ conectado = false, habitaciones, reserv
     [rangoValido, entrada, salida, habitaciones, reservas, nPersonas, tipo]);
   const resultados = conectado ? remote : locales;
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-    <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
+    <div data-vs-page-header="recepcion" className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Consultar disponibilidad</h1>
+        <h1 data-vs-page-title="recepcion" className="text-[32px] font-semibold text-[#18345C] leading-tight">Consultar disponibilidad</h1>
         {rangoValido && !loading && !error && <p role="status" className="text-[14px] text-[#6B7280]">{resultados.length} {resultados.length === 1 ? 'habitación disponible' : 'habitaciones disponibles'}</p>}
       </div>
 
@@ -126,12 +126,12 @@ export default function Disponibilidad({ conectado = false, habitaciones, reserv
     <div className="px-4 sm:px-6 py-5">
       {loading && <p role="status">Consultando disponibilidad…</p>}{(error || catalogoError) && <p role="alert" className="text-red-800">{error || catalogoError}</p>}
       {!rangoValido ? (<p className="text-[14px] text-[#991B1B]">La fecha de salida debe ser posterior a la de entrada.</p>) : (<>
-        {resultados.length === 0 && !loading && !error ? (<div className="bg-white border border-[#E5E0D8] rounded-xl p-6 text-center">
+        {resultados.length === 0 && !loading && !error ? (<div data-vs-card="recepcion" className="bg-white border border-[#E5E0D8] rounded-xl p-6 text-center">
           <p className="text-[15px] text-[#AEBCC1]">No hay habitaciones libres con esos criterios.</p>
         </div>) : (<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {resultados.map(h => {
             const visual = visualHabitacion(h);
-            return (<div key={h.id} className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden">
+            return (<div data-vs-card="recepcion" key={h.id} className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden">
               <img src={visual.image} alt={`Habitación ${h.numero}`} className="w-full h-44 object-cover" />
               <div className="p-4">
                 <div className="flex items-start justify-between gap-3">

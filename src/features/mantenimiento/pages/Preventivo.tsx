@@ -57,9 +57,9 @@ export default function Preventivo({ tareas, activos, ordenes, onGenerarOrden, o
       return a.proximaEjecucion.localeCompare(b.proximaEjecucion);
     });
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-    <div className="flex items-center justify-between gap-3 bg-white px-4 py-5 sm:px-6 border-b border-[#E5E0D8]">
+    <div data-vs-page-header="mantenimiento" className="flex items-center justify-between gap-3 bg-white px-4 py-5 sm:px-6 border-b border-[#E5E0D8]">
       <div>
-        <h1 className="text-[32px] font-semibold text-[#18345C]">Mantenimiento preventivo</h1>
+        <h1 data-vs-page-title="mantenimiento" className="text-[32px] font-semibold text-[#18345C]">Mantenimiento preventivo</h1>
         <p className="text-sm text-[#71839B]">{activas.length} tareas activas en el plan</p>
       </div>
       <button onClick={() => setNuevo(true)} className="rounded-lg bg-[#18345C] px-4 py-2.5 font-semibold text-white">+ Nuevo mantenimiento preventivo</button>
@@ -158,7 +158,7 @@ export default function Preventivo({ tareas, activos, ordenes, onGenerarOrden, o
       </div>)}
     </div>
     {nuevo && <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <section role="dialog" aria-label="Nuevo mantenimiento preventivo" className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+      <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" role="dialog" aria-label="Nuevo mantenimiento preventivo" className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
         <header className="flex justify-between border-b px-4 py-3">
           <h2 className="text-xl font-semibold text-[#18345C]">Nuevo mantenimiento preventivo</h2>
           <button onClick={() => setNuevo(false)}>×</button>
@@ -182,15 +182,15 @@ export default function Preventivo({ tareas, activos, ordenes, onGenerarOrden, o
             className="mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white p-2.5 outline-none focus:border-[#B8C4D0]" /></label>}
           {ubicacion === 'Habitación' && <><label>Piso<select
             value={piso}
-            onChange={e => setPiso(e.target.value)}
+            onChange={e => {setPiso(e.target.value);setHabitacion("");}}
             className="mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white p-2.5 outline-none focus:border-[#B8C4D0]">
             {(habitaciones?Array.from(new Set(habitaciones.map(h=>h.piso))).sort((a,b)=>a-b):[1,2,3]).map(n=><option key={n}>{n}</option>)}
           </select></label><label>Habitación{habitaciones?<select value={habitacion} onChange={e=>setHabitacion(e.target.value)} className="mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white p-2.5"><option value="">Selecciona</option>{habitaciones.filter(h=>h.piso===Number(piso)).map(h=><option key={h.numero}>{h.numero}</option>)}</select>:<input
             value={habitacion}
             onChange={e => setHabitacion(e.target.value.replace(/\D/g, ''))}
             className="mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white p-2.5 outline-none focus:border-[#B8C4D0]" />}</label></>}
-          <label className="sm:col-span-2">Activo vinculado (opcional)<select aria-label="Activo vinculado" value={activoId} onChange={e=>setActivoId(e.target.value)} className="mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white p-2.5"><option value="">Sin activo vinculado</option>{activos.map(a=><option key={a.id} value={a.id}>{a.nombre}</option>)}</select></label>
-          <label>Equipo o elemento<input
+          <label className="sm:col-span-2">Equipo o activo relacionado (opcional)<select aria-label="Equipo o activo relacionado (opcional)" value={activoId} onChange={e=>{setActivoId(e.target.value);}} className="mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white p-2.5"><option value="">Sin equipo relacionado</option>{activos.map(a=><option key={a.id} value={a.id}>{a.nombre}</option>)}</select><small className="mt-1 block text-sm text-[#536579]">Selecciona un equipo registrado si este mantenimiento corresponde a uno.</small></label>
+          <label>Equipo o elemento (detalle)<input
             value={equipo}
             onChange={e => setEquipo(e.target.value)}
             className="mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white p-2.5 outline-none focus:border-[#B8C4D0]" /></label>
@@ -221,13 +221,14 @@ export default function Preventivo({ tareas, activos, ordenes, onGenerarOrden, o
             onChange={e => setDescripcion(e.target.value)}
             className="mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white p-2.5 outline-none focus:border-[#B8C4D0]" /></label>
         </div>
-          {validationError&&<p role="alert" className="px-4 text-sm text-red-800">{validationError}</p>}<FormOperationFeedback/><footer className="flex justify-end gap-2 border-t p-4">
+          {validationError&&<p role="alert" className="px-4 text-sm text-red-800">{validationError}</p>}<FormOperationFeedback/><footer data-vs-actions="compact" className="flex justify-end gap-2 border-t p-4">
           <button onClick={() => setNuevo(false)} className="rounded-lg border px-4 py-2">Cancelar</button>
           <button
               onClick={async () => {
                 if (!nombre.trim() || !validPublicDate(fecha) || (frecuencia==='otra'&&(!Number.isInteger(Number(otraFrecuencia))||Number(otraFrecuencia)<1||Number(otraFrecuencia)>3660))) {
                   setValidationError('Completa el nombre, una fecha válida y un intervalo entero de 1 a 3660 días.'); return;
                 }
+                if((ubicacion==='Habitación'&&(!habitacion.trim()||(habitaciones&&!habitaciones.some(h=>h.numero===habitacion&&h.piso===Number(piso)))))||(ubicacion==='Otro'&&!otraUbicacion.trim())){setValidationError('Selecciona una habitación válida o especifica el área.');return;}
                 setValidationError('');
                 const saved = await onAgregarTarea({
                 id: `tp-${Date.now()}`,

@@ -12,7 +12,7 @@ export function sameOrigin(request: Request) {
 }
 export function authError(error: unknown) {
   const known = isAuthError(error) ? error : new AuthError('ERROR_SESION', 502, 'No se pudo completar la sesión.');
-  return NextResponse.json({ codigo: known.codigo, mensaje: known.message, detalles: [] }, { status: known.status, headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ codigo: known.codigo, mensaje: known.message, detalles: [] }, { status: known.status, headers: { 'Cache-Control': 'no-store', ...(known.status === 429 && known.retryAfter && /^\d{1,8}$/.test(known.retryAfter) ? { 'Retry-After': known.retryAfter } : {}) } });
 }
 export function writeCookies(response: NextResponse, request: Request, tokens?: Tokens) {
   const hostname = new URL(request.url).hostname;

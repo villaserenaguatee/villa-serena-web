@@ -133,3 +133,11 @@ test('respuestas incompletas se rechazan y campos adicionales nunca exponen toke
   assert.ok(!('accessToken' in employee)); assert.ok(!('refreshToken' in employee));
   assert.ok(isAuthError(Object.assign(new Error('Vencida'), { codigo: 'SESION_VENCIDA', status: 401 })));
 });
+
+test('unified connected login preserves 429 and Retry-After without account details',async()=>{
+ const previous={staff:process.env.STAFF_AUTH_MODE,guest:process.env.GUEST_AUTH_MODE,url:process.env.API_URL};const original=globalThis.fetch;
+ try{process.env.STAFF_AUTH_MODE='spring';process.env.GUEST_AUTH_MODE='spring';process.env.API_URL='https://api.example.test';globalThis.fetch=async()=>new Response('{}',{status:429,headers:{'Retry-After':'900'}});
+ const response=await unifiedLogin(new NextRequest('http://localhost:3000/api/auth/iniciar-sesion',{method:'POST',headers:{Origin:'http://localhost:3000','Content-Type':'application/json','Idempotency-Key':randomUUID()},body:JSON.stringify({correo:'someone@example.test',credencial:'123456'})}));
+ assert.equal(response.status,429);assert.equal(response.headers.get('Retry-After'),'900');assert.equal((await response.json()).codigo,'LIMITE_SOLICITUDES');
+ }finally{globalThis.fetch=original;for(const [key,value] of Object.entries({STAFF_AUTH_MODE:previous.staff,GUEST_AUTH_MODE:previous.guest,API_URL:previous.url})){if(value===undefined)delete process.env[key];else process.env[key]=value;}}
+});

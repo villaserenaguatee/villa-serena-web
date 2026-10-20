@@ -288,7 +288,7 @@ function FormularioRegla({ onCancelar, onGuardar, }: {
       {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-[#991B1B]">
         {err}
       </p>}
-      <div className="flex flex-wrap justify-end gap-2 border-t border-[#EEE9E1] pt-4">
+      <div data-vs-actions="compact" className="flex flex-wrap justify-end gap-2 border-t border-[#EEE9E1] pt-4">
         <button
           onClick={onCancelar}
           className="min-h-11 rounded-lg border border-[#D7D1C7] px-4 py-2 text-sm font-semibold text-[#52677F] hover:bg-[#F8F6F0] transition-colors">
@@ -392,7 +392,7 @@ function FormularioPromo({ onCancelar, onGuardar, }: {
       {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-[#991B1B]">
         {err}
       </p>}
-      <div className="flex flex-wrap justify-end gap-2 border-t border-[#EEE9E1] pt-4">
+      <div data-vs-actions="compact" className="flex flex-wrap justify-end gap-2 border-t border-[#EEE9E1] pt-4">
         <button
           onClick={onCancelar}
           className="min-h-11 rounded-lg border border-[#D7D1C7] px-4 py-2 text-sm font-semibold text-[#52677F] hover:bg-[#F8F6F0] transition-colors">

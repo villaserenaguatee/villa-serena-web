@@ -24,7 +24,7 @@ export default function ReceptionActionDialog({ title, onClose, busy = false, ch
     return () => { document.removeEventListener('keydown', key); previous?.focus(); };
   }, []);
   return createPortal(<div className="fixed inset-0 z-[120] grid place-items-center bg-[#071D34]/45 p-4" onClick={() => { if (!busy) onClose(); }}>
-    <section ref={ref} role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()} className="max-h-[85dvh] w-full max-w-[420px] overflow-y-auto rounded-2xl bg-white p-4 text-[#18345C] shadow-2xl">
+    <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="small" ref={ref} role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()} className="max-h-[85dvh] w-full max-w-[420px] overflow-y-auto rounded-2xl bg-white p-4 text-[#18345C] shadow-2xl">
       <header className="mb-3 flex items-center justify-between gap-2"><h3 className="text-xl font-semibold">{title}</h3><ReceptionCloseButton disabled={busy} onClick={onClose} /></header>
       {children}
     </section>

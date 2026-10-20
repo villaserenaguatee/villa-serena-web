@@ -420,7 +420,7 @@ function Form({ titulo, cancel, save, children }: {
   children: React.ReactNode;
 }) {
   const [formError, setFormError] = useState('');
-  return <form onSubmit={async event => {
+  return <form data-vs-ui="compact" onSubmit={async event => {
     event.preventDefault(); setFormError('');
     const result = await save();
     if (result === false || result === '') setFormError('Revisa los campos obligatorios, la fecha y los importes.');
@@ -431,7 +431,7 @@ function Form({ titulo, cancel, save, children }: {
     <div className="grid gap-3 sm:grid-cols-2">
       {children}<FormOperationFeedback/>
     </div>
-    <div className="mt-4 flex flex-wrap justify-end gap-2">
+    <div data-vs-actions="compact" className="mt-4 flex flex-wrap justify-end gap-2">
       <button type="button" onClick={cancel} className="min-h-11 rounded-md border px-4 py-2 text-sm">Cancelar</button>
       <button type="submit" className="min-h-11 rounded-md bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">Guardar</button>
     </div>
@@ -456,7 +456,7 @@ function Modal({ children, close }: {
   return <div
     onMouseDown={e => e.target === e.currentTarget && close()}
     className="fixed inset-0 z-50 flex items-end justify-center bg-[#071D34]/50 sm:items-center sm:p-4">
-    <section className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 sm:max-w-lg sm:rounded-2xl sm:p-5">
+    <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 sm:max-w-lg sm:rounded-2xl sm:p-5">
       <button onClick={close} className="absolute right-5 top-4 text-2xl">×</button>
       {children}
     </section>

@@ -1,3 +1,4 @@
+import {useDemoSection} from '@/hooks/useDemoSection';
 import ReceptionCloseButton from './ReceptionCloseButton';
 import { calcularCuentaRecepcion as calcularCuenta } from '../accountTotals';
 import ReceptionNotice from './ReceptionNotice';
@@ -251,7 +252,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
   },
     [reservas]);
   const [calendarOpen,setCalendarOpen]=useState(false);
-  const [seccion, setSeccionActual] = useState<SeccionRecepcion>(() => seccionDesdeRuta(pathname));
+  const [seccion, setSeccionActual] = useDemoSection<SeccionRecepcion>(seccionDesdeRuta(pathname), !conectado && user?.id ? `vs-demo-section:recepcion:${user.id}` : undefined, SECCIONES.map(s=>s.id));
   function setSeccion(section: SeccionRecepcion) {
     setCalendarOpen(false);
     setSeccionActual(section);
@@ -318,10 +319,10 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
   const [legacyAction, setLegacyAction] = useState<ExistingAction | undefined>();
   const [legacyTab, setLegacyTab] = useState<'resumen' | 'cuenta'>('resumen');
   useEffect(() => {
-    setSeccionActual(seccionDesdeRuta(pathname));
+    if(conectado || pathname!=='/recepcion')setSeccionActual(seccionDesdeRuta(pathname));
     setBffCodeActual(codigoDesdeRuta(pathname));
     setReservaAbiertaId(null);
-  }, [pathname]);
+  }, [pathname,conectado,setSeccionActual]);
 
   function abrirReserva(id: string) {
     const reservation = reservas.find(r => r.id === id);
@@ -633,7 +634,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
         return <ObjetosRecepcion objetos={objetos} habitaciones={habitaciones} reservas={reservas} huespedes={huespedes} onActualizar={cambiarObjeto} />;
     }
   })();
-  return (<div className={"h-dvh min-h-0 w-full flex flex-col overflow-hidden"} style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
+  return (<div data-vs-workspace="recepcion" className={"h-dvh min-h-0 w-full flex flex-col overflow-hidden"} style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
     <style>
       {`
         @import url('https://fonts.googleapis.com/css2?family=Afacad:wght@400;500;600;700&display=swap');
@@ -643,7 +644,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
     <div className="flex-1 flex overflow-hidden">
 
       {checkInNotice && <ReceptionNotice title="No se pudo iniciar la estancia" message={checkInNotice} onClose={() => setCheckInNotice('')} />}
-<nav className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
+<nav data-vs-sidebar="recepcion" className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
         <div className="px-5 pt-5 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
           <img src="/villa-serena-logo.png" alt="Villa Serena Hotel" className="w-32 max-h-24 object-contain mx-auto" />
           <p className="text-xs mt-2" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>Recepción</p>
@@ -653,7 +654,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
           {SECCIONES.map(s => {
             const active = seccion === s.id;
             const badge = s.id === 'dia' ? badgeDia : s.id === 'solicitudes' ? badgeSolicitudes : s.id === 'objetos' ? objetos.filter(o => o.estado !== 'devuelto').length : 0;
-            return (<button
+            return (<button data-vs-active={active}
               key={s.id}
               onClick={() => setSeccion(s.id)}
               className="w-full flex items-center gap-3 px-5 py-3 text-left transition-colors relative"
@@ -693,8 +694,8 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
         </div>
       </nav>
 
-      <div className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
-        <div className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: '#102747' }}>
+      <div data-vs-shell-main="recepcion" className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
+        <div data-vs-topbar="recepcion" className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: '#102747' }}>
           <p className="lg:hidden text-white text-lg font-bold">Villa Serena</p>
           <span className="lg:hidden text-[#AEBCC1] text-xs">·</span>
           <p className="text-[#AEBCC1] text-xs font-medium truncate flex-1">
@@ -704,14 +705,14 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
         </div>
 
         <div className="flex-1 flex overflow-hidden relative">
-          {!conectado && seccion === 'dia' ? <div className="flex-1 overflow-y-auto"><div className="h-[75dvh] min-h-[280px] max-h-[760px] p-4"><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={abrirReserva} onNueva={() => setNuevaReserva({ open: true })} /></div>{contenido}</div> : contenido}
+          {!conectado && seccion === 'dia' ? <div className="flex-1 overflow-y-auto">{contenido}<section aria-label="Calendario de reservas" className="h-[62dvh] min-h-[400px] max-h-[650px] p-4"><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={abrirReserva} onNueva={() => setNuevaReserva({ open: true })} /></section></div> : contenido}
         </div>
 
-        <div className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
+        <div data-vs-mobile-nav="recepcion" className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
           {SECCIONES.map(s => {
             const active = seccion === s.id;
             const badge = s.id === 'dia' ? badgeDia : s.id === 'solicitudes' ? badgeSolicitudes : s.id === 'objetos' ? objetos.filter(o => o.estado !== 'devuelto').length : 0;
-            return (<button
+            return (<button data-vs-active={active}
               key={s.id}
               onClick={() => setSeccion(s.id)}
               className="flex-1 min-w-[62px] flex flex-col items-center justify-center py-2 gap-0.5 relative transition-colors"
@@ -902,7 +903,7 @@ function PerfilRecepcionModal({ perfil, onGuardar, onCerrar }: {
       if (e.target === e.currentTarget)
         onCerrar();
     }}>
-    <div className="reception-compact bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
+    <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="medium" className="reception-compact bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
       <div className="px-6 py-5 border-b flex items-center justify-between">
         <div>
           <p className="text-xs tracking-[.18em] text-[#B38719] uppercase">Mi perfil</p>
@@ -936,7 +937,7 @@ function PerfilRecepcionModal({ perfil, onGuardar, onCerrar }: {
               setCodigo('');
               setMensaje('Código reenviado.');
             }} className="font-semibold text-[#18345C] underline">Reenviar código</button>
-            <div className="flex gap-2">
+            <div data-vs-actions="compact" className="flex gap-2">
               <button onClick={cancelarCambio} className="rounded-lg border px-3 py-2">Cancelar</button>
               <button
                 disabled={codigo.length !== 6}
@@ -974,7 +975,7 @@ function PerfilRecepcionModal({ perfil, onGuardar, onCerrar }: {
             <span>{requisitos.minus ? '✓' : '○'} Una minúscula</span>
             <span>{requisitos.numero ? '✓' : '○'} Un número</span>
             <span>{requisitos.especial ? '✓' : '○'} Un carácter especial</span>
-          </div>}<div className="flex gap-3 mt-4">
+          </div>}<div data-vs-actions="compact" className="flex gap-3 mt-4">
               <button onClick={cambiarClave} className="px-5 py-2.5 bg-[#102747] text-white rounded-lg font-semibold">Guardar nueva contraseña</button>
               <button onClick={() => {
                 setClaveAbierta(false);

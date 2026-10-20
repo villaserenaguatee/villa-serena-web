@@ -178,3 +178,8 @@ test('reserva sin habitación/pagos persiste y revalida cupo, con código distin
   localStorage.setItem('vs-habitaciones', JSON.stringify([{ ...room, estado: 'mantenimiento' }]));
   expect(() => crearReservaRecepcionDemo(input)).toThrow(/disponibilidad/); expect(leerReservas()).toEqual([]);
 });
+
+test('legacy post-checkout marker does not prevent guest history login after 24 hours',async()=>{
+ guardarAccesoPostCheckout(guest.correo,'2026-01-01T10:00:00Z');
+ const user=await loginLocal(guest.correo,'demo123');expect(user.role).toBe('huesped');expect(user.guestId).toBe(guest.id);
+});

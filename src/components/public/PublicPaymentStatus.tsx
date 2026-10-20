@@ -1,21 +1,26 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { Check, Clock3, CircleAlert } from 'lucide-react';
 import VillaSerenaLogo from '@/components/common/VillaSerenaLogo';
 import { usePublicLanguage } from '@/components/common/PublicLanguageToggle';
 import { getPublicStatus, startPublicPayment } from '@/lib/api/public';
+import {paymentAction} from '@/lib/recurrenteStatus';
 import { paymentView, type PaymentView } from '@/lib/paymentResult';
 import type { PublicStatusDto } from '@/lib/bff/contracts/public';
-import { stripeCheckoutUrl } from '@/lib/stripeCheckoutUrl';
-import { completeBookingDraft } from '@/lib/bookingDraft';
+import { checkoutUrl } from '@/lib/checkoutUrl';
+import { completeBookingDraft, activeBookingDraft, bookingReceipt } from '@/lib/bookingDraft';
 
 export default function PublicPaymentStatus({ code }: { code: string }) {
   const { en } = usePublicLanguage();
+  const [currentRequest,setCurrentRequest]=useState(false),[legacyRequest,setLegacyRequest]=useState(false);
   const [result, setResult] = useState<PublicStatusDto | null>(null);
   const [view, setView] = useState<PaymentView | null>(null);
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
+  useEffect(()=>{const receipt=bookingReceipt();const attempt=activeBookingDraft()?.attempt??(receipt?{code:receipt.code,flow:receipt.flow}:undefined);setCurrentRequest(attempt?.code===code&&attempt.flow==='recurrente');setLegacyRequest(attempt?.code===code&&attempt.flow==='stripe');},[code,reload]);
+
+  const actionLock=useRef(false);
   const [busy, setBusy] = useState(false);
   const [consulting, setConsulting] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -49,17 +54,23 @@ export default function PublicPaymentStatus({ code }: { code: string }) {
   }, [code, reload, en]);
 
   async function retry() {
-    if (busy || consulting) return;
+    if (actionLock.current || busy || consulting) return;
+    actionLock.current=true;
     setBusy(true); setError(''); setFeedback('');
     try {
       const latest = await getPublicStatus(code);
       const next = paymentView(latest, code);
       setResult(latest); setView(next);
-      if (latest.estadoReserva !== 'PENDIENTE_PAGO' || !latest.puedeReintentar) return;
+      if (next==='confirmed' || latest.estadoReserva==='CANCELADA') completeBookingDraft(code);
+      const attempt=activeBookingDraft()?.attempt;
+      if((attempt?.code===code&&attempt.flow==='stripe')||(bookingReceipt()?.code===code&&bookingReceipt()?.flow==='stripe'))throw Error('Consulta con Recepción antes de volver a pagar esta reserva anterior.');
+      const action=paymentAction(latest,currentRequest);
+      if(action==='CONTINUAR'){window.location.assign(checkoutUrl(latest.urlPago!,latest.mode??'spring',window.location.origin,code));return;}
+      if(!['INICIAR','REINTENTAR'].includes(action))return;
       const payment = await startPublicPayment(code);
-      window.location.assign(stripeCheckoutUrl(payment.urlPago, payment.mode, window.location.origin, code));
+      window.location.assign(checkoutUrl(payment.urlPago, payment.mode, window.location.origin, code));
     } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo reintentar el pago.'); }
-    finally { setBusy(false); }
+    finally { actionLock.current=false;setBusy(false); }
   }
 
   const title =
@@ -67,8 +78,7 @@ export default function PublicPaymentStatus({ code }: { code: string }) {
     ? en
       ? 'Your booking is confirmed'
       : 'Tu reserva está confirmada'
-    : result?.estadoUltimoIntento === 'RECHAZADO' && result.estadoReserva === 'PENDIENTE_PAGO'
-      ? en ? 'Payment attempt declined' : 'Intento de pago rechazado'
+    : result?.estadoCheckout==='ABIERTO' ? (en?'Payment pending':'Pago pendiente')
     : view === 'processing'
       ? en
         ? 'Payment processing'
@@ -88,28 +98,25 @@ export default function PublicPaymentStatus({ code }: { code: string }) {
 const explanation =
   view === 'confirmed'
     ? en
-      ? 'Check the details of your stay.'
-      : 'Consulta los detalles de tu estancia'
-    : result?.estadoUltimoIntento === 'RECHAZADO' && result.estadoReserva === 'PENDIENTE_PAGO'
-      ? result.motivoUltimoIntento === 'TARJETA_REAL_EN_PRUEBAS'
-        ? en ? 'Stripe declined a real card in test mode. No payment was approved. This booking accepts Stripe test cards only.' : 'Stripe rechazó una tarjeta real en modo de prueba. No se aprobó ningún pago. Esta reserva utiliza únicamente tarjetas de prueba de Stripe.'
-        : en ? 'Stripe declined the last attempt. The booking is still pending payment.' : 'Stripe rechazó el último intento. La reserva sigue pendiente de pago.'
+      ? result?.estadoPago === null ? 'Your booking is confirmed. Payment details are unavailable; contact Reception if needed.' : 'Check the details of your stay.'
+      : result?.estadoPago === null ? 'Tu reserva está confirmada. El detalle del pago no está disponible; si lo necesitas, contacta a Recepción.' : 'Consulta los detalles de tu estancia'
+    : result?.estadoCheckout==='ABIERTO' ? (en?'You can continue on the existing payment page.':'Puedes continuar en la página de pago existente.')
     : view === 'processing'
       ? en
         ? 'Your payment is still pending. Check its status in a moment.'
         : 'Tu pago sigue pendiente. Consulta su estado en un momento.'
       : result?.estadoReserva === 'CANCELADA'
         ? en
-          ? 'The payment window expired and the booking was cancelled.'
-          : 'Venció el plazo para pagar y la reserva fue cancelada.'
+          ? 'This booking has been cancelled. You cannot continue its payment.'
+          : 'Esta reserva está cancelada. No puedes continuar su pago.'
         : result?.estadoPago === null
           ? en
-            ? 'Payment has not been started. You can retry while the booking is pending.'
-            : 'El pago no se ha iniciado. Puedes reintentarlo mientras la reserva siga pendiente.'
+            ? 'We do not have payment confirmation yet. Check the status before paying again.'
+            : 'Todavía no tenemos una confirmación de pago. Consulta el estado antes de volver a pagar.'
           : result?.estadoPago === 'FALLIDO'
             ? en
-              ? 'The payment attempt expired. Check its status or retry if available.'
-              : 'Venció el intento de pago. Consulta su estado o reintenta si está disponible.'
+              ? 'The payment attempt was not completed. Check its status or retry if available.'
+              : 'El intento de pago no se completó. Consulta su estado o reintenta si está disponible.'
             : view === 'incomplete'
               ? en
                 ? 'Payment was not completed. Check its status or retry if available.'
@@ -123,9 +130,9 @@ const Icon =
       ? Clock3
       : CircleAlert;
 
-const canRetry =
-  result?.estadoReserva === 'PENDIENTE_PAGO' &&
-  result.puedeReintentar;
+let action:ReturnType<typeof paymentAction>='NINGUNA';
+try{if(result)action=paymentAction(result,currentRequest);}catch{/* Invalid responses never authorize a payment. */}
+const canRetry = result?.estadoReserva==='PENDIENTE_PAGO'&&!error&&!legacyRequest&&['CONTINUAR','INICIAR','REINTENTAR'].includes(action);
 
 const retryButton =
   canRetry && (
@@ -139,8 +146,8 @@ const retryButton =
           ? 'Checking…'
           : 'Consultando…'
         : en
-          ? 'Retry payment'
-          : 'Reintentar pago'}
+          ? action==='CONTINUAR'?'Continue payment':action==='INICIAR'?'Start payment':'Retry payment'
+          : action==='CONTINUAR'?'Continuar pago':action==='INICIAR'?'Iniciar pago':'Reintentar pago'}
     </button>
   );
 
@@ -167,7 +174,7 @@ return (
   <main className="reserve-public reserve-center public-payment-status compact-payment-result">
     <VillaSerenaLogo />
 
-    <section className="reserve-form-card reserve-success" aria-live="polite">
+    <section data-vs-ui="compact" className="reserve-form-card reserve-success" aria-live="polite">
       {view && (
         <Icon
           className="payment-result-icon"
@@ -203,9 +210,7 @@ return (
           <div>
             <span>{en ? 'Payment' : 'Pago'}</span>
             <b>
-              {result.estadoUltimoIntento === 'RECHAZADO' && result.estadoReserva === 'PENDIENTE_PAGO'
-                ? en ? 'Last attempt declined' : 'Último intento rechazado'
-                : result.estadoPago === 'APROBADO'
+              {result.estadoPago === 'APROBADO'
                 ? en
                   ? 'Approved'
                   : 'Aprobado'
@@ -218,8 +223,8 @@ return (
                       ? 'Failed'
                       : 'Fallido'
                     : en
-                      ? 'Not started'
-                      : 'Sin iniciar'}
+                      ? 'Unavailable'
+                      : 'No disponible'}
             </b>
           </div>
 

@@ -9,7 +9,7 @@ vi.mock('@/i18n/UiText',()=>({useUiText:()=>(s:string)=>s,UiText:({text}:{text:s
 vi.mock('@/components/common/VillaSerenaLogo',()=>({default:()=> <span>Villa Serena</span>}));
 vi.mock('@/lib/usePublicCatalog',()=>({usePublicCatalog:()=>({rooms:[{slug:'habitacion-estandar',name:'Habitación Estándar',type:'Estándar',capacity:2,price:420}]}),usePublicQuotes:()=>({quotes:[{ofertaSlug:'habitacion-estandar',total:840}],loading:false,error:''})}));
 vi.mock('@/lib/bookingEmail',()=>({bookingEmail:vi.fn().mockResolvedValue({verificado:true})}));
-vi.mock('@/lib/publicStripeBooking',()=>({prepareStripeBooking:vi.fn()}));
+vi.mock('@/lib/publicBookingPayment',()=>({preparePublicBookingPayment:vi.fn()}));
 beforeEach(()=>sessionStorage.clear());
 function seed(createdAt=Date.now()){sessionStorage.setItem('vs-public-booking-draft',JSON.stringify({id:'draft-one',createdAt,params:'slug=habitacion-estandar&llegada=2026-11-16&salida=2026-11-18&adultos=2&ninos=0&correo=visual%40example.test'}));}
 test('initial server render does not claim that the draft expired',()=>{seed();expect(renderToString(<Pago/>)).not.toContain('Tus datos no están disponibles o vencieron');});

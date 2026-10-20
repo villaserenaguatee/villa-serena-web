@@ -1,8 +1,9 @@
+import CompactFilter from "@/components/common/CompactFilter";
 import { useState } from 'react';
 import {validPublicDate} from '@/lib/publicStayValidation';
 import type { Activo, OrdenTrabajo, CategoriaActivo, EstadoActivo } from '@/lib/pms/types';
 import { formatoFecha } from '@/data/pms';
-import { Chip, dinero, ACTIVO_META, CATEGORIAS_ACTIVO, ESTADO_OT_META, costoRepuestos, Cabecera, Kpi, BotonFiltro, Vacio, Modal, BoxIcon, } from '@/features/mantenimiento/pages/mantUtils';
+import { Chip, dinero, ACTIVO_META, CATEGORIAS_ACTIVO, ESTADO_OT_META, costoRepuestos, Cabecera, Kpi, Vacio, Modal, BoxIcon, } from '@/features/mantenimiento/pages/mantUtils';
 const UMBRAL_RECURRENTE = 2;
 interface Props {
   activos: Activo[];
@@ -39,10 +40,7 @@ export default function Activos({ activos, ordenes, onCambiarEstado, onAbrirOrde
     </div>
 
     <div className="px-4 sm:px-6 pt-5 flex gap-2 flex-wrap">
-      <BotonFiltro activo={filtro === 'todas'} onClick={() => setFiltro('todas')}>Todas</BotonFiltro>
-      {CATEGORIAS_ACTIVO.map(c => (<BotonFiltro key={c} activo={filtro === c} onClick={() => setFiltro(c)}>
-        {c}
-      </BotonFiltro>))}
+      <CompactFilter label="Categoría" value={filtro} onChange={setFiltro}><option value="todas">Todas las categorías</option>{CATEGORIAS_ACTIVO.map(c=><option key={c} value={c}>{c}</option>)}</CompactFilter>
     </div>
 
     <div className="px-4 sm:px-6 py-5">
@@ -209,7 +207,7 @@ function NuevoActivo({ onCerrar, onGuardar }: {
     const codigo = `${pref[categoria] || 'ACT'}-${String(Date.now()).slice(-3)}`;
     const [validationError,setValidationError]=useState('');
   const cls = 'mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white px-3 py-2.5 outline-none focus:border-[#B8C4D0]';
-  return <Modal titulo="Nuevo equipo" subtitulo={codigo} onCerrar={onCerrar}>
+  return <Modal titulo="Nuevo equipo" onCerrar={onCerrar}>
     <div className="grid gap-3 sm:grid-cols-2">
       <label>Nombre<input className={cls} value={nombre} onChange={e => setNombre(e.target.value)} /></label>
       <label>Categoría<select className={cls} value={categoria} onChange={e => setCategoria(e.target.value as CategoriaActivo)}>
@@ -229,7 +227,7 @@ function NuevoActivo({ onCerrar, onGuardar }: {
       </select></label>
     </div>
       {validationError&&<p role="alert" className="mt-3 text-red-800">{validationError}</p>}
-      <div className="mt-5 flex justify-end gap-2">
+      <div data-vs-actions="compact" className="mt-5 flex justify-end gap-2">
       <button onClick={onCerrar} className="rounded-lg border border-[#E5E0D8] px-4 py-2">Cancelar</button>
       <button
         disabled={!nombre.trim() || !ubicacion.trim() || !fecha}

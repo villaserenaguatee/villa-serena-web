@@ -155,10 +155,10 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
   const pendientes = visibles.filter(s => s.estado !== 'atendida').length + gestionesPortal.filter(g => (estadoPortal[g.actividad.id] ?? 'pendiente') !== 'atendida').length + correcciones.filter(c => c.estado === 'pendiente').length + transportes.filter(t => t.estadoTarifa === 'pendiente').length + (extensionPendiente ? 1 : 0);
   const totalGestiones = visibles.length + gestionesPortal.length + correcciones.length + transportes.length + (extensionPendiente ? 1 : 0);
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-    <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
+    <div data-vs-page-header="recepcion" className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
       <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
         <div>
-          <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Gestiones de Recepción</h1>
+          <h1 data-vs-page-title="recepcion" className="text-[32px] font-semibold text-[#18345C] leading-tight">Gestiones de Recepción</h1>
           <p className="text-[15px] text-[#AEBCC1] mt-1">{pendientes} sin atender · {totalGestiones} asignadas a Recepción</p>
         </div>
         <button
@@ -304,14 +304,14 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
           </div>
         </div>;
       })}
-      {visibles.length === 0 && gestionesPortal.length === 0 && correcciones.length === 0 && transportes.length === 0 && !extensionPendiente ? (<div className="bg-white border border-[#E5E0D8] rounded-xl p-6 text-center">
+      {visibles.length === 0 && gestionesPortal.length === 0 && correcciones.length === 0 && transportes.length === 0 && !extensionPendiente ? (<div data-vs-card="recepcion" className="bg-white border border-[#E5E0D8] rounded-xl p-6 text-center">
         <p className="text-[15px] text-[#AEBCC1]">No hay gestiones pendientes para Recepción.</p>
       </div>) : (visibles.map(s => {
         const h = huespedDe.get(s.huespedId);
         const pm = PRIORIDAD_META[s.prioridad];
         const sm = SOLICITUD_META[s.estado];
         const siguiente = SIGUIENTE[s.estado];
-        return (<div key={s.id} className="bg-white border border-[#E5E0D8] rounded-xl p-4">
+        return (<div data-vs-card="recepcion" key={s.id} className="bg-white border border-[#E5E0D8] rounded-xl p-4">
           <div className="flex items-start gap-3">
             <span className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: pm.dot }} />
             <div className="flex-1 min-w-0">
@@ -486,7 +486,7 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
           </p>}
         </div>
 
-        <div className="px-5 pb-6 flex gap-3">
+        <div data-vs-actions="compact" className="px-5 pb-6 flex gap-3">
           <button
             onClick={() => setCreando(false)}
             className="flex-1 py-3 text-sm border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-[#F8F6F0] transition-colors">

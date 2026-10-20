@@ -87,11 +87,19 @@ describe.each(['ES', 'EN'] as const)('estancia finalizada %s', lang => {
     expect(screen.queryByRole('button', { name: tr('Cerrar reseña', 'Close review') })).not.toBeInTheDocument();
     await navigate(view.user, /^(Mi habitación|My room)$/);
     await view.user.click(screen.getByRole('button', { name: tr('Reservar otra estancia', 'Book another stay') }));
-    expect(screen.getByRole('button', { name: /^(Buscar|Search)$/ })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^(Buscar disponibilidad|Search availability)$/ })).toBeVisible();
     expect(localStorage.getItem('vs-reservas')).toBe(before); expect(localStorage.getItem('vs-huespedes')).toBe(guestBefore);
     view.unmount(); mountPortal(lang);
     expect(screen.getByRole('heading', { name: tr('Gestionar estancia', 'Manage stay') })).toBeVisible(); expect(leerReservas()).toEqual([completed]);
   });
+});
+
+test('demo invoice email action is explicitly unavailable and never claims an email was sent', async () => {
+  const view = mountPortal();
+  await navigate(view.user, /^Cuenta y check-out$/);
+  const button = screen.getByRole('button', {name: /Enviar nuevamente por correo/});
+  expect(button).toBeDisabled();expect(button).toHaveAccessibleDescription(/No se ha enviado ningún correo/);
+  const alert = vi.spyOn(window, 'alert');await view.user.click(button);expect(alert).not.toHaveBeenCalled();
 });
 
 test('portal finalizado inicia en cuenta y elimina operaciones activas de ambos menús', () => {
@@ -136,4 +144,8 @@ test.each(['Mi estancia', 'Check-in', 'Menú', 'Servicios'])('checkout mientras 
   act(() => { completarCheckOutReserva(active.id, 'recepcion'); });
   expect(screen.getByRole('heading', { name: 'Check-out completado' })).toBeVisible();
   expect(leerReservas()[0].estado).toBe('finalizada');
+});
+
+test('cancelled-only guest history is visible without fake checkout, invoice or stay services',()=>{
+ seedPortal({...completed,estado:'cancelada',checkOutEn:undefined});mountPortal();expect(screen.getByRole('heading',{name:'Reserva cancelada'})).toBeVisible();expect(screen.queryByRole('heading',{name:'Check-out completado'})).not.toBeInTheDocument();expect(screen.queryByRole('button',{name:/Enviar nuevamente por correo/})).not.toBeInTheDocument();expect(screen.queryByRole('button',{name:'Servicios'})).not.toBeInTheDocument();
 });

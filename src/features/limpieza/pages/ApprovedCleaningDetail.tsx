@@ -8,7 +8,7 @@ export default function ApprovedCleaningDetail({hab,onClose,children}:{hab:Habit
  return (<div className="absolute inset-0 z-20 flex items-stretch justify-end">
     <div className="absolute inset-0 bg-black/25" onClick={onClose} />
 
-    <div className="
+    <div data-vs-ui="compact" data-vs-drawer="compact" className="
           relative
           z-10
           w-full

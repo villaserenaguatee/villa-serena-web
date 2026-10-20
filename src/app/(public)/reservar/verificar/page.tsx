@@ -81,13 +81,13 @@ export default function VerifyEmailPage() {
       setError(error instanceof BookingAttemptPendingError ? bookingText("requestUncertain") : en ? "Could not save." : "No se pudo guardar.");
     }
   }
-  return <main className="login-overlay-page booking-verification-page"><div className="login-overlay-bg" /><section className="floating-login-card booking-verification-card max-h-[90dvh] overflow-y-auto">
-    <button type="button" className="booking-verification-back" onClick={volver} aria-label={en ? 'Back' : 'Volver'}><ArrowLeft size={20} /></button>
+  return <main className="login-overlay-page booking-verification-page"><div className="login-overlay-bg" /><section data-vs-ui="compact" className="floating-login-card booking-verification-card max-h-[90dvh] overflow-y-auto">
+    <button type="button" className="booking-verification-back" onClick={volver} aria-label={en ? 'Back' : 'Volver'}><ArrowLeft size={24} /></button>
     <VillaSerenaLogo href="/" compact /><h1>{en ? "Verify your email" : "Verifica tu correo"}</h1>
     {isPublicBooking && loaded && !publicEmail ? <>
       <p role="alert">{en ? "Your details are unavailable or expired. Return to the guest form." : "Tus datos no están disponibles o vencieron. Vuelve al formulario de huésped."}</p>
       <button type="button" className="login-submit" onClick={volver}>{en ? "Back to guest details" : "Volver a datos del huésped"}</button>
-    </> : editar ? <form onSubmit={e => { e.preventDefault(); saveEmail(); }}>
+    </> : editar ? <form data-vs-ui="compact" onSubmit={e => { e.preventDefault(); saveEmail(); }}>
       <label>{en ? "Email" : "Correo electrónico"}<input type="email" value={draft} onChange={e => setDraft(e.target.value)} /></label>
       {error && <p role="alert">{error}</p>}
       <button type="submit" className="login-submit">{en ? "Save changes" : "Guardar cambios"}</button>

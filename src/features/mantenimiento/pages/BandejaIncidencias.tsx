@@ -1,7 +1,8 @@
+import CompactFilter from "@/components/common/CompactFilter";
 import { useState } from 'react';
 import type { Incidencia, OrdenTrabajo, PrioridadIncidencia, AreaSolicitud, EstadoIncidencia, HabitacionHotel } from '@/lib/pms/types';
 import { publicRoomForHotelType } from '@/data/publicRooms';
-import { Chip, Campo, INPUT_CLS, PRIORIDAD_META, Cabecera, Kpi, BotonFiltro, Vacio, Modal, AlertIcon, BedIcon, ClockIcon, } from '@/features/mantenimiento/pages/mantUtils';
+import { Chip, Campo, INPUT_CLS, PRIORIDAD_META, Cabecera, Kpi, Vacio, Modal, AlertIcon, BedIcon, ClockIcon, } from '@/features/mantenimiento/pages/mantUtils';
 const AREAS: AreaSolicitud[] = ['Limpieza', 'Recepción', 'Room Service', 'Mantenimiento'];
 const INC_META: Record<EstadoIncidencia, {
   label: string;
@@ -64,28 +65,10 @@ export default function BandejaIncidencias({ incidencias, ordenes, habitaciones,
       </div>
     </div>)}
 
-    <div className="px-4 sm:px-6 pt-5 space-y-2">
-      <div className="flex gap-2 flex-wrap items-center">
-        <span className="text-[11px] text-[#AEBCC1] uppercase tracking-widest w-full sm:w-auto sm:mr-1">Prioridad</span>
-        <BotonFiltro activo={fPrioridad === 'todas'} onClick={() => setFPrioridad('todas')}>Todas</BotonFiltro>
-        {(['alta', 'media', 'baja'] as PrioridadIncidencia[]).map(p => (<BotonFiltro key={p} activo={fPrioridad === p} onClick={() => setFPrioridad(p)}>
-          {PRIORIDAD_META[p].label}
-        </BotonFiltro>))}
-      </div>
-      <div className="flex gap-2 flex-wrap items-center">
-        <span className="text-[11px] text-[#AEBCC1] uppercase tracking-widest w-full sm:w-auto sm:mr-1">Estado</span>
-        <BotonFiltro activo={fEstado === 'todos'} onClick={() => setFEstado('todos')}>Todos</BotonFiltro>
-        {(['pendiente', 'en-proceso', 'resuelta'] as EstadoIncidencia[]).map(e => (<BotonFiltro key={e} activo={fEstado === e} onClick={() => setFEstado(e)}>
-          {INC_META[e].label}
-        </BotonFiltro>))}
-      </div>
-      <div className="flex gap-2 flex-wrap items-center">
-        <span className="text-[11px] text-[#AEBCC1] uppercase tracking-widest w-full sm:w-auto sm:mr-1">Reportado por</span>
-        <BotonFiltro activo={fArea === 'todas'} onClick={() => setFArea('todas')}>Todas</BotonFiltro>
-        {AREAS.map(a => (<BotonFiltro key={a} activo={fArea === a} onClick={() => setFArea(a)}>
-          {a}
-        </BotonFiltro>))}
-      </div>
+    <div className="grid gap-3 px-4 sm:px-6 pt-5 sm:grid-cols-3">
+      <CompactFilter label="Prioridad" value={fPrioridad} onChange={setFPrioridad}><option value="todas">Todas</option>{(['alta','media','baja'] as PrioridadIncidencia[]).map(p=><option key={p} value={p}>{PRIORIDAD_META[p].label}</option>)}</CompactFilter>
+      <CompactFilter label="Estado" value={fEstado} onChange={setFEstado}><option value="todos">Todos</option>{(['pendiente','en-proceso','resuelta'] as EstadoIncidencia[]).map(e=><option key={e} value={e}>{INC_META[e].label}</option>)}</CompactFilter>
+      <CompactFilter label="Reportado por" value={fArea} onChange={setFArea}><option value="todas">Todas</option>{AREAS.map(a=><option key={a} value={a}>{a}</option>)}</CompactFilter>
     </div>
 
     <div className="px-4 sm:px-6 py-5">
@@ -227,7 +210,7 @@ function ModalConvertir({ incidencia, onCerrar, onConfirmar, }: {
         </p>
       </div>
 
-      <div className="flex gap-2 pt-1">
+      <div data-vs-actions="compact" className="flex gap-2 pt-1">
         <button
           onClick={onCerrar}
           className="flex-1 px-4 py-3 min-h-[44px] text-[15px] font-semibold border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-[#F8F6F0] transition-colors">

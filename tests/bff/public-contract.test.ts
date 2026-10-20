@@ -11,7 +11,7 @@ import { publicSearchError } from '@/lib/publicStayValidation';
 import { HABITACIONES_CENTRALES, HUESPEDES_INICIALES } from '@/data/pms';
 import { queryAvailability } from '@/lib/bff/publicAvailability';
 import type { CreatePublicDto } from '@/lib/bff/contracts/public';
-import { prepareStripeBooking } from '@/lib/publicStripeBooking';
+import { preparePublicBookingPayment } from '@/lib/publicBookingPayment';
 import { bookingAttempt, readBookingDraft, saveBookingDraft } from '@/lib/bookingDraft';
 
 describe('BFF público según contrato, exclusivamente con datos de prueba', () => {
@@ -151,12 +151,12 @@ test('an old hotel draft cannot recover or create a hotel booking through the ca
     const params = new URLSearchParams({ llegada: arrival, salida: departure, adultos: '2', ninos: '0' });
     const id = saveBookingDraft(params).get('draft')!;
     await bookingAttempt(id, JSON.stringify({ paymentMethod: 'hotel' }));
-    await assert.rejects(prepareStripeBooking(params, id, true), /no admite pago con tarjeta/);
+    await assert.rejects(preparePublicBookingPayment(params, id, true), /solicitud anterior/);
     assert.equal(calls, 0); assert.equal(readPublicContractState().entries.length, 0);
     assert.ok(readBookingDraft(id)?.attempt);
   } finally { Object.assign(globalThis, { sessionStorage: originalStorage, fetch: originalFetch }); }
 });
-test('lost creation response recovers the same attempt; known code retries only payment and GET never creates', async () => {
+test('lost creation response recovers the same attempt; recovery is GET-only and never creates or starts payment', async () => {
   const originals = { window: globalThis.window, sessionStorage: globalThis.sessionStorage, fetch: globalThis.fetch };
   const storage = new Map<string, string>(), calls: { route: string; method: string }[] = [];
   Object.assign(globalThis, { window: { location: { origin: 'http://localhost:3005' } }, sessionStorage: {
@@ -176,15 +176,16 @@ test('lost creation response recovers the same attempt; known code retries only 
     const params = new URLSearchParams({ nombre: 'Huésped', apellidos: 'Prueba', correo: 'public@example.test', telefono: '+502 55555555',
       nacionalidad: 'Guatemala', documento: '1234567890123', tipoDocumento: 'DPI', tipoHabitacionId: '1', llegada: arrival, salida: departure, adultos: '2', ninos: '0' });
     const draftId = saveBookingDraft(params).get('draft')!;
-    await assert.rejects(prepareStripeBooking(params, draftId), /Respuesta perdida/);
+    await assert.rejects(preparePublicBookingPayment(params, draftId), /No se pudo consultar/);
     assert.equal(readPublicContractState().entries.length, 1);
     const attempt = readBookingDraft(draftId)!.attempt!.id;
-    await assert.rejects(prepareStripeBooking(params, draftId, true), /Respuesta perdida/);
+    await preparePublicBookingPayment(params, draftId, true);
     assert.equal(readBookingDraft(draftId)!.attempt!.id, attempt);
     assert.ok(readBookingDraft(draftId)!.attempt!.code);
     const creates = calls.filter(c => c.route === 'reservas').length;
-    const url = await prepareStripeBooking(params, draftId, true);
+    const url = await preparePublicBookingPayment(params, draftId, true);
     assert.equal(calls.filter(c => c.route === 'reservas').length, creates);
+    assert.equal(calls.filter(c=>c.route.endsWith('/pago')).length,0);
     const code = new URL(url, 'http://localhost:3005').searchParams.get('codigo')!;
     assert.equal(readPublicContractState().entries.length, 1);
     assert.equal((await (await get(`reservas/${code}/estado`)).json()).estadoReserva, 'PENDIENTE_PAGO');

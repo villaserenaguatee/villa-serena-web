@@ -19,7 +19,7 @@ test('draft lifecycle removes only identified draft PII, retaining minimal uncer
     const fingerprint=JSON.stringify({flow:'stripe',input:{privateData:'PRIVATE NAME'}});
     const [a,b]=await Promise.all([bookingAttempt(id,fingerprint),bookingAttempt(id,fingerprint)]);assert.equal(a,b);
     assert.match(readBookingDraft(id)!.attempt!.fingerprint,/^[a-f0-9]{64}$/);assert.equal(readBookingDraft(id)!.attempt!.fingerprint.includes('PRIVATE NAME'),false);
-    expireDraft(id);assert.equal(activeBookingDraft(),null);assert.deepEqual(bookingReceipt(),{draftId:id,attemptId:a});assert.equal([...values.values()].join('').includes('PRIVATE NAME'),false);assert.equal([...values.values()].join('').includes('private@example.test'),false);
+    expireDraft(id);assert.equal(activeBookingDraft(),null);assert.deepEqual(bookingReceipt(),{draftId:id,attemptId:a,flow:'stripe',origin:'RESERVA'});assert.equal([...values.values()].join('').includes('PRIVATE NAME'),false);assert.equal([...values.values()].join('').includes('private@example.test'),false);
     finishBookingAttempt(id,a,'VS-CHECK1');assert.equal(bookingReceipt()?.code,'VS-CHECK1');assert.equal(activeBookingDraft(),null);
     const next=saveBookingDraft(params).get('draft')!;await assert.rejects(bookingAttempt(next,fingerprint));expireDraft(next);assert.equal(bookingReceipt()?.attemptId,a);
     values.delete('vs-public-booking-receipt'); // Test fixture isolation, never a production recovery path.

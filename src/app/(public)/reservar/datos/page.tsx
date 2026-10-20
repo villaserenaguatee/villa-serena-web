@@ -1,8 +1,10 @@
 "use client";
+import PreviousBookingRequest from '@/components/public/PreviousBookingRequest';
+
 import BookingSummaryCard from '@/components/public/BookingSummaryCard';
-import { phoneCountries, validDocument, validNationalPhone } from "@/lib/guestValidation";
+import { filterGuestNameInput, validBookingEmail, validDocument, validGuestName, validNationalPhone } from "@/lib/guestValidation";
 import { UiText, useUiText } from "@/i18n/UiText";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -13,28 +15,21 @@ import { bookingEmail } from '@/lib/bookingEmail';
 import { usePublicCatalog, usePublicQuotes } from "@/lib/usePublicCatalog";
 import { availableRoom, usePublicAvailability, validGuests } from "@/lib/publicAvailability";
 import { saveBookingDraft, readBookingDraft, BookingAttemptPendingError } from "@/lib/bookingDraft";
-import BookingCountryPicker from "@/components/common/BookingCountryPicker";
-import { getCountryCallingCode } from "libphonenumber-js/max";
 export default function Datos() {
   const { rooms: publicRooms, connected, loading: catalogLoading, error: catalogError } = usePublicCatalog();
   const ui = useUiText();
   const bookingText = useTranslations("publicBooking");
   const { en } = usePublicLanguage();
   const r = useRouter(), sp = useSearchParams();
+  const prefix = '+502';
   const [nombre, setNombre] = useState(""),
     [apellidos, setApellidos] = useState(""),
     [correo, setCorreo] = useState(""),
     [tel, setTel] = useState(""),
-    [prefix, setPrefix] = useState("+502"),
     [docType] = useState("DPI"),
     [documento, setDocumento] = useState(""),
-    [hora, setHora] = useState("15:00"),
+    [hora, setHora] = useState(""),
     [review, setReview] = useState(false);
-  const countryOptions = useMemo(() => {
-    const names = new Intl.DisplayNames([en ? 'en' : 'es'], { type: 'region' });
-    return phoneCountries.map(code => ({ value: code, label: names.of(code) || code })).sort((a, b) => a.label.localeCompare(b.label, en ? 'en' : 'es'));
-  }, [en]);
-  const phoneOptions = useMemo(() => countryOptions.map(o => ({ value: '+' + getCountryCallingCode(o.value as typeof phoneCountries[number]), label: o.label + ' (+' + getCountryCallingCode(o.value as typeof phoneCountries[number]) + ')' })), [countryOptions]);
   const habitacion = sp.get("habitacion") || "",
     llegada = sp.get("llegada") || "",
     salida = sp.get("salida") || "",
@@ -65,7 +60,8 @@ export default function Datos() {
     setNombre(saved.get("nombre") || ""); setApellidos(saved.get("apellidos") || "");
     setCorreo(saved.get("correo") || ""); setDocumento(saved.get("tipoDocumento") === "Pasaporte" ? "" : saved.get("documento") || "");
     const [code, ...phone] = (saved.get("telefono") || "+502 ").split(" ");
-    setPrefix(code); setTel(phone.join(" ")); setHora(saved.get("hora") || "15:00");
+    // Do not silently reinterpret an existing international draft as Guatemala.
+    setTel(code === prefix ? phone.join('').replace(/\D/g, '').slice(0, 8) : ''); setHora(saved.get("hora") || "");
     if(sp.get('editar')==='1') {
       setReview(false);setValidationShown(false);setDraftError('');
       continueLock.current=false;setContinuing(false);
@@ -73,6 +69,9 @@ export default function Datos() {
   }, [sp]);
   async function continueBooking() {
     if (!available || continueLock.current) return;
+    if (!validGuestName(nombre) || !validGuestName(apellidos)) {
+      setValidationShown(true); setReview(false); return;
+    }
     continueLock.current = true; setContinuing(true);
     try {
       const params = q(), saved = saveBookingDraft(params, sp.get('draft') || '');
@@ -104,13 +103,34 @@ export default function Datos() {
     total: String(total),
   });
   const [validationShown, setValidationShown] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const fieldErrors = {
+    nombre: !validGuestName(nombre) ? 'Complete este campo' : '',
+    apellidos: !validGuestName(apellidos) ? 'Complete este campo' : '',
+    documento: !documento.trim() ? 'Complete este campo' : !validDocument(docType, documento) ? 'Ingrese los 13 dígitos del DPI' : '',
+    correo: !correo.trim() ? 'Complete este campo' : !validBookingEmail(correo) ? 'Ingrese un correo electrónico válido' : '',
+    tel: !tel.trim() ? 'Complete este campo' : !validNationalPhone(prefix, tel) ? 'Ingrese los 8 dígitos del teléfono' : '',
+  };
+  const nombreError = validationShown && Boolean(fieldErrors.nombre);
+  const apellidosError = validationShown && Boolean(fieldErrors.apellidos);
+  function editGuestName(field: 'nombre' | 'apellidos', event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget, original = input.value;
+    const filtered = filterGuestNameInput(original);
+    const caret = filterGuestNameInput(original.slice(0, input.selectionStart ?? original.length)).length;
+    (field === 'nombre' ? setNombre : setApellidos)(filtered);
+    if (filtered !== original) {
+      input.value = filtered;
+      input.setSelectionRange(caret, caret);
+    }
+  }
   async function submit(e: FormEvent) {
     e.preventDefault();
     if(reviewLock.current)return;
     setValidationShown(true);
-    if (!validDocument(docType, documento) || !validNationalPhone(prefix, tel)) return;
-    if (![nombre, apellidos, correo, tel, documento].every(v => v.trim())) {
-      setDraftError(en ? "Complete all required guest details." : "Completa todos los datos obligatorios del huésped.");
+    const firstError = (Object.keys(fieldErrors) as Array<keyof typeof fieldErrors>).find(key => fieldErrors[key]);
+    if (firstError) {
+      setDraftError('');
+      formRef.current?.querySelector<HTMLInputElement>(`input[name="${firstError}"]`)?.focus();
       return;
     }
     if (`${nombre.trim()} ${apellidos.trim()}`.length > 150 || correo.length > 150) {
@@ -142,7 +162,7 @@ export default function Datos() {
         {en ? "Back to results" : "Volver a resultados"}
       </button>
     </main>);
-  return (<main className="reserve-public booking-checkout">
+  return (<main className="reserve-public booking-checkout booking-data-page"><PreviousBookingRequest/>
     <header className="reserve-nav">
       <button className="icon-back" onClick={() => r.back()}>
         <ArrowLeft />
@@ -152,7 +172,7 @@ export default function Datos() {
     <div className="checkout-layout">
       <BookingSummaryCard image={room?.image} name={room?.name || sp.get("habitacion") || ""} category={room?.type} arrival={llegada} departure={salida} adults={Number(adultos)} childCount={Number(ninos)} nights={nights} nightlyPrice={room?.price} total={total} note={connected ? room?.inventoryNote : undefined}/>
       <div className="booking-form-column">
-      <section className="reserve-form-card reserve-form-wide checkout-form">
+      <section data-vs-ui="compact" className="reserve-form-card reserve-form-wide checkout-form">
         <span className="reserve-kicker">
           <UiText text="RESERVA · DATOS DEL HUÉSPED" />
         </span>
@@ -160,56 +180,72 @@ export default function Datos() {
           {ui(review ? "Revisa tus datos" : "Introduce tus datos")}
         </h1>
         {!review ? (<>
-          <form onSubmit={submit} onInvalidCapture={() => setValidationShown(true)}>
+          <form data-vs-ui="compact" ref={formRef} noValidate onSubmit={submit}>
             {draftError && <p role="alert">{draftError}</p>}
             <div className="guest-form-grid">
               <label>
                 <UiText text="Nombre" />
-                <input required value={nombre} onChange={(e) => setNombre(e.target.value)} />
+                <input name="nombre" required value={nombre} aria-label="Nombre"
+                  aria-invalid={nombreError} aria-describedby="reservation-first-name-error"
+                  onChange={(e) => editGuestName('nombre', e)} />
+                {nombreError && <small id="reservation-first-name-error" role="alert" className="text-red-800">{fieldErrors.nombre}</small>}
               </label>
               <label>
                 <UiText text="Apellidos" />
-                <input required value={apellidos} onChange={(e) => setApellidos(e.target.value)} />
+                <input name="apellidos" required value={apellidos} aria-label="Apellidos"
+                  aria-invalid={apellidosError} aria-describedby="reservation-last-name-error"
+                  onChange={(e) => editGuestName('apellidos', e)} />
+                {apellidosError && <small id="reservation-last-name-error" role="alert" className="text-red-800">{fieldErrors.apellidos}</small>}
               </label>
               <label>
                 <UiText text="DPI" />
                 <input
+                  name="documento"
                   aria-label={en ? 'Document number' : 'Número de documento'}
                   required
                   value={documento}
-                  aria-invalid={validationShown && !validDocument(docType, documento)}
+                  aria-invalid={validationShown && Boolean(fieldErrors.documento)}
                   aria-describedby="reservation-document-error"
                   onChange={(e) => setDocumento(e.target.value.replace(/\D/g, "").slice(0, 13))}
                   pattern="[0-9]{13}"
                   title="Exactamente 13 dígitos"
                   maxLength={13}
                   inputMode="numeric" />
-                {validationShown && !validDocument(docType, documento) && <small id="reservation-document-error" role="alert" className="text-red-800">{'El DPI debe contener exactamente 13 dígitos.'}</small>}
+                {validationShown && fieldErrors.documento && <small id="reservation-document-error" role="alert" className="text-red-800">{fieldErrors.documento}</small>}
               </label>
               <label>
                 <UiText text="Correo electrónico" />
-                <input required type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} />
+                <input name="correo" required type="email" value={correo} aria-invalid={validationShown && Boolean(fieldErrors.correo)} aria-describedby="reservation-email-error" onChange={(e) => setCorreo(e.target.value)} />
+                {validationShown && fieldErrors.correo && <small id="reservation-email-error" role="alert" className="text-red-800">{fieldErrors.correo}</small>}
               </label>
               <label className="booking-phone-field">
                 <UiText text="Teléfono" />
                 <div className="phone-combo">
-                  <BookingCountryPicker compact label={en ? 'Phone country code' : 'Prefijo telefónico'} value={prefix} options={phoneOptions} onChange={code => { setPrefix(code); setTel(value => value.replace(/\D/g, '').slice(0, code === '+502' ? 8 : 15 - code.length + 1)); }} en={en} />
+                  <span className="booking-country-trigger" style={{justifyContent:'center'}}>{prefix}</span>
                   <input
+                    name="tel"
                     className="phone-number-input"
                     aria-label={en ? 'Phone' : 'Teléfono'}
                     required
                     inputMode="tel"
                     value={tel}
-                    aria-invalid={validationShown && !validNationalPhone(prefix, tel)}
+                    aria-invalid={validationShown && Boolean(fieldErrors.tel)}
                     aria-describedby="reservation-phone-error"
-                    onChange={(e) => setTel(e.target.value.replace(/\D/g, "").slice(0, prefix === "+502" ? 8 : 15 - prefix.length + 1))}
-                    maxLength={prefix === '+502' ? 8 : 15 - prefix.length + 1} pattern={prefix === '+502' ? '[0-9]{8}' : '[0-9]+'} />
+                    onChange={(e) => setTel(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const digits = e.clipboardData.getData('text').replace(/\D/g, '');
+                      const start = e.currentTarget.selectionStart ?? tel.length;
+                      const end = e.currentTarget.selectionEnd ?? tel.length;
+                      setTel((tel.slice(0, start) + digits + tel.slice(end)).slice(0, 8));
+                    }}
+                    maxLength={8} pattern="[0-9]{8}" />
                 </div>
-                {validationShown && !validNationalPhone(prefix, tel) && <small id="reservation-phone-error" role="alert" className="text-red-800">{prefix === '+502' ? (en ? 'Enter exactly 8 digits, without repeating +502. Letters are not allowed.' : 'Introduce exactamente 8 dígitos, sin repetir +502. No se admiten letras.') : (en ? 'Enter a valid number for the selected country, without repeating the country code.' : 'Introduce un número válido para el país elegido, sin repetir el prefijo.')}</small>}
+                {validationShown && fieldErrors.tel && <small id="reservation-phone-error" role="alert" className="text-red-800">{fieldErrors.tel}</small>}
               </label>
               <label>
-                <UiText text="Hora estimada de llegada" />
-                <input required type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
+                <UiText text="Hora estimada de llegada (opcional)" />
+                <input name="hora" type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
               </label>
             </div>
             <button className="reserve-primary" disabled={savingReview}>
@@ -252,14 +288,14 @@ export default function Datos() {
               {tel}
             </b>
           </div>
-          <div>
+          {hora && <div>
             <small>
               <UiText text="Hora estimada de llegada" />
             </small>
             <b>
               {hora}
             </b>
-          </div>
+          </div>}
           <div>
             <small>
               <UiText text="Habitación" />

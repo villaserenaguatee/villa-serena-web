@@ -33,7 +33,7 @@ export default function DetallePedido({ pedido, onCerrar, onAvanzarEstado, onCan
   return (<div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4">
     <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
 
-    <div className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto">
+    <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="medium" className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto">
 
       <div className="flex items-start justify-between gap-3 px-5 sm:px-6 py-4 border-b border-[#E5E0D8] sticky top-0 bg-white z-10">
         <div>
@@ -214,7 +214,7 @@ export default function DetallePedido({ pedido, onCerrar, onAvanzarEstado, onCan
             className="w-full border border-[#FCA5A5] rounded-md px-3 py-2.5 text-sm text-[#1F2933] resize-none focus:outline-none focus:border-[#991B1B] bg-white placeholder:text-[#C99]" />
           {errorMotivo && (<p className="text-xs text-[#991B1B]">El motivo es obligatorio para cancelar.</p>)}
 
-          <div className="flex gap-3">
+          <div data-vs-actions="compact" className="flex gap-3">
             <button
               onClick={() => {
                 setModoCancelar(false);

@@ -159,7 +159,7 @@ export default function PerfilHuesped({ connected, huespedId, nombre, correo, te
         onVolver();
       }
     }}>
-    <aside ref={drawer} role="dialog" aria-hidden={!!seccion} aria-modal={!seccion} aria-label={tr("Perfil", "Profile")} className="h-full w-[min(430px,94vw)] overflow-y-auto bg-[#F8F6F0] p-4 shadow-2xl sm:p-6" onMouseDown={(e) => e.stopPropagation()}>
+    <aside data-vs-ui="compact" data-vs-drawer="compact" ref={drawer} role="dialog" aria-hidden={!!seccion} aria-modal={!seccion} aria-label={tr("Perfil", "Profile")} className="h-full w-[min(430px,94vw)] overflow-y-auto bg-[#F8F6F0] p-4 shadow-2xl sm:p-6" onMouseDown={(e) => e.stopPropagation()}>
 
       <div className="flex items-start justify-between">
         <div>
@@ -240,7 +240,7 @@ export default function PerfilHuesped({ connected, huespedId, nombre, correo, te
     </aside>
 
     {seccion && (<Modal key={seccion} titulo={tr(items.find(i => i.key === seccion)?.titulo || "Perfil", ({ personal: "Personal information", contacto: "Contact details", idioma: "Language", pago: "Payment methods", privacidad: "Privacy", seguridad: "Security" })[seccion])} onClose={cerrar} cerrarLabel={tr("Cerrar", "Close")}>
-      <form onSubmit={confirmar} noValidate className="space-y-4">{connected&&["contacto","pago","seguridad"].includes(seccion)&&<p className="rounded-lg border border-[#E6E0D7] bg-[#F8F6F0] p-3 text-sm text-[#72829A]">{tr("Esta opción no está disponible en línea. Contacta a Recepción.","This option is unavailable online. Contact Reception.")}</p>}<fieldset className="min-w-0 space-y-4 border-0 p-0" disabled={Boolean(connected)&&["contacto","pago","seguridad"].includes(seccion)}>
+      <form data-vs-ui="compact" onSubmit={confirmar} noValidate className="space-y-4">{connected&&["contacto","pago","seguridad"].includes(seccion)&&<p className="rounded-lg border border-[#E6E0D7] bg-[#F8F6F0] p-3 text-sm text-[#72829A]">{tr("Esta opción no está disponible en línea. Contacta a Recepción.","This option is unavailable online. Contact Reception.")}</p>}<fieldset className="min-w-0 space-y-4 border-0 p-0" disabled={Boolean(connected)&&["contacto","pago","seguridad"].includes(seccion)}>
         {seccion === "personal" && <>
           <Campo label={tr("Nombre completo", "Full name")} valor={perfil?.nombre || nombre} readOnly />
           <Campo label={tr("Tipo de documento", "Document type")} valor={perfil?.tipoDocumento || ""} readOnly />
@@ -301,7 +301,7 @@ function Modal({ titulo, children, onClose, cerrarLabel }: { titulo: string; chi
     return () => { document.removeEventListener('keydown', key); previous?.focus(); };
   }, []);
   return <div className="fixed inset-0 z-[140] grid place-items-center bg-[#071D34]/50 p-4" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
-    <section ref={ref} role="dialog" aria-modal="true" aria-labelledby="guest-profile-modal-title" className="max-h-[90dvh] w-full max-w-[520px] overflow-y-auto rounded-2xl bg-white shadow-2xl" onMouseDown={e => e.stopPropagation()}>
+    <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" ref={ref} role="dialog" aria-modal="true" aria-labelledby="guest-profile-modal-title" className="max-h-[90dvh] w-full max-w-[520px] overflow-y-auto rounded-2xl bg-white shadow-2xl" onMouseDown={e => e.stopPropagation()}>
       <div className="flex items-center justify-between border-b border-[#E6E0D7] px-5 py-4"><h2 id="guest-profile-modal-title" className="text-xl font-semibold text-[#17365D]">{titulo}</h2><button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full text-[#17365D]" aria-label={cerrarLabel}><X size={23} /></button></div>
       <div className="p-5">{children}</div>
     </section>

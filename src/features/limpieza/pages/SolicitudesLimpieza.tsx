@@ -113,8 +113,8 @@ export default function Solicitudes({
       `}
     </style>
 
-    <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
-      <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">
+    <div data-vs-page-header="limpieza" className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
+      <h1 data-vs-page-title="limpieza" className="text-[32px] font-semibold text-[#18345C] leading-tight">
         Solicitudes
       </h1>
 
@@ -126,7 +126,7 @@ export default function Solicitudes({
     <div className="px-4 sm:px-6 py-5">
       {conectado ? (
         solicitudesConectadas.length === 0 ? (
-          <div className="bg-white border border-[#E5E0D8] rounded-xl p-5 text-center">
+          <div data-vs-card="limpieza" className="bg-white border border-[#E5E0D8] rounded-xl p-5 text-center">
             <p className="text-[15px] text-[#AEBCC1]">
               No hay solicitudes de limpieza pendientes.
             </p>
@@ -140,7 +140,7 @@ export default function Solicitudes({
                 ? sol.articulos.map(a => `${a.cantidad}× ${a.nombre}`).join(', ')
                 : sol.comentario ?? (sol.tipo === 'LIMPIEZA' ? 'Solicitud de limpieza de habitación' : 'Solicitud de artículos');
               return (
-                <div key={sol.id} className="bg-white border border-[#E5E0D8] rounded-xl px-4 py-4 shadow-sm">
+                <div data-vs-card="limpieza" key={sol.id} className="bg-white border border-[#E5E0D8] rounded-xl px-4 py-4 shadow-sm">
                   <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
                     <div className="w-10 h-10 rounded-lg bg-[#F8F6F0] flex items-center justify-center shrink-0 text-[#18345C]">
                       <BedIcon size={18} />
@@ -217,7 +217,7 @@ export default function Solicitudes({
           </div>
         )
       ) : (
-      solicitudesLimpieza.length === 0 ? (<div className="bg-white border border-[#E5E0D8] rounded-xl p-5 text-center">
+      solicitudesLimpieza.length === 0 ? (<div data-vs-card="limpieza" className="bg-white border border-[#E5E0D8] rounded-xl p-5 text-center">
         <p className="text-[15px] text-[#AEBCC1]">
           No hay solicitudes de limpieza pendientes.
         </p>
@@ -225,7 +225,7 @@ export default function Solicitudes({
         {solicitudesLimpieza.map(sol => {
           const atendida = sol.estado === 'finalizada';
           const habitacion = habitaciones.find(h => h.numero === sol.habitacionNumero);
-          return (<div key={sol.id} className="bg-white border border-[#E5E0D8] rounded-xl px-4 py-4">
+          return (<div data-vs-card="limpieza" key={sol.id} className="bg-white border border-[#E5E0D8] rounded-xl px-4 py-4">
             <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
 
               {habitacion ? <img src={habitacion.foto} alt={`Habitación ${habitacion.numero}`} className="h-20 w-28 rounded-lg object-cover shrink-0" /> : <div className="w-10 h-10 rounded-lg bg-[#F8F6F0] flex items-center justify-center shrink-0 text-[#18345C]">
@@ -304,7 +304,7 @@ export default function Solicitudes({
       )}
     </div>
     {detalle && <div className="fixed inset-0 z-[70] flex items-end justify-end bg-[#071D34]/45" onMouseDown={cerrarDetalle}>
-      <aside className="h-full w-full max-w-lg overflow-y-auto bg-white shadow-2xl" onMouseDown={e => e.stopPropagation()}>
+      <aside data-vs-ui="compact" data-vs-drawer="compact" className="h-full w-full max-w-lg overflow-y-auto bg-white shadow-2xl" onMouseDown={e => e.stopPropagation()}>
         <div className="sticky top-0 z-10 flex items-start justify-between border-b bg-white p-5">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-[#B38719]">Detalle de solicitud</p>

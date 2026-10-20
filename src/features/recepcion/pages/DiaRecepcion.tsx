@@ -33,11 +33,11 @@ export default function DiaRecepcion({ reservas, huespedes, habitaciones, onAbri
   const pendientes = reservas.filter(r => r.estado === 'pendiente');
   const libresHoy = habitacionesDisponibles(hoy, fechaRelativaISO(1), habitaciones, reservas).length;
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-    <div className="bg-[#18345C] px-4 sm:px-8 py-6">
+    <div data-vs-page-header="recepcion" className="bg-[#18345C] px-4 sm:px-8 py-6">
       <p className="text-[#AEBCC1] text-[10px] tracking-widest uppercase mb-1">
         {titulo}
       </p>
-      <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-white text-[32px] font-semibold leading-tight">Recepción · vista del día</h1>{onVerCalendario&&<button type="button" onClick={onVerCalendario} className="inline-flex items-center gap-2 rounded-md border border-[#AEBCC1] px-3 py-2 text-sm text-white"><CalendarIcon size={16}/>Ver calendario</button>}</div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><h1 data-vs-page-title="recepcion" className="text-white text-[32px] font-semibold leading-tight">Recepción · vista del día</h1>{onVerCalendario&&<button type="button" onClick={onVerCalendario} className="inline-flex items-center gap-2 rounded-md border border-[#AEBCC1] px-3 py-2 text-sm text-white"><CalendarIcon size={16}/>Ver calendario</button>}</div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
         <Stat valor={llegadas.length} label="Check-in de hoy" />
@@ -48,6 +48,7 @@ export default function DiaRecepcion({ reservas, huespedes, habitaciones, onAbri
     </div>
 
     <div className="px-4 sm:px-8 py-3 space-y-3">
+      <div className="grid gap-4 xl:grid-cols-2">
       <Bloque
         titulo="Entradas programadas (check-in)"
         vacio="No hay llegadas para hoy."
@@ -63,6 +64,7 @@ export default function DiaRecepcion({ reservas, huespedes, habitaciones, onAbri
         habitaciones={habitaciones}
         onAbrirReserva={onAbrirReserva} />
 
+      </div>
       <section>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-[20px] font-semibold text-[#18345C]">Reservas pendientes de confirmar</h2>
@@ -81,7 +83,7 @@ export default function DiaRecepcion({ reservas, huespedes, habitaciones, onAbri
                 src={imagenReserva(r, habitaciones.find(x => x.id === r.habitacionId))}
                 alt={`Habitación ${r.tipoHabitacion}`}
                 className="h-14 w-20 shrink-0 rounded-lg object-cover" />
-              <div className="flex-1 min-w-[160px] break-words">
+              <div className="flex-1 min-w-0 break-words">
                 <p className="text-[14px] font-semibold text-[#18345C]">
                   {h?.nombre ?? 'Huésped'}
                 </p>
@@ -103,7 +105,7 @@ function Stat({ valor, label }: {
   valor: number;
   label: string;
 }) {
-  return (<div className="flex flex-col items-center justify-center bg-[#102747] rounded-lg py-3 px-2 gap-1">
+  return (<div data-vs-metric="recepcion" className="flex flex-col items-center justify-center bg-[#102747] rounded-lg py-3 px-2 gap-1">
     <span className="text-2xl sm:text-3xl font-bold leading-none text-[#D8B94E]">
       {valor}
     </span>
@@ -120,7 +122,7 @@ function Bloque({ titulo, vacio, items, huespedDe, habitaciones, onAbrirReserva,
   habitaciones: HabitacionHotel[];
   onAbrirReserva: (id: string) => void;
 }) {
-  return (<section>
+  return (<section data-vs-card="recepcion" className="rounded-xl border border-[#E5E0D8] bg-white p-4">
     <h2 className="text-[20px] font-semibold text-[#18345C] mb-2">
       {titulo}
     </h2>
@@ -133,14 +135,14 @@ function Bloque({ titulo, vacio, items, huespedDe, habitaciones, onAbrirReserva,
         return (<button
           key={r.id}
           onClick={() => onAbrirReserva(r.id)}
-          className="w-full text-left bg-white border border-[#E5E0D8] rounded-xl px-4 py-3 flex items-center gap-3 hover:border-[#18345C] transition-colors">
+          className="w-full text-left bg-white border border-[#E5E0D8] rounded-xl px-4 py-3 flex flex-wrap sm:flex-nowrap items-center gap-3 hover:border-[#18345C] transition-colors">
           <div className="relative h-16 w-[72px] shrink-0 overflow-hidden rounded-lg">
             <img src={imagenReserva(r, hab)} alt={hab ? `Habitación ${hab.numero}` : `Categoría ${r.tipoHabitacion}`} className="h-full w-full object-cover" />
             <span className="absolute bottom-1 left-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-bold text-[#18345C]">
               {hab?.numero ?? '—'}
             </span>
           </div>
-          <div className="flex-1 min-w-[160px] break-words">
+          <div className="flex-1 min-w-0 break-words">
             <p className="text-[14px] font-semibold text-[#18345C]">
               {h?.nombre ?? 'Huésped'}
             </p>

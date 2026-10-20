@@ -1,3 +1,4 @@
+import {useDemoSection} from '@/hooks/useDemoSection';
 import { useEffect, useMemo, useState } from 'react';
 import type { Modulo, Pedido, ItemMenu, LineaPedido, NotificacionRS, SeccionRS, EstadoPedido, } from '@/lib/pms/types';
 import { usePathname, useRouter } from 'next/navigation';
@@ -96,14 +97,14 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
     [conectado]);
   const pathname = usePathname(), router = useRouter();
   const fromPath = (path: string): SeccionRS => SECCIONES.find(s => path === `/room-service/${s.id}`)?.id ?? 'resumen';
-  const [seccion, setSeccionActual] = useState<SeccionRS>(() => fromPath(pathname));
+  const [seccion, setSeccionActual] = useDemoSection<SeccionRS>(fromPath(pathname), !conectado && user?.id ? `vs-demo-section:room-service:${user.id}` : undefined, SECCIONES.map(s=>s.id));
   function setSeccion(section: SeccionRS) {
     setSeccionActual(section);
     if (!conectado) return;
     const target = section === 'resumen' ? '/room-service' : `/room-service/${section}`;
     if (pathname !== target) router.push(target);
   }
-  useEffect(() => { setSeccionActual(fromPath(pathname)); }, [pathname]);
+  useEffect(() => { if(conectado || pathname!=='/room-service')setSeccionActual(fromPath(pathname)); }, [pathname,conectado,setSeccionActual]);
   const [pedidoAbierto, setPedidoAbierto] = useState<string | null>(null);
   const [mostrarNuevo, setMostrarNuevo] = useState(false);
   const [notificaciones, setNotificaciones] = useState<NotificacionRS[]>([]);
@@ -245,7 +246,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
                 Operación del día
               </p>
 
-              <h1 className="mt-1 text-2xl font-semibold text-[#18345C]">
+              <h1 data-vs-page-title="roomservice" className="mt-1 text-2xl font-semibold text-[#18345C]">
                 Resumen de Room Service
               </h1>
 
@@ -254,8 +255,8 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
               </p>
             </div>
 
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              {estados.map((x) => (<button
+            <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+              {estados.map((x) => (<button data-vs-queue-metric="roomservice"
                 key={x.estado}
                 onClick={() => setSeccion('pedidos')}
                 className="min-h-[112px] rounded-xl border border-[#E5E0D8] bg-white p-5 flex flex-col items-center justify-center text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#D8B94E] hover:shadow-md">
@@ -271,7 +272,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
 
             <div className="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-2">
 
-              <div className="rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm">
+              <div data-vs-card="roomservice" className="rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EEE8DF] pb-4">
                   <div>
                     <h2 className="text-lg font-semibold text-[#18345C]">
@@ -315,7 +316,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
                         {formatoHoraISO(p.creadoEn)}
                       </p>
                     </div>
-                  </button>))) : (<div className="flex min-h-[220px] items-center justify-center">
+                  </button>))) : (<div data-vs-empty="roomservice" className="flex min-h-[220px] items-center justify-center">
                     <div className="text-center">
                       <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#F8F6F0] text-[#B38719]">
                         <ClockIcon size={22} />
@@ -333,7 +334,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
                 </div>
               </div>
 
-              <div className="rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm">
+              <div data-vs-card="roomservice" className="rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EEE8DF] pb-4">
                   <div>
                     <h2 className="text-lg font-semibold text-[#18345C]">
@@ -383,7 +384,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
                         {formatoHoraISO(p.creadoEn)}
                       </p>
                     </div>
-                  </button>))) : (<div className="flex min-h-[220px] items-center justify-center">
+                  </button>))) : (<div data-vs-empty="roomservice" className="flex min-h-[220px] items-center justify-center">
                     <div className="text-center">
                       <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#F8F6F0] text-[#B38719]">
                         <ClockIcon size={22} />
@@ -402,7 +403,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
               </div>
             </div>
 
-            <div className="mt-5 rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm">
+            <div data-vs-card="roomservice" className="mt-5 rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm">
               <div className="mb-4">
                 <h2 className="text-lg font-semibold text-[#18345C]">
                   Resumen operativo
@@ -459,7 +460,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
         return <HistorialPedidos pedidos={pedidos} turno={turno} />;
     }
   })();
-  return (<div className="w-full h-screen flex flex-col overflow-hidden" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
+  return (<div data-vs-workspace="roomservice" className="w-full h-screen flex flex-col overflow-hidden" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
     <style>
       {`
         @import url('https://fonts.googleapis.com/css2?family=Afacad:wght@400;500;600;700&display=swap');
@@ -468,7 +469,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
 
     <div className="flex-1 flex overflow-hidden">
 
-      <nav className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
+      <nav data-vs-sidebar="roomservice" className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
         <div className="px-4 pt-5 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
           <img src="/villa-serena-logo.png" alt="Villa Serena" className="h-32 w-44 object-contain mx-auto mb-2" />
           <p className="text-white text-xl font-bold leading-tight" style={{ letterSpacing: '0.02em' }}>Villa Serena</p>
@@ -481,7 +482,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
           {SECCIONES.filter(s => !conectado || !['cargos', 'historial'].includes(s.id)).map(s => {
             const active = seccion === s.id;
             const badge = s.id === 'pedidos' ? nuevosTurno : 0;
-            return (<button
+            return (<button data-vs-active={active}
               key={s.id}
               onClick={() => setSeccion(s.id)}
               className="w-full flex items-center gap-3 px-5 py-3 text-left transition-colors relative"
@@ -519,9 +520,9 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
         </div>
       </nav>
 
-      <div className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
+      <div data-vs-shell-main="roomservice" className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
 
-        <div className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: '#102747' }}>
+        <div data-vs-topbar="roomservice" className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: '#102747' }}>
           <p className="lg:hidden text-white text-lg font-bold">Villa Serena</p>
           <span className="lg:hidden text-[#AEBCC1] text-xs">·</span>
           <p className="text-[#AEBCC1] text-xs font-medium truncate flex-1">
@@ -545,7 +546,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
 
             {panelNotif && (<>
               <div className="fixed inset-0 z-20" onClick={() => setPanelNotif(false)} />
-              <div className="absolute right-0 mt-2 w-72 max-h-96 overflow-y-auto bg-white border border-[#E5E0D8] rounded-xl shadow-2xl z-30">
+              <div data-vs-card="roomservice" className="absolute right-0 mt-2 w-72 max-h-96 overflow-y-auto bg-white border border-[#E5E0D8] rounded-xl shadow-2xl z-30">
                 <div className="px-4 py-3 border-b border-[#E5E0D8]">
                   <p className="text-[14px] font-semibold text-[#18345C]">Notificaciones</p>
                 </div>
@@ -581,11 +582,11 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
           {contenido}
         </div>
 
-        <div className="lg:hidden flex shrink-0 border-t" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
+        <div data-vs-mobile-nav="roomservice" className="lg:hidden flex shrink-0 border-t" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
           {SECCIONES.filter(s => !conectado || !['cargos', 'historial'].includes(s.id)).map(s => {
             const active = seccion === s.id;
             const badge = s.id === 'pedidos' ? nuevosTurno : 0;
-            return (<button
+            return (<button data-vs-active={active}
               key={s.id}
               onClick={() => setSeccion(s.id)}
               className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 relative transition-colors min-w-0"

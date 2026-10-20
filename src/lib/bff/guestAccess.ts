@@ -29,7 +29,7 @@ async function springCall(path: string, method: string, input?: unknown, access?
   } catch { throw new AuthError('API_NO_DISPONIBLE', 502, 'No se pudo contactar al API.'); }
   if(response.ok&&/\/documentos\/\d+\/archivo$/.test(path))return {archivo:await response.arrayBuffer(),mime:response.headers.get('content-type')??'application/octet-stream'};
   const value = response.status === 204 ? null : await response.json().catch(() => null);
-  if (!response.ok) throw new AuthError(value?.codigo ?? 'ERROR_API', response.status, value?.mensaje ?? 'No se pudo completar la petición.');
+  if (!response.ok) throw new AuthError(value?.codigo ?? 'ERROR_API', response.status, value?.mensaje ?? 'No se pudo completar la petición.', response.headers.get('retry-after') ?? undefined);
   return value;
 }
 async function renewGuest(refresh: string): Promise<SpringTokens> {
@@ -160,7 +160,8 @@ export async function connectedGuestPortalData(access: string, code?: string) {
     };
     const response = await springGuestRoute(request, code ? ['reservas', code] : ['reservas']);
     const value = await read(response);
-    const details: Detail[] = code ? [value] : await Promise.all(value.map(async (r: { codigo: string }) => {
+    const ownList = code ? await read(await springGuestRoute(request, ['reservas'])) : value;
+    const details: Detail[] = await Promise.all(ownList.map(async (r: { codigo: string }) => {
       const detail = await springGuestRoute(request, ['reservas', r.codigo]);
       return read(detail);
     }));

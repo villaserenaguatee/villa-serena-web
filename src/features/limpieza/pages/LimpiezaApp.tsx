@@ -108,7 +108,7 @@ function Sidebar({ pantalla, setPantalla, solPendientes, incPendientes, onCambia
   },
     [perfilKey,nombreLimpieza,user?.staff]);
   const iniciales = perfil.nombre.split(/\s+/).filter(Boolean).map(x => x[0]).slice(0, 2).join('').toUpperCase();
-  return (<nav className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
+  return (<nav data-vs-sidebar="limpieza" className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
 
     <div className="px-5 pt-6 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
       <img src="/villa-serena-logo.png" alt="Villa Serena" className="mx-auto h-24 w-32 object-contain mb-3" />
@@ -124,7 +124,7 @@ function Sidebar({ pantalla, setPantalla, solPendientes, incPendientes, onCambia
       {PANTALLAS.map(id => {
         const active = pantalla === id;
         const badge = id === 'solicitudes' ? solPendientes : id === 'incidencias' ? incPendientes : 0;
-        return (<button
+        return (<button data-vs-active={active}
           key={id}
           onClick={() => setPantalla(id)}
           className="w-full flex items-center gap-3 px-5 py-3 text-left transition-colors relative group"
@@ -489,7 +489,7 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
   if (modulo === 'huesped') {
     return <HuespedApp onCambiarModulo={setModulo} />;
   }
-  return (<div className="w-full h-screen flex flex-col overflow-hidden" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
+  return (<div data-vs-workspace="limpieza" className="w-full h-screen flex flex-col overflow-hidden" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
     <style>
       {`
         @import url('https://fonts.googleapis.com/css2?family=Afacad:wght@400;500;600;700&display=swap');
@@ -509,7 +509,7 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
         onCambiarModulo={setModulo}
         onEditarPerfil={() => setPerfilAbierto(true)} />
 
-      <div className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
+      <div data-vs-shell-main="limpieza" className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
 
         <div className="lg:hidden flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: '#102747' }}>
           <p className="text-white text-lg font-bold" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
@@ -561,11 +561,11 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
           </div>
         </div>
 
-        <div className="lg:hidden flex shrink-0 border-t" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
+        <div data-vs-mobile-nav="limpieza" className="lg:hidden flex shrink-0 border-t" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
           {PANTALLAS.map(id => {
             const active = pantalla === id;
             const badge = id === 'solicitudes' ? solPendientes : id === 'incidencias' ? incPendientes : 0;
-            return (<button
+            return (<button data-vs-active={active}
               key={id}
               type="button"
               onClick={() => {

@@ -1,9 +1,10 @@
+import CompactFilter from "@/components/common/CompactFilter";
 import { useState } from 'react';
 import type { OrdenTrabajo, EstadoOT, PrioridadIncidencia } from '@/lib/pms/types';
 import { formatoFecha } from '@/data/pms';
-import { Chip, PRIORIDAD_META, ESTADO_OT_META, ORIGEN_LABEL, estaAtrasada, diasHastaFecha, esTerminalOT, Cabecera, Kpi, BotonFiltro, Vacio, PlusIcon, WrenchIcon, AlertIcon, } from '@/features/mantenimiento/pages/mantUtils';
+import { Chip, PRIORIDAD_META, ESTADO_OT_META, ORIGEN_LABEL, estaAtrasada, diasHastaFecha, esTerminalOT, Cabecera, Kpi, Vacio, PlusIcon, WrenchIcon, AlertIcon, } from '@/features/mantenimiento/pages/mantUtils';
 const ORDEN_PRIORIDAD: Record<PrioridadIncidencia, number> = { alta: 0, media: 1, baja: 2 };
-const ESTADOS: EstadoOT[] = ['abierta', 'en-proceso', 'resuelta', 'cerrada', 'cancelada'];
+const ESTADOS: EstadoOT[] = ['abierta', 'asignada', 'en-proceso', 'resuelta', 'cerrada', 'cancelada'];
 interface Props {
   ordenes: OrdenTrabajo[];
   onAbrirOrden: (id: string) => void;
@@ -68,24 +69,10 @@ export default function OrdenesTrabajo({ ordenes, onAbrirOrden, onNuevaOrden }: 
       </div>
     </div>)}
 
-    <div className="px-4 sm:px-6 pt-5 space-y-2">
-      <div className="flex gap-2 flex-wrap items-center">
-        <span className="text-[11px] text-[#AEBCC1] uppercase tracking-widest w-full sm:w-auto sm:mr-1">Estado</span>
-        <BotonFiltro activo={fEstado === 'activas'} onClick={() => setFEstado('activas')}>En curso</BotonFiltro>
-        <BotonFiltro activo={fEstado === 'todos'} onClick={() => setFEstado('todos')}>Todas</BotonFiltro>
-        {ESTADOS.map(e => (<BotonFiltro key={e} activo={fEstado === e} onClick={() => setFEstado(e)}>
-          {ESTADO_OT_META[e].label}
-        </BotonFiltro>))}
-      </div>
-
-      <div className="flex gap-2 flex-wrap items-center">
-        <span className="text-[11px] text-[#AEBCC1] uppercase tracking-widest w-full sm:w-auto sm:mr-1">Prioridad</span>
-        <BotonFiltro activo={fPrioridad === 'todas'} onClick={() => setFPrioridad('todas')}>Todas</BotonFiltro>
-        {(['alta', 'media', 'baja'] as PrioridadIncidencia[]).map(p => (<BotonFiltro key={p} activo={fPrioridad === p} onClick={() => setFPrioridad(p)}>
-          {PRIORIDAD_META[p].label}
-        </BotonFiltro>))}
-        <BotonFiltro activo={soloAtrasadas} onClick={() => setSoloAtrasadas(v => !v)}>Solo atrasadas</BotonFiltro>
-      </div>
+    <div className="grid gap-3 px-4 sm:px-6 pt-5 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <CompactFilter label="Estado" value={fEstado} onChange={setFEstado}><option value="activas">En curso</option><option value="todos">Todas</option>{ESTADOS.map(e=><option key={e} value={e}>{ESTADO_OT_META[e].label}</option>)}</CompactFilter>
+      <CompactFilter label="Prioridad" value={fPrioridad} onChange={setFPrioridad}><option value="todas">Todas</option>{(['alta','media','baja'] as PrioridadIncidencia[]).map(p=><option key={p} value={p}>{PRIORIDAD_META[p].label}</option>)}</CompactFilter>
+      <label className="inline-flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={soloAtrasadas} onChange={e=>setSoloAtrasadas(e.target.checked)}/>Solo atrasadas</label>
     </div>
 
     <div className="px-4 sm:px-6 py-5">

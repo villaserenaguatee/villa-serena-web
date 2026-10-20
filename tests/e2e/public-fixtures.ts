@@ -81,7 +81,7 @@ export async function enterSelectedPortal(page: Page, code: string, email: strin
   await page.getByLabel('Correo electrónico', { exact: true }).fill(email);
   await expect(page).toHaveURL(url => url.searchParams.get('codigo') === code);
   const requested = page.waitForResponse(response => response.url().endsWith('/acceso/solicitar-codigo') && response.request().method() === 'POST');
-  await page.getByRole('button', { name: 'Solicitar código de acceso', exact: true }).click();
+  await page.getByRole('button', { name: 'Obtén tu código de acceso', exact: true }).click();
   await page.getByRole('button', { name: 'Enviar código', exact: true }).click();
   expect((await requested).ok()).toBe(true);
   await page.getByRole('button', { name: 'Volver a iniciar sesión', exact: true }).last().click();

@@ -54,17 +54,17 @@ export default function MiHabitacion({ conectado=false, reserva, onCompartirExpe
     <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
       <header className="space-y-2">
         <Chip cls="border-[#D8B94E] bg-[#F8F1DE] text-[#7A6327]">{en ? 'Stay completed' : 'Estancia finalizada'}</Chip>
-        <h1 className="text-2xl font-semibold text-[#18345C] sm:text-3xl">{en ? 'Thank you for staying at Villa Serena' : 'Gracias por hospedarte en Villa Serena'}</h1>
+        <h1 data-vs-page-title="huesped" className="text-2xl font-semibold text-[#18345C] sm:text-3xl">{en ? 'Thank you for staying at Villa Serena' : 'Gracias por hospedarte en Villa Serena'}</h1>
         <p className="text-sm text-[#52677F]">{en ? 'Your room is now part of your stay history. Access and controls are deactivated.' : 'Tu habitación forma parte del historial de esta estancia. El acceso y los controles están desactivados.'}</p>
       </header>
-      <section className="grid gap-3 rounded-xl border border-[#E5E0D8] bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section data-vs-card="huesped" className="grid gap-3 rounded-xl border border-[#E5E0D8] bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
         <div><p className="text-xs text-[#72829A]">{en ? 'Reservation' : 'Reserva'}</p><p className="font-semibold text-[#18345C]">{reserva.codigo}</p></div>
         <div><p className="text-xs text-[#72829A]">{en ? 'Arrival' : 'Entrada'}</p><p className="font-semibold text-[#18345C]">{formatoFecha(reserva.fechaEntrada)}</p></div>
         <div><p className="text-xs text-[#72829A]">{en ? 'Departure' : 'Salida'}</p><p className="font-semibold text-[#18345C]">{formatoFecha(reserva.fechaSalida)}</p></div>
         <div><p className="text-xs text-[#72829A]">{en ? 'Check-out' : 'Check-out'}</p><p className="font-semibold text-[#18345C]">{reserva.checkOutEn ? formatoFechaHora(reserva.checkOutEn) : (en ? 'Stay completed' : 'Estancia finalizada')}</p></div>
       </section>
       {conectado&&<GuestRestriction reason={unavailable}/>}
-      <section className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-white sm:flex">
+      <section data-vs-card="huesped" className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-white sm:flex">
         <img src={conectado ? '/images/demo-standard.jpg' : fotoHabitacion(habitacion?.numero??'')} alt={conectado ? (en ? 'Illustrative room catalogue photograph' : 'Fotografía ilustrativa del catálogo de habitaciones') : (en ? 'Room ' + (habitacion?.numero??pending) : 'Habitación ' + (habitacion?.numero??pending))} className="h-48 w-full object-cover sm:h-auto sm:w-64 sm:shrink-0" />
         <div className="space-y-3 p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-[#A77E20]">{en ? 'Your room during this stay' : 'Tu habitación durante esta estancia'}</p>
@@ -109,7 +109,7 @@ export default function MiHabitacion({ conectado=false, reserva, onCompartirExpe
         </button>
       </div>)}
 
-      <section className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-white">
+      <section data-vs-card="huesped" className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-white">
         <div className="grid md:grid-cols-[220px_1fr]">
           <img
             src="/images/demo-standard.jpg"

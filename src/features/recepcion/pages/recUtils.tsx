@@ -203,7 +203,7 @@ export function Campo({ label, error, children, }: {
     } else if (node.type === 'select' && textInput && !node.props['aria-label']) props['aria-label']='Prefijo de teléfono';
     return cloneElement(node, props);
   });
-  return (<div>
+  return (<div data-vs-field="compact">
     <p id={labelId} className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-1.5">
       {label}
     </p>

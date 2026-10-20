@@ -98,7 +98,7 @@ export default function IncidenciasArea({ areaReporta, incidencias, habitaciones
 
     {abierto && <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
       <button aria-label="Cerrar" onClick={cerrar} className="absolute inset-0 bg-black/35" />
-      <div className="relative z-10 max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:max-w-xl sm:rounded-2xl">
+      <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="relative z-10 max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:max-w-xl sm:rounded-2xl">
         <div className="sticky top-0 flex items-center justify-between border-b bg-white px-4 py-3">
           <h2 className="text-xl font-semibold text-[#18345C]">Reportar incidencia</h2>
           <button onClick={cerrar} className="text-2xl text-[#AEBCC1]">×</button>
@@ -171,7 +171,7 @@ export default function IncidenciasArea({ areaReporta, incidencias, habitaciones
           {error && <p className="text-sm text-[#991B1B]">
             {error}
           </p>}
-          <div className="flex flex-wrap justify-end gap-2 pt-1">
+          <div data-vs-actions="compact" className="flex flex-wrap justify-end gap-2 pt-1">
             <button onClick={cerrar} className="min-h-11 rounded-md border border-[#E5E0D8] px-4 text-sm text-[#6B7280]">Cancelar</button>
             <button onClick={registrar} className="min-h-11 rounded-md bg-[#18345C] px-4 text-sm font-semibold text-white">Registrar incidencia</button>
           </div>
@@ -185,7 +185,7 @@ function Campo({ label, children }: {
   label: string;
   children: React.ReactNode;
 }) {
-  return <div>
+  return <div data-vs-field="compact">
     <p className="mb-1.5 text-[10px] uppercase tracking-widest text-[#AEBCC1]">
       {label}
     </p>

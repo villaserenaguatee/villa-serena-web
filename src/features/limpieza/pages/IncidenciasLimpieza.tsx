@@ -78,10 +78,10 @@ export default function Incidencias({ incidencias, habitaciones, onRegistrar }: 
       `}
     </style>
 
-    <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
+    <div data-vs-page-header="limpieza" className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">
+          <h1 data-vs-page-title="limpieza" className="text-[32px] font-semibold text-[#18345C] leading-tight">
             Incidencias
           </h1>
           <p className="text-[15px] text-[#AEBCC1] mt-1">
@@ -109,14 +109,14 @@ export default function Incidencias({ incidencias, habitaciones, onRegistrar }: 
           onClick={() => setVista('resueltas')}
           className={`rounded-lg px-4 py-2 text-sm font-semibold ${vista === 'resueltas' ? 'bg-[#18345C] text-white' : 'border bg-white text-[#52677F]'}`}>Resueltas ({incidencias.filter(i => i.estado === 'resuelta').length})</button>
       </div>
-      {incidenciasVisibles.length === 0 && (<div className="rounded-xl border border-[#E5E0D8] bg-white py-8 text-center text-sm text-[#AEBCC1]">
+      {incidenciasVisibles.length === 0 && (<div data-vs-card="limpieza" className="rounded-xl border border-[#E5E0D8] bg-white py-8 text-center text-sm text-[#AEBCC1]">
         {vista === 'activas' ? 'No hay incidencias activas.' : 'Todavía no hay incidencias resueltas.'}
       </div>)}
       {incidenciasVisibles.map(inc => {
         const pc = PRIORIDAD_CONFIG[inc.prioridad];
         const ec = ESTADO_CONFIG[inc.estado];
         const habitacion = habitaciones.find(h => h.numero === inc.habitacionNumero);
-        return (<div key={inc.id} className="bg-white border border-[#E5E0D8] rounded-xl p-4">
+        return (<div data-vs-card="limpieza" key={inc.id} className="bg-white border border-[#E5E0D8] rounded-xl p-4">
           <div className="flex items-start gap-3">
             {habitacion ? <img src={habitacion.foto} alt={`Habitación ${habitacion.numero}`} className="h-24 w-32 shrink-0 rounded-lg object-cover" /> : <span className="w-3 h-3 rounded-full mt-1 shrink-0" style={{ backgroundColor: pc.dot }} />}
             <div className="flex-1 min-w-0">
@@ -148,7 +148,7 @@ export default function Incidencias({ incidencias, habitaciones, onRegistrar }: 
 
     {mostrarForm && (<div className="fixed inset-0 z-30 flex items-end sm:items-center justify-center sm:p-4">
       <div className="absolute inset-0 bg-black/30" onClick={() => setMostrarForm(false)} />
-      <div className="relative z-10 bg-white rounded-t-xl sm:rounded-xl shadow-2xl w-full sm:max-w-lg max-h-[88vh] overflow-y-auto">
+      <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="relative z-10 bg-white rounded-t-xl sm:rounded-xl shadow-2xl w-full sm:max-w-lg max-h-[88vh] overflow-y-auto">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#E5E0D8] sticky top-0 bg-white">
           <h2 className="text-[21px] font-semibold text-[#18345C]">
             Reportar incidencia
@@ -163,7 +163,8 @@ export default function Incidencias({ incidencias, habitaciones, onRegistrar }: 
 
         <div className="px-4 py-4">
           <div className="space-y-4">
-            <Campo label="Piso">
+            <div className="vs-short-fields grid grid-cols-1 gap-3 sm:grid-cols-2">
+<Campo label="Piso">
               <select
                 value={piso}
                 onChange={e => {
@@ -171,23 +172,24 @@ export default function Incidencias({ incidencias, habitaciones, onRegistrar }: 
                   setForm(f => ({ ...f, habitacionNumero: '' }));
                 }}
                 className="w-full border border-[#E5E0D8] rounded-lg px-3 py-3 text-sm text-[#1F2933] focus:outline-none focus:border-[#18345C] bg-white">
-                <option value="">Seleccionar piso…</option>
+                <option value="">Todos los pisos</option>
                 {[...new Set(habitaciones.map(h => h.piso))].sort().map(n => <option key={n} value={n}>Piso {n}</option>)}
               </select>
             </Campo>
 
             <Campo label="Habitación" error={errores.habitacionNumero}>
               <select
-                disabled={!piso}
+
                 value={form.habitacionNumero}
                 onChange={e => setForm(f => ({ ...f, habitacionNumero: e.target.value }))}
                 className="w-full border border-[#E5E0D8] rounded-lg px-3 py-3 text-sm text-[#1F2933] focus:outline-none focus:border-[#18345C] bg-white disabled:bg-[#F3F4F6]">
                 <option value="">
-                  {piso ? 'Seleccionar habitación…' : 'Primero selecciona un piso'}
+                  Seleccionar habitación…
                 </option>
-                {habitaciones.filter(h => String(h.piso) === piso).map(h => <option key={h.id} value={h.numero}>Habitación {h.numero} · {h.tipo === 'Standard' ? 'Estándar' : h.tipo}</option>)}
+                {habitaciones.filter(h => !piso || String(h.piso) === piso).map(h => <option key={h.id} value={h.numero}>Habitación {h.numero} · {h.tipo === 'Standard' ? 'Estándar' : h.tipo}</option>)}
               </select>
             </Campo>
+</div>
 
             <Campo label="Tipo de problema" error={errores.tipo}>
               <select
@@ -219,20 +221,7 @@ export default function Incidencias({ incidencias, habitaciones, onRegistrar }: 
                 className="w-full border border-[#E5E0D8] rounded-lg px-3 py-3 text-sm text-[#1F2933] resize-none focus:outline-none focus:border-[#18345C] placeholder:text-[#AEBCC1]" />
             </Campo>
 
-            <Campo label="Nivel de prioridad">
-              <div className="flex gap-2">
-                {(['alta', 'media', 'baja'] as PrioridadIncidencia[]).map(p => (<button
-                  key={p}
-                  onClick={() => setForm(f => ({ ...f, prioridad: p }))}
-                  className={`flex-1 py-2.5 text-xs font-medium rounded-sm border capitalize transition-colors ${form.prioridad === p
-                    ? p === 'alta' ? 'bg-[#FEF2F2] text-[#991B1B] border-[#FCA5A5]'
-                      : p === 'media' ? 'bg-[#FFFBEF] text-[#78450A] border-[#F3D98B]'
-                        : 'bg-[#F0FAF4] text-[#166534] border-[#86EFAC]'
-                    : 'bg-white text-[#6B7280] border-[#E5E0D8] hover:bg-[#F8F6F0]'}`}>
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
-                </button>))}
-              </div>
-            </Campo>
+            <Campo label="Nivel de prioridad"><select aria-label="Nivel de prioridad" value={form.prioridad} onChange={e=>setForm(f=>({...f,prioridad:e.target.value as PrioridadIncidencia}))} className="w-full rounded-lg border border-[#E5E0D8] bg-white px-3 py-2.5">{(['alta','media','baja'] as PrioridadIncidencia[]).map(p=><option key={p} value={p}>{p.charAt(0).toUpperCase()+p.slice(1)}</option>)}</select></Campo>
 
             <div>
               <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-2">
@@ -259,7 +248,7 @@ export default function Incidencias({ incidencias, habitaciones, onRegistrar }: 
           </div>
         </div>
 
-        <div className="px-4 pb-4 flex justify-end gap-2">
+        <div data-vs-actions="compact" className="px-4 pb-4 flex justify-end gap-2">
           <button
             onClick={() => setMostrarForm(false)}
             className="min-h-11 rounded-md border border-[#E5E0D8] px-4 py-2.5 text-sm text-[#6B7280] hover:bg-[#F8F6F0] transition-colors">
@@ -280,7 +269,7 @@ function Campo({ label, error, children }: {
   error?: string;
   children: React.ReactNode;
 }) {
-  return (<div>
+  return (<div data-vs-field="compact">
     <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-1.5">
       {label}
     </p>

@@ -270,7 +270,7 @@ function FormMovimiento({ insumos, onCancelar, onGuardar, }: {
     {err && <p className="text-xs text-[#991B1B]">
       {err}
     </p>}
-    <div className="flex flex-wrap justify-end gap-2 pt-1">
+    <div data-vs-actions="compact" className="flex flex-wrap justify-end gap-2 pt-1">
       <button
         onClick={onCancelar}
         className="min-h-11 rounded-md border border-[#E5E0D8] px-4 py-2 text-sm text-[#6B7280] hover:bg-[#F8F6F0] transition-colors">Cancelar</button>
@@ -444,7 +444,7 @@ function FormInsumo({ onCancelar, onGuardar, }: {
     {err && <p className="text-xs text-[#991B1B]">
       {err}
     </p>}
-    <div className="flex flex-wrap justify-end gap-2 pt-1">
+    <div data-vs-actions="compact" className="flex flex-wrap justify-end gap-2 pt-1">
       <button
         onClick={onCancelar}
         className="min-h-11 rounded-md border border-[#E5E0D8] px-4 py-2 text-sm text-[#6B7280] hover:bg-[#F8F6F0] transition-colors">Cancelar</button>
@@ -475,7 +475,7 @@ function ModalFormulario({ children, onCerrar }: {
       if (e.target === e.currentTarget)
         onCerrar();
     }}>
-    <section className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:max-w-xl sm:rounded-2xl sm:p-5">
+    <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:max-w-xl sm:rounded-2xl sm:p-5">
       <button
         onClick={onCerrar}
         aria-label="Cerrar"

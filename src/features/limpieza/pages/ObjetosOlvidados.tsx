@@ -85,10 +85,10 @@ export default function Objetos({ objetos, habitaciones, onRegistrar, mensajeErr
       `}
     </style>
 
-    <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
+    <div data-vs-page-header="limpieza" className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">
+          <h1 data-vs-page-title="limpieza" className="text-[32px] font-semibold text-[#18345C] leading-tight">
             Objetos olvidados
           </h1>
         </div>
@@ -110,7 +110,7 @@ export default function Objetos({ objetos, habitaciones, onRegistrar, mensajeErr
         {objetos.map(obj => {
           const habitacion = habitaciones.find(h => h.numero === obj.habitacionNumero);
           const estadoLabel = obj.estado === 'notificado' ? 'Huésped notificado' : obj.estado === 'encontrado' ? 'Encontrado' : obj.estado === 'guardado' ? 'En resguardo' : 'Devuelto';
-          return (<div key={obj.id} className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden">
+          return (<div data-vs-card="limpieza" key={obj.id} className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden">
             <div className="relative h-40 bg-[#F8F6F0]">
               {obj.foto ? (<img src={obj.foto} alt={obj.descripcion} className="w-full h-full object-cover" />) : (<div className="w-full h-full flex flex-col items-center justify-center text-[#AEBCC1]">
                 <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -166,7 +166,7 @@ export default function Objetos({ objetos, habitaciones, onRegistrar, mensajeErr
 
     {mostrarForm && (<div className="fixed inset-0 z-30 flex items-end sm:items-center justify-center sm:p-4">
       <div className="absolute inset-0 bg-black/30" onClick={() => setMostrarForm(false)} />
-      <div role="dialog" aria-label="Registrar objeto olvidado" className="relative z-10 bg-white rounded-t-xl sm:rounded-xl shadow-2xl w-full sm:max-w-lg max-h-[88vh] overflow-y-auto">
+      <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" role="dialog" aria-label="Registrar objeto olvidado" className="relative z-10 bg-white rounded-t-xl sm:rounded-xl shadow-2xl w-full sm:max-w-lg max-h-[88vh] overflow-y-auto">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#E5E0D8] sticky top-0 bg-white">
           <h2 className="text-[21px] font-semibold text-[#18345C]">
             Registrar objeto olvidado
@@ -181,7 +181,8 @@ export default function Objetos({ objetos, habitaciones, onRegistrar, mensajeErr
 
         <div className="px-4 py-4">
           <div className="space-y-4">
-            <Campo label="Piso">
+            <div className="vs-short-fields grid grid-cols-1 gap-3 sm:grid-cols-2">
+<Campo label="Piso">
               <select
                 value={piso}
                 onChange={e => {
@@ -189,22 +190,23 @@ export default function Objetos({ objetos, habitaciones, onRegistrar, mensajeErr
                   setForm(f => ({ ...f, habitacionNumero: '' }));
                 }}
                 className="w-full border border-[#E5E0D8] rounded-lg px-3 py-3 text-sm text-[#1F2933] focus:outline-none focus:border-[#18345C] bg-white">
-                <option value="">Seleccionar piso…</option>
+                <option value="">Todos los pisos</option>
                 {[...new Set(habitaciones.map(h => h.piso))].sort().map(n => <option key={n} value={n}>Piso {n}</option>)}
               </select>
             </Campo>
             <Campo label="Habitación" error={errores.habitacionNumero}>
               <select
-                disabled={!piso}
+
                 value={form.habitacionNumero}
                 onChange={e => setForm(f => ({ ...f, habitacionNumero: e.target.value }))}
                 className="w-full border border-[#E5E0D8] rounded-lg px-3 py-3 text-sm text-[#1F2933] focus:outline-none focus:border-[#18345C] bg-white disabled:bg-[#F3F4F6]">
                 <option value="">
-                  {piso ? 'Seleccionar habitación…' : 'Primero selecciona un piso'}
+                  Seleccionar habitación…
                 </option>
-                {habitaciones.filter(h => String(h.piso) === piso).map(h => <option key={h.id} value={h.numero}>Habitación {h.numero} · {h.tipo === 'Standard' ? 'Estándar' : h.tipo}</option>)}
+                {habitaciones.filter(h => !piso || String(h.piso) === piso).map(h => <option key={h.id} value={h.numero}>Habitación {h.numero} · {h.tipo === 'Standard' ? 'Estándar' : h.tipo}</option>)}
               </select>
             </Campo>
+</div>
 
             <Campo label="Descripción del objeto" error={errores.descripcion}>
               <input
@@ -224,7 +226,7 @@ export default function Objetos({ objetos, habitaciones, onRegistrar, mensajeErr
               </div>)}
             </Campo>
 
-            <Campo label="Fecha y hora del hallazgo" error={errores.fechaHora}>
+            <Campo label="Fecha y hora en que se encontró" error={errores.fechaHora}>
               <input
                 type="datetime-local"
                 value={form.fechaHora}
@@ -232,7 +234,7 @@ export default function Objetos({ objetos, habitaciones, onRegistrar, mensajeErr
                 className="w-full border border-[#E5E0D8] rounded-md px-3 py-3 text-sm text-[#1F2933] focus:outline-none focus:border-[#18345C] placeholder:text-[#AEBCC1]" />
             </Campo>
 
-            <Campo label="¿Dónde fue encontrado?">
+            <Campo label="Lugar donde se encontró">
               <textarea
                 rows={3}
                 value={form.observaciones}
@@ -244,7 +246,7 @@ export default function Objetos({ objetos, habitaciones, onRegistrar, mensajeErr
         </div>
 
         {mensajeError&&<p role="alert" className="px-4 pb-3 text-red-800">{mensajeError}</p>}
-        <div className="px-4 pb-4 flex justify-end gap-2">
+        <div data-vs-actions="compact" className="px-4 pb-4 flex justify-end gap-2">
           <button
             onClick={() => setMostrarForm(false)}
             className="flex-1 py-3 text-sm border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-[#F8F6F0] transition-colors">
@@ -263,7 +265,7 @@ function Campo({ label, error, children }: {
   error?: string;
   children: React.ReactNode;
 }) {
-  return (<div>
+  return (<div data-vs-field="compact">
     <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-1.5">
       {label}
     </p>

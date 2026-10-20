@@ -8,7 +8,7 @@ type Props = { days: string[]; groupByFloor: boolean; reservas: Reserva[]; huesp
 const weekdays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 export default function ReceptionTimeline({ days, groupByFloor, reservas, huespedes, habitaciones, onSelect }: Props) {
   const floors = [...new Set(habitaciones.map(h => h.piso))].sort((a,b) => a-b);
-  return <table aria-label="Reservas por habitación y día" className="w-max border-separate border-spacing-0 text-xs">
+  return <div className="vs-table-scroll"><table data-vs-table="recepcion" aria-label="Reservas por habitación y día" className="w-max border-separate border-spacing-0 text-xs">
     <thead><tr><th scope="col" className="sticky top-0 left-0 z-30 min-w-24 border border-[#E5E0D8] bg-[#F8F6F0] p-2 text-left">Habitación</th>
       {days.map(day => <th key={day} scope="col" className="sticky top-0 z-20 min-w-24 border-b border-r border-t border-[#E5E0D8] bg-[#F8F6F0] p-2 font-semibold">
         {weekdays[new Date(`${day}T12:00:00Z`).getUTCDay()]} {Number(day.slice(-2))}
@@ -29,5 +29,5 @@ export default function ReceptionTimeline({ days, groupByFloor, reservas, huespe
         </td>)}
       </tr>)}
     </Fragment>)}</tbody>
-  </table>;
+  </table></div>;
 }

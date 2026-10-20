@@ -223,7 +223,7 @@ telefono: '',
     {guestSearchError && <p role="alert" className="relative z-50 bg-white p-3 text-red-800">{guestSearchError}</p>}
     <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
 
-    <div role="dialog" aria-modal="true" aria-label="Nueva reserva" className="reception-compact relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[780px] max-h-[90vh] overflow-y-auto">
+    <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="large" role="dialog" aria-modal="true" aria-label="Nueva reserva" className="reception-compact relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[780px] max-h-[90vh] overflow-y-auto">
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#E5E0D8] sticky top-0 bg-white z-10">
         <h2 className="text-[20px] font-semibold text-[#18345C]">Nueva reserva</h2>
         <ReceptionCloseButton onClick={onCerrar} />
@@ -558,7 +558,7 @@ telefono: '',
         </div>
       </div>)}
 
-      {!revisando && <div className="px-5 pb-5 flex gap-3">
+      {!revisando && <div data-vs-actions="compact" className="px-5 pb-5 flex gap-3">
         <button onClick={onCerrar} className="flex-1 py-2.5 text-sm border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-[#F8F6F0] transition-colors">
           Cancelar
         </button>
@@ -628,7 +628,7 @@ telefono: '',
           </section> : <div className="border rounded-xl p-4 bg-[#F8F6F0]">
             <b>Sin habitación asignada</b>
             <p className="text-sm text-[#6B7280]">La reserva puede crearse ahora y asignar la habitación más tarde.</p>
-          </div>}<div className="flex justify-end gap-3 mt-3">
+          </div>}<div data-vs-actions="compact" className="flex justify-end gap-3 mt-3">
               <button onClick={() => setRevisando(false)} className="px-4 py-2 border rounded-md text-sm">Editar</button>
               <button onClick={guardar} disabled={guardando || resultadoDesconocido || consultando} className="px-4 py-2 bg-[#18345C] text-white rounded-md text-sm font-semibold disabled:opacity-50">{guardando ? 'Guardando…' : 'Confirmar reserva'}</button>
             </div></>;

@@ -34,3 +34,10 @@ test('selección al releer elige historial más reciente, descarta canceladas/aj
   expect(seleccionarEstanciaHuesped([...history, reservation({ estado: 'confirmada' })], 'guest')?.estado).toBe('confirmada');
   expect(seleccionarEstanciaHuesped([...history, reservation({ estado: 'en-curso' })], 'guest')?.estado).toBe('en-curso');
 });
+
+test('cancelled-only history remains accessible and foreign stays never become selectable', () => {
+ const cancelled=reservation({estado:'cancelada'});
+ expect(seleccionarEstanciaHuesped([cancelled], 'guest')).toEqual(cancelled);
+ expect(seleccionarEstanciaHuesped([cancelled], 'other')).toBeUndefined();
+ for (const id of ['checkin','servicios','restaurante']) expect(seccionesPortal('cancelada').map(s=>s.id)).not.toContain(id);
+});

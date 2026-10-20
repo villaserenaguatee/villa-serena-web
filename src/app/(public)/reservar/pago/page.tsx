@@ -1,4 +1,5 @@
 "use client";
+import PreviousBookingRequest from '@/components/public/PreviousBookingRequest';
 import BookingTermsContent from '@/components/common/BookingTermsContent';
 import PrivacyPolicyContent from '@/components/common/PrivacyPolicyContent';
 import BookingSummaryCard from '@/components/public/BookingSummaryCard';
@@ -11,7 +12,7 @@ import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 
 import { usePublicCatalog, usePublicQuotes } from "@/lib/usePublicCatalog";
-import { prepareStripeBooking } from "@/lib/publicStripeBooking";
+import { preparePublicBookingPayment } from "@/lib/publicBookingPayment";
 import { useBookingDraft, readBookingDraft, BookingAttemptPendingError } from "@/lib/bookingDraft";
 import { bookingEmail } from '@/lib/bookingEmail';
 export default function Pago() {
@@ -58,12 +59,12 @@ export default function Pago() {
     setReservationCode(attempt?.code ?? '');
   }, [draft, query]);
   async function recoverPrevious() {
-    if (!accepted || busy.current || (!emailVerified && !reservationCode)) return;
+    if (busy.current) return;
     busy.current = true; setSaving(true); setPaymentError("");
     try {
-      r.push(await prepareStripeBooking(sp, query.get("draft") || "", true));
+      r.push(await preparePublicBookingPayment(sp, query.get("draft") || "", true));
     }
-    catch (error) { setPaymentError(error instanceof BookingAttemptPendingError ? bookingText('requestUncertain') : error instanceof Error ? error.message : bookingText("saveFailed")); }
+    catch (error) { setPaymentError(error instanceof Error ? error.message : bookingText("saveFailed")); }
     finally { setReservationCode(readBookingDraft(query.get('draft') || '')?.attempt?.code ?? ''); busy.current = false; setSaving(false); }
   }
   async function finish() {
@@ -73,7 +74,7 @@ export default function Pago() {
     setSaving(true);
     setPaymentError("");
     try {
-      r.push(await prepareStripeBooking(sp, query.get("draft") || ""));
+      r.push(await preparePublicBookingPayment(sp, query.get("draft") || ""));
     }
     catch (error) {
       setCanRecover(Boolean(readBookingDraft(query.get("draft") || "")?.attempt));
@@ -87,7 +88,7 @@ export default function Pago() {
       setSaving(false);
     }
   }
-  return (<main className="reserve-public booking-checkout payment-page">
+  return (<main className="reserve-public booking-checkout payment-page">{!canRecover&&<PreviousBookingRequest/>}
     {draft && verificationChecked && !emailVerified && !reservationCode && <p role="alert" className="mx-auto max-w-3xl p-4">{en ? 'Verify your email before creating this booking.' : 'Verifica tu correo antes de crear esta reserva.'} <a href={'/reservar/verificar?' + query.toString()} className="underline">{en ? 'Verify email' : 'Verificar correo'}</a></p>}
     <header className="reserve-nav">
       <button className="icon-back" onClick={() => r.back()} aria-label={ui("Volver")}>
@@ -98,15 +99,15 @@ export default function Pago() {
     <div className="checkout-layout">
       <BookingSummaryCard image={room?.image} name={room?.name || sp.get("habitacion") || ""} category={room?.type} arrival={sp.get("llegada") || ""} departure={sp.get("salida") || ""} adults={Number(sp.get("adultos") || sp.get("huespedes") || 1)} childCount={Number(sp.get("ninos") || 0)} nights={nights} nightlyPrice={room?.price} total={total} note={room?.inventoryNote}/>
       <div className="booking-form-column">
-      <section className="reserve-form-card reserve-form-wide checkout-form">
+      <section data-vs-ui="compact" className="reserve-form-card reserve-form-wide checkout-form">
         <span className="reserve-kicker">{en ? "Last step" : "Último paso"}</span>
         <h1>
           {en ? "Card payment" : "Pago con tarjeta"}
         </h1>
         <p>
-          {en ? "Continue to Stripe to enter your card and complete payment." : "Continúa a Stripe para ingresar tu tarjeta y completar el pago"}
+          {en ? "Continue to Recurrente to enter your card and complete payment." : "Continúa a Recurrente para ingresar tu tarjeta y completar el pago"}
         </p>
-        <p className="payment-processor"><LockKeyhole size={16} aria-hidden="true" /><span>{en ? "Payment processed by Stripe" : "Pago procesado por Stripe"}</span></p>
+        <p className="payment-processor"><LockKeyhole size={16} aria-hidden="true" /><span>{en ? "Payment processed by Recurrente" : "Pago procesado por Recurrente"}</span></p>
         {draftChecked && !draft && <p className="payment-draft-error" role="alert">{en ? "Your details are unavailable or expired. Return to the guest form." : "Tus datos no están disponibles o vencieron. Vuelve al formulario de huésped."}</p>}
         {quoteResult.error && !canRecover && <p role="alert">{quoteResult.error}</p>}
         {quoteResult.loading && <p role="status">{en ? "Checking price..." : "Consultando precio..."}</p>}
@@ -139,7 +140,7 @@ export default function Pago() {
         {paymentError && <p className="password-error" role="alert">
           {paymentError}
         </p>}
-        {canRecover && <button className="reserve-secondary" disabled={!accepted || saving} onClick={recoverPrevious}>
+        {canRecover && <button className="reserve-secondary" disabled={saving} onClick={recoverPrevious}>
           {en ? "Recover previous attempt" : "Recuperar intento anterior"}
         </button>}
         <button className="reserve-primary" disabled={!canPay || saving} onClick={finish}>
@@ -149,7 +150,7 @@ export default function Pago() {
       </div>
     </div>
     {legal && (<div className="booking-modal-backdrop" onMouseDown={() => setLegal(null)}>
-      <section className="legal-modal" onMouseDown={(e) => e.stopPropagation()}>
+      <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="legal-modal" onMouseDown={(e) => e.stopPropagation()}>
         <button className="booking-modal-close" onClick={() => setLegal(null)} aria-label={ui("Cerrar")}>
           <X />
         </button>

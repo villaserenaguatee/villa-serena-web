@@ -238,7 +238,7 @@ function StaffProfileLocal({ open, onClose, name, role, email, onSolicitarCodigo
   ['laboral', 'Información laboral', `${area} · ${codigo}`, BriefcaseBusiness],
   ['seguridad', 'Seguridad', 'Contraseña y acceso', LockKeyhole]] as const;
   return <div className="fixed inset-0 z-[100] bg-[#071D34]/45" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-    <aside className="h-full w-[min(430px,94vw)] overflow-y-auto bg-[#F8F6F0] p-4 shadow-2xl sm:p-6" onMouseDown={e => e.stopPropagation()}>
+    <aside data-vs-ui="compact" data-vs-drawer="compact" className="h-full w-[min(430px,94vw)] overflow-y-auto bg-[#F8F6F0] p-4 shadow-2xl sm:p-6" onMouseDown={e => e.stopPropagation()}>
       <div className="mb-5 flex justify-between">
         <div>
           <h1 className="text-3xl font-semibold text-[#18345C]">Perfil</h1>
@@ -338,7 +338,7 @@ function StaffProfileLocal({ open, onClose, name, role, email, onSolicitarCodigo
           </div>
         </Campo>
         {mensajeTelefono && <p role="status" className="rounded-lg bg-[#FFF1F0] px-3 py-2 text-sm text-[#B42318]">{mensajeTelefono}</p>}
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <div data-vs-actions="compact" className="mt-5 flex flex-wrap justify-end gap-2">
           <button type="button" onClick={() => setModal('contacto')} className="rounded-lg border border-[#D9D5CC] px-4 py-2 text-sm font-semibold text-[#18345C]">Cancelar</button>
           <button type="button" onClick={solicitarCodigoTelefono} disabled={solicitudTelefonoOcupada} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">Enviar código</button>
         </div>
@@ -371,7 +371,7 @@ function StaffProfileLocal({ open, onClose, name, role, email, onSolicitarCodigo
           </button>
         </div>
         {mensajeTelefono && <p role="status" className="rounded-lg bg-[#FFF1F0] px-3 py-2 text-sm text-[#B42318]">{mensajeTelefono}</p>}
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <div data-vs-actions="compact" className="mt-5 flex flex-wrap justify-end gap-2">
           <button type="button" onClick={() => {
             setCodigoTelefono(['', '', '', '', '', '']);
             setMensajeTelefono('');
@@ -484,7 +484,7 @@ function Modal({ t, close, children }: {
   children: React.ReactNode;
 }) {
   return <div className="fixed inset-0 z-[120] grid place-items-center bg-[#071D34]/50 p-4">
-    <section className="max-h-[86vh] w-full max-w-[440px] overflow-y-auto rounded-2xl bg-white shadow-2xl">
+    <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="max-h-[86vh] w-full max-w-[440px] overflow-y-auto rounded-2xl bg-white shadow-2xl">
       <header className="flex justify-between border-b border-[#E5E1D8] px-5 py-4">
         <h2 className="text-xl font-semibold text-[#18345C]">
           {t}
@@ -551,7 +551,7 @@ function Acciones({ cancel, ok, text, danger = false }: {
   text: string;
   danger?: boolean;
 }) {
-  return <div className="mt-5 flex flex-wrap justify-end gap-2">
+  return <div data-vs-actions="compact" className="mt-5 flex flex-wrap justify-end gap-2">
     <button onClick={cancel} className="rounded-lg border border-[#D9D5CC] px-4 py-2 text-sm font-semibold text-[#18345C]">Cancelar</button>
     <button onClick={ok} className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${danger ? 'bg-[#B42318]' : 'bg-[#18345C]'}`}>
       {text}

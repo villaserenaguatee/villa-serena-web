@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { invocation, readContractConfig, verifyCheckout } from '../../scripts/contrato-api.mjs';
 
-const revision = 'f30ff74fe939d467728c51c31d7aca157b3be34e';
+const revision = readContractConfig().revision;
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'vs-contract-consumer-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));

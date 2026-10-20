@@ -161,7 +161,7 @@ export default function DetalleOrden({ orden, repuestos, onCerrar, onAvanzar, on
           {ACCION_AVANZAR_OT[orden.estado]}
         </button>
 
-        <div className="flex gap-2">
+        <div data-vs-actions="compact" className="flex gap-2">
           <button
             onClick={() => setModo('reprogramar')}
             className="flex-1 px-4 py-2.5 min-h-[44px] text-[14px] font-semibold border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-[#F8F6F0] transition-colors">
@@ -283,7 +283,7 @@ function FormResolver({ onGuardar, onCancelar, }: {
       </div>
     </Campo>
 
-    <div className="flex gap-2">
+    <div data-vs-actions="compact" className="flex gap-2">
       <button
         onClick={onCancelar}
         className="flex-1 px-4 py-2.5 min-h-[44px] text-[14px] font-semibold border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-white transition-colors">
@@ -340,7 +340,7 @@ function FormCancelar({ onGuardar, onCancelar, }: {
         placeholder="Por qué se cancela este trabajo" />
     </Campo>
 
-    <div className="flex gap-2">
+    <div data-vs-actions="compact" className="flex gap-2">
       <button
         onClick={onCancelar}
         className="flex-1 px-4 py-2.5 min-h-[44px] text-[14px] font-semibold border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-white transition-colors">
@@ -387,7 +387,7 @@ function FormReprogramar({ fechaActual, onGuardar, onCancelar, }: {
       <input value={motivo} onChange={e => setMotivo(e.target.value)} className={INPUT_CLS} placeholder="Ej. a la espera del repuesto" />
     </Campo>
 
-    <div className="flex gap-2">
+    <div data-vs-actions="compact" className="flex gap-2">
       <button
         onClick={onCancelar}
         className="flex-1 px-4 py-2.5 min-h-[44px] text-[14px] font-semibold border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-white transition-colors">
@@ -479,7 +479,7 @@ function FormRepuesto({ repuestos, onGuardar, onCancelar, }: {
       <input type="number" min={1} value={cantidad} onChange={e => setCantidad(e.target.value.replace(/\D/g, ""))} className={INPUT_CLS} />
     </Campo>
 
-    <div className="flex gap-2">
+    <div data-vs-actions="compact" className="flex gap-2">
       <button
         onClick={onCancelar}
         className="flex-1 px-4 py-2.5 min-h-[44px] text-[14px] font-semibold border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-white transition-colors">

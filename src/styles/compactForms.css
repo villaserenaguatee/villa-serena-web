@@ -1,0 +1,53 @@
+/* Shared, opt-in form language. No page layouts, business rules or viewer dimensions. */
+:root {--vs-form-ink:#18345c;--vs-form-muted:#536579;--vs-form-border:#d9dfe5;--vs-form-focus:#426d98;--vs-form-error:#991b1b;--vs-form-radius:8px;--vs-form-gap:12px;}
+[data-vs-ui="compact"] {min-width:0;}
+[data-vs-ui] :where(input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([type="color"])),[data-vs-ui] :where(select,textarea) {box-sizing:border-box;max-width:100%;min-width:0;min-height:40px;border-radius:var(--vs-form-radius);font-size:15px;line-height:1.35;}
+[data-vs-ui] :where(input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([type="color"])),[data-vs-ui] :where(select) {padding-top:8px;padding-bottom:8px;}
+[data-vs-ui] textarea {min-height:76px;max-height:180px;resize:vertical;overflow:auto;}
+[data-vs-ui] :where(input,select,textarea):focus-visible {outline:2px solid var(--vs-form-focus);outline-offset:2px;}
+[data-vs-ui] :where(input,select,textarea)[aria-invalid="true"] {border-color:var(--vs-form-error);}
+[data-vs-ui] :where(input[type="checkbox"],input[type="radio"]) {accent-color:var(--vs-form-ink);}
+[data-vs-ui] :where(label) {color:var(--vs-form-ink);font-size:14px;line-height:1.4;letter-spacing:normal;text-transform:none;}
+[data-vs-field] > p:first-child {font-size:13px;font-weight:600;line-height:1.35;color:var(--vs-form-muted);letter-spacing:normal;text-transform:none;margin-bottom:5px;}
+[data-vs-ui] [role="alert"] {font-size:13px;line-height:1.4;overflow-wrap:anywhere;}
+[data-vs-ui] :where([class~="gap-6"],[class~="gap-5"],[class~="gap-4"]) {gap:var(--vs-form-gap);}
+[data-vs-ui] :where([class~="space-y-6"],[class~="space-y-5"],[class~="space-y-4"]) > :not([hidden]) ~ :not([hidden]) {margin-top:var(--vs-form-gap);}
+[data-vs-ui] :where([class~="space-y-3"]) > :not([hidden]) ~ :not([hidden]) {margin-top:10px;}
+[data-vs-dialog] {box-sizing:border-box;max-height:calc(100dvh - 32px);min-height:0;border-radius:12px;color:var(--vs-form-ink);overflow-y:auto;overscroll-behavior:contain;}
+[data-vs-dialog][data-vs-size="small"] {max-width:400px;}
+[data-vs-dialog][data-vs-size="standard"] {max-width:520px;}
+[data-vs-dialog][data-vs-size="medium"] {max-width:640px;}
+[data-vs-dialog][data-vs-size="large"] {max-width:760px;}
+[data-vs-dialog][data-vs-size="wide"] {max-width:960px;}
+[data-vs-dialog]:is([class~="p-5"],[class~="p-6"],[class~="p-8"]) {padding:18px;}
+[data-vs-dialog] > :is(header,[class~="sticky"]) {padding-top:12px;padding-bottom:12px;flex-shrink:0;}
+[data-vs-dialog] > :is(header,[class~="sticky"]) :is(h1,h2,h3),[data-vs-dialog] > :is(h1,h2,h3),[data-vs-dialog] > div:first-child h2 {font-size:20px;line-height:1.2;}
+[data-vs-dialog] > :is(header,div) > button[aria-label*="Cerrar"],[data-vs-dialog] > :is(header,div) > button[aria-label*="Close"] {min-width:40px;min-height:40px;}
+[data-vs-ui] [data-vs-actions] {display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:14px;}
+[data-vs-dialog] [data-vs-actions] {position:sticky;bottom:0;z-index:5;background:#fff;border-top:1px solid #e5e0d8;padding:10px 0 max(10px,env(safe-area-inset-bottom));}
+[data-vs-ui] [data-vs-actions] > :is(button,a) {min-height:40px;border-radius:var(--vs-form-radius);font-size:14px;padding:8px 14px;}
+[data-vs-dialog] .vs-dialog-body {min-height:0;overflow-y:auto;padding:16px;}
+[data-vs-drawer] {box-sizing:border-box;max-width:min(400px,100vw);min-height:0;overscroll-behavior:contain;}
+[data-vs-drawer] :where([class~="p-5"],[class~="p-6"]) {padding:16px;}
+[data-vs-drawer] [class~="py-5"] {padding-top:12px;padding-bottom:12px;}
+/* Retain compound input borders, OTP boxes and icon alignment. */
+[data-vs-ui] .input-icon input,[data-vs-ui] .booking-phone-field input {border:0;border-radius:0;box-shadow:none;}
+[data-vs-ui] .input-icon input {padding-top:0;padding-bottom:0;min-height:0;}
+[data-vs-ui] .booking-otp-inputs input {padding:0;}
+.floating-login-card[data-vs-ui] {padding:24px 26px;}
+.floating-login-card[data-vs-ui] h1 {font-size:32px;line-height:1.15;}
+.reserve-form-card[data-vs-ui] {padding:22px;}
+[data-vs-ui] .guest-popover,[data-vs-ui] .booking-country-list {max-height:min(320px,60dvh);overflow-y:auto;overscroll-behavior:contain;}
+/* Calendar circles and range bars retain their dedicated sizing. */
+[data-vs-ui] .vs-calendar button {min-height:0;}
+@media(max-width:600px) {
+ [data-vs-dialog] {max-height:calc(100dvh - 24px);max-width:calc(100vw - 24px);overflow-y:auto;}
+ [data-vs-dialog]:is([class~="p-5"],[class~="p-6"],[class~="p-8"]) {padding:16px;}
+ [data-vs-ui] :where(input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([type="color"])),[data-vs-ui] :where(select) {font-size:16px;min-height:44px;}
+ [data-vs-ui] [data-vs-actions] > :is(button,a) {min-height:44px;}
+ [data-vs-ui] .input-icon input {min-height:0;font-size:16px;}
+ [data-vs-ui] .booking-otp-inputs input {padding:0;}
+ .floating-login-card[data-vs-ui] {padding:22px 20px;}
+ .reserve-form-card[data-vs-ui] {padding:18px;}
+ [data-vs-dialog] .vs-short-fields {display:grid;grid-template-columns:1fr;gap:12px;}
+}

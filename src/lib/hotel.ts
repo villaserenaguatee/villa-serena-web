@@ -1,7 +1,7 @@
 export const HOTEL = {
   nombre: 'Villa Serena Hotel',
   ubicacion: 'Huehuetenango, Guatemala',
-  correo: 'villaserenagt@gmail.com',
+  correo: 'hotelvillaserena.gt@gmail.com',
   telefono: '+502 7764-2580',
   nit: '5487963-2',
   zonaHoraria: 'America/Guatemala',

@@ -1,4 +1,5 @@
 'use client';
+import {ADMIN_DEMO_UNAVAILABLE,isAdminDemoUnavailable} from './adminAvailability';
 import {useEffect,useMemo,useState} from 'react';
 import {operacion} from '@/lib/api/operaciones';
 import {usePublicCatalog} from '@/lib/usePublicCatalog';
@@ -7,17 +8,17 @@ import PanelHabitaciones from './PanelHabitaciones';
 type Room={id:number;numero:string;piso:number;tipoHabitacionId:number;ocupacion:string;condicion:string;estado:string};
 type RoomType={id:number;nombre:string;capacidad:number;precioBase:number};
 export default function ApprovedRoomMapConnected(){
- const [rooms,setRooms]=useState<(HabitacionHotel&{apiTypeId:number;condicion:string;estadoCatalogo:string})[]>([]),[error,setError]=useState(''),[loading,setLoading]=useState(true),[reload,setReload]=useState(0);
+ const [rooms,setRooms]=useState<(HabitacionHotel&{apiTypeId:number;condicion:string;estadoCatalogo:string})[]>([]),[unavailable,setUnavailable]=useState(false),[error,setError]=useState(''),[loading,setLoading]=useState(true),[reload,setReload]=useState(0);
  const {rooms:catalog}=usePublicCatalog();
  const photos=useMemo(()=>Object.fromEntries(rooms.flatMap(row=>{const offer=catalog.find(offer=>offer.apiTypeId===row.apiTypeId);return offer?[[row.id,offer.image]]:[];})),[rooms,catalog]);
- useEffect(()=>{const c=new AbortController();setLoading(true);setError('');Promise.all([operacion<Room[]>('admin/catalogos/habitaciones','GET',undefined,c.signal),operacion<RoomType[]>('admin/catalogos/tipos','GET',undefined,c.signal)]).then(([rows,types])=>{
+ useEffect(()=>{const c=new AbortController();setLoading(true);setError('');setUnavailable(false);Promise.all([operacion<Room[]>('admin/catalogos/habitaciones','GET',undefined,c.signal),operacion<RoomType[]>('admin/catalogos/tipos','GET',undefined,c.signal)]).then(([rows,types])=>{
   if(c.signal.aborted)return;
   const next=rows.filter(row=>row.estado==='ACTIVO').map(row=>{const type=types.find(t=>t.id===row.tipoHabitacionId);if(!type)throw Error('No se pudo consultar el tipo de una habitación.');
    const estado:EstadoHabHotel=row.condicion==='FUERA_DE_SERVICIO'?'mantenimiento':row.ocupacion==='OCUPADA'?'ocupada':row.condicion==='EN_LIMPIEZA'?'en-limpieza':'disponible';
    return {id:String(row.id),numero:row.numero,piso:row.piso,tipo:type.nombre as TipoHabitacion,capacidad:type.capacidad,precioNoche:type.precioBase,estado,apiTypeId:row.tipoHabitacionId,condicion:row.condicion,estadoCatalogo:row.estado};
   });
   setRooms(next);
- }).catch(e=>{if(!c.signal.aborted)setError(e instanceof Error?e.message:'No se pudo consultar el mapa.');}).finally(()=>{if(!c.signal.aborted)setLoading(false);});return()=>c.abort();},[reload]);
- if(loading||error)return <section className="flex-1 overflow-auto bg-[#F8F6F0] p-4 sm:p-6"><h1 className="text-[32px] font-semibold text-[#18345C]">Mapa de habitaciones</h1>{loading?<p role="status">Consultando habitaciones…</p>:<><p role="alert" className="mt-4 text-red-800">{error}</p><button className="mt-4 rounded-md border px-4 py-2" onClick={()=>setReload(n=>n+1)}>Volver a consultar</button></>}</section>;
+ }).catch(e=>{if(!c.signal.aborted){setUnavailable(isAdminDemoUnavailable(e));setError(isAdminDemoUnavailable(e)?ADMIN_DEMO_UNAVAILABLE:e instanceof Error?e.message:'No se pudo consultar el mapa.');}}).finally(()=>{if(!c.signal.aborted)setLoading(false);});return()=>c.abort();},[reload]);
+ if(loading||error)return <section className="flex-1 overflow-auto bg-[#F8F6F0] p-4 sm:p-6"><h1 className="text-[32px] font-semibold text-[#18345C]">Mapa de habitaciones</h1>{loading?<p role="status">Consultando habitaciones…</p>:<><p role="alert" className="mt-4 text-red-800">{error}</p><button disabled={unavailable} className="mt-4 rounded-md border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50" onClick={()=>setReload(n=>n+1)}>Volver a consultar</button></>}</section>;
  return <PanelHabitaciones conectado habitaciones={rooms} reservas={[]} huespedes={[]} fotos={photos} condiciones={Object.fromEntries(rooms.map(r=>[r.id,r.condicion]))} estadosCatalogo={Object.fromEntries(rooms.map(r=>[r.id,r.estadoCatalogo]))}/>;
 }

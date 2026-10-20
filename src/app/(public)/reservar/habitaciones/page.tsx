@@ -82,7 +82,7 @@ export default function Habitaciones() {
           : ""}
       </p>
     </section>
-    <form
+    <form data-vs-ui="compact"
       className="reserve-filters reserve-filters-complete public-without-floor availability-fixed-guests"
       onSubmit={(event) => {
         event.preventDefault();

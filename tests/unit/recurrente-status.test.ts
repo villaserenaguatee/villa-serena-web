@@ -1,0 +1,10 @@
+import {expect,test} from 'vitest';
+import {paymentAction,type RecurrenteStatus} from '@/lib/recurrenteStatus';
+import {paymentView} from '@/lib/paymentResult';
+const base:RecurrenteStatus={codigo:'VS-ABC123',estadoReserva:'PENDIENTE_PAGO',estadoPago:'PENDIENTE',puedeReintentar:false,estadoCheckout:'ABIERTO',accionPago:'CONTINUAR',urlPago:'https://app.recurrente.com/checkout-session/ch_fixture',expiraEn:'2026-11-20T10:00:00Z',pagoVenceEn:'2026-11-20T10:00:00Z'};
+test.each([
+ ['ABIERTO','CONTINUAR','PENDIENTE',false,'incomplete'],['PROCESANDO','ESPERAR','PENDIENTE',false,'processing'],['PAGADO','ESPERAR','PENDIENTE',false,'processing'],['NO_VERIFICADO','ESPERAR','PENDIENTE',false,'processing'],['VENCIDO','REINTENTAR','PENDIENTE',true,'incomplete'],['SIN_CHECKOUT','INICIAR',null,false,'incomplete'],
+] as const)('%s/%s uses server authorization', (state,action,payment,retry,view)=>{const s={...base,estadoCheckout:state,accionPago:action,estadoPago:payment,puedeReintentar:retry,urlPago:action==='CONTINUAR'?base.urlPago:null};expect(paymentAction(s)).toBe(action);expect(paymentView(s,s.codigo)).toBe(view);});
+test('provider paid or URL return never confirms a pending reservation',()=>{expect(paymentView({...base,estadoCheckout:'PAGADO',accionPago:'ESPERAR',urlPago:null},base.codigo)).toBe('processing');expect(paymentView({...base,estadoReserva:'CONFIRMADA',estadoPago:'APROBADO',estadoCheckout:'PAGADO',accionPago:'NINGUNA',urlPago:null},base.codigo)).toBe('confirmed');});
+test('unknown, partial and contradictory fields fail closed',()=>{for(const s of [{...base,accionPago:'invented'},{...base,estadoCheckout:undefined},{...base,urlPago:null},{...base,puedeReintentar:true},{...base,expiraEn:'invalid'},{...base,accionPago:'INICIAR'},{...base,accionPago:'REINTENTAR',estadoCheckout:'VENCIDO',puedeReintentar:false}])expect(()=>paymentAction(s as RecurrenteStatus)).toThrow();});
+test('unknown historical payment cannot authorize a new charge',()=>expect(paymentAction({codigo:base.codigo,estadoReserva:'PENDIENTE_PAGO',estadoPago:null,puedeReintentar:true})).toBe('ESPERAR'));

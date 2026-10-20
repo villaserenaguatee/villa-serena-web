@@ -113,10 +113,10 @@ export default function Huespedes({ conectado = false, huespedes: localGuests, r
     setRevisando(false);
   }
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-    <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
+    <div data-vs-page-header="recepcion" className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
       <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
         <div>
-          <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Huéspedes</h1>
+          <h1 data-vs-page-title="recepcion" className="text-[32px] font-semibold text-[#18345C] leading-tight">Huéspedes</h1>
           <p className="text-[15px] text-[#AEBCC1] mt-1">{queryLoading ? 'Consultando...' : `${filtrados.length} huéspedes mostrados`}</p>
         </div>
         <button
@@ -187,7 +187,7 @@ export default function Huespedes({ conectado = false, huespedes: localGuests, r
         setRegistrando(false);
         setRevisando(false);
       }} />
-      <div role="dialog" aria-modal="true" aria-label="Registrar huésped" className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-4xl max-h-[94vh] overflow-y-auto">
+      <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="large" role="dialog" aria-modal="true" aria-label="Registrar huésped" className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-4xl max-h-[94vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-5 border-b sticky top-0 bg-white z-10">
           <div>
             <p className="text-[11px] tracking-[.18em] text-[#B38719] uppercase">Datos del huésped</p>
@@ -316,7 +316,7 @@ function PerfilHuesped({ soloLectura = false, huesped, reservas, habitaciones, o
   });
   return (<div className="fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-4">
     <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
-    <div role="dialog" aria-modal="true" aria-label="Detalle del huésped" className="reception-compact relative z-10 flex max-h-[90dvh] w-full max-w-[760px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+    <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="large" role="dialog" aria-modal="true" aria-label="Detalle del huésped" className="reception-compact relative z-10 flex max-h-[90dvh] w-full max-w-[760px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
       <div className="flex items-start justify-between gap-3 shrink-0 px-4 py-3 border-b border-[#E5E0D8] bg-white">
         <div className="flex items-center gap-3">
           {huesped.foto ? <img src={huesped.foto} alt={huesped.nombre} className="h-12 w-12 shrink-0 rounded-full object-cover" /> : <span className="w-12 h-12 rounded-full bg-[#EFF6FF] text-[#1E40AF] flex items-center justify-center shrink-0 text-sm font-bold">
@@ -388,7 +388,7 @@ function PerfilHuesped({ soloLectura = false, huesped, reservas, habitaciones, o
               </div>
             </Campo>
           </div>
-          <div className="mt-3 flex justify-end gap-2">
+          <div data-vs-actions="compact" className="mt-3 flex justify-end gap-2">
             <button onClick={() => setEditando(false)} className="px-5 py-2.5 border rounded-md text-sm">Cancelar</button>
             <button
               disabled={!ed.nombre.trim() || !ed.apellidos.trim() || !ed.documento.trim() || !ed.correo.trim() || !ed.telefono.trim()}

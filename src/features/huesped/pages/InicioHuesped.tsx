@@ -34,11 +34,11 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
   const rm = RESERVA_META[reserva.estado];
   const primerNombre = huesped.nombre.split(" ")[0];
   return (<div data-guest-reference="stay-38cf2a3" className="flex-1 min-w-0 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-    <div className="px-4 sm:px-5 py-3 bg-white border-b border-[#E5E0D8]">
+    <div data-vs-page-header="huesped" className="px-4 sm:px-5 py-3 bg-white border-b border-[#E5E0D8]">
       <p className="text-[13px] text-[#AEBCC1] uppercase tracking-widest">
         <UiText text="Bienvenida a Villa Serena" />
       </p>
-      <h1 className="text-[26px] font-semibold text-[#18345C] leading-tight mt-1">
+      <h1 data-vs-page-title="huesped" className="text-[26px] font-semibold text-[#18345C] leading-tight mt-1">
         <UiText text="Hola, " />
         {primerNombre}
       </h1>
@@ -87,8 +87,8 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
           extra={<span className="text-[13px] font-semibold text-[#18345C]">
             {reserva.codigo}
           </span>}>
-          <div className="flex items-start gap-4">
-            {conectado && <img src="/images/demo-standard.jpg" alt={en?'Villa Serena room catalogue photograph':'Fotografía del catálogo de habitaciones de Villa Serena'} className="w-36 h-24 rounded-lg object-cover shrink-0"/>}
+          <div className="flex flex-col items-start gap-4 sm:flex-row">
+            {conectado && <img src="/images/demo-standard.jpg" alt={en?'Villa Serena room catalogue photograph':'Fotografía del catálogo de habitaciones de Villa Serena'} className="h-36 w-full shrink-0 rounded-lg object-cover sm:h-24 sm:w-36"/>}
             {habitacion && !conectado && <img
               src={(habitacion?.tipo ?? reserva.tipoHabitacion) === "Standard"
                 ? "/images/demo-standard.jpg"
@@ -98,7 +98,7 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
                     ? "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=600&h=380&fit=crop&auto=format"
                     : "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&h=380&fit=crop&auto=format"}
               alt={`Habitación ${(habitacion?.numero ?? pending)}`}
-              className="w-36 h-24 rounded-lg object-cover shrink-0" />}
+              className="h-36 w-full shrink-0 rounded-lg object-cover sm:h-24 sm:w-36" />}
 
             <div className="flex-1 min-w-0">
               <p data-testid="guest-stay-room" className="text-[20px] font-semibold text-[#18345C] leading-none">
@@ -137,7 +137,7 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
         </Tarjeta>
 
         <Tarjeta titulo="Llave digital">
-          {conectado ? <div className="text-center py-3.5"><div className="w-10 h-10 rounded-full bg-[#F8F6F0] flex items-center justify-center mx-auto text-[#AEBCC1]"><KeyIcon size={22}/></div><p className="text-[14px] font-medium text-[#18345C] mt-2">{en?'Digital key unavailable':'Llave digital no disponible'}</p><p className="text-[13px] text-[#AEBCC1] mt-1">{en?'Request your key at Reception.':'Solicita tu llave en Recepción.'}</p><button disabled className="mt-3 px-4 py-2.5 min-h-[44px] text-[14px] font-semibold border border-[#18345C] text-[#18345C] rounded-md opacity-40"><LockKeyhole size={14} className="inline mr-2"/>{en?'Open door':'Abrir la puerta'}</button></div> : llaveActiva && checkin.codigoLlave ? (<div className="flex items-start gap-4 flex-wrap sm:flex-nowrap">
+          {conectado ? <div className="text-center py-3.5"><div className="w-10 h-10 rounded-full bg-[#F8F6F0] flex items-center justify-center mx-auto text-[#AEBCC1]"><KeyIcon size={22}/></div><p className="text-[14px] font-medium text-[#18345C] mt-2">{en?'Digital key unavailable':'Llave digital no disponible'}</p><p className="text-[13px] text-[#AEBCC1] mt-1">{en?'Request your key at Reception.':'Solicita tu llave en Recepción.'}</p><button disabled className="mt-3 px-4 py-2.5 min-h-[44px] text-[14px] font-semibold border border-[#18345C] text-[#18345C] rounded-md opacity-40"><LockKeyhole size={14} className="inline mr-2"/>{en?'Open door':'Abrir la puerta'}</button></div> : llaveActiva && checkin.codigoLlave ? (<div className="flex flex-col items-start gap-4 sm:flex-row">
             <CodigoQR texto={checkin.codigoLlave} tamano={140} />
             <div className="flex-1 min-w-0">
               <p className="text-[15px] font-semibold text-[#166534] flex items-center gap-1.5">

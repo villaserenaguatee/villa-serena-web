@@ -73,8 +73,8 @@ export default function MenuCatalogo({ menu, onMarcarAgotado, onReactivar, categ
     fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif',
   }}>
 
-    <div className="border-b border-[#E5E0D8] bg-white px-4 py-5 sm:px-6">
-      <h1 className="text-[32px] font-semibold leading-tight text-[#18345C]">
+    <div data-vs-page-header="roomservice" className="border-b border-[#E5E0D8] bg-white px-4 py-5 sm:px-6">
+      <h1 data-vs-page-title="roomservice" className="text-[32px] font-semibold leading-tight text-[#18345C]">
         Menú y catálogo
       </h1>
     </div>
@@ -105,7 +105,7 @@ export default function MenuCatalogo({ menu, onMarcarAgotado, onReactivar, categ
         </div>
       </div>
 
-      {subcategorias.length > 0 && (<div className="mb-5 rounded-xl border border-[#E5E0D8] bg-white p-4">
+      {subcategorias.length > 0 && (<div data-vs-card="roomservice" className="mb-5 rounded-xl border border-[#E5E0D8] bg-white p-4">
         <p className="mb-3 text-[12px] font-semibold uppercase tracking-wider text-[#71839B]">
           {nombreCategoria(categoria)}
         </p>
@@ -185,12 +185,12 @@ export default function MenuCatalogo({ menu, onMarcarAgotado, onReactivar, categ
         </div>
       </div>
 
-      {visibles.length === 0 ? (<div className="rounded-xl border border-[#E5E0D8] bg-white p-8 text-center">
+      {visibles.length === 0 ? (<div data-vs-card="roomservice" className="rounded-xl border border-[#E5E0D8] bg-white p-8 text-center">
         <p className="text-[15px] text-[#71839B]">
           No se encontraron productos.
         </p>
       </div>) : (<div className="space-y-3">
-        {visibles.map((item) => (<article
+        {visibles.map((item) => (<article data-vs-card="roomservice"
           key={item.id}
           className="
                   flex

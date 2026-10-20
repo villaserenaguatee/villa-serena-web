@@ -78,7 +78,7 @@ function LocalDetail(props: Props) {
   return (<div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4">
     <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
 
-    <div className="reception-compact relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[740px] max-h-[88vh] flex flex-col">
+    <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="large" className="reception-compact relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[740px] max-h-[88vh] flex flex-col">
 
       <div className="flex items-start justify-between gap-2 px-4 sm:px-5 py-1.5 border-b border-[#E5E0D8] shrink-0">
         <button type="button" aria-label="Regresar" onClick={onCerrar} className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[#18345C] hover:bg-[#F8F6F0]"><ArrowLeft size={20} /></button><div className="flex-1">
@@ -333,6 +333,8 @@ function TabResumen({ accountOnly = false, bffAction, reserva, huesped, habitaci
           <div className="grid max-w-[760px] grid-cols-1 gap-x-4 gap-y-0.5 sm:grid-cols-2 lg:grid-cols-3 [&>div]:min-w-0">
         <Dato k="Entrada" v={formatoFecha(reserva.fechaEntrada)} />
         <Dato k="Salida" v={formatoFecha(reserva.fechaSalida)} />
+        {/* Pending the published API contract; do not infer an arrival time. */}
+        <Dato k="Hora estimada de llegada" v="No indicada" />
         <Dato k="Noches" v={String(nochesEntre(reserva.fechaEntrada, reserva.fechaSalida))} />
         <Dato k="Huéspedes" v={`${reserva.adultos ?? reserva.personas} adultos · ${reserva.ninos ?? 0} niños`} />
         <Dato k="Categoría" v={reserva.tipoHabitacion} />
@@ -367,7 +369,7 @@ function TabResumen({ accountOnly = false, bffAction, reserva, huesped, habitaci
       </p>)}
 
       {!bffAction && ['confirmada', 'pendiente'].includes(reserva.estado) && <button onClick={() => { setHabitacionSeleccionada(''); setPisoAsignacion(''); setAsignando(true); }} className="rounded-lg bg-[#18345C] px-3 py-1.5 text-sm font-semibold text-white">{habitacion ? 'Cambiar habitación' : 'Asignar habitación'}</button>}
-      {asignando && ['confirmada', 'pendiente'].includes(reserva.estado) && <ReceptionActionDialog title={habitacion ? 'Cambiar habitación' : 'Asignar habitación'} onClose={() => setAsignando(false)}><div className="space-y-3"><div className="grid grid-cols-2 gap-3"><label className="block text-sm">Piso<select aria-label="Piso" value={pisoAsignacion} onChange={e => { setPisoAsignacion(e.target.value); setHabitacionSeleccionada(''); }} className={INPUT_CLS}><option value="">Seleccionar</option>{[...new Set(disponiblesParaAsignar.map(h => h.piso))].sort((a, b) => a - b).map(p => <option key={p} value={p}>{p}</option>)}</select></label><label className="block text-sm">Habitación<select aria-label="Habitación" disabled={!pisoAsignacion} value={habitacionSeleccionada} onChange={e => setHabitacionSeleccionada(e.target.value)} className={INPUT_CLS}><option value="">Seleccionar</option>{disponiblesParaAsignar.filter(h => String(h.piso) === pisoAsignacion).map(h => <option key={h.id} value={h.id}>Hab. {h.numero}</option>)}</select></label></div>{!disponiblesParaAsignar.length && <p className="text-sm">No hay habitaciones libres para estas fechas y capacidad.</p>}<div className="flex justify-end gap-2"><button onClick={() => setAsignando(false)} className="rounded-lg border px-4 py-2 text-sm">Cancelar</button><button disabled={!disponiblesParaAsignar.some(h => h.id === habitacionSeleccionada)} onClick={() => { onAsignarHabitacion(reserva.id, habitacionSeleccionada); setAsignando(false); }} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm text-white disabled:opacity-40">Guardar asignación</button></div></div></ReceptionActionDialog>}
+      {asignando && ['confirmada', 'pendiente'].includes(reserva.estado) && <ReceptionActionDialog title={habitacion ? 'Cambiar habitación' : 'Asignar habitación'} onClose={() => setAsignando(false)}><div className="space-y-3"><div className="grid grid-cols-2 gap-3"><label className="block text-sm">Piso<select aria-label="Piso" value={pisoAsignacion} onChange={e => { setPisoAsignacion(e.target.value); setHabitacionSeleccionada(''); }} className={INPUT_CLS}><option value="">Seleccionar</option>{[...new Set(disponiblesParaAsignar.map(h => h.piso))].sort((a, b) => a - b).map(p => <option key={p} value={p}>{p}</option>)}</select></label><label className="block text-sm">Habitación<select aria-label="Habitación" disabled={!pisoAsignacion} value={habitacionSeleccionada} onChange={e => setHabitacionSeleccionada(e.target.value)} className={INPUT_CLS}><option value="">Seleccionar</option>{disponiblesParaAsignar.filter(h => String(h.piso) === pisoAsignacion).map(h => <option key={h.id} value={h.id}>Hab. {h.numero}</option>)}</select></label></div>{!disponiblesParaAsignar.length && <p className="text-sm">No hay habitaciones libres para estas fechas y capacidad.</p>}<div data-vs-actions="compact" className="flex justify-end gap-2"><button onClick={() => setAsignando(false)} className="rounded-lg border px-4 py-2 text-sm">Cancelar</button><button disabled={!disponiblesParaAsignar.some(h => h.id === habitacionSeleccionada)} onClick={() => { onAsignarHabitacion(reserva.id, habitacionSeleccionada); setAsignando(false); }} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm text-white disabled:opacity-40">Guardar asignación</button></div></div></ReceptionActionDialog>}
     </Seccion>
 
     {reserva.checkInWeb && (<Seccion titulo="Check-in enviado desde el portal">
@@ -489,7 +491,7 @@ function TabResumen({ accountOnly = false, bffAction, reserva, huesped, habitaci
         placeholder="Detalle del motivo…"
         className="w-full border border-[#FCA5A5] rounded-md px-3 py-2 text-sm text-[#1F2933] resize-none focus:outline-none focus:border-[#991B1B] bg-white" />
       {errMotivo && <p className="text-xs text-[#991B1B]">El motivo es obligatorio.</p>}
-      <div className="flex gap-2">
+      <div data-vs-actions="compact" className="flex gap-2">
         <button
           onClick={() => {
             setCancelando(false);
@@ -510,7 +512,7 @@ function TabResumen({ accountOnly = false, bffAction, reserva, huesped, habitaci
     </>}
     {accountOnly && ['en-curso', 'finalizada'].includes(reserva.estado) && <button onClick={() => setFacturaCheckout(true)} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">{reserva.estado === 'finalizada' ? 'Ver resumen de cuenta' : 'Revisar cuenta y check-out'}</button>}
     {facturaCheckout && <div className="fixed inset-0 z-[70] grid place-items-center bg-[#071D34]/55 p-3" onMouseDown={() => setFacturaCheckout(false)}>
-      <section className="reception-print-document max-h-[90vh] w-full max-w-[680px] overflow-y-auto rounded-2xl bg-white shadow-2xl" onMouseDown={e => e.stopPropagation()}>
+      <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="reception-print-document max-h-[90vh] w-full max-w-[680px] overflow-y-auto rounded-2xl bg-white shadow-2xl" onMouseDown={e => e.stopPropagation()}>
         <div className="flex items-start justify-between border-b px-5 py-2">
           <div>
             <h2 className="text-2xl font-semibold text-[#18345C]">Resumen de cuenta</h2>
@@ -527,7 +529,7 @@ function TabResumen({ accountOnly = false, bffAction, reserva, huesped, habitaci
               <h3 className="text-lg font-semibold">Villa Serena Hotel</h3>
               <p>Huehuetenango, Guatemala</p>
               <p>NIT: {HOTEL.nit}</p>
-              <p>Correo: villaserenagt@gmail.com</p>
+              <p>Correo: hotelvillaserena.gt@gmail.com</p>
             </div>
             <div className="text-sm leading-relaxed text-[#18345C] sm:text-right">
               <h3 className="font-serif text-xl font-bold">RESUMEN DE CUENTA</h3>
@@ -561,7 +563,7 @@ function TabResumen({ accountOnly = false, bffAction, reserva, huesped, habitaci
             </div>
           </div>
           {cuentaCheckout.saldo > 0 && <p className="mt-2 rounded-lg border border-[#F6C453] bg-[#FFF9E8] px-4 py-2 text-sm text-[#78450A]">Para finalizar el check-out primero debe registrarse el pago completo en “Cuenta y pagos”.</p>}
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <div data-vs-actions="compact" className="mt-5 flex flex-wrap justify-end gap-2">
             <button onClick={() => window.print()} className="rounded-lg border border-[#18345C] px-4 py-2 text-sm font-semibold text-[#18345C]">Imprimir resumen</button>
             <button disabled title="El envío por correo no está disponible" className="rounded-lg border border-[#E5E0D8] px-4 py-2 text-sm text-[#71839B] disabled:cursor-not-allowed">Enviar por correo</button><p className="w-full text-right text-xs text-[#71839B]">El envío por correo no está disponible.</p>
             {reserva.estado === 'en-curso' && <button
@@ -674,7 +676,7 @@ function TabCuenta(props: Props & {
           </select>
         </Campo>
       </div>
-      <div className="flex gap-2">
+      <div data-vs-actions="compact" className="flex gap-2">
         <button
           onClick={() => {
             setPagando(false);
@@ -759,7 +761,7 @@ function TabServicios({ reserva, onAgregarServicio, onQuitarServicio, cuentaMode
   }
   return <div className="space-y-2">
     {cuentaMode && reserva.cargosAnulados?.map(c => <div key={c.id} className="rounded-lg bg-[#F8F6F0] px-3 py-2 text-sm"><p className="line-through">{c.tipo} · {c.descripcion} · {dinero(c.cantidad * c.precioUnitario)}</p><p>Anulado: {c.motivo} · {formatoFechaHora(c.fechaAnulacion)}</p></div>)}
-    {anularId && <form className="space-y-2 rounded-lg border border-[#E5E0D8] p-3" onSubmit={e => { e.preventDefault(); if (!motivoAnulacion.trim() || cerrada) return; onQuitarServicio(reserva.id, anularId, motivoAnulacion.trim()); setAnularId(null); }}><Campo label="Motivo de anulación"><input aria-label="Motivo de anulación" required maxLength={500} value={motivoAnulacion} onChange={e => setMotivoAnulacion(e.target.value)} className={INPUT_CLS} /></Campo><div className="flex gap-2"><button className="rounded-md bg-[#18345C] px-3 py-2 text-white" disabled={!motivoAnulacion.trim()}>Confirmar anulación</button><button type="button" onClick={() => setAnularId(null)} className="px-3 py-2">Volver</button></div></form>}
+    {anularId && <form data-vs-ui="compact" className="space-y-2 rounded-lg border border-[#E5E0D8] p-3" onSubmit={e => { e.preventDefault(); if (!motivoAnulacion.trim() || cerrada) return; onQuitarServicio(reserva.id, anularId, motivoAnulacion.trim()); setAnularId(null); }}><Campo label="Motivo de anulación"><input aria-label="Motivo de anulación" required maxLength={500} value={motivoAnulacion} onChange={e => setMotivoAnulacion(e.target.value)} className={INPUT_CLS} /></Campo><div data-vs-actions="compact" className="flex gap-2"><button className="rounded-md bg-[#18345C] px-3 py-2 text-white" disabled={!motivoAnulacion.trim()}>Confirmar anulación</button><button type="button" onClick={() => setAnularId(null)} className="px-3 py-2">Volver</button></div></form>}
     {(reserva.actividadPortal?.length ?? 0) > 0 && <section>
       <p className="mb-2 text-[10px] uppercase tracking-widest text-[#AEBCC1]">Actividad realizada por el huésped</p>
       <div className="divide-y divide-[#F0EBE3] rounded-xl border border-[#E5E0D8]">
@@ -823,7 +825,7 @@ function TabServicios({ reserva, onAgregarServicio, onQuitarServicio, cuentaMode
           </div>
         </div>
         {tipo === 'Restaurante' && opcion === 'Desayuno' && <p className="mt-2 text-xs text-[#6B7280]">Si la categoría reservada incluye desayuno, no se cobrará nuevamente.</p>}
-        <div className="mt-2 flex justify-end gap-2 border-t pt-2">
+        <div data-vs-actions="compact" className="mt-2 flex justify-end gap-2 border-t pt-2">
           <button onClick={() => setAgregandoServicio(false)} className="rounded-lg border border-[#E5E0D8] px-4 py-2 text-sm">Cancelar</button>
           <button onClick={agregar} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">Agregar a la cuenta</button>
         </div>
@@ -929,7 +931,7 @@ function TabHuespedes({ reserva, huesped, onAgregarAcompanante, onQuitarAcompana
         {err && <p className="mt-2 text-xs text-[#991B1B]">
           {err}
         </p>}
-        <div className="mt-2 flex justify-end gap-2 border-t pt-2">
+        <div data-vs-actions="compact" className="mt-2 flex justify-end gap-2 border-t pt-2">
           <button onClick={() => setRegistrandoHuesped(false)} className="rounded-lg border border-[#E5E0D8] px-4 py-2 text-sm">Cancelar</button>
           <button onClick={agregar} className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">Agregar a la reserva</button>
         </div>
@@ -1116,7 +1118,7 @@ function SelectorHabitacion({ habitaciones, seleccionadaId, onSeleccionar, titul
   const pisos = useMemo(() => [...new Set(habitaciones.map(h => h.piso))].sort(), [habitaciones]);
   const categorias = useMemo(() => [...new Set(habitaciones.map(h => h.tipo))], [habitaciones]);
   const filtradas = habitaciones.filter(h => (piso === 'todos' || h.piso === Number(piso)) && (categoria === 'todas' || h.tipo === categoria));
-  return <div className="rounded-xl border border-[#E5E0D8] bg-white p-2.5">
+  return <div data-vs-card="recepcion" className="rounded-xl border border-[#E5E0D8] bg-white p-2.5">
     <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
       <div className="min-w-0 flex-1">
         <p className="font-semibold text-[#18345C]">
