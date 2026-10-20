@@ -109,7 +109,7 @@ export default function HabitacionesRecepcion(_props: Props) {
           <section className="space-y-2 border-t border-[#E5E0D8] pt-3"><h3 className="font-semibold">Reservas asignadas</h3>
             {reservationLoading ? <p role="status">Consultando reservas…</p> : reservationError ? <p role="alert">{reservationError}</p> : !reservations.length ? <p>No hay reservas activas asignadas a esta habitación.</p> : reservations.map(reservation => <div key={reservation.codigo} className="rounded-xl border border-[#E5E0D8] p-3">
               <p className="font-semibold">{reservation.huespedPrincipal.nombreCompleto}</p><p>{reservation.codigo} · <span className={statusBadge(reservation.estado)}>{reservationLabels[reservation.estado]}</span></p><p>{formatoFecha(reservation.entrada)} → {formatoFecha(reservation.salida)}</p>
-              <Link href={`/recepcion/reservas/${encodeURIComponent(reservation.codigo)}`} onClick={() => { setSelected(null); _props.onVerReservaBff?.(reservation.codigo); }} className="mt-2 block w-full rounded-lg bg-[#102747] py-2 text-center font-semibold text-white">Ver reserva completa</Link>
+              <Link href={`/recepcion/reservas/${encodeURIComponent(reservation.codigo)}`} onClick={() => { setSelected(null); if(conectado) _props.onVerReservaBff?.(reservation.codigo); }} className="mt-2 block w-full rounded-lg bg-[#102747] py-2 text-center font-semibold text-white">Ver reserva completa</Link>
             </div>)}
           </section>
         </div>
