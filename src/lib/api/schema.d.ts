@@ -1,5 +1,5 @@
 /** Generado desde villa-serena-docs/openapi.yaml. No editar.
- * Contrato SHA-256: b1e4e8ecc10d6db74c170e7bdd12a02bd31b2cc98f8e3b7060d1fee04dd38e37
+ * Contrato SHA-256: 0cf7f1586bc07040a7bb7fcae94b9a2829652dd874ae1079e7ea35e543c30e62
  */
 export interface paths {
     "/api/v1/auth/login": {
@@ -239,12 +239,13 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Iniciar (o retomar) el pago con Stripe
-         * @description HU-HUE-06 · RF-PAG-003, RF-PAG-012. Crea **una** sesión de Stripe
+         * Iniciar (o retomar) el pago con Recurrente
+         * @description HU-HUE-06 · RF-PAG-003, RF-PAG-012. Crea **una** sesión de Recurrente
          *     Checkout por el 100 % del total, o devuelve la misma si sigue abierta.
-         *     El pago queda `PENDIENTE`. Stripe regresa (pagado o cancelado) a
-         *     `{WEB_URL}/reserva/resultado?codigo={codigo}`. El pago se confirma solo
-         *     por el webhook, nunca por la redirección.
+         *     Si la sesión ya figura pagada o payment_in_progress devuelve 409 PAGO_EN_VERIFICACION;
+         *     no crea otra sesión ni se debe repetir la reserva.
+         *     El pago queda `PENDIENTE`. Recurrente regresa (pagado o cancelado) a
+         *     `{WEB_URL}/reserva/resultado?codigo={codigo}`. El pago se verifica en el backend por webhook o conciliación del job de vencimiento, nunca por la redirección.
          */
         post: operations["iniciarPagoReserva"];
         delete?: never;
@@ -261,7 +262,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Estado de la reserva al volver de Stripe
+         * Estado de la reserva al volver de Recurrente
          * @description HU-HUE-06 (criterio 6) · RF-PAG-004. Solo el estado de la reserva y de su
          *     pago (VIS-03); ningún dato personal. Casos de la página: `CONFIRMADA` →
          *     confirmada; `PENDIENTE_PAGO` → pago en proceso o no completado (con
@@ -277,7 +278,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/pagos/stripe/webhook": {
+    "/api/v1/pagos/recurrente/webhook": {
         parameters: {
             query?: never;
             header?: never;
@@ -287,15 +288,18 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Aviso de Stripe (webhook)
-         * @description HU-HUE-06 · RF-PAG-004. Verifica la firma con `STRIPE_WEBHOOK_SECRET` y es
-         *     idempotente por el id del evento. Solo procesa 2 eventos:
-         *     `checkout.session.completed` (pago `APROBADO`; la reserva pasa a
-         *     `CONFIRMADA` y se envía el correo) y `checkout.session.expired` (pago
-         *     `FALLIDO`). Cualquier otro evento se responde 200 y se ignora. El BFF
-         *     bloquea esta ruta; Stripe CLI la llama directo.
+         * Aviso de Recurrente (webhook)
+         * @description Verifica la firma Svix sobre el cuerpo original con RECURRENTE_WEBHOOK_SECRET
+         *     y una tolerancia de cinco minutos. Idempotencia por svix-id. intent.succeeded
+         *     consulta el checkout en Recurrente y confirma únicamente si está pagado.
+         *     checkout.expired solo marca FALLIDO si el proveedor confirma expired.
+         *     Comprueba importe registrado, GTQ e identificador del pago antes de aprobar.
+         *     El job de vencimiento consulta al proveedor antes de cancelar; no libera el cupo
+         *     si el pago sigue en proceso y puede conciliar un pago confirmado por Recurrente.
+         *     Otros eventos válidos se ignoran con 200. El retorno del navegador no aprueba pagos.
+         *     No requiere JWT; sí las tres cabeceras Svix. No se expone a través del BFF.
          */
-        post: operations["recibirWebhookStripe"];
+        post: operations["recibirWebhookRecurrente"];
         delete?: never;
         options?: never;
         head?: never;
@@ -495,8 +499,9 @@ export interface paths {
          * @description HU-REC-05 (criterio 4) · RF-PAG-009. Rol `RECEPCION`. Dice qué pasará con
          *     el dinero, sin cambiar nada: `REEMBOLSO_TOTAL` si faltan 48 horas o más
          *     para las 15:00 del día de llegada (America/Guatemala) y hubo pago con
-         *     Stripe; `SIN_REEMBOLSO` si faltan menos; `SIN_PAGOS` si la reserva no
-         *     tiene pagos. Responde 409 si la reserva no se puede cancelar.
+         *     Recurrente; `SIN_REEMBOLSO` si faltan menos; `SIN_PAGOS` si la reserva no
+         *     tiene pagos. Incluye pagos históricos al calcular la vista previa; no ejecuta reembolsos.
+         *     Responde 409 si la reserva no se puede cancelar.
          */
         get: operations["obtenerVistaPreviaCancelacion"];
         put?: never;
@@ -521,8 +526,10 @@ export interface paths {
          * @description HU-REC-05, HU-CM-02 (criterio 5) · RF-RES-005, RF-PAG-009. Rol
          *     `RECEPCION`. Solo `CONFIRMADA` y nunca de canal externo. Motivo
          *     obligatorio ("No se presentó" para quien no llega). Si corresponde, pide el
-         *     reembolso total a Stripe (pago `REEMBOLSADO`); si Stripe lo rechaza, **no**
-         *     cancela y responde 409 `REEMBOLSO_RECHAZADO`. Al cancelar: reserva
+         *     reembolso total a Recurrente (pago `REEMBOLSADO`); si Recurrente lo rechaza, **no**
+         *     cancela y responde 409 `REEMBOLSO_RECHAZADO`. Si corresponde reembolsar un pago
+         *     histórico STRIPE, responde 409 `PAGO_LEGADO_REQUIERE_CONCILIACION` sin cancelar
+         *     ni enviar ese pago a Recurrente. Al cancelar: reserva
          *     `CANCELADA`, cuenta `CERRADA`, habitación liberada e historial con el
          *     motivo. No se envía correo.
          */
@@ -1020,10 +1027,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Iniciar pago del saldo con Stripe
+         * Iniciar pago del saldo con Recurrente
          * @description HU-HUE-16
          *
-         *     Solo EN_ESTADIA en ventana 00:00–12:00 de salida y sin EN_CAMINO. Saldo positivo completo; si es 0 devuelve 204 sin crear sesión. No acepta monto ni tarjeta. Retorno villaserena://; solo el webhook acredita el pago. No se añade control de sesiones múltiples (limitación V3).
+         *     Solo EN_ESTADIA en ventana 00:00–12:00 de salida y sin EN_CAMINO. Saldo positivo completo; si es 0 devuelve 204 sin crear sesión. No acepta monto ni tarjeta. Retorno a APP_URL_RETORNO con codigo; el retorno no acredita el pago. Reutiliza la sesión abierta. Si está pagada o en proceso devuelve 409 PAGO_EN_VERIFICACION.
          */
         post: operations["iniciarPagoSaldoApp"];
         delete?: never;
@@ -2570,8 +2577,11 @@ export interface components {
         EstadoCargo: "VIGENTE" | "ANULADO";
         /** @enum {string} */
         EstadoPago: "PENDIENTE" | "APROBADO" | "FALLIDO" | "REEMBOLSADO";
-        /** @enum {string} */
-        MetodoPago: "STRIPE" | "CANAL" | "EFECTIVO" | "TARJETA" | "OTRO";
+        /**
+         * @description RECURRENTE para pagos en línea nuevos; STRIPE solo para pagos históricos, sin reinterpretarlos.
+         * @enum {string}
+         */
+        MetodoPago: "RECURRENTE" | "STRIPE" | "CANAL" | "EFECTIVO" | "TARJETA" | "OTRO";
         /**
          * @description Canal de origen de la reserva; se asigna al crearla y no se edita.
          * @enum {string}
@@ -2789,35 +2799,48 @@ export interface components {
         PagoIniciado: {
             /**
              * Format: uri
-             * @description Página de Stripe Checkout.
+             * @description URL alojada devuelta por Recurrente; el API la publica como urlPago, no checkout_url.
              */
             urlPago: string;
-            expiraEn: components["schemas"]["FechaHora"];
+            /** @description Vencimiento ISO 8601. En pago de saldo puede ser null si el proveedor no lo informa. */
+            expiraEn: components["schemas"]["FechaHora"] | null;
         };
         /** @description Solo el estado; sin datos personales (VIS-03). */
         EstadoReservaPublico: {
             codigo: components["schemas"]["CodigoReserva"];
             estadoReserva: components["schemas"]["EstadoReserva"];
-            /** @description Estado del pago en línea de la reserva; null si aún no se inició. */
+            /** @description Estado del último pago RECURRENTE; null si no existe un pago de ese método. No reinterpreta pagos STRIPE históricos. */
             estadoPago: components["schemas"]["EstadoPago"] | null;
-            /** @description Verdadero mientras la reserva siga PENDIENTE_PAGO. */
+            /** @description Verdadero mientras la reserva siga PENDIENTE_PAGO; iniciar pago aún puede devolver 409 PAGO_EN_VERIFICACION. */
             puedeReintentar: boolean;
         };
-        /** @description Evento de Stripe tal como lo envía Stripe (solo se listan los campos usados). */
-        EventoStripe: {
-            id: string;
+        /**
+         * @description Cuerpo original firmado por Svix. Se usa event_type; si falta o es null,
+         *     se admite type como alternativa. El id del cuerpo no identifica el envío:
+         *     la idempotencia usa svix-id. Solo intent.succeeded y checkout.expired
+         *     requieren checkout.id; otros tipos no vacíos se ignoran con 200.
+         *     El estado y el importe del cuerpo no acreditan un pago: se consulta Recurrente.
+         */
+        EventoRecurrente: ({
             /**
-             * @example checkout.session.completed
-             * @example checkout.session.expired
+             * @example intent.succeeded
+             * @example checkout.expired
              */
-            type: string;
-            data: {
-                object: {
-                    [key: string]: unknown;
-                };
+            event_type?: string | null;
+            /** @description Tipo alternativo únicamente si event_type falta o es null. */
+            type?: string | null;
+            checkout?: {
+                id?: string;
+            } & {
+                [key: string]: unknown;
             };
         } & {
             [key: string]: unknown;
+        }) | {
+            event_type: string;
+        } | {
+            event_type?: null;
+            type: string;
         };
         ReservaCanalPeticion: {
             /** @description Identificador de la reserva en el canal; único por canal. */
@@ -2957,7 +2980,7 @@ export interface components {
         VistaPreviaCancelacion: {
             /** @enum {string} */
             resultado: "REEMBOLSO_TOTAL" | "SIN_REEMBOLSO" | "SIN_PAGOS";
-            /** @description Monto que se reembolsaría por Stripe; 0.00 si no hay reembolso. */
+            /** @description Monto que se reembolsaría por Recurrente; 0.00 si no hay reembolso. */
             montoReembolso: components["schemas"]["Monto"];
         };
         CancelarReservaPeticion: {
@@ -3666,7 +3689,7 @@ export interface components {
          * @example {
          *       "id": 1,
          *       "fechaHora": "2026-10-08T15:40:00.000Z",
-         *       "metodo": "STRIPE",
+         *       "metodo": "RECURRENTE",
          *       "monto": 50,
          *       "estado": "APROBADO"
          *     }
@@ -3682,11 +3705,11 @@ export interface components {
          * @example {
          *       "id": 1,
          *       "fechaHora": "2026-10-08T15:40:00.000Z",
-         *       "metodo": "STRIPE",
+         *       "metodo": "RECURRENTE",
          *       "monto": 50,
          *       "estado": "APROBADO",
          *       "referencia": "Pago de prueba",
-         *       "responsable": "STRIPE"
+         *       "responsable": "RECURRENTE"
          *     }
          */
         PagoCuentaRecepcion: {
@@ -3699,7 +3722,7 @@ export interface components {
             responsable: string;
         };
         /**
-         * @description Consulta en cualquier estado. Saldo=cargos VIGENTE−pagos APROBADO, puede ser negativo. No muestra referencias internas de Stripe ni responsables de pagos.
+         * @description Consulta en cualquier estado. Saldo=cargos VIGENTE−pagos APROBADO, puede ser negativo. No muestra referencias internas de la pasarela ni responsables de pagos.
          * @example {
          *       "codigoReserva": "VS-ABC123",
          *       "estadoReserva": "EN_ESTADIA",
@@ -3745,7 +3768,7 @@ export interface components {
          *         {
          *           "id": 1,
          *           "fechaHora": "2026-10-08T15:40:00.000Z",
-         *           "metodo": "STRIPE",
+         *           "metodo": "RECURRENTE",
          *           "monto": 50,
          *           "estado": "APROBADO"
          *         }
@@ -3813,16 +3836,16 @@ export interface components {
          *           "monto": 1800,
          *           "estado": "APROBADO",
          *           "referencia": "Pago de prueba",
-         *           "responsable": "STRIPE"
+         *           "responsable": "RECURRENTE"
          *         },
          *         {
          *           "id": 1,
          *           "fechaHora": "2026-10-08T15:40:00.000Z",
-         *           "metodo": "STRIPE",
+         *           "metodo": "RECURRENTE",
          *           "monto": 50,
          *           "estado": "APROBADO",
          *           "referencia": "Pago de prueba",
-         *           "responsable": "STRIPE"
+         *           "responsable": "RECURRENTE"
          *         }
          *       ]
          *     }
@@ -3969,7 +3992,7 @@ export interface components {
         };
         /**
          * @example {
-         *       "metodo": "STRIPE",
+         *       "metodo": "RECURRENTE",
          *       "monto": 50
          *     }
          */
@@ -4019,7 +4042,7 @@ export interface components {
          *           "monto": 1800
          *         },
          *         {
-         *           "metodo": "STRIPE",
+         *           "metodo": "RECURRENTE",
          *           "monto": 50
          *         }
          *       ],
@@ -4092,7 +4115,7 @@ export interface components {
          *             "monto": 1800
          *           },
          *           {
-         *             "metodo": "STRIPE",
+         *             "metodo": "RECURRENTE",
          *             "monto": 50
          *           }
          *         ],
@@ -5796,7 +5819,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Enlace de la página de pago de Stripe. */
+            /** @description Enlace de la página de pago de Recurrente. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5804,7 +5827,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "urlPago": "https://checkout.stripe.com/c/pay/cs_test_a1B2c3D4",
+                     *       "urlPago": "https://app.recurrente.com/checkout-session/ch_a1B2c3D4",
                      *       "expiraEn": "2026-10-02T15:00:00-06:00"
                      *     }
                      */
@@ -5859,7 +5882,7 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    recibirWebhookStripe: {
+    recibirWebhookRecurrente: {
         parameters: {
             query?: never;
             header?: never;
@@ -5870,20 +5893,17 @@ export interface operations {
             content: {
                 /**
                  * @example {
-                 *       "id": "evt_1Q2w3E4r5T6y7U8i",
-                 *       "type": "checkout.session.completed",
-                 *       "data": {
-                 *         "object": {
-                 *           "id": "cs_test_a1B2c3D4",
-                 *           "payment_status": "paid",
-                 *           "metadata": {
-                 *             "codigoReserva": "VS-7K2M9Q"
-                 *           }
-                 *         }
+                 *       "id": "in_ejemplo",
+                 *       "type": "payment",
+                 *       "event_type": "intent.succeeded",
+                 *       "status": "succeeded",
+                 *       "checkout": {
+                 *         "id": "ch_ejemplo",
+                 *         "status": "paid"
                  *       }
                  *     }
                  */
-                "application/json": components["schemas"]["EventoStripe"];
+                "application/json": components["schemas"]["EventoRecurrente"];
             };
         };
         responses: {
@@ -5894,7 +5914,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Firma inválida o cuerpo ilegible. */
+            /** @description FIRMA_INVALIDA (cabeceras, firma o timestamp inválidos) o EVENTO_INVALIDO (cuerpo inválido). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -5903,10 +5923,28 @@ export interface operations {
                     /**
                      * @example {
                      *       "codigo": "FIRMA_INVALIDA",
-                     *       "mensaje": "La firma del aviso de Stripe no es válida.",
+                     *       "mensaje": "La firma del aviso de Recurrente no es válida.",
                      *       "detalles": []
                      *     }
                      */
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PAGO_NO_COINCIDE; importe o moneda no coinciden con el pago registrado. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description ERROR_PASARELA; no se pudo consultar/conciliar el checkout. No se aprueba el pago. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["Error"];
                 };
             };
@@ -6778,7 +6816,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description La reserva no se puede cancelar o Stripe rechazó el reembolso. */
+            /** @description La reserva no se puede cancelar o Recurrente rechazó el reembolso. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -7879,7 +7917,7 @@ export interface operations {
                      *         {
                      *           "id": 1,
                      *           "fechaHora": "2026-10-08T15:40:00.000Z",
-                     *           "metodo": "STRIPE",
+                     *           "metodo": "RECURRENTE",
                      *           "monto": 50,
                      *           "estado": "APROBADO"
                      *         }
@@ -8012,7 +8050,7 @@ export interface operations {
                      *             "monto": 1800
                      *           },
                      *           {
-                     *             "metodo": "STRIPE",
+                     *             "metodo": "RECURRENTE",
                      *             "monto": 50
                      *           }
                      *         ],
@@ -8044,7 +8082,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Iniciar pago del saldo con Stripe. */
+            /** @description Iniciar pago del saldo con Recurrente. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -8052,7 +8090,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "urlPago": "http://localhost:9000/publico/foto-demo.jpg",
+                     *       "urlPago": "https://app.recurrente.com/checkout-session/ch_saldo_ejemplo",
                      *       "expiraEn": "2026-10-02T20:30:00.000Z"
                      *     }
                      */
@@ -8132,7 +8170,7 @@ export interface operations {
                      *           "monto": 1800
                      *         },
                      *         {
-                     *           "metodo": "STRIPE",
+                     *           "metodo": "RECURRENTE",
                      *           "monto": 50
                      *         }
                      *       ],
@@ -9246,16 +9284,16 @@ export interface operations {
                      *           "monto": 1800,
                      *           "estado": "APROBADO",
                      *           "referencia": "Pago de prueba",
-                     *           "responsable": "STRIPE"
+                     *           "responsable": "RECURRENTE"
                      *         },
                      *         {
                      *           "id": 1,
                      *           "fechaHora": "2026-10-08T15:40:00.000Z",
-                     *           "metodo": "STRIPE",
+                     *           "metodo": "RECURRENTE",
                      *           "monto": 50,
                      *           "estado": "APROBADO",
                      *           "referencia": "Pago de prueba",
-                     *           "responsable": "STRIPE"
+                     *           "responsable": "RECURRENTE"
                      *         }
                      *       ]
                      *     }
@@ -9497,7 +9535,7 @@ export interface operations {
                      *             "monto": 1800
                      *           },
                      *           {
-                     *             "metodo": "STRIPE",
+                     *             "metodo": "RECURRENTE",
                      *             "monto": 50
                      *           }
                      *         ],
@@ -9576,7 +9614,7 @@ export interface operations {
                      *           "monto": 1800
                      *         },
                      *         {
-                     *           "metodo": "STRIPE",
+                     *           "metodo": "RECURRENTE",
                      *           "monto": 50
                      *         }
                      *       ],

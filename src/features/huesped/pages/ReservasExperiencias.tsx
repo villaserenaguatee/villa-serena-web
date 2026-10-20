@@ -369,7 +369,7 @@ export default function ReservasExperiencias({ connected=false,reserva, huespedI
         </span>
       </button>
 
-      {mis && (<section className="rounded-xl border border-[#E5E0D8] bg-white p-4">
+      {mis && (<section data-vs-card="huesped" className="rounded-xl border border-[#E5E0D8] bg-white p-4">
 
         <h2 className="text-lg font-semibold text-[#18345C]">
           {ui("Mis reservas")}
@@ -443,7 +443,7 @@ export default function ReservasExperiencias({ connected=false,reserva, huespedI
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
 
-        {lista.map((o) => (<article key={o.id} className="flex flex-col rounded-xl border border-[#E5E0D8] bg-white p-4 shadow-sm">
+        {lista.map((o) => (<article data-vs-card="huesped" key={o.id} className="flex flex-col rounded-xl border border-[#E5E0D8] bg-white p-4 shadow-sm">
 
           <span className="text-xs font-semibold uppercase tracking-wide text-[#9A7A22]">
             {ui(o.categoria)}
@@ -645,7 +645,7 @@ function Horario({ titulo, lv, sd, }: {
   lv: string;
   sd: string;
 }) {
-  return (<div className="rounded-xl border border-[#E5E0D8] bg-white px-4 py-3 shadow-sm">
+  return (<div data-vs-card="huesped" className="rounded-xl border border-[#E5E0D8] bg-white px-4 py-3 shadow-sm">
 
     <b className="block text-[#B38719]">
       {titulo}

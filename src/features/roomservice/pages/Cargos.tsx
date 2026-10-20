@@ -39,8 +39,8 @@ export default function Cargos({ pedidos, onAbrirDetalle }: Props) {
   const anulados = pedidos.filter(p => p.estado === 'cancelado').length;
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
 
-    <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
-      <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Cargos a habitaciones</h1>
+    <div data-vs-page-header="roomservice" className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
+      <h1 data-vs-page-title="roomservice" className="text-[32px] font-semibold text-[#18345C] leading-tight">Cargos a habitaciones</h1>
       <p className="text-[15px] text-[#AEBCC1] mt-1">
         {folios.length} habitación(es) con consumo · total {precio(totalGeneral)}
         {anulados > 0 && <> · {anulados} pedido(s) anulado(s) sin cargo</>}
@@ -50,9 +50,9 @@ export default function Cargos({ pedidos, onAbrirDetalle }: Props) {
     </div>
 
     <div className="px-4 sm:px-6 py-5 space-y-4">
-      {folios.length === 0 ? (<div className="bg-white border border-[#E5E0D8] rounded-xl p-6 text-center">
+      {folios.length === 0 ? (<div data-vs-card="roomservice" className="bg-white border border-[#E5E0D8] rounded-xl p-6 text-center">
         <p className="text-[15px] text-[#AEBCC1]">Todavía no hay cargos de Room Service.</p>
-      </div>) : (folios.map(f => (<div key={f.habitacionNumero} className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden">
+      </div>) : (folios.map(f => (<div data-vs-card="roomservice" key={f.habitacionNumero} className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3 bg-[#F8F6F0] border-b border-[#E5E0D8]">
           <div className="flex items-center gap-3">
             {fotoHabitacion(f.habitacionNumero) ? (<img

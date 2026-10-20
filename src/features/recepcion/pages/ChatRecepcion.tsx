@@ -100,6 +100,8 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
     setTexto('');
   }
   async function editar(id: string) {
+    const message = leerMensajesChat([]).find(m => m.id === id);
+    if (!actual || !message || message.autor !== 'recepcion' || message.huespedId !== actual.id || message.eliminadoParaTodos) return;
     if (!editandoTexto.trim())
       return;
     const valor = editandoTexto.trim();
@@ -113,20 +115,21 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
   }
   function eliminar(id: string,
     todos: boolean) {
-    const mensaje = leerMensajesChat([]).find(m => m.id === id);
-    if (!mensaje || mensaje.autor === 'recepcion')
+    const current = leerMensajesChat([]);
+    const mensaje = current.find(m => m.id === id);
+    if (!actual || !mensaje || mensaje.autor !== 'recepcion' || mensaje.huespedId !== actual.id || mensaje.eliminadoParaTodos)
       return;
-    const next = actualizarMensajeChat(mensajes, id, m => todos ? { ...m, eliminadoParaTodos: true } : { ...m, eliminadoPara: [...(m.eliminadoPara || []), 'recepcion'] });
+    const next = actualizarMensajeChat(current, id, m => todos ? { ...m, eliminadoParaTodos: true } : { ...m, eliminadoPara: Array.from(new Set([...(m.eliminadoPara || []), 'recepcion'])) });
     setMensajes(next);
     setEliminarId(null);
   }
   return <div
     className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-[#F8F6F0]"
     style={{ fontFamily: '"Afacad","Segoe UI",Arial,sans-serif' }}>
-    <section className="mx-auto my-2 flex min-h-0 w-[calc(100%-24px)] max-w-[1180px] flex-1 flex-col overflow-hidden rounded-2xl border border-[#E5E0D8] bg-white shadow-sm md:flex-row">
-      <aside className="flex max-h-[300px] w-full shrink-0 min-h-0 flex-col border-b border-[#E5E0D8] bg-white md:max-h-none md:w-[300px] md:border-b-0 md:border-r">
+    <section data-vs-card="recepcion"    className="mx-auto my-2 flex min-h-0 w-[calc(100%-24px)] max-w-[1180px] flex-1 flex-col overflow-hidden rounded-2xl border border-[#E5E0D8] bg-white shadow-sm md:flex-row">
+      <aside   className="flex max-h-[300px] w-full shrink-0 min-h-0 flex-col border-b border-[#E5E0D8] bg-white md:max-h-none md:w-[300px] md:border-b-0 md:border-r">
         <div className="shrink-0 border-b border-[#E5E0D8] p-3">
-          <h1 className="text-2xl font-semibold text-[#18345C]">Mensajes</h1>
+          <h1 data-vs-page-title="recepcion" className="text-2xl font-semibold text-[#18345C]">Mensajes</h1>
           <p className="text-sm text-[#71839B]">Chat con huéspedes</p>
           <label className="mt-2 flex items-center gap-2 rounded-xl bg-[#F4F3EF] px-3 py-2">
             <span>⌕</span>
@@ -202,7 +205,7 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
                       rows={2}
                       autoFocus
                       className="w-full rounded-lg border bg-white p-2 text-[#18345C]" />
-                    <div className="mt-2 flex justify-end gap-2">
+                    <div data-vs-actions="compact" className="mt-2 flex justify-end gap-2">
                       <button onClick={() => setEditandoId(null)} className="rounded-md border px-3 py-1 text-xs">Cancelar</button>
                       <button onClick={() => editar(m.id)} className="rounded-md bg-[#18345C] px-3 py-1 text-xs font-semibold text-white">Guardar</button>
                     </div>
@@ -213,9 +216,10 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
                       {rec ? '✓✓' : ''}
                     </div></>}
                   {!m.eliminadoParaTodos && <button
+                    aria-label="Opciones del mensaje"
                     onClick={() => setMenuId(menuId === m.id ? null : m.id)}
                     className={`absolute -right-2 -top-3 rounded-full border bg-white px-2 py-0.5 text-[#52677F] shadow-sm ${menuId === m.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>⋯</button>}
-                  {menuId === m.id && !m.eliminadoParaTodos && <div className="absolute right-0 top-7 z-20 w-40 overflow-hidden rounded-xl border bg-white text-sm text-[#18345C] shadow-xl">
+                  {menuId === m.id && !m.eliminadoParaTodos && <div data-vs-card="recepcion" className="absolute right-0 top-7 z-20 w-40 overflow-hidden rounded-xl border bg-white text-sm text-[#18345C] shadow-xl">
                     <button
                       disabled={!rec}
                       onClick={() => {
@@ -224,7 +228,7 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
                         setMenuId(null);
                       }}
                       className="block w-full px-4 py-2.5 text-left hover:bg-[#F8F6F0] disabled:opacity-40">Editar</button>
-                    {!rec && <button onClick={() => {
+                    {rec && <button onClick={() => {
                       setEliminarId(m.id);
                       setMenuId(null);
                     }} className="block w-full px-4 py-2.5 text-left text-red-600 hover:bg-red-50">Eliminar</button>}
@@ -260,7 +264,7 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
       </main>
     </section>
     {chatMenu && <div className="fixed inset-0 z-[120]" onClick={() => setChatMenu(null)} onContextMenu={e => { e.preventDefault(); setChatMenu(null); }}>
-      <div role="menu" aria-label="Opciones de conversación" style={{ left: Math.max(8, Math.min(chatMenu.x, window.innerWidth - 232)), top: Math.max(8, Math.min(chatMenu.y, window.innerHeight - 200)) }} className="absolute w-56 overflow-hidden rounded-xl border border-[#E5E0D8] bg-white py-1 text-sm text-[#18345C] shadow-xl" onClick={e => e.stopPropagation()}>
+      <div data-vs-card="recepcion" role="menu" aria-label="Opciones de conversación" style={{ left: Math.max(8, Math.min(chatMenu.x, window.innerWidth - 232)), top: Math.max(8, Math.min(chatMenu.y, window.innerHeight - 200)) }} className="absolute w-56 overflow-hidden rounded-xl border border-[#E5E0D8] bg-white py-1 text-sm text-[#18345C] shadow-xl" onClick={e => e.stopPropagation()}>
         <button autoFocus role="menuitem" className="block w-full px-4 py-2 text-left hover:bg-[#F8F6F0]" onClick={() => cambiarPreferencia('archivados', chatMenu.id)}>{archivados.includes(chatMenu.id) ? 'Desarchivar chat' : 'Archivar chat'}</button>
         <button role="menuitem" className="block w-full px-4 py-2 text-left hover:bg-[#F8F6F0]" onClick={() => cambiarPreferencia('favoritos', chatMenu.id)}>{favoritos.includes(chatMenu.id) ? 'Quitar de favoritos' : 'Añadir a favoritos'}</button>
         <button role="menuitem" className="block w-full px-4 py-2 text-left hover:bg-[#F8F6F0]" onClick={() => cambiarPreferencia('fijados', chatMenu.id)}>{fijados.includes(chatMenu.id) ? 'Desfijar chat' : 'Fijar chat'}</button>
@@ -268,16 +272,16 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
       </div>
     </div>}
     {eliminarChat && <div className="fixed inset-0 z-[130] grid place-items-center bg-black/35 p-4">
-      <section role="alertdialog" aria-modal="true" aria-labelledby="eliminar-chat-titulo" aria-describedby="eliminar-chat-descripcion" className="w-full max-w-[420px] rounded-2xl bg-white p-5 shadow-2xl">
+      <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="small" role="alertdialog" aria-modal="true" aria-labelledby="eliminar-chat-titulo" aria-describedby="eliminar-chat-descripcion" className="w-full max-w-[420px] rounded-2xl bg-white p-5 shadow-2xl">
         <h3 id="eliminar-chat-titulo" className="text-xl font-semibold text-[#18345C]">¿Eliminar conversación?</h3>
         <p id="eliminar-chat-descripcion" className="mt-2 text-sm text-[#52677F]">Se eliminarán los mensajes guardados en este navegador. El huésped y su reserva se conservarán.</p>
-        <div className="mt-4 flex justify-end gap-2"><button autoFocus onClick={() => setEliminarChat(null)} className="rounded-lg border border-[#E5E0D8] px-4 py-2 text-sm text-[#18345C]">Cancelar</button><button onClick={() => borrarConversacion(eliminarChat)} className="rounded-lg bg-[#B32D2D] px-4 py-2 text-sm font-semibold text-white">Eliminar conversación</button></div>
+        <div data-vs-actions="compact" className="mt-4 flex justify-end gap-2"><button autoFocus onClick={() => setEliminarChat(null)} className="rounded-lg border border-[#E5E0D8] px-4 py-2 text-sm text-[#18345C]">Cancelar</button><button onClick={() => borrarConversacion(eliminarChat)} className="rounded-lg bg-[#B32D2D] px-4 py-2 text-sm font-semibold text-white">Eliminar conversación</button></div>
       </section>
     </div>}
     {eliminarId && <div className="fixed inset-0 z-[130] grid place-items-center bg-black/35 p-4">
       <section className="w-full max-w-[420px] rounded-2xl bg-white p-5 shadow-2xl">
         <h3 className="text-xl font-semibold text-[#18345C]">¿Eliminar este mensaje?</h3>
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <div data-vs-actions="compact" className="mt-5 flex flex-wrap justify-end gap-2">
           <button onClick={() => eliminar(eliminarId, false)} className="rounded-lg border px-4 py-2 text-sm font-semibold text-[#18345C]">Eliminar para mí</button>
           <button onClick={() => eliminar(eliminarId, true)} className="rounded-lg bg-[#B32D2D] px-4 py-2 text-sm font-semibold text-white">Eliminar para todos</button>
           <button onClick={() => setEliminarId(null)} className="rounded-lg border border-[#18345C] px-4 py-2 text-sm font-semibold text-[#18345C]">Cancelar</button>

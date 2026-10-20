@@ -36,3 +36,10 @@ test('OTP: respuesta genérica, vencimiento, uso único, bloqueo y renovación p
     assert.equal((await guestRoute(new NextRequest(`${base}/api/app/reservas`, { headers: { Cookie: cookie } }), ['reservas'])).status, 401, 'Refresh anterior revocado');
   } finally { Date.now = realNow; }
 });
+
+test('connected OTP request preserves API throttling without sending mail',async()=>{
+ const original=globalThis.fetch,mode=process.env.GUEST_AUTH_MODE,url=process.env.API_URL;
+ try{process.env.GUEST_AUTH_MODE='spring';process.env.API_URL='https://api.example.test';globalThis.fetch=async()=>new Response(JSON.stringify({codigo:'LIMITE_SOLICITUDES',mensaje:'Demasiadas solicitudes.'}),{status:429,headers:{'Retry-After':'900'}});
+ const response=await post('acceso/solicitar-codigo',{correo:'unknown@example.test'});assert.equal(response.status,429);assert.equal(response.headers.get('Retry-After'),'900');
+ }finally{globalThis.fetch=original;if(mode===undefined)delete process.env.GUEST_AUTH_MODE;else process.env.GUEST_AUTH_MODE=mode;if(url===undefined)delete process.env.API_URL;else process.env.API_URL=url;}
+});

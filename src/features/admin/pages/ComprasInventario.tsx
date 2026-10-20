@@ -337,7 +337,7 @@ function FormCompra({ insumos, onCancel, onSave }: {
     <FormOperationFeedback/>{error && <p className="mt-3 text-sm text-red-700">
       {error}
     </p>}
-    <div className="mt-4 flex flex-wrap justify-end gap-2">
+    <div data-vs-actions="compact" className="mt-4 flex flex-wrap justify-end gap-2">
       <button onClick={onCancel} className="min-h-11 rounded-md border px-4 py-2 text-sm">Cancelar</button>
       <button onClick={guardar} className="min-h-11 rounded-md bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">Guardar compra</button>
     </div>
@@ -361,7 +361,7 @@ function Modal({ children, onClose }: {
   return <div
     onMouseDown={e => e.target === e.currentTarget && onClose()}
     className="fixed inset-0 z-50 flex items-end justify-center bg-[#071D34]/50 sm:items-center sm:p-4">
-    <section className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:max-w-xl sm:rounded-2xl sm:p-4">
+    <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:max-w-xl sm:rounded-2xl sm:p-4">
       <button onClick={onClose} className="absolute right-5 top-4 text-2xl text-[#71839B]">×</button>
       {children}
     </section>

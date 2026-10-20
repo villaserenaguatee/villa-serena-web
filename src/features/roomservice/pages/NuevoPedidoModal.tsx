@@ -79,6 +79,7 @@ function configPersonalizacion(item: ItemMenu): PersonalizacionCfg | null {
   return item.subcategoria ? { ingredientes: [], extras: [] } : null;
 }
 export default function NuevoPedidoModal({ menu, onCerrar, onGuardar }: Props) {
+  const [personalizaciones,setPersonalizaciones]=useState<Record<string,{unitario:number;eleccion:string;sinIngredientes:string[];extras:Record<string,number>;nota:string}>>({});
   const [piso, setPiso] = useState('1'),
     [habitacion, setHabitacion] = useState(''),
     [categoria, setCategoria] = useState('Desayuno'),
@@ -101,7 +102,7 @@ export default function NuevoPedidoModal({ menu, onCerrar, onGuardar }: Props) {
     number
   ][]).filter(([, q]) => q > 0).map(([id, q]) => {
     const i = menu.find(x => x.id === id)!;
-    return { itemId: id, nombre: i.nombre, precioUnitario: i.precio, cantidad: q, nota: notasLinea[id] || undefined };
+    return { itemId: id, nombre: i.nombre, precioUnitario: personalizaciones[id]?.unitario ?? i.precio, cantidad: q, nota: notasLinea[id] || undefined };
   });
   const total = totalLineas(lineas), count = lineas.reduce((a, b) => a + b.cantidad, 0);
   const habitaciones = leerHabitaciones();
@@ -124,7 +125,7 @@ export default function NuevoPedidoModal({ menu, onCerrar, onGuardar }: Props) {
   };
   return <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
     <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
-    <div className="relative z-10 bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="wide" className="relative z-10 bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden">
       <header className="px-5 py-3 border-b flex items-center justify-between shrink-0">
         <div>
           <div className="flex items-center gap-2 text-[#18345C]">
@@ -138,9 +139,9 @@ export default function NuevoPedidoModal({ menu, onCerrar, onGuardar }: Props) {
         </button>
       </header>
       <div className="p-4 overflow-y-auto flex-1">
-        <div className="grid lg:grid-cols-[1fr_300px] gap-4">
-          <section>
-            <div className="grid sm:grid-cols-[190px_250px_1fr] gap-3 mb-4">
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_260px] gap-4">
+          <section className="min-w-0">
+            <div className="grid sm:grid-cols-[90px_140px_minmax(0,1fr)] gap-3 mb-4">
               <label className="text-[10px] uppercase tracking-widest text-[#9AAAB8]">Piso<select
                 value={piso}
                 onChange={e => {
@@ -167,7 +168,7 @@ export default function NuevoPedidoModal({ menu, onCerrar, onGuardar }: Props) {
               </div></label>
             </div>
             <h3 className="text-lg font-semibold text-[#18345C] mb-3">Selecciona los platillos</h3>
-            <div className="flex gap-2 overflow-x-auto pb-2">
+            <div className="flex flex-wrap gap-2 pb-3">
               {CATS.map(c => <button
                 key={c}
                 onClick={() => {
@@ -178,7 +179,7 @@ export default function NuevoPedidoModal({ menu, onCerrar, onGuardar }: Props) {
                 {c}
               </button>)}
             </div>
-            {subcategorias.length > 1 && <div className="flex gap-2 overflow-x-auto pb-3">
+            {subcategorias.length > 1 && <div className="flex flex-wrap gap-2 pb-3">
               {subcategorias.map(sc => <button
                 key={sc}
                 onClick={() => setSubcategoria(sc)}
@@ -200,15 +201,15 @@ export default function NuevoPedidoModal({ menu, onCerrar, onGuardar }: Props) {
                     {precio(i.precio)}
                   </strong>
                 </div>
-                <div className="px-3 pb-3 flex items-center justify-between gap-2">
+                <div className="px-3 pb-3 flex flex-wrap items-center justify-between gap-2">
                   <button
                     onClick={() => {
                       setProducto(i);
                       setCantidad(Math.max(1, sel[i.id] || 1));
-                      setEleccion('');
-                      setSinIngredientes([]);
-                      setExtras({});
-                      setNotaProducto(notasLinea[i.id] || '');
+                      setEleccion(personalizaciones[i.id]?.eleccion ?? '');
+                      setSinIngredientes(personalizaciones[i.id]?.sinIngredientes ?? []);
+                      setExtras(personalizaciones[i.id]?.extras ?? {});
+                      setNotaProducto(personalizaciones[i.id]?.nota ?? '');
                     }}
                     className="px-3 py-2 rounded-lg bg-[#18345C] text-white text-xs font-semibold">Personalizar</button>
                   <div className="flex items-center border rounded-lg shrink-0">
@@ -223,7 +224,7 @@ export default function NuevoPedidoModal({ menu, onCerrar, onGuardar }: Props) {
             </div>
             {!items.length && <p className="p-6 text-[#6B7280]">No hay productos disponibles en esta categoría.</p>}
           </section>
-          <aside className="space-y-4">
+          <aside className="min-w-0 space-y-4 lg:sticky lg:top-0 lg:self-start lg:max-h-[65dvh] lg:overflow-y-auto">
             <div className="border rounded-xl bg-[#FAF8F3] p-4">
               <h3 className="text-xl font-semibold text-[#18345C]">Pedido actual</h3>
               <p className="text-sm text-[#7B8796] mt-1">{count} ítem(s)</p>
@@ -261,7 +262,7 @@ export default function NuevoPedidoModal({ menu, onCerrar, onGuardar }: Props) {
         const extraTotal = Object.entries(extras).reduce((a, [n, q]) => a + (cfg?.extras?.find(e => e.nombre === n)?.precio || 0) * q, 0);
         const totalProducto = (producto.precio + extraTotal) * cantidad;
         return <div className="absolute inset-0 z-30 bg-black/35 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl shadow-2xl">
+          <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="bg-white w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl shadow-2xl">
             <div className="p-5 border-b flex justify-between gap-4">
               <div>
                 <p className="text-[11px] uppercase tracking-widest text-[#B88A18]">
@@ -335,6 +336,7 @@ export default function NuevoPedidoModal({ menu, onCerrar, onGuardar }: Props) {
                     Object.entries(extras).filter(([, q]) => q > 0).map(([n, q]) => `${q}× ${n}`).join(', '),
                     notaProducto.trim()].filter(Boolean).join(' · ');
                     setSel(a => ({ ...a, [producto.id]: cantidad }));
+                    setPersonalizaciones(a=>({...a,[producto.id]:{unitario:producto.precio+extraTotal,eleccion,sinIngredientes,extras,nota:notaProducto}}));
                     setNotasLinea(a => ({ ...a, [producto.id]: detalles }));
                     setProducto(null);
                   }}
@@ -344,7 +346,7 @@ export default function NuevoPedidoModal({ menu, onCerrar, onGuardar }: Props) {
           </div>
         </div>;
       })()}
-      <footer className="px-4 py-3 border-t flex justify-end gap-2 shrink-0">
+      <footer data-vs-actions="compact" className="px-4 py-3 border-t flex justify-end gap-2 shrink-0">
         <button onClick={onCerrar} className="min-h-11 px-4 py-2 border border-[#18345C] rounded-lg text-[#18345C]">Cancelar</button>
         <button onClick={guardar} className="min-h-11 px-4 py-2 bg-[#18345C] text-white rounded-lg font-semibold">Guardar pedido</button>
       </footer>

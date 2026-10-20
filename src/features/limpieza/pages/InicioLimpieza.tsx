@@ -141,20 +141,24 @@ export default function Inicio({
       `}
     </style>
 
-    <div className="bg-[#18345C] px-4 sm:px-8 py-5 sm:py-6">
+    <div data-vs-page-header="limpieza" className="bg-[#18345C] px-4 sm:px-8 py-5 sm:py-6">
       <div className="flex items-start justify-between gap-3 flex-wrap mb-5">
         <div>
           <p className="text-[#AEBCC1] text-[10px] tracking-widest uppercase mb-1">
             {fechaHoy()}
           </p>
 
-          <h1 className="text-white text-[32px] font-semibold leading-tight">
+          <h1 data-vs-page-title="limpieza" className="text-white text-[32px] font-semibold leading-tight">
             Panel de limpieza
           </h1>
         </div>
 
       </div>
-
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div data-vs-metric="limpieza"><p>{conectado ? habitacionesConectadas.length : misHabitaciones.length}</p><p>Habitaciones de la vista</p></div>
+        <div data-vs-metric="limpieza"><p>{conectado ? habitacionesConectadas.filter(h=>h.condicion==='EN_LIMPIEZA').length : enLimpieza}</p><p>En limpieza</p></div>
+        <div data-vs-metric="limpieza" className="col-span-2 sm:col-span-1"><p>{conectado ? solicitudesConectadas.length : misSolicitudes.length}</p><p>Solicitudes de la vista</p></div>
+      </div>
     </div>
 
     <div className="px-4 sm:px-8 py-5 sm:py-7 space-y-8">
@@ -172,7 +176,7 @@ export default function Inicio({
                 const enCurso = h.condicion === 'EN_LIMPIEZA';
                 const aCargo = estaACargo ? estaACargo(h.empleadoACargo) : false;
                 return (
-                  <div key={h.habitacion.id} className="bg-white border border-[#E5E0D8] rounded-xl p-4 relative overflow-hidden shadow-sm">
+                  <div data-vs-card="limpieza" key={h.habitacion.id} className="bg-white border border-[#E5E0D8] rounded-xl p-4 relative overflow-hidden shadow-sm">
                     {prioritaria && <div className="absolute top-0 left-0 w-1 h-full bg-[#D8B94E]" />}
                     <div className={prioritaria ? "pl-3" : ""}>
                       <div className="flex items-start justify-between gap-3 mb-3">
@@ -255,7 +259,7 @@ export default function Inicio({
             const total = h.tareas.length;
             const porcentaje = total > 0 ? Math.round((tareasDone / total) * 100) : 0;
             const prioritaria = Boolean(h.proximaLlegada) && h.estado !== 'limpia';
-            return (<div key={h.id} className="bg-white border border-[#E5E0D8] rounded-xl p-4 relative overflow-hidden">
+            return (<div data-vs-card="limpieza" key={h.id} className="bg-white border border-[#E5E0D8] rounded-xl p-4 relative overflow-hidden">
               {prioritaria && (<div className="absolute top-0 left-0 w-1 h-full bg-[#D8B94E]" />)}
               <img src={h.foto} alt={`Habitación ${h.numero}`} className="w-full h-36 object-cover rounded-lg mb-3" />
 
@@ -351,7 +355,7 @@ export default function Inicio({
                 const horaStr = s.creadaEn ? new Date(s.creadaEn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
                 const detalleArticulos = s.articulos?.length ? s.articulos.map(a => `${a.cantidad}× ${a.nombre}`).join(', ') : s.comentario ?? (s.tipo === 'LIMPIEZA' ? 'Solicitud de limpieza de habitación' : 'Solicitud de artículos');
                 return (
-                  <div key={s.id} className="bg-white border border-[#E5E0D8] rounded-xl p-3 sm:p-4 flex items-center gap-3">
+                  <div data-vs-card="limpieza" key={s.id} className="bg-white border border-[#E5E0D8] rounded-xl p-3 sm:p-4 flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-[#F8F6F0] flex items-center justify-center shrink-0 text-[#18345C]">
                       <BedIcon size={16} />
                     </div>
@@ -406,7 +410,7 @@ export default function Inicio({
           solicitudesActivas.length === 0 ? (<EmptyCard msg="No tienes solicitudes pendientes." />) : (<div className="space-y-2">
           {solicitudesActivas.slice(0, 4).map(s => ((() => {
             const habitacion = habitaciones.find(h => h.numero === s.habitacionNumero);
-            return (<div key={s.id} className="bg-white border border-[#E5E0D8] rounded-xl p-3 sm:p-4 flex items-center gap-3">
+            return (<div data-vs-card="limpieza" key={s.id} className="bg-white border border-[#E5E0D8] rounded-xl p-3 sm:p-4 flex items-center gap-3">
               {habitacion ? <img src={habitacion.foto} alt={`Habitación ${habitacion.numero}`} className="h-14 w-20 shrink-0 rounded-lg object-cover" /> : <div className="w-9 h-9 rounded-lg bg-[#F8F6F0] flex items-center justify-center shrink-0 text-[#18345C]">
                 <BedIcon size={16} />
               </div>}
@@ -444,7 +448,7 @@ export default function Inicio({
       {historialPersonal.length > 0 && (<section>
         <SectionHeader title="Actividad reciente" />
 
-        <div className="bg-white border border-[#E5E0D8] rounded-xl divide-y divide-[#F0EBE3] overflow-hidden">
+        <div data-vs-card="limpieza" className="bg-white border border-[#E5E0D8] rounded-xl divide-y divide-[#F0EBE3] overflow-hidden">
           {historialPersonal.map((e,
             i) => ((() => {
               const habitacion = habitaciones.find(h => h.numero === e.habitacionNumero);
@@ -535,7 +539,7 @@ function SectionHeader({ title, onAction, actionLabel, }: {
 function EmptyCard({ msg }: {
   msg: string;
 }) {
-  return (<div className="bg-white border border-[#E5E0D8] rounded-xl p-6 text-center text-sm text-[#AEBCC1]">
+  return (<div data-vs-card="limpieza" className="bg-white border border-[#E5E0D8] rounded-xl p-6 text-center text-sm text-[#AEBCC1]">
     {msg}
   </div>);
 }

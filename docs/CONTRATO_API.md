@@ -5,8 +5,8 @@ conserva una copia YAML/JSON ni descarga el contrato durante peticiones. Version
 únicamente los tipos generados y `api-contract.json`, que fija repositorio y SHA
 completo. Local y CI leen ese mismo manifiesto.
 
-Revisión adoptada: `f30ff74fe939d467728c51c31d7aca157b3be34e` (docs PR #20).
-Guía oficial: [contrato-api.md](https://github.com/villaserenaguatee/villa-serena-docs/blob/f30ff74fe939d467728c51c31d7aca157b3be34e/03-arquitectura/contrato-api.md).
+Revisión adoptada: `1fa07d480b749c12ed20c8fff09b526a1c584928` (docs PR #24; pagos Recurrente).
+Guía oficial: [contrato-api.md](https://github.com/villaserenaguatee/villa-serena-docs/blob/1fa07d480b749c12ed20c8fff09b526a1c584928/03-arquitectura/contrato-api.md).
 
 ## Preparación local
 
@@ -17,7 +17,7 @@ hermana ni una ruta personal concreta.
 
 ```sh
 git -c core.autocrlf=false clone https://github.com/villaserenaguatee/villa-serena-docs.git RUTA_DOCS
-git -C RUTA_DOCS -c core.autocrlf=false checkout --detach f30ff74fe939d467728c51c31d7aca157b3be34e
+git -C RUTA_DOCS -c core.autocrlf=false checkout --detach 1fa07d480b749c12ed20c8fff09b526a1c584928
 ```
 
 Dentro de ese checkout: `pnpm install --frozen-lockfile`. Dentro de web:

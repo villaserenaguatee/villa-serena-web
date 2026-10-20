@@ -1,4 +1,6 @@
 import GestionAdmin from './GestionAdmin';
+import {useAdminVisualDemo} from '../demo/AdminDemoContext';
+import AdminVisualDemo from '../demo/AdminVisualDemo';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Bell, X } from 'lucide-react';
@@ -82,6 +84,14 @@ interface Props {
   onCambiarModulo: (m: Modulo) => void;
 }
 export default function AdminApp({ onCambiarModulo }: Props) {
+  const localDemo = useAdminVisualDemo();
+  const {user,loading} = useAuth();
+  if (!localDemo && loading) return <p role="status" className="p-6">Consultando sesión...</p>;
+  if (!localDemo && !user?.staff) return <p role="alert" className="p-6">No se pudo consultar tu sesión. Inicia sesión nuevamente.</p>;
+  return localDemo ? <AdminVisualDemo/> : <AdminAppExisting onCambiarModulo={onCambiarModulo}/>;
+}
+function AdminAppExisting({ onCambiarModulo }: Props) {
+  const { user } = useAuth();
   const pathname = usePathname(), router = useRouter();
   const fromPath = (path: string): SeccionAdmin => SECCIONES.find(s => path === `/admin/${s.id}`)?.id ?? 'panel';
   const [seccion, setSeccionActual] = useState<SeccionAdmin>(() => fromPath(pathname));
@@ -96,15 +106,17 @@ export default function AdminApp({ onCambiarModulo }: Props) {
   const [notificacionesAbiertas, setNotificacionesAbiertas] = useState(false);
   const [correccionesPersonal, setCorreccionesPersonal] = useState<ReturnType<typeof leerCorrecciones>>([]);
   useEffect(() => {
+    if (user?.staff) return;
     const cargar = () => setCorreccionesPersonal(leerCorrecciones());
     cargar();
     window.addEventListener('vs-correcciones-personal-updated', cargar);
     return () => window.removeEventListener('vs-correcciones-personal-updated', cargar);
   },
-    []);
-  const [habitaciones, setHabitaciones] = useState<HabitacionHotel[]>(() => leerHabitaciones());
-  useEffect(() => guardarHabitaciones(habitaciones), [habitaciones]);
+    [user?.staff]);
+  const [habitaciones, setHabitaciones] = useState<HabitacionHotel[]>(() => user?.staff ? [] : leerHabitaciones());
+  useEffect(() => { if (!user?.staff) guardarHabitaciones(habitaciones); }, [habitaciones, user?.staff]);
   useEffect(() => {
+    if (user?.staff) return;
     const sync = () => setHabitaciones(actuales => {
       const next = leerHabitaciones();
       return JSON.stringify(actuales) === JSON.stringify(next) ? actuales : next;
@@ -116,11 +128,12 @@ export default function AdminApp({ onCambiarModulo }: Props) {
       window.removeEventListener('storage', sync);
     };
   },
-    []);
-  const [reservas, setReservas] = useState<Reserva[]>(() => leerReservas());
-  const [huespedes, setHuespedes] = useState<Huesped[]>(() => leerHuespedes());
-  useEffect(() => guardarReservas(reservas), [reservas]);
+    [user?.staff]);
+  const [reservas, setReservas] = useState<Reserva[]>(() => user?.staff ? [] : leerReservas());
+  const [huespedes, setHuespedes] = useState<Huesped[]>(() => user?.staff ? [] : leerHuespedes());
+  useEffect(() => { if (!user?.staff) guardarReservas(reservas); }, [reservas, user?.staff]);
   useEffect(() => {
+    if (user?.staff) return;
     const sync = () => setReservas(actuales => {
       const next = leerReservas();
       return JSON.stringify(actuales) === JSON.stringify(next) ? actuales : next;
@@ -132,8 +145,9 @@ export default function AdminApp({ onCambiarModulo }: Props) {
       window.removeEventListener('storage', sync);
     };
   },
-    []);
+    [user?.staff]);
   useEffect(() => {
+    if (user?.staff) return;
     const sync = () => setHuespedes(leerHuespedes());
     window.addEventListener(HUESPEDES_EVENT, sync);
     window.addEventListener('storage', sync);
@@ -142,25 +156,26 @@ export default function AdminApp({ onCambiarModulo }: Props) {
       window.removeEventListener('storage', sync);
     };
   },
-    []);
+    [user?.staff]);
   const [tarifasBase, setTarifasBase] = useState<Record<TipoHabitacion, number>>(() => leerTarifas());
   const [reglas, setReglas] = useState<ReglaTarifa[]>(REGLAS_TARIFA_INICIALES);
-  const [promociones, setPromociones] = useState<Promocion[]>(() => leerPromociones());
-  useEffect(() => guardarPromociones(promociones), [promociones]);
-  const { user } = useAuth();
+  const [promociones, setPromociones] = useState<Promocion[]>(() => user?.staff ? [] : leerPromociones());
+  useEffect(() => { if (!user?.staff) guardarPromociones(promociones); }, [promociones, user?.staff]);
+
   const [empleados, setEmpleados] = useState<Empleado[]>(() => user?.staff ? [] : leerEmpleados());
   const adminActual = user?.staff ?? empleados.find(e => e.id === user?.id && e.activo);
-  useEffect(() => { if (!user?.staff) guardarEmpleados(empleados); }, [empleados, user?.staff]);
-  const [insumos, setInsumos] = useState<Insumo[]>(() => leerInsumosAdmin());
-  const [movimientos, setMovimientos] = useState<MovimientoInsumo[]>(() => leerMovimientosAdmin());
-  const [compras, setCompras] = useState<CompraHotel[]>(() => leerComprasAdmin());
-  const [gastos, setGastos] = useState<GastoHotel[]>(() => leerGastosAdmin());
-  const [activos, setActivos] = useState<ActivoHotel[]>(() => leerActivosAdmin());
-  useEffect(() => guardarInsumosAdmin(insumos), [insumos]);
-  useEffect(() => guardarMovimientosAdmin(movimientos), [movimientos]);
-  useEffect(() => guardarComprasAdmin(compras), [compras]);
-  useEffect(() => guardarGastosAdmin(gastos), [gastos]);
-  useEffect(() => guardarActivosAdmin(activos), [activos]);
+  useEffect(() => {
+    if (!user?.staff) guardarEmpleados(empleados); }, [empleados, user?.staff]);
+  const [insumos, setInsumos] = useState<Insumo[]>(() => user?.staff ? [] : leerInsumosAdmin());
+  const [movimientos, setMovimientos] = useState<MovimientoInsumo[]>(() => user?.staff ? [] : leerMovimientosAdmin());
+  const [compras, setCompras] = useState<CompraHotel[]>(() => user?.staff ? [] : leerComprasAdmin());
+  const [gastos, setGastos] = useState<GastoHotel[]>(() => user?.staff ? [] : leerGastosAdmin());
+  const [activos, setActivos] = useState<ActivoHotel[]>(() => user?.staff ? [] : leerActivosAdmin());
+  useEffect(() => { if (!user?.staff) guardarInsumosAdmin(insumos); }, [insumos, user?.staff]);
+  useEffect(() => { if (!user?.staff) guardarMovimientosAdmin(movimientos); }, [movimientos, user?.staff]);
+  useEffect(() => { if (!user?.staff) guardarComprasAdmin(compras); }, [compras, user?.staff]);
+  useEffect(() => { if (!user?.staff) guardarGastosAdmin(gastos); }, [gastos, user?.staff]);
+  useEffect(() => { if (!user?.staff) guardarActivosAdmin(activos); }, [activos, user?.staff]);
   const ocupacionActualPct = habitaciones.length
     ? Math.round((habitaciones.filter(h => h.estado === 'ocupada').length / habitaciones.length) * 100)
     : 0;
@@ -434,7 +449,7 @@ export default function AdminApp({ onCambiarModulo }: Props) {
     {notificacionesAbiertas && <div
       className="fixed inset-0 z-[110] grid place-items-center bg-[#071D34]/50 p-4"
       onMouseDown={e => e.target === e.currentTarget && setNotificacionesAbiertas(false)}>
-      <section className="max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+      <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
         <header className="sticky top-0 flex items-center justify-between border-b bg-white px-5 py-4">
           <div>
             <h2 className="text-xl font-semibold text-[#18345C]">Notificaciones</h2>

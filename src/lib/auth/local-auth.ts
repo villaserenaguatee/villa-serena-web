@@ -1,7 +1,6 @@
 import type { SessionUser, UserRole } from './types';
 import { leerEmpleados } from '@/store/employeeStore';
 import { leerHuespedes } from '@/store/guestStore';
-import { cuentaHuespedExpirada } from '@/store/guestAccountAccess';
 const ROLE_MAP: Record<string, UserRole> = {
   'Administración': 'admin',
   'Recepción': 'recepcion',
@@ -32,9 +31,6 @@ export async function loginLocal(email: string,
   if (guestAccount) {
     if (password !== ACCESS_PASSWORD)
       throw new Error('Correo o contraseña incorrectos.');
-    if (cuentaHuespedExpirada(normalized)) {
-      throw new Error('El acceso de esta estancia finalizó 24 horas después del check-out. Contacta a Recepción si necesitas ayuda.');
-    }
     const guest = leerHuespedes().find(item => item.id === guestAccount.guestId);
     if (!guest)
       throw new Error('La cuenta no tiene un huésped válido asociado. Contacta a Recepción.');

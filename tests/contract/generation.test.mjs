@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
@@ -20,7 +21,7 @@ test('canonical generation and check reject a tampered output without overwritin
   const run = (...args) => spawnSync(process.execPath, [join(root, 'scripts/contrato-api.mjs'), ...args], { env, encoding: 'utf8' });
   const generated = run(); assert.equal(generated.status, 0, generated.stderr);
   const output = join(root, 'src/lib/api/schema.d.ts'), bytes = readFileSync(output);
-  assert.match(bytes.toString(), /b1e4e8ecc10d6db74c170e7bdd12a02bd31b2cc98f8e3b7060d1fee04dd38e37/);
+  assert.ok(bytes.toString().includes(createHash('sha256').update(readFileSync(join(env.API_CONTRACT_DOCS_DIR,'openapi.yaml'))).digest('hex')));
   assert.deepEqual(bytes, readFileSync(new URL('../../src/lib/api/schema.d.ts', import.meta.url)));
   const matching = run('--check'); assert.equal(matching.status, 0, matching.stderr);
   const tampered = Buffer.concat([bytes, Buffer.from('\n// altered fixture\n')]);

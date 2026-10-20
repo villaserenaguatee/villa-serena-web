@@ -27,10 +27,10 @@ export default function PedidosPendientes({ pedidos, turno, onAbrirDetalle, onNu
     fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif',
   }}>
 
-    <div className="bg-white border-b border-[#E5E0D8] px-4 sm:px-6 py-5">
+    <div data-vs-page-header="roomservice" className="bg-white border-b border-[#E5E0D8] px-4 sm:px-6 py-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">
+          <h1 data-vs-page-title="roomservice" className="text-[32px] font-semibold text-[#18345C] leading-tight">
             Pedidos pendientes
           </h1>
 
@@ -63,7 +63,7 @@ export default function PedidosPendientes({ pedidos, turno, onAbrirDetalle, onNu
 
       <div className="px-4 sm:px-6 pt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
 
-        <div className="
+        <div data-vs-card="roomservice" className="
               min-h-[115px]
               rounded-xl
               border
@@ -90,7 +90,7 @@ export default function PedidosPendientes({ pedidos, turno, onAbrirDetalle, onNu
           </p>
         </div>
 
-        <div className="
+        <div data-vs-card="roomservice" className="
               min-h-[115px]
               rounded-xl
               border
@@ -129,7 +129,7 @@ export default function PedidosPendientes({ pedidos, turno, onAbrirDetalle, onNu
       </div>
 
       <div className="px-4 sm:px-6 pt-4 pb-2">
-        {pendientes.length === 0 ? (<div className="bg-white border border-[#E5E0D8] rounded-xl px-6 py-5 text-center">
+        {pendientes.length === 0 ? (<div data-vs-card="roomservice" className="bg-white border border-[#E5E0D8] rounded-xl px-6 py-5 text-center">
           <p className="text-[14px] text-[#AEBCC1]">
             No hay pedidos pendientes en tu turno.
           </p>

@@ -30,6 +30,8 @@ async function proxy(request: NextRequest, context: { params: Promise<{ ruta: st
         return new NextResponse(await response.arrayBuffer(), {status: response.status, headers: {'Content-Type':response.headers.get('content-type') ?? 'application/octet-stream','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'"}});
       }
       const payload = await response.json().catch(() => null);
+      if (payload?.codigo === 'SIMULACION_NO_DISPONIBLE')
+        return NextResponse.json({codigo:'OPERACION_NO_DISPONIBLE',mensaje:'El servicio no pudo completar esta operación. Intenta nuevamente más tarde.',detalles:[]},{status:response.status,headers:{'Cache-Control':'no-store'}});
       return NextResponse.json(withoutSessionTokens(payload), { status: response.status, headers: { 'Cache-Control': 'no-store' } });
     };
     if (ruta[0] === 'publico') return operation();

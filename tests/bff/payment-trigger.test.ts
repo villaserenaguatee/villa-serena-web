@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { prepareStripeBooking } from '@/lib/publicStripeBooking';
-import { discardBookingDraft, bookingReceipt } from '@/lib/bookingDraft';
+import { preparePublicBookingPayment } from '@/lib/publicBookingPayment';
+import { activeBookingDraft, bookingReceipt } from '@/lib/bookingDraft';
 
-test('payment protocol: Stripe starts only after creation response; retry reuses stored code', async () => {
+test('payment protocol: Recurrente starts only after creation response; retry reuses stored code', async () => {
   const storage = new Map<string, string>();
   const oldStorage = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage');
   const oldFetch = globalThis.fetch;
@@ -16,28 +16,29 @@ test('payment protocol: Stripe starts only after creation response; retry reuses
   storage.set('vs-public-booking-draft', JSON.stringify({ id, createdAt: Date.now(), params: params.toString() }));
   const calls: string[] = [];
   const actions: (string | null)[] = [];
-  // Protocol double only: never contacts API, SMTP or Stripe, never represents a real reservation.
+  // Protocol double only: never contacts API, SMTP or Recurrente, never represents a real reservation.
   globalThis.fetch = async (input, init) => {
     const url = String(input); calls.push(url);
     actions.push(new Headers(init?.headers).get('X-Villa-Serena-Booking-Action'));
+    if(url.endsWith('/estado'))return new Response(JSON.stringify({codigo:'VS-CHECK1',estadoReserva:'PENDIENTE_PAGO',estadoPago:null,puedeReintentar:true}),{headers:{'X-Villa-Serena-Mode':'spring'}});
     if (url === '/api/publico/reservas') return new Response(JSON.stringify({ codigo: 'VS-CHECK1', estado: 'PENDIENTE_PAGO', total: 840 }), { headers: { 'X-Villa-Serena-Mode': 'spring', 'Content-Type': 'application/json' } });
-    throw new Error('Stripe blocked in protocol test');
+    throw new Error('Recurrente blocked in protocol test');
   };
   try {
-    await assert.rejects(prepareStripeBooking(params, id), /Stripe blocked/);
+    await assert.rejects(preparePublicBookingPayment(params, id), /No pudimos confirmar/);
     assert.deepEqual(calls, ['/api/publico/reservas', '/api/publico/reservas/VS-CHECK1/pago']);
     const saved = JSON.parse(storage.get('vs-public-booking-draft')!);
     assert.equal(saved.attempt.code, 'VS-CHECK1');
-    await assert.rejects(prepareStripeBooking(params, id, true), /Stripe blocked/);
-    assert.deepEqual(calls, ['/api/publico/reservas', '/api/publico/reservas/VS-CHECK1/pago', '/api/publico/reservas/VS-CHECK1/pago']);
-    assert.deepEqual(actions, ['continue-payment', 'continue-payment', 'recover-payment']);
+    assert.equal(await preparePublicBookingPayment(params, id, true),'/reserva/resultado?codigo=VS-CHECK1');
+    assert.deepEqual(calls, ['/api/publico/reservas', '/api/publico/reservas/VS-CHECK1/pago', '/api/publico/reservas/VS-CHECK1/estado']);
+    assert.deepEqual(actions, ['continue-payment', 'continue-payment', null]);
     assert.equal(JSON.parse(storage.get('vs-public-booking-draft')!).attempt.id, saved.attempt.id);
     storage.clear(); // Separate protocol fixture, not production storage.
     const other=crypto.randomUUID();storage.set('vs-public-booking-draft',JSON.stringify({id:other,createdAt:Date.now(),params:params.toString()}));
-    const afterDiscard:string[]=[];
-    globalThis.fetch=async input=>{afterDiscard.push(String(input));discardBookingDraft(other);return new Response(JSON.stringify({codigo:'VS-CHECK2',estado:'PENDIENTE_PAGO',total:840}),{headers:{'X-Villa-Serena-Mode':'spring','Content-Type':'application/json'}});};
-    await assert.rejects(prepareStripeBooking(params,other),/discarded/);
-    assert.deepEqual(afterDiscard,['/api/publico/reservas']);assert.equal(storage.has('vs-public-booking-draft'),false);assert.equal(bookingReceipt()?.code,'VS-CHECK2');
+    const afterExpiry:string[]=[];
+    globalThis.fetch=async input=>{afterExpiry.push(String(input));const expired=JSON.parse(storage.get('vs-public-booking-draft')!);expired.updatedAt=Date.now()-2*60*60*1000;storage.set('vs-public-booking-draft',JSON.stringify(expired));activeBookingDraft();return new Response(JSON.stringify({codigo:'VS-CHECK2',estado:'PENDIENTE_PAGO',total:840}),{headers:{'X-Villa-Serena-Mode':'spring','Content-Type':'application/json'}});};
+    await assert.rejects(preparePublicBookingPayment(params,other),/discarded/);
+    assert.deepEqual(afterExpiry,['/api/publico/reservas']);assert.equal(storage.has('vs-public-booking-draft'),false);assert.equal(bookingReceipt()?.code,'VS-CHECK2');
   } finally {
     globalThis.fetch = oldFetch;
     if (oldStorage) Object.defineProperty(globalThis, 'sessionStorage', oldStorage);

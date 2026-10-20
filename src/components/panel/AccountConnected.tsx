@@ -78,7 +78,7 @@ export default function AccountConnected({ code }: { code: string }) {
           <p className="text-xs text-slate-600">{dateInGuatemala(charge.fechaHora)} · {charge.responsable}</p>
           {charge.estado === 'ANULADO' ? <p className="mt-1 text-sm text-slate-600">Anulado: {charge.motivoAnulacion} · {charge.anuladoPor}</p> : account.estadoCuenta === 'ABIERTA' && charge.tipo !== 'ALOJAMIENTO' &&
             <button type="button" className="mt-2 text-sm text-red-800 underline" aria-label={`Anular ${charge.concepto}`} onClick={() => { setVoiding(charge.id); setReason(''); setError(''); }}>Anular</button>}
-          {voiding === charge.id && <form className="mt-2 space-y-2" onSubmit={async event => {
+          {voiding === charge.id && <form data-vs-ui="compact" className="mt-2 space-y-2" onSubmit={async event => {
             event.preventDefault();
             if (await update(() => voidCharge(code, charge.id, reason))) setVoiding(null);
           }}>
@@ -89,7 +89,7 @@ export default function AccountConnected({ code }: { code: string }) {
         </li>)}
       </ul>
       {account.estadoCuenta === 'ABIERTA' && account.estadoReserva === 'EN_ESTADIA' && <button className={`mt-3 ${buttonClass}`} onClick={() => setAdding(!adding)}>Agregar cargo</button>}
-      {adding && account.estadoCuenta === 'ABIERTA' && <form className="mt-3 grid gap-3 sm:grid-cols-3" onSubmit={async event => {
+      {adding && account.estadoCuenta === 'ABIERTA' && <form data-vs-ui="compact" className="mt-3 grid gap-3 sm:grid-cols-3" onSubmit={async event => {
         event.preventDefault();
         const values = new FormData(event.currentTarget);
         if (await update(() => addCharge(code, { concepto: String(values.get('concept')), cantidad: Number(values.get('quantity')), precioUnitario: Number(values.get('price')) }))) setAdding(false);
@@ -152,7 +152,7 @@ function CheckoutDialog({ preview, busy, error, onClose, onConfirm }: {
     void onConfirm({ comprador: { nombreComprador: buyer.trim(), nit: cf ? 'CF' : nit.trim().toUpperCase() }, ...(balance > 0 ? { pago: { metodo: method, ...(reference.trim() ? { referencia: reference.trim() } : {}) } } : {}) });
   }
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-    <form role="dialog" aria-modal="true" aria-labelledby="checkout-title" onSubmit={submit} className="max-h-[90vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-xl bg-white p-5">
+    <form data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" role="dialog" aria-modal="true" aria-labelledby="checkout-title" onSubmit={submit} className="max-h-[90vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-xl bg-white p-5">
       <h2 id="checkout-title" className="text-2xl font-semibold">Confirmar check-out</h2>
       {(preview.pedidoEnCamino || !preview.puedeConfirmar) && <p role="alert" className="text-red-800">{preview.pedidoEnCamino ? 'Hay un pedido en camino. Espera su entrega antes de realizar el check-out.' : preview.motivosBloqueo.join(' · ') || 'No se puede confirmar el check-out.'}</p>}
       <p>Saldo total: <b>{quetzales(balance)}</b></p>
@@ -166,7 +166,7 @@ function CheckoutDialog({ preview, busy, error, onClose, onConfirm }: {
       <label className="block">Nombre del comprador<input required className={inputClass} value={buyer} onChange={event => setBuyer(event.target.value)} /></label>
       <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Al confirmar se cancelarán sin cargo los pedidos nuevos o en preparación y las solicitudes pendientes o en proceso.</p>
       {error && <p role="alert" className="text-red-800">{error}</p>}
-      <div className="flex flex-wrap gap-3">
+      <div data-vs-actions="compact" className="flex flex-wrap gap-3">
         <button disabled={busy || nitInvalid || !buyer.trim() || !preview.puedeConfirmar || preview.pedidoEnCamino || balance < 0} className={buttonClass}>Confirmar y emitir factura</button>
         <button type="button" className="underline" onClick={onClose}>Volver a la cuenta</button>
       </div>

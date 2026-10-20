@@ -137,3 +137,49 @@ de un API activo y del ajuste del contrato descrito para Alex.
 `/api/publico/ofertas` devuelve 502 `API_NO_DISPONIBLE` (antes se observó 503 en el
 dominio público). No se atribuye ese fallo de conexión al campo nacionalidad ni
 se utiliza un catálogo simulado en `localhost:3080` para ocultarlo.
+
+## Ajuste local posterior: nombres del formulario de reserva
+
+Nombre y Apellidos filtran números (incluidos dígitos Unicode) y otros símbolos al
+escribir/pegar. Se conservan, sin reordenar ni normalizar, letras Unicode, marcas
+de tildes combinadas, espacios, guiones Unicode y apóstrofos. La edición de una
+selección conserva los caracteres circundantes y la posición del cursor.
+
+Sin comentario de caracteres permitidos. Al intentar continuar con nombres vacíos
+o compuestos solo por espacios: «Ingrese su nombre» / «Ingrese sus apellidos».
+El guard de revisión/continuación mantiene la validación aunque se omita la
+interacción normal con los controles. No cambia datos históricos del servidor.
+
+**Para Alex, solo diagnóstico por lectura, sin cambios al backend:**
+
+- `openapi.yaml`: `HuespedDatos.nombreCompleto` y
+  `HuespedAdicionalDatos.nombreCompleto` declaran longitud 1–150, sin patrón de
+  caracteres. Ese contrato no garantiza rechazar números/símbolos ni espacios solos.
+- La copia local consultada de `huespedes/HuespedDatos.java` usa `@NotBlank` y
+  `@Size(max=150)` para `nombreCompleto`, sin una restricción de caracteres.
+  Esto no acredita el comportamiento de la versión que Alex está desplegando.
+- Alex debe comprobar su DTO/validador vigente: rechazar entradas con números,
+  emojis, controles u otros símbolos; exigir al menos una letra y mantener el
+  límite agregado de 150, aceptando las letras, marcas, espacios, guiones y
+  apóstrofos mencionados. Aplicarlo también en peticiones directas a registro,
+  reserva pública/ofertas, canales y huéspedes adicionales antes de persistir.
+  Si ya cumple esas reglas, no necesita cambiarlo: basta documentarlo en OpenAPI
+  y probar aceptación/rechazo. De lo contrario, completar la validación en servidor.
+
+La revisión actual es visual con datos de muestra y sin API; no se enviaron
+peticiones directas al backend ni se declara comprobada su validación activa.
+Este ajuste posterior a la PR #62 permanece local, sin commit/push/PR adicionales.
+
+### Mensajes al revisar datos
+
+«Revisar datos» conserva la apertura del resumen. Los seis campos obligatorios
+vacíos muestran «Complete este campo» únicamente después de intentar revisar.
+DPI y teléfono incompletos y correo con formato inválido tienen mensajes
+específicos; el foco va al primer error y se conserva lo escrito. Los controles
+mantienen su alineación aunque aparezca un mensaje en una sola columna.
+
+Comprobación local: cinco pruebas de componente aprobadas, TypeScript sin errores
+y navegador Chrome a 1280 y 390 px: seis errores vacíos, foco en orden,
+conservación de valores, resumen válido y ausencia de desbordamiento/errores JS.
+Evidencias privadas: `ops/villa-serena-local/.local/issue60-required-evidence`.
+Revisión con muestras, sin API, envíos, creación de reservas ni pagos.

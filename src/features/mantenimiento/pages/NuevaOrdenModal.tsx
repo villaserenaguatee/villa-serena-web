@@ -186,7 +186,7 @@ export default function NuevaOrdenModal({ activos, habitaciones, onCerrar, onGua
         </span>
       </button>)}
 
-      <div className="flex flex-wrap justify-end gap-2 pt-1">
+      <div data-vs-actions="compact" className="flex flex-wrap justify-end gap-2 pt-1">
         <button
           type="button"
           onClick={onCerrar}

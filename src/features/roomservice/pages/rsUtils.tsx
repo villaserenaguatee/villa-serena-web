@@ -133,7 +133,7 @@ export function Campo({ label, error, children, }: {
   error?: string;
   children: ReactNode;
 }) {
-  return (<div>
+  return (<div data-vs-field="compact">
     <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-1.5">
       {label}
     </p>

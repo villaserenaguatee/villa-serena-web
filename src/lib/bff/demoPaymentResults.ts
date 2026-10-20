@@ -5,7 +5,7 @@ const fixtures: Record<string, PublicStatusDto> = {
   'VS-DEMO05': { codigo: 'VS-DEMO05', estadoReserva: 'CONFIRMADA', estadoPago: 'APROBADO', puedeReintentar: false },
   'VS-DEMO01': { codigo: 'VS-DEMO01', estadoReserva: 'CONFIRMADA', estadoPago: 'APROBADO', puedeReintentar: false },
   'VS-DEMO02': { codigo: 'VS-DEMO02', estadoReserva: 'PENDIENTE_PAGO', estadoPago: 'PENDIENTE', puedeReintentar: true },
-  'VS-DEMO03': { codigo: 'VS-DEMO03', estadoReserva: 'PENDIENTE_PAGO', estadoPago: null, puedeReintentar: true },
+  'VS-DEMO03': { codigo: 'VS-DEMO03', estadoReserva: 'PENDIENTE_PAGO', estadoPago: 'FALLIDO', puedeReintentar: true },
   'VS-DEMO04': { codigo: 'VS-DEMO04', estadoReserva: 'CANCELADA', estadoPago: 'FALLIDO', puedeReintentar: false },
 };
 export function paymentResultFixture(code: string): PublicStatusDto | undefined {

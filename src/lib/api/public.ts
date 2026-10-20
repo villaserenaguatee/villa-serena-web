@@ -3,15 +3,15 @@ import type { CreatePublicDto, CreatedPublicDto, HotelDto, PaymentDto, PublicSta
 export class PublicApiError extends Error {
   constructor(message: string, public status?: number, public code?: string) { super(message); }
 }
-async function request<T>(route: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`/api/publico/${route}`, { ...init, cache: 'no-store' });
+async function request<T>(route: string, init: RequestInit = {},withMode=false): Promise<T> {
+  let response:Response;try{response=await fetch(`/api/publico/${route}`,{...init,cache:'no-store'});}catch(error){if(init.signal?.aborted)throw error;throw new PublicApiError('No se pudo consultar el estado del servicio. Conservamos tu solicitud; intenta nuevamente.',502,'API_NO_DISPONIBLE');}
   if (!response.ok) {
     const error = await response.json().catch(() => null);
     throw new PublicApiError(error?.mensaje ?? 'No se pudo consultar el servicio. Intenta nuevamente.', response.status, error?.codigo);
   }
   // Esta etapa admite solamente el BFF de prueba. La activación real requiere validar el adaptador.
   if (!['demo', 'spring'].includes(response.headers.get('X-Villa-Serena-Mode') ?? '')) throw new PublicApiError('La conexión real está pendiente de validación.');
-  return response.json();
+  const body=await response.json();return withMode?{...body,mode:response.headers.get('X-Villa-Serena-Mode')}:body;
 }
 export const getPublicHotel = (signal?: AbortSignal) => request<HotelDto>('hotel', { signal });
 export const getPublicCatalog = (signal?: AbortSignal) => request<RoomTypeDto[]>('tipos-habitacion', { signal });
@@ -31,11 +31,14 @@ export const createPublicReservation = (input: CreatePublicDto & {ofertaSlug?:st
   method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': attempt, ...(action ? { 'X-Villa-Serena-Booking-Action': action } : {}) }, body: JSON.stringify({ ...input, borradorId: draftId }),
 });
 export async function startPublicPayment(code: string, action?: BookingAction): Promise<PaymentDto & {mode:string}> {
-  const response = await fetch(`/api/publico/reservas/${encodeURIComponent(code)}/pago`, {method:'POST',cache:'no-store',headers:action ? {'X-Villa-Serena-Booking-Action':action} : {}});
+  let response:Response;try{response=await fetch(`/api/publico/reservas/${encodeURIComponent(code)}/pago`, {method:'POST',cache:'no-store',headers:action ? {'X-Villa-Serena-Booking-Action':action} : {}});}catch{throw new PublicApiError('No pudimos confirmar la solicitud de pago. Consulta su estado antes de volver a intentarlo.',502,'API_NO_DISPONIBLE');}
   const body = await response.json().catch(() => null);
   if (!response.ok) throw new PublicApiError(body?.mensaje ?? 'No se pudo iniciar el pago.', response.status, body?.codigo);
   const mode = response.headers.get('X-Villa-Serena-Mode') ?? '';
-  if (!['spring','demo'].includes(mode) || !body?.urlPago) throw new PublicApiError('Respuesta de pago inválida.');
+  if (!['spring','demo'].includes(mode) || typeof body?.urlPago!=='string' || !(body.expiraEn===null || (typeof body.expiraEn==='string'&&Number.isFinite(Date.parse(body.expiraEn))))) throw new PublicApiError('Respuesta de pago inválida.');
   return {...body,mode};
 }
-export const getPublicStatus = (code: string, signal?: AbortSignal) => request<PublicStatusDto>(`reservas/${encodeURIComponent(code)}/estado`, { signal });
+export const getPublicStatus = (code: string, signal?: AbortSignal) => request<PublicStatusDto>(`reservas/${encodeURIComponent(code)}/estado`, { signal },true);
+
+/** Backend dev extension, kept outside the generated OpenAPI types. Proof stays in an HttpOnly cookie. */
+export const recoverPublicAttempt=(attemptId:string,draftId:string,origin:'RESERVA'|'OFERTA')=>request<PublicStatusDto>(`reservas/intento?origen=${origin}`,{headers:{'Idempotency-Key':attemptId,'X-Booking-Draft':draftId}},true);

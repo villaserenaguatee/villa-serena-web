@@ -32,7 +32,7 @@ for (const { name, viewport } of viewports) {
       await page.goto('/login');
       await page.getByLabel('Correo electrónico', { exact: true }).fill(email);
       const sent = page.waitForResponse(response => response.url().endsWith('/acceso/solicitar-codigo'), { timeout: 15_000 });
-      await page.getByRole('button', { name: 'Solicitar código de acceso', exact: true }).click();
+      await page.getByRole('button', { name: 'Obtén tu código de acceso', exact: true }).click();
       await page.getByRole('button', { name: 'Enviar código', exact: true }).click();
       const response = await sent; expect(response.status()).toBe(200);
       await expect(page.getByRole('status').filter({ hasText: 'Si el correo tiene una reserva' })).toBeVisible();

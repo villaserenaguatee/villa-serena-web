@@ -2,7 +2,7 @@ import { test, expect, viewports, expectNoOverflow } from './public-fixtures';
 
 const scenarios = [
   { code: 'VS-DEMO01', title: 'Tu reserva está confirmada', retry: false },
-  { code: 'VS-DEMO02', title: 'Pago en proceso', retry: true, actions: ['Consultar estado', 'Reintentar pago'] },
+  { code: 'VS-DEMO02', title: 'Pago en proceso', retry: false, actions: ['Consultar estado'] },
   { code: 'VS-DEMO03', title: 'Pago no completado', retry: true, actions: ['Reintentar pago', 'Consultar estado'] },
   { code: 'VS-DEMO04', title: 'Pago no completado', retry: false, actions: ['Hacer nueva reserva'] },
 ] as const;
@@ -17,6 +17,7 @@ for (const { name, viewport } of viewports) {
         page.on('request', request => {
           if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/publico/reservas') creates.push(request.url());
         });
+        await page.addInitScript(({code})=>{if(code!=='VS-DEMO03')return;sessionStorage.setItem('vs-public-booking-draft',JSON.stringify({id:'result-fixture',createdAt:Date.now(),params:'',attempt:{id:'attempt-fixture',code,flow:'recurrente',fingerprint:'a'.repeat(64)}}));},{code:scenario.code});
         await page.goto(`/reserva/resultado?codigo=${scenario.code}&paid=true&success=true&estadoPago=APROBADO`);
         await expect(page.getByRole('heading', { name: scenario.title, exact: true })).toBeVisible();
         await expect(page.locator('.payment-result-summary > div')).toHaveCount(3);
@@ -58,7 +59,7 @@ for (const { name, viewport } of viewports) {
       const statusRoute = '**/api/publico/reservas/VS-DEMO03/estado';
       await page.route(statusRoute, route => route.fulfill({ headers: { 'X-Villa-Serena-Mode': 'demo' }, json: { codigo: 'VS-DEMO03', estadoReserva: 'PENDIENTE_PAGO', estadoPago: 'FALLIDO', puedeReintentar: true } }));
       await page.goto('/reserva/resultado?codigo=VS-DEMO03');
-      await expect(page.getByText('Venció el intento de pago.', { exact: false })).toBeVisible();
+      await expect(page.getByText('El intento de pago no se completó.', { exact: false })).toBeVisible();
       await expect(page.locator('main')).not.toContainText(/rechazo bancario|banco rechaz/i);
       await page.unroute(statusRoute);
       await page.route(statusRoute, route => route.fulfill({ headers: { 'X-Villa-Serena-Mode': 'demo' }, json: { codigo: 'VS-DEMO03', estadoReserva: 'CANCELADA', estadoPago: 'FALLIDO', puedeReintentar: false } }));

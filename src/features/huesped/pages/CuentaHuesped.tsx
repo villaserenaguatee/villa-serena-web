@@ -129,6 +129,7 @@ export default function CuentaHuesped({ abrirResena = false, onResenaAbierta, hu
       return;
     onGuardarFiscales(form);
   }
+  if (reserva.estado === 'cancelada') return <div className="p-5"><h1 data-vs-page-title="huesped" className="text-2xl font-semibold text-[#102747]">{en ? 'Cancelled reservation' : 'Reserva cancelada'}</h1><p>{reserva.codigo}</p><p>{formatoFecha(reserva.fechaEntrada)} — {formatoFecha(reserva.fechaSalida)}</p><p className="mt-3 text-sm text-[#52677F]">{en ? 'This reservation is part of your history. Stay services are unavailable.' : 'Esta reserva forma parte de tu historial. Los servicios de estancia no están disponibles.'}</p></div>;
   if (estanciaCerrada) {
     const totalRestaurante = cargos.filter(c => c.categoria === "Restaurante" || c.categoria === "Room service").reduce((s, c) => s + c.cantidad * c.precioUnitario, 0);
     const totalSpa = cargos.filter(c => c.categoria === "Spa y experiencias").reduce((s, c) => s + c.cantidad * c.precioUnitario, 0);
@@ -137,7 +138,7 @@ export default function CuentaHuesped({ abrirResena = false, onResenaAbierta, hu
       <div className="flex-1 overflow-y-auto bg-[#F8F6F0] p-4 sm:p-7" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
         <div className="mx-auto max-w-6xl">
           <div className="mb-5">
-            <h1 className="text-3xl font-semibold text-[#102747]">
+            <h1 data-vs-page-title="huesped" className="text-3xl font-semibold text-[#102747]">
               {en ? "Check-out completed" : "Check-out completado"}
             </h1>
             <p className="mt-1 text-[#71839B]">{reserva.codigo} · Habitación {(habitacion?.numero ?? '—')}</p>
@@ -149,7 +150,7 @@ export default function CuentaHuesped({ abrirResena = false, onResenaAbierta, hu
             <p>Tu estancia finalizó correctamente el {formatoFechaHora(reserva.checkOutEn ?? new Date().toISOString())}.</p>
           </div>
           <div className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
-            <section className="rounded-xl border border-[#E5E0D8] bg-white p-5">
+            <section data-vs-card="huesped" className="rounded-xl border border-[#E5E0D8] bg-white p-5">
               <h2 className="border-b pb-3 text-xl font-semibold text-[#102747]">
                 {en ? "Final summary" : "Resumen final"}
               </h2>
@@ -171,7 +172,7 @@ export default function CuentaHuesped({ abrirResena = false, onResenaAbierta, hu
                 </div>
               </div>
             </section>
-            <section className="rounded-xl border border-[#E5E0D8] bg-white p-5 text-center">
+            <section data-vs-card="huesped" className="rounded-xl border border-[#E5E0D8] bg-white p-5 text-center">
               <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#EFFAF3] text-[#188149]">
                 <CheckIcon size={30} />
               </span>
@@ -185,22 +186,23 @@ export default function CuentaHuesped({ abrirResena = false, onResenaAbierta, hu
                 <button onClick={() => setVerComprobante(true)} className="w-full rounded-lg bg-[#B59A52] py-3 font-semibold text-white">▧ &nbsp; {en ? "View invoice" : "Ver factura"}</button>
                 <button onClick={() => setVerDetalleCuenta(true)} className="w-full rounded-lg bg-[#B59A52] py-3 font-semibold text-white">⇩ &nbsp; {en ? "Download receipt" : "Descargar comprobante"}</button>
                 <button
-                  onClick={() => window.alert(en ? `Invoice and receipt will be sent to ${form.correo || huesped.correo}.` : `La factura y el comprobante se enviarán a ${form.correo || huesped.correo}.`)}
-                  className="w-full rounded-lg border border-[#18345C] py-3 font-semibold text-[#18345C]">✉ &nbsp; {en ? "Send again by email" : "Enviar nuevamente por correo"}</button>
+                  disabled aria-describedby="demo-invoice-email-unavailable"
+                  className="w-full rounded-lg border border-[#18345C] py-3 font-semibold text-[#18345C] disabled:opacity-50">✉ &nbsp; {en ? "Send again by email" : "Enviar nuevamente por correo"}</button>
+                <p id="demo-invoice-email-unavailable" className="text-sm text-[#52677F]">{en ? 'Email resending is unavailable in this demonstration. No email has been sent.' : 'El reenvío por correo no está disponible en esta demostración. No se ha enviado ningún correo.'}</p>
               </div>
             </section>
           </div>
           <button
             type="button"
             onClick={() => setResenaAbierta(true)}
-            className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-[#B59A52] px-5 py-3 font-semibold text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl"
+            className="fixed bottom-20 right-6 z-40 flex items-center gap-2 rounded-full bg-[#B59A52] px-5 py-3 font-semibold text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl lg:bottom-6"
             aria-label={en ? "Share your experience" : "Compartir tu experiencia"}>
             <span className="text-xl leading-none">★</span>
             <span>
               {opinionEnviada ? (en ? "View your review" : "Ver tu reseña") : (en ? "Share your experience" : "Compartir tu experiencia")}
             </span>
           </button>
-          <section className="mt-5 grid gap-5 rounded-xl border border-[#E5E0D8] bg-white p-5 sm:grid-cols-[180px_1fr]">
+          <section data-vs-card="huesped" className="mt-5 grid gap-5 rounded-xl border border-[#E5E0D8] bg-white p-5 sm:grid-cols-[180px_1fr]">
             <div className="flex items-center justify-center border-b pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-5">
               <img src="/villa-serena-logo.png" alt="Villa Serena Hotel" className="max-h-24 max-w-[150px] object-contain" />
             </div>
@@ -234,7 +236,7 @@ export default function CuentaHuesped({ abrirResena = false, onResenaAbierta, hu
                   {formatoPuntos(puntos)}
                 </p>
               </div>
-              <p className="mt-4 border-t pt-3 text-xs text-[#71839B]">Los datos finales de esta estancia permanecerán disponibles durante las 24 horas posteriores al check-out. Después de ese plazo, la cuenta quedará inactiva para iniciar sesión.</p>
+              <p className="mt-4 border-t pt-3 text-xs text-[#71839B]">Puedes volver a iniciar sesión para consultar el historial de tus reservas.</p>
             </div>
           </section>
 
@@ -582,11 +584,11 @@ export default function CuentaHuesped({ abrirResena = false, onResenaAbierta, hu
       <div className="mt-5 flex items-start gap-3 border-t border-[#E5E0D8] pt-4 text-[14px] text-[#52677F]">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#F5F1E8] font-serif text-lg font-bold text-[#18345C]">i</span>
         <p>
-          {en ? <>Room access, controls and stay services are disabled immediately after check-out.<br />Your account remains available for 24 hours only to review the completed stay and manage your review.</> : <>El acceso a la habitación, sus controles y los servicios de la estancia se desactiva inmediatamente al hacer check-out.<br />Tu cuenta permanecerá disponible solo durante 24 horas para consultar la estancia finalizada y gestionar tu reseña.</>}
+          {en ? <>Room access, controls and stay services are disabled immediately after check-out.<br />You can sign in again to view your reservation history.</> : <>El acceso a la habitación, sus controles y los servicios de la estancia se desactiva inmediatamente al hacer check-out.<br />Puedes volver a iniciar sesión para consultar el historial de tus reservas.</>}
         </p>
       </div>
 
-      <div className="flex gap-2 mt-5">
+      <div data-vs-actions="compact" className="flex gap-2 mt-5">
         <BotonSecundario onClick={() => setConfirmarSalida(false)} ancho>
           <UiText text="Volver" />
         </BotonSecundario>
@@ -618,7 +620,7 @@ export function ResumenCuenta({ icono, valor, label, color = "#18345C" }: {
   label: string;
   color?: string;
 }) {
-  return <div className="flex min-h-[92px] items-center gap-4 rounded-xl border border-[#E5E0D8] bg-white px-5 py-4">
+  return <div data-vs-card="huesped" className="flex min-h-[92px] items-center gap-4 rounded-xl border border-[#E5E0D8] bg-white px-5 py-4">
     <span className="text-[#B38B2E]">
       {icono}
     </span>
@@ -695,7 +697,7 @@ function OpinionCheckout({ estrellas, setEstrellas, experiencia, setExperiencia,
   };
   if (opinionEnviada)
     return (<div className="fixed inset-0 z-[160] grid place-items-center bg-[#071D34]/55 p-4">
-      <section className="relative w-full max-w-lg rounded-2xl border border-[#E5E0D8] bg-white p-7 text-center shadow-2xl">
+      <section data-vs-card="huesped" className="relative w-full max-w-lg rounded-2xl border border-[#E5E0D8] bg-white p-7 text-center shadow-2xl">
         <button
           type="button"
           aria-label={en ? "Close review" : "Cerrar reseña"}
@@ -742,7 +744,7 @@ function OpinionCheckout({ estrellas, setEstrellas, experiencia, setExperiencia,
       </section>
     </div>);
   return (<div className="fixed inset-0 z-[160] grid place-items-center bg-[#071D34]/55 p-4">
-    <section className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-[#E5E0D8] bg-white p-5 shadow-2xl sm:p-7">
+    <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="medium" className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-[#E5E0D8] bg-white p-5 shadow-2xl sm:p-7">
       <button
         type="button"
         aria-label={en ? "Close review" : "Cerrar reseña"}
@@ -955,7 +957,7 @@ function ModalPago({ huespedId, saldo, puntos, onCerrar, onPagar, }: {
           </Aviso>
         </div>)}
       </div>) : (<div className="space-y-4">
-        <div className="rounded-xl border border-[#E5E0D8] bg-white p-4">
+        <div data-vs-card="huesped" className="rounded-xl border border-[#E5E0D8] bg-white p-4">
           <label className="flex cursor-pointer items-center gap-3 py-2">
             <input type="radio" disabled={!guardada} checked={usarGuardada && !!guardada} onChange={() => setUsarGuardada(true)} className="h-4 w-4 accent-[#18345C]" />
             <span>
@@ -1111,7 +1113,7 @@ function ModalPago({ huespedId, saldo, puntos, onCerrar, onPagar, }: {
         </label>
       </div>
 
-      <div className="rounded-xl border border-[#E5E0D8] bg-white p-4 text-sm">
+      <div data-vs-card="huesped" className="rounded-xl border border-[#E5E0D8] bg-white p-4 text-sm">
         <div className="flex justify-between py-1 text-[#6B7280]">
           <span>
             <UiText text="Saldo de la cuenta" />
@@ -1144,7 +1146,7 @@ function ModalPago({ huespedId, saldo, puntos, onCerrar, onPagar, }: {
       </div>
 
       {errorPago && <p role="alert" className="text-sm text-[#991B1B]">{errorPago}</p>}
-      <div className="flex justify-end gap-3 pt-1">
+      <div data-vs-actions="compact" className="flex justify-end gap-3 pt-1">
         <BotonSecundario onClick={onCerrar} ancho>
           <UiText text="Cancelar" />
         </BotonSecundario>
@@ -1182,7 +1184,7 @@ function ModalComprobante({ huesped, reserva, habitacion, cuenta, cargos, fiscal
             <h3 className="text-lg font-semibold">Villa Serena Hotel</h3>
             <p>Huehuetenango, Guatemala</p>
             <p>NIT: {HOTEL.nit}</p>
-            <p>Correo: villaserenagt@gmail.com</p>
+            <p>Correo: hotelvillaserena.gt@gmail.com</p>
           </div>
           <div className="text-sm leading-relaxed sm:text-right">
             <h3 className="font-serif text-xl font-bold">FACTURA PRELIMINAR</h3>

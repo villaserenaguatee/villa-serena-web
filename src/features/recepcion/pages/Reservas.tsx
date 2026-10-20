@@ -30,9 +30,9 @@ export default function Reservas({ onAbrir, onNueva, refreshTick }: Props) {
   function clear() { setTexto(''); setCodigo(''); setEstado(''); setCanal(''); setDesde(''); setHasta(''); setRapido(''); setQuery(''); setReload(n => n + 1); }
   function paginate(page: number) { const next = new URLSearchParams(query); next.set('page', String(page)); setQuery(next.toString()); }
   return <div className="flex-1 overflow-y-auto bg-[#F8F6F0] text-[#18345C]">
-    <div className="border-b border-[#E5E0D8] bg-white px-4 py-4 sm:px-6">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-[32px] font-semibold">Reservas</h1></div><button onClick={onNueva} className="flex items-center gap-2 rounded-md bg-[#18345C] px-4 py-2.5 text-white"><PlusIcon />Nueva reserva</button></div>
-      <form onSubmit={submit} className="max-w-[1040px] space-y-3">
+    <div data-vs-page-header="recepcion" className="border-b border-[#E5E0D8] bg-white px-4 py-4 sm:px-6">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3"><div><h1 data-vs-page-title="recepcion" className="text-[32px] font-semibold">Reservas</h1></div><button onClick={onNueva} className="flex items-center gap-2 rounded-md bg-[#18345C] px-4 py-2.5 text-white"><PlusIcon />Nueva reserva</button></div>
+      <form data-vs-ui="compact" onSubmit={submit} className="max-w-[1040px] space-y-3">
         <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
         <label className="text-sm">Buscar por nombre o documento<div className="relative"><span className="absolute left-3 top-3"><SearchIcon size={15} /></span><input className={`${control} w-full pl-9`} value={texto} onChange={e => setTexto(e.target.value)} placeholder="Buscar huésped…" /></div></label>
         <label className="text-sm">Código de reserva<input className={`${control} w-full`} value={codigo} onChange={e => setCodigo(e.target.value)} placeholder="VS-TEST01" /></label>

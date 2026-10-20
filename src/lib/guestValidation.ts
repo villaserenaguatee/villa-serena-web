@@ -1,5 +1,22 @@
 import { getCountries, parsePhoneNumberFromString } from 'libphonenumber-js/max';
 export const phoneCountries = getCountries().filter(c => !['AC', 'TA', 'XK'].includes(c));
+export function validBookingEmail(value: string) {
+  if (value.length > 150 || value !== value.trim()) return false;
+  const parts = value.split('@');
+  if (parts.length !== 2) return false;
+  const [local, domain] = parts;
+  if (!local || local.length > 64 || local.startsWith('.') || local.endsWith('.') || local.includes('..') ||
+      !/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(local)) return false;
+  const labels = domain.split('.');
+  return labels.length >= 2 && labels.every(label => label.length <= 63 && /^[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?$/.test(label));
+}
+export function filterGuestNameInput(value: string) {
+  return value.replace(/[^\p{L}\p{M}\p{Zs}\p{Pd}'‘’ʼ]/gu, '');
+}
+export function validGuestName(value: string) {
+  // Include combining accents and common typographic apostrophes/hyphens, not numbers or control characters.
+  return /\p{L}/u.test(value) && /^[\p{L}\p{M}\p{Zs}\p{Pd}'‘’ʼ]+$/u.test(value);
+}
 export function validDocument(type: string, value: string) {
   // New MVP documents are DPI only; historical records are not migrated.
   return type.toUpperCase() === 'DPI' && /^[0-9]{13}$/.test(value.trim());

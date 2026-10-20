@@ -166,7 +166,7 @@ export default function RoomDetail() {
       {en ? "This room is no longer available for this stay. Return to the results to choose another room." : "Esta habitación ya no está disponible para esta estancia. Vuelve a los resultados para elegir otra habitación."}
     </p>}
     {open && !fromResults && (<div className="booking-modal-backdrop" onMouseDown={() => setOpen(false)}>
-      <div className="availability-modal" onMouseDown={(e) => e.stopPropagation()}>
+      <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="availability-modal" onMouseDown={(e) => e.stopPropagation()}>
         <button className="booking-modal-close" onClick={() => setOpen(false)}>
           <UiText text="×" />
         </button>
@@ -181,6 +181,7 @@ export default function RoomDetail() {
             {en ? "Arrival" : "Llegada"}
             <BilingualDateInput
               value={arrival}
+              rangeStart={arrival} rangeEnd={departure} rangeEdge="arrival"
               min={todayISO()}
               onChange={(v) => {
                 setArrival(v);
@@ -195,8 +196,10 @@ export default function RoomDetail() {
             {en ? "Departure" : "Salida"}
             <BilingualDateInput
               value={departure}
+              rangeStart={arrival} rangeEnd={departure} rangeEdge="departure" minExclusive
               min={arrival}
               onChange={(v) => {
+                if(v && arrival && v<=arrival)return;
                 setDeparture(v);
                 setTouched(t => ({...t,departure:true}));
                 setChecked(false);

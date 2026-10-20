@@ -107,12 +107,12 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
       fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif',
     }}
     onClick={() => setMenuId(null)}>
-    <header className="relative border-b border-[#E5E0D8] bg-white px-6 py-6 sm:px-8">
+    <header data-vs-page-header="huesped" className="relative border-b border-[#E5E0D8] bg-white px-6 py-6 sm:px-8">
       <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#B38B2C]">
         {en?'Communication during your stay':'Comunicación durante tu estancia'}
       </p>
 
-      <h1 className="mt-1 text-[34px] font-semibold leading-tight text-[#18345C]">
+      <h1 data-vs-page-title="huesped" className="mt-1 text-[34px] font-semibold leading-tight text-[#18345C]">
         <UiText text="Chat con recepción" />
       </h1>
 
@@ -122,7 +122,7 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
     </header>
 
     <div className="mx-auto max-w-[720px] px-4 py-4 sm:px-5 lg:py-5">
-      <section className="flex h-[min(540px,calc(100vh-225px))] flex-col overflow-hidden rounded-2xl border border-[#E5E0D8] bg-white shadow-[0_8px_28px_rgba(16,39,71,0.06)]">
+      <section data-vs-card="huesped" className="flex h-[min(540px,calc(100vh-225px))] flex-col overflow-hidden rounded-2xl border border-[#E5E0D8] bg-white shadow-[0_8px_28px_rgba(16,39,71,0.06)]">
 
         <header className="flex items-center justify-between gap-3 border-b border-[#E5E0D8] px-4 py-3 sm:px-5">
           <div className="flex items-center gap-3">
@@ -214,7 +214,7 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
                     autoFocus
                     className="w-full rounded-lg border border-[#D7DCE2] bg-white p-2 text-[#18345C] outline-none" />
 
-                  <div className="mt-2 flex justify-end gap-2">
+                  <div data-vs-actions="compact" className="mt-2 flex justify-end gap-2">
                     <button type="button" onClick={() => setEditandoId(null)} className="rounded-md border px-3 py-1 text-xs text-[#52677F]">
                       {en ? "Cancel" : "Cancelar"}
                     </button>
@@ -261,7 +261,7 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
 
                 {menuId === m.id &&
                   mio &&
-                  !m.eliminadoParaTodos && (<div
+                  !m.eliminadoParaTodos && (<div data-vs-card="huesped"
                     onClick={(e) => e.stopPropagation()}
                     className="absolute right-0 top-6 z-20 w-44 overflow-hidden rounded-xl border border-[#E5E0D8] bg-white text-sm text-[#18345C] shadow-xl">
                     <button
@@ -350,7 +350,7 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
             : "Elige dónde quieres eliminar este mensaje."}
         </p>
 
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <div data-vs-actions="compact" className="mt-5 flex flex-wrap justify-end gap-2">
           <button
             type="button"
             onClick={() => {

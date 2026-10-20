@@ -631,7 +631,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
             if (aceptarTransporte(t.id, reserva.id, huespedId))
               setSolicitudesTransporte(transportesEstancia(reserva.id, huespedId));
           };
-          return <section key={t.id} className="rounded-xl border border-[#E5E0D8] bg-white p-4">
+          return <section data-vs-card="huesped" key={t.id} className="rounded-xl border border-[#E5E0D8] bg-white p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="font-semibold text-[#18345C]">
@@ -668,7 +668,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
       </div>)}
     </div>
     {carritoAbierto && (<div className="fixed inset-0 z-50 flex justify-end bg-[#102747]/55" onClick={() => setCarritoAbierto(false)}>
-      <div className="h-full w-full max-w-md overflow-y-auto bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="small" className="h-full w-full max-w-md overflow-y-auto bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#E5E0D8] bg-white px-5 py-4">
           <div>
             <h2 className="text-xl font-semibold text-[#18345C]">
@@ -851,7 +851,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
     {servicioActivo && (<div
       className="fixed inset-0 z-[65] grid place-items-center bg-[#102747]/55 p-4"
       onMouseDown={(e) => e.target === e.currentTarget && setServicioActivo(null)}>
-      <section className="max-h-[82vh] w-full max-w-md overflow-y-auto rounded-xl bg-white shadow-2xl">
+      <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="small" className="max-h-[82vh] w-full max-w-md overflow-y-auto rounded-xl bg-white shadow-2xl">
 
         <header className="flex items-start justify-between border-b border-[#E5E0D8] px-4 py-3">
           <div>
@@ -1131,7 +1131,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
               detalleServicio.cantidad)}
           </p>)}
 
-          <div className="flex justify-end gap-2">
+          <div data-vs-actions="compact" className="flex justify-end gap-2">
             <button type="button" onClick={() => setServicioActivo(null)} className="rounded-lg border border-[#DDD7CD] px-4 py-2 text-[#526276]">
               {ui("Cancelar")}
             </button>
@@ -1173,7 +1173,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
       </section>
     </div>)}
     {productoActivo && (<div className="fixed inset-0 z-50 flex items-center justify-center bg-[#102747]/55 p-4" onClick={() => setProductoActivo(null)}>
-      <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="p-5">
           <div className="flex justify-between gap-3">
             <div>
@@ -1272,7 +1272,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
         setPedidoCancelar(null);
         setMotivoCancelar("");
       }}>
-      <section
+      <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="small"
         role="dialog"
         aria-modal="true"
         aria-labelledby="cancelar-pedido-titulo"
@@ -1299,7 +1299,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
           rows={3}
           placeholder={ui("Escribe el motivo aquí...")}
           className="mt-4 w-full resize-none rounded-lg border border-[#CCD3DB] p-3 outline-none focus:border-[#18345C] focus-visible:ring-2 focus-visible:ring-[#B79B45]/40" />
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <div data-vs-actions="compact" className="mt-5 flex flex-wrap justify-end gap-2">
           <button
             type="button"
             onClick={() => {
@@ -1403,7 +1403,7 @@ function SeguimientoPedido({ pedido, onCancelar, }: {
   const indice = PASOS_PEDIDO.indexOf(pedido.estado);
   const cancelado = pedido.estado === "cancelado";
   const transcurrido = minutosEntre(pedido.creadoEn, pedido.entregadoEn);
-  return (<div className="bg-white border border-[#E5E0D8] rounded-xl px-4 sm:px-5 py-4">
+  return (<div data-vs-card="huesped" className="bg-white border border-[#E5E0D8] rounded-xl px-4 sm:px-5 py-4">
     <div className="flex items-start gap-3 flex-wrap">
       <div className="w-10 h-10 rounded-lg bg-[#F8F6F0] flex items-center justify-center shrink-0 text-[#18345C]">
         <CartIcon size={18} />
@@ -1543,7 +1543,7 @@ export function ChatRecepcion({ mensajes, escribiendo, onEnviar, preguntas = [],
       URL.revokeObjectURL(adjunto.url);
     setAdjunto(null);
   }
-  return (<div className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden flex flex-col">
+  return (<div data-vs-card="huesped" className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden flex flex-col">
     <div className="px-4 sm:px-5 py-3.5 border-b border-[#E5E0D8] flex items-center gap-3">
       <div className="w-9 h-9 rounded-full bg-[#18345C] flex items-center justify-center text-white shrink-0">
         <ChatIcon size={16} />
@@ -1565,7 +1565,7 @@ export function ChatRecepcion({ mensajes, escribiendo, onEnviar, preguntas = [],
     </div>
 
     <div className="px-4 sm:px-5 py-4 space-y-3 h-[430px] overflow-y-auto bg-[#F8F6F0]">
-      <div className="max-w-2xl rounded-xl border border-[#E5E0D8] bg-white p-4">
+      <div data-vs-card="huesped" className="max-w-2xl rounded-xl border border-[#E5E0D8] bg-white p-4">
         <p className="font-semibold text-[#18345C]">
           <UiText text="¿En qué podemos ayudarte?" />
         </p>
@@ -1599,7 +1599,7 @@ export function ChatRecepcion({ mensajes, escribiendo, onEnviar, preguntas = [],
       })}
 
       {escribiendo && (<div className="flex justify-start">
-        <div className="bg-white border border-[#E5E0D8] rounded-2xl rounded-bl-sm px-3.5 py-2.5">
+        <div data-vs-card="huesped" className="bg-white border border-[#E5E0D8] rounded-2xl rounded-bl-sm px-3.5 py-2.5">
           <p className="text-[13px] text-[#AEBCC1]">
             <UiText text="Recepción está escribiendo…" />
           </p>
@@ -1622,7 +1622,7 @@ export function ChatRecepcion({ mensajes, escribiendo, onEnviar, preguntas = [],
           <UiText text="Quitar" />
         </button>
       </div>)}
-      <div className="flex gap-2">
+      <div data-vs-actions="compact" className="flex gap-2">
         <input
           ref={archivoRef}
           type="file"

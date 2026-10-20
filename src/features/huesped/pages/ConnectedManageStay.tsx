@@ -5,14 +5,14 @@ import {usePublicLanguage} from '@/components/common/PublicLanguageToggle';
 export default function ConnectedManageStay({reserva,habitacion}:{reserva:Reserva;habitacion?:HabitacionHotel}){const {en}=usePublicLanguage();const ui=useUiText();return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0] p-4 sm:p-6">
             <div className="mx-auto max-w-6xl">
               <p className="text-xs font-semibold uppercase tracking-[.28em] text-[#B38B2C]">{en?"Your stay, your way":"Tu estancia, a tu ritmo"}</p>
-              <h1 className="mt-2 text-3xl font-semibold text-[#18345C] sm:text-4xl">
+              <h1 data-vs-page-title="huesped" className="mt-2 text-3xl font-semibold text-[#18345C] sm:text-4xl">
                 <UiText text="Gestionar estancia" />
               </h1>
               <p className="mt-2 text-base text-[#6B7280]">
                 <UiText text="Elige qué deseas hacer con tu alojamiento." />
               </p>
               <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <article className="flex flex-col rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm sm:p-6">
+                <article data-vs-card="huesped" className="flex flex-col rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm sm:p-6">
                   <span className="grid h-12 w-12 place-items-center rounded-full border border-[#D3AE55] text-[#A77E20]">
                     <GestionIcon tipo="calendario" />
                   </span>
@@ -31,9 +31,9 @@ export default function ConnectedManageStay({reserva,habitacion}:{reserva:Reserv
                   </div>
                   <button
                     disabled title={en?"Contact Reception to request an extension":"Contacta a Recepción para solicitar una extensión"}
-                    className="mt-5 inline-flex w-fit items-center gap-3 self-end rounded-lg bg-[#B08A31] px-4 py-2.5 text-sm font-semibold text-white">Solicitar extensión <span>→</span></button>
+                    className="mt-auto inline-flex w-fit items-center gap-3 self-end rounded-lg bg-[#B08A31] px-4 py-2.5 text-sm font-semibold text-white">Solicitar extensión <span>→</span></button>
                 </article>
-                <article className="flex flex-col rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm sm:p-6">
+                <article data-vs-card="huesped" className="flex flex-col rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm sm:p-6">
                   <span className="grid h-12 w-12 place-items-center rounded-full border border-[#D3AE55] text-[#A77E20]">
                     <GestionIcon tipo="cama" />
                   </span>
@@ -47,10 +47,10 @@ export default function ConnectedManageStay({reserva,habitacion}:{reserva:Reserv
                   <p className="text-[#52677F]">{en?"Check dates, availability and rates.":"Consulta fechas, disponibilidad y tarifas."}</p>
                   <button
                     onClick={()=>window.location.assign("/catalogo")}
-                    className="mt-5 inline-flex w-fit items-center gap-3 self-end rounded-lg bg-[#B08A31] px-4 py-2.5 text-sm font-semibold text-white">{en?"New reservation":"Nueva reserva"} <span>→</span></button>
+                    className="mt-auto inline-flex w-fit items-center gap-3 self-end rounded-lg bg-[#B08A31] px-4 py-2.5 text-sm font-semibold text-white">{en?"New reservation":"Nueva reserva"} <span>→</span></button>
                 </article>
               </div>
-              <section className="mt-4 flex items-center gap-4 rounded-xl border border-[#E5E0D8] bg-white p-4 shadow-sm">
+              <section data-vs-card="huesped" className="mt-4 flex items-center gap-4 rounded-xl border border-[#E5E0D8] bg-white p-4 shadow-sm">
                 <span className="text-[#A77E20]">
                   <GestionIcon tipo="solicitud" />
                 </span>

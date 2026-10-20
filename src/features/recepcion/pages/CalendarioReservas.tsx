@@ -90,7 +90,7 @@ export default function CalendarioReservas({ conectado = false, reservas, huespe
   while (monthSlots.length % 7) monthSlots.push(null);
   const weeks = Array.from({ length: monthSlots.length / 7 }, (_, i) => monthSlots.slice(i * 7, i * 7 + 7));
   const reservationsOnDay = (day: string) => visible.filter(r => r.fechaEntrada <= day && r.fechaSalida > day);
-  return <section aria-label="Calendario de reservas" className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-[#E5E0D8] bg-white p-4 text-[#18345C]">
+  return <section data-vs-card="recepcion" aria-label="Calendario de reservas" className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-[#E5E0D8] bg-white p-4 text-[#18345C]">
     <div className="mb-3 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
       <h2 className="text-xl font-semibold">Calendario de reservas</h2>
       <div aria-hidden="true" className="col-span-2 row-start-2 h-10 w-36 justify-self-center md:col-span-1 md:col-start-2 md:row-start-1" />
@@ -135,7 +135,7 @@ export default function CalendarioReservas({ conectado = false, reservas, huespe
     </div>
     <div aria-label="Leyenda de estados" className="mt-2 flex shrink-0 flex-wrap gap-1.5 text-[11px]">{Object.entries(RESERVA_META).map(([key, meta]) => <span key={key} className={`rounded border px-2 py-0.5 ${meta.chip}`}>{meta.label}</span>)}</div>
     {selectedDay && <div className="fixed inset-0 z-50 grid place-items-center bg-[#071D34]/45 p-4" onClick={() => setSelectedDay(null)}>
-      <section role="dialog" aria-modal="true" aria-label="Reservas del día" onClick={e => e.stopPropagation()} className="flex max-h-[80dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+      <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="small" role="dialog" aria-modal="true" aria-label="Reservas del día" onClick={e => e.stopPropagation()} className="flex max-h-[80dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <header className="flex shrink-0 items-center justify-between gap-2 border-b border-[#E5E0D8] px-4 py-2"><h3 className="text-lg font-semibold">Reservas del {new Intl.DateTimeFormat('es-GT', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${selectedDay}T12:00:00Z`))}</h3><ReceptionCloseButton autoFocus onClick={() => setSelectedDay(null)} /></header>
         <div className="min-h-0 space-y-2 overflow-y-auto p-3">{reservationsOnDay(selectedDay).map(reservationButton)}</div>
       </section>

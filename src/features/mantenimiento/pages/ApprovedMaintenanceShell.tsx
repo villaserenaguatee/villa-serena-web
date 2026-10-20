@@ -64,9 +64,9 @@ function SeccionIcon({ id, size = 18 }: {
 export default function ApprovedMaintenanceShell({section,onSection,onProfile,name,incidenciasPendientes=0,ordenesAtrasadas=0,children}:{section:SeccionMant;onSection:(s:SeccionMant)=>void;onProfile:()=>void;name:string;incidenciasPendientes?:number;ordenesAtrasadas?:number;children:ReactNode}){
  const seccion=section,setSeccion=onSection,contenido=children;
  const initials=name.split(/\s+/).filter(Boolean).map(s=>s[0]).slice(0,2).join('');
- return <div data-approved-reference="e216d53-maintenance" className="w-full h-dvh min-h-0 flex flex-col overflow-hidden" style={{fontFamily:'"Afacad", "Segoe UI", Arial, sans-serif'}}>    <div className="flex-1 flex overflow-hidden">
+ return <div data-vs-workspace="mantenimiento" data-approved-reference="e216d53-maintenance" className="w-full h-dvh min-h-0 flex flex-col overflow-hidden" style={{fontFamily:'"Afacad", "Segoe UI", Arial, sans-serif'}}>    <div className="flex-1 flex overflow-hidden">
 
-      <nav className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
+      <nav data-vs-sidebar="mantenimiento" className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
         <div className="px-5 pt-5 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
           <img src="/villa-serena-logo.png" alt="Villa Serena Hotel" className="mx-auto mb-2 w-32 max-h-24 object-contain" />
           <p className="text-white text-xl font-bold leading-tight" style={{ letterSpacing: '0.02em' }}>Villa Serena</p>
@@ -77,7 +77,7 @@ export default function ApprovedMaintenanceShell({section,onSection,onProfile,na
           {SECCIONES.map(s => {
             const active = seccion === s.id;
             const badge = s.id === 'incidencias' ? incidenciasPendientes : s.id === 'ordenes' ? ordenesAtrasadas : 0;
-            return (<button
+            return (<button data-vs-active={active}
               key={s.id}
               onClick={() => setSeccion(s.id)}
               className="w-full flex items-center gap-3 px-5 py-3 text-left transition-colors relative"
@@ -100,13 +100,13 @@ export default function ApprovedMaintenanceShell({section,onSection,onProfile,na
           <button
             onClick={() => onProfile()}
             className="w-full flex items-center gap-3 rounded-lg p-2 text-left hover:bg-[#18345C] transition-colors"
-            title="Abrir mi perfil">
+            title={name}>
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
               style={{ backgroundColor: '#D8B94E', color: '#102747' }}>{initials}</div>
             <div className="min-w-0 flex-1">
               <p className="text-white text-xs font-semibold truncate">
-                {name}
+                {name.split(/\s+/).slice(0,2).join(" ")}
               </p>
               <p className="text-[10px] truncate" style={{ color: '#AEBCC1' }}>Encargado de mantenimiento</p>
               <p className="text-[9px] mt-0.5" style={{ color: '#D8B94E' }}>Perfil</p>
@@ -115,8 +115,8 @@ export default function ApprovedMaintenanceShell({section,onSection,onProfile,na
         </div>
       </nav>
 
-      <div className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
-        <div className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: '#102747' }}>
+      <div data-vs-shell-main="mantenimiento" className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
+        <div data-vs-topbar="mantenimiento" className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: '#102747' }}>
           <p className="lg:hidden text-white text-lg font-bold">Villa Serena</p>
           <span className="lg:hidden text-[#AEBCC1] text-xs">·</span>
           <p className="text-[#AEBCC1] text-xs font-medium truncate flex-1">
@@ -131,11 +131,11 @@ export default function ApprovedMaintenanceShell({section,onSection,onProfile,na
           {contenido}
         </div>
 
-        <div className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
+        <div data-vs-mobile-nav="mantenimiento" className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
           {SECCIONES.map(s => {
             const active = seccion === s.id;
             const badge = s.id === 'incidencias' ? incidenciasPendientes : s.id === 'ordenes' ? ordenesAtrasadas : 0;
-            return (<button
+            return (<button data-vs-active={active}
               key={s.id}
               onClick={() => setSeccion(s.id)}
               className="flex-1 min-w-[64px] flex flex-col items-center justify-center py-2 gap-0.5 relative transition-colors"

@@ -1,5 +1,5 @@
 export class AuthError extends Error {
-  constructor(public codigo: string, public status: number, mensaje: string) { super(mensaje); }
+  constructor(public codigo: string, public status: number, mensaje: string, public retryAfter?: string) { super(mensaje); }
 }
 // Next empaqueta Route Handlers y componentes de servidor por separado.
 // El proveedor demo global puede devolver errores de otro paquete; no usar instanceof AuthError.

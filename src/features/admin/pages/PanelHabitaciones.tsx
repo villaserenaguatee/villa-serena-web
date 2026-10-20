@@ -129,7 +129,7 @@ export default function PanelHabitaciones({ habitaciones, reservas, huespedes, o
         if (e.target === e.currentTarget)
           setSeleccionada(null);
       }}>
-      <section className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:max-w-xl sm:rounded-2xl sm:p-5">
+      <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:max-w-xl sm:rounded-2xl sm:p-5">
         <button type="button" onClick={() => setSeleccionada(null)} className="absolute right-5 top-4 text-2xl text-[#71839B]">×</button>
         <div className="mb-4 pr-8">
           <p className="text-[11px] uppercase tracking-widest text-[#B38719]">Mapa de habitaciones</p>

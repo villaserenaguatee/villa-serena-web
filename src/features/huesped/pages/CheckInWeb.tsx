@@ -188,7 +188,7 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
     return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
       <Cabecera titulo={en ? 'Documents saved locally' : 'Documentos guardados en este navegador'} subtitulo={`${en ? "Room" : "Habitación"} ${(habitacion?.numero??(en?'Pending assignment':'Pendiente de asignación'))} · ${reserva.codigo}`} />
       <div className="px-4 sm:px-6 py-8 max-w-3xl">
-        <div className="overflow-hidden rounded-2xl border border-[#E5E0D8] bg-white shadow-sm">
+        <div data-vs-card="huesped" className="overflow-hidden rounded-2xl border border-[#E5E0D8] bg-white shadow-sm">
           <div className="bg-[#F0FAF4] px-6 py-8 text-center border-b border-[#BBE2C8]">
             <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#198754] bg-white text-[#198754]">
               <CheckIcon size={28} />
@@ -508,7 +508,7 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
                       onChange={e => setTelefonoAcompanante(e.target.value.replace(/\D/g, '').slice(0, 8))}
                       placeholder="0000 0000"
                       className={`${INPUT_CLS} flex-1`} />
-                    {paisAbierto && <div className="absolute left-0 top-full z-50 mt-1 w-80 max-w-[85vw] overflow-hidden rounded-lg border bg-white shadow-xl">
+                    {paisAbierto && <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="absolute left-0 top-full z-50 mt-1 w-80 max-w-[85vw] overflow-hidden rounded-lg border bg-white shadow-xl">
                       <div className="border-b p-2">
                         <input autoFocus value={busquedaPais} onChange={e => setBusquedaPais(e.target.value)} placeholder={ui("Buscar país o código")} className={INPUT_CLS} />
                       </div>
@@ -538,7 +538,7 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
                 </Campo>
               </div>
 
-              <div className="mt-6 flex gap-3">
+              <div data-vs-actions="compact" className="mt-6 flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -582,7 +582,7 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
           </div>
         </Tarjeta>)}
 
-        {paso===2&&connected?<div className="space-y-5">{connectedDocuments}<div className="flex gap-2"><BotonSecundario ancho onClick={()=>setPaso(1)}>Volver</BotonSecundario><BotonPrimario ancho onClick={()=>setPaso(3)}>Continuar</BotonPrimario></div></div>:null}
+        {paso===2&&connected?<div className="space-y-5">{connectedDocuments}<div data-vs-actions="compact" className="flex gap-2"><BotonSecundario ancho onClick={()=>setPaso(1)}>Volver</BotonSecundario><BotonPrimario ancho onClick={()=>setPaso(3)}>Continuar</BotonPrimario></div></div>:null}
         {paso === 2 && !connected && (<Tarjeta titulo="Documento de identidad">
           <p className="text-[14px] text-[#6B7280]">
             {ui("Sube una foto legible de tu documento y asegúrate de que todos los datos sean visibles.")}
@@ -633,7 +633,7 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
               </span>
             </Aviso>
           </div>}
-          <div className="flex gap-2 mt-5">
+          <div data-vs-actions="compact" className="flex gap-2 mt-5">
             <BotonSecundario onClick={() => setPaso(1)} ancho>
               <UiText text="Volver" />
             </BotonSecundario>
@@ -663,7 +663,7 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
             </span>
           </label>
 
-          <div className="flex gap-2 mt-5">
+          <div data-vs-actions="compact" className="flex gap-2 mt-5">
             <BotonSecundario onClick={() => setPaso(2)} ancho>
               <UiText text="Volver" />
             </BotonSecundario>
@@ -709,7 +709,7 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
               <UiText text="Recepción revisará la información antes de activar tu llave digital." />
             </Aviso>
           </div>
-          <div className="flex gap-2 mt-5">
+          <div data-vs-actions="compact" className="flex gap-2 mt-5">
             <BotonSecundario onClick={() => setPaso(3)} ancho>Volver</BotonSecundario>
             <BotonPrimario ancho disabled={connected} onClick={finalizar}>{en ? 'Save' : 'Guardar'}</BotonPrimario>
           </div>

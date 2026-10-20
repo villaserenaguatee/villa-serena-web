@@ -79,7 +79,7 @@ function LegacyConfirmation() {
   });
   return (<main className="reserve-public reserve-center">
     <VillaSerenaLogo />
-    <section className="reserve-form-card reserve-success">
+    <section data-vs-ui="compact" className="reserve-form-card reserve-success">
       <CheckCircle2 size={46} />
       <h1>
         <UiText text="¡Reserva confirmada!" />
@@ -172,7 +172,7 @@ function BffConfirmation({ code }: { code: string }) {
   </main>;
   const copyReady = Boolean(local.reservation && local.guest && local.room);
   return <main className="reserve-public reserve-center"><VillaSerenaLogo />
-    <section className="reserve-form-card reserve-success"><CheckCircle2 size={46} />
+    <section data-vs-ui="compact" className="reserve-form-card reserve-success"><CheckCircle2 size={46} />
       <h1><UiText text="¡Reserva confirmada!" /></h1>
       <p>{en ? "Demo booking saved. Pay at the hotel at check-out. No payment was collected." : "Reserva demo guardada. Paga en el hotel al check-out. No se ha cobrado ningún pago."}</p>
       <div className="account-info">

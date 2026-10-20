@@ -10,12 +10,14 @@ import type { SessionUser } from '@/lib/auth/types';
 interface AuthContextValue {
   user: SessionUser | null;
   loading: boolean;
+  localDemo?: boolean;
   login: (email: string, password: string, staffOnly?: boolean) => Promise<SessionUser>;
   logout: () => Promise<void>;
 }
 export const AuthContext = createContext<AuthContextValue | null>(null);
 const KEY = 'villa-serena-session';
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children, localDemo = false }: { children: ReactNode; localDemo?: boolean }) {
+  const demoEnabled = localDemo && typeof window !== 'undefined' && ['localhost','127.0.0.1','[::1]'].includes(window.location.hostname);
   const [user, setUser] = useState<SessionUser | null>(null), [loading, setLoading] = useState(true);
   useEffect(() => {
     let active = true;
@@ -24,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let guest: SessionUser | null = null;
       try {
         const raw = localStorage.getItem(KEY);
-        const local = raw ? reconstruirSesion(JSON.parse(raw)) : null;
+        const local = demoEnabled && raw ? reconstruirSesion(JSON.parse(raw)) : null;
         if (local?.role === 'huesped') guest = local;
         else if (raw) localStorage.removeItem(KEY);
       } catch { localStorage.removeItem(KEY); }
@@ -45,20 +47,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('focus', focus); window.removeEventListener('storage', storage);
       window.removeEventListener(EMPLEADOS_EVENT, focus); window.removeEventListener(HUESPEDES_EVENT, focus);
     };
-  }, []);
+  }, [demoEnabled]);
   const login = useCallback(async (email: string, password: string, staffOnly = false) => {
     let next: SessionUser;
-    if (!staffOnly && email.trim().toLowerCase() === 'anamorales@gmail.com' && !window.location.pathname.startsWith('/panel')) {
+    if (demoEnabled && !staffOnly && email.trim().toLowerCase() === 'anamorales@gmail.com' && !window.location.pathname.startsWith('/panel')) {
       next = await loginLocal(email, password); localStorage.setItem(KEY, JSON.stringify(next));
     } else {
       next = sessionUser(await staffLogin({ correo: email, contrasena: password })); localStorage.removeItem(KEY);
     }
     setUser(next); return next;
-  }, []);
+  }, [demoEnabled]);
   const logout = useCallback(async () => {
     if (user?.role !== 'huesped') await staffRequest<void>('logout', {});
     localStorage.removeItem(KEY); setUser(null);
   }, [user]);
-  const value = useMemo(() => ({ user, loading, login, logout }), [user, loading, login, logout]);
+  const value = useMemo(() => ({ user, loading, login, logout, localDemo: demoEnabled }), [user, loading, login, logout, demoEnabled]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

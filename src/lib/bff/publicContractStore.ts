@@ -10,6 +10,7 @@ import { validPublicDate } from '@/lib/publicStayValidation';
 export type ContractEntry = { attempt: string; fingerprint: string; created: CreatedPublicDto; guest: CreatePublicDto['huesped']; roomType: ReservationHold['roomType']; payment?: PaymentDto };
 export type ChannelEntry = { reservation: ChannelReservation; guest: CreatePublicDto['huesped'] };
 type State = { version: 1; entries: ContractEntry[]; channels?: ChannelEntry[] };
+// Preserve the existing demo storage filename; renaming it would hide local records.
 const path = () => process.env.VILLA_SERENA_PUBLIC_CONTRACT_PATH ?? resolve(process.cwd(), '.data/public-stripe-demo.json');
 export function readPublicContractState(): State {
   try {

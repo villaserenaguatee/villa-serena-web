@@ -54,7 +54,9 @@ for (const { name, viewport } of viewports) {
       await expect(page.getByRole('heading', { name: 'Introduce tus datos', exact: true })).toBeVisible();
       await fillGuest(page, 'public-issue48@example.test', '   ');
       await page.getByRole('button', { name: 'Revisar datos', exact: true }).click();
-      await expect(page.getByRole('alert').filter({ hasText: 'Completa todos' })).toBeVisible();
+      await expect(page.getByLabel('Nombre', { exact: true })).toBeFocused();
+      await expect(page.getByLabel('Nombre', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+      await expect(page.getByRole('alert').filter({ hasText: 'Complete este campo' })).toBeVisible();
       expect(posts()).toHaveLength(0);
       await page.getByLabel('Nombre', { exact: true }).fill('Huésped');
       await reviewGuest(page);

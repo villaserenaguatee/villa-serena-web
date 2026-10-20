@@ -2,6 +2,7 @@ import { AvailabilityError } from '@/lib/bff/publicAvailability';
 import { bookingEmailProof } from '@/lib/bff/bookingEmailVerification';
 import { publicBookingAudit } from '@/lib/bff/publicBookingAudit';
 import { creationResponse } from '@/lib/bff/bookingContext';
+import {readPublicContractState} from '@/lib/bff/publicContractStore';
 import { demoCatalog, demoCreate, demoHotel, demoOffers, demoOfferQuotes, demoPayment, demoQuotes, demoStatus, parseContractBooking } from '@/lib/bff/publicContract';
 
 export const runtime = 'nodejs';
@@ -29,7 +30,8 @@ export async function GET(request: Request) {
   try {
     if (process.env.VILLA_SERENA_BFF_MODE === 'api') {
       const route = path(request);
-      const allowed = (route.length === 1 && ['hotel', 'tipos-habitacion', 'disponibilidad', 'ofertas'].includes(route[0])) ||
+      const recovering=route.length===2&&route[0]==='reservas'&&route[1]==='intento';
+      const allowed = recovering || (route.length === 1 && ['hotel', 'tipos-habitacion', 'disponibilidad', 'ofertas'].includes(route[0])) ||
         (route.length === 2 && route[0] === 'ofertas' && route[1] === 'disponibilidad') ||
         (route.length === 2 && route[0] === 'tipos-habitacion' && /^\d+$/.test(route[1])) ||
         (route.length === 3 && route[0] === 'reservas' && route[2] === 'estado');
@@ -40,10 +42,18 @@ export async function GET(request: Request) {
         query.set('huespedes', query.get('numeroHuespedes')!);
         query.delete('numeroHuespedes');
       }
+      let recoveryHeaders:Record<string,string>={};
+      if(recovering){
+        if(request.headers.get('Sec-Fetch-Site')==='cross-site'||(request.headers.get('Origin')&&request.headers.get('Origin')!==new URL(request.url).origin))throw new AvailabilityError('ORIGIN_FORBIDDEN',403);
+        const key=request.headers.get('Idempotency-Key')??'',draft=request.headers.get('X-Booking-Draft')??'',proof=bookingEmailProof(request,draft);
+        if(!/^[a-zA-Z0-9_-]{16,100}$/.test(key)||!proof||!['RESERVA','OFERTA'].includes(query.get('origen')??''))return Response.json({codigo:'RECUPERACION_NO_AUTORIZADA',mensaje:'No pudimos consultar tu solicitud. Verifica de nuevo el mismo correo o contacta a Recepción. No inicies otra reserva mientras se comprueba.'},{status:403,headers:{'Cache-Control':'no-store'}});
+        recoveryHeaders={'Idempotency-Key':key,'X-Booking-Draft':draft,'X-Booking-Email-Verification':proof};
+        for(const name of [...query.keys()])if(name!=='origen')query.delete(name);
+      }
       let upstream: Response;
       try {
         upstream = await fetch(new URL(`/api/v1/publico/${route.map(encodeURIComponent).join('/')}?${query}`, process.env.API_URL), {
-          cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(10000), headers: { Accept: 'application/json' },
+          cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(10000), headers: { Accept: 'application/json',...recoveryHeaders },
         });
       } catch { throw new AvailabilityError('API_NO_DISPONIBLE', 502); }
       const body = await upstream.json().catch(() => null);
@@ -52,6 +62,12 @@ export async function GET(request: Request) {
     }
     demoOnly();
     const route = path(request), url = new URL(request.url);
+    // Explicit demo counterpart; never used as a fallback for a Spring recovery.
+    if(route.join('/')==='reservas/intento'){
+      const entry=readPublicContractState().entries.find(e=>e.attempt===request.headers.get('Idempotency-Key'));
+      if(!entry)throw new AvailabilityError('RESERVA_NO_ENCONTRADA',404);
+      return Response.json(demoStatus(entry.created.codigo),{headers});
+    }
     if (route.length === 1 && route[0] === 'hotel') return Response.json(demoHotel(), { headers });
     if (route.length === 1 && route[0] === 'ofertas') return Response.json(demoOffers(), { headers });
     if (route.length === 2 && route[0] === 'ofertas' && route[1] === 'disponibilidad') return Response.json(demoOfferQuotes(

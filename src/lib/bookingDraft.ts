@@ -3,13 +3,13 @@ const KEY = 'vs-public-booking-draft';
 const RECEIPT = 'vs-public-booking-receipt';
 const MAX_AGE = 2 * 60 * 60 * 1000;
 const publicKeys = ['habitacion', 'slug', 'habitacionId', 'tipoHabitacionId', 'categoria', 'precio', 'noches', 'llegada', 'salida', 'adultos', 'ninos', 'huespedes', 'total'];
-type Draft = { id: string; createdAt: number; updatedAt?: number; params: string; attempt?: { fingerprint: string; flow?: 'stripe' | 'hotel'; id: string; code?: string } };
+type Draft = { id: string; createdAt: number; updatedAt?: number; params: string; attempt?: { fingerprint: string; flow?: 'recurrente' | 'stripe' | 'hotel'; origin?: 'RESERVA'|'OFERTA'; id: string; code?: string } };
 export class BookingAttemptPendingError extends Error {}
-export function bookingReceipt(): { draftId: string; attemptId: string; code?: string } | null {
+export function bookingReceipt(): { draftId: string; attemptId: string; origin?: 'RESERVA'|'OFERTA'; flow?: 'recurrente'|'stripe'|'hotel'; code?: string } | null {
   try { const r=JSON.parse(sessionStorage.getItem(RECEIPT)||'null'); return r && typeof r.draftId==='string' && typeof r.attemptId==='string' ? r : null; } catch { return null; }
 }
 function retire(draft: Draft) {
-  if (draft.attempt) sessionStorage.setItem(RECEIPT, JSON.stringify({ draftId:draft.id, attemptId:draft.attempt.id, ...(draft.attempt.code ? {code:draft.attempt.code} : {}) }));
+  if (draft.attempt) sessionStorage.setItem(RECEIPT, JSON.stringify({ draftId:draft.id, attemptId:draft.attempt.id, flow:draft.attempt.flow, origin:draft.attempt.origin??(new URLSearchParams(draft.params).get('slug')?'OFERTA':'RESERVA'), ...(draft.attempt.code ? {code:draft.attempt.code} : {}) }));
   sessionStorage.removeItem(KEY);
 }
 export function activeBookingDraft(): Draft | null {
@@ -19,11 +19,6 @@ export function activeBookingDraft(): Draft | null {
     if (Date.now()-(draft.updatedAt??draft.createdAt)>=MAX_AGE) { retire(draft); return null; }
     return draft;
   } catch { return null; }
-}
-export function discardBookingDraft(id: string) {
-  const draft=activeBookingDraft();
-  if (draft?.id===id) { const code=draft.attempt?.code; retire(draft); return code; }
-  return undefined;
 }
 /** Call only after the backend reports a terminal result for this exact code. */
 export function completeBookingDraft(code: string) {
@@ -83,8 +78,9 @@ export async function bookingAttempt(id: string, fingerprint: string): Promise<s
   if (!draft) throw new Error('Draft unavailable');
   const retired=bookingReceipt();
   if(retired) throw new BookingAttemptPendingError('Resolve the previous request before creating another booking');
-  const flow=JSON.parse(fingerprint).flow==='stripe'?'stripe':'hotel';
-  const hashed=flow==='stripe'?await digest(fingerprint):fingerprint;
+  const requested=JSON.parse(fingerprint).flow;
+  const flow=requested==='recurrente'?'recurrente':requested==='stripe'?'stripe':'hotel';
+  const hashed=flow==='stripe'||flow==='recurrente'?await digest(fingerprint):fingerprint;
   draft=readBookingDraft(id);
   if(!draft || bookingReceipt()) throw new BookingAttemptPendingError('Resolve the previous request first');
   if(draft.attempt){
@@ -96,7 +92,7 @@ export async function bookingAttempt(id: string, fingerprint: string): Promise<s
     }
   }
   if (draft.attempt) throw new BookingAttemptPendingError('Resolve the existing attempt first');
-  draft.attempt = { id: crypto.randomUUID(), fingerprint:hashed, flow };
+  draft.attempt = { id: crypto.randomUUID(), fingerprint:hashed, flow, origin:JSON.parse(fingerprint).input?.ofertaSlug?'OFERTA':'RESERVA' };
   sessionStorage.setItem(KEY, JSON.stringify(draft));
   return draft.attempt.id;
 }

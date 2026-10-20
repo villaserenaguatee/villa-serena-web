@@ -186,17 +186,23 @@ function HomeContent() {
       ? <>Select <a className={linkClass} href="/catalogo">View rooms</a> to browse the Villa Serena catalog. You can explore rooms and filter by category, number of guests and price range.</>
       : <>Selecciona <a className={linkClass} href="/catalogo">Ver habitaciones</a> para consultar el catálogo de Villa Serena. Puedes explorar las habitaciones y filtrar por categoría, número de huéspedes y rango de precio.</>;
     if (key === "book") return en
-      ? <>From <a className={linkClass} href="#buscar">Check availability</a>, browse the options for your dates and guests. Choose a room and select “Book room”. Enter your details, review the information and continue to card payment. Once payment is confirmed, select “View my booking” to see its details.</>
-      : <>Desde <a className={linkClass} href="#buscar">Comprobar disponibilidad</a>, consulta las opciones para tus fechas y huéspedes. Elige una habitación y selecciona «Reservar habitación». Completa tus datos, revisa la información y continúa al pago con tarjeta. Cuando el pago esté confirmado, selecciona «Ver mi reserva» para consultar sus detalles.</>;
+      ? <>Use <a className={linkClass} href="#buscar">Check availability</a> to find a room for your dates and guests. Open its details and select Book room. Enter your details manually, review them and verify your email with the code sent to you before continuing to payment. Review the total and <a className={linkClass} href="/terminos">booking conditions</a>. Continue payment opens Recurrente, where you enter your card details in Guatemalan quetzales (GTQ). Your booking is confirmed only after payment is verified.</>
+      : <>Desde <a className={linkClass} href="#buscar">Comprobar disponibilidad</a>, busca una habitación para tus fechas y huéspedes. Abre su detalle y pulsa Reservar habitación. Completa tus datos manualmente, revísalos y verifica tu correo con el código recibido antes de pasar a Pago. Revisa el total y las <a className={linkClass} href="/terminos">condiciones de reserva</a>. Continuar pago abre Recurrente, donde introduces tu tarjeta para pagar en quetzales (GTQ). La reserva se confirma únicamente cuando se comprueba el pago.</>;
     if (key === "services") return en
-      ? <>In <a className={linkClass} href="#servicios">Services and experiences</a> you will find information about the restaurant, spa, gym and pool. Select “View information” for each option to see its features and opening hours.</>
-      : <>En <a className={linkClass} href="#servicios">Servicios y experiencias</a> encontrarás información del restaurante, spa, gimnasio y piscina. Selecciona «Ver información» en cada opción para consultar sus características y horarios.</>;
+      ? <>In <a className={linkClass} href="#servicios">Services and experiences</a>, select View information to read about the restaurant, spa, gym and pool. These public information windows do not make a booking or request a service. During your stay, the guest portal shows the options available for your booking status. Contact <a className={linkClass} href="#contacto">Reception</a> if you need assistance.</>
+      : <>En <a className={linkClass} href="#servicios">Servicios y experiencias</a>, pulsa Ver información para conocer el restaurante, spa, gimnasio y piscina. Estas ventanas informativas no realizan reservas ni solicitudes de servicios. Durante tu estancia, el portal muestra las opciones disponibles según el estado de tu reserva. Consulta a <a className={linkClass} href="#contacto">Recepción</a> si necesitas ayuda.</>;
     if (key === "stay") return en
-      ? <>Select <a className={linkClass} href="/login">Sign in</a> and enter the email you used to book and your access code. If you do not have a valid code, select <a className={linkClass} href="/login">Request code</a>; if you did not receive it, select <a className={linkClass} href="/login">Resend code</a>. You can also enter through “Access the guest portal” in your booking details. There you can view your stay, complete check-in, request services and review your account, depending on your reservation status.</>
-      : <>Selecciona <a className={linkClass} href="/login">Iniciar sesión</a> e ingresa el correo que utilizaste al reservar y tu código de acceso. Si no tienes un código vigente, selecciona <a className={linkClass} href="/login">Solicitar código</a>; si no lo recibiste, pulsa <a className={linkClass} href="/login">Reenviar código</a>. También puedes entrar desde «Acceder al portal del huésped» en el detalle de tu reserva. Allí podrás consultar tu estancia, completar tu check-in, solicitar servicios y revisar tu cuenta, según el estado de tu reserva.</>;
+      ? <>Open <a className={linkClass} href="/login">Sign in</a> and select Get your access code below the main button. Enter the email you used to book and select Send code. Check your inbox and spam folder, then return to sign in with that email and the six-digit code in Password or access code. It expires after 10 minutes and can be used only once; request another after the waiting period if needed. The booking code beginning VS- and the email verification code used before payment are not portal access codes. The portal shows your stay, check-in, services and account according to your booking status.</>
+      : <>Abre <a className={linkClass} href="/login">Iniciar sesión</a> y pulsa Obtén tu código de acceso, debajo del botón principal. Escribe el correo con el que reservaste y pulsa Enviar código. Revisa tu bandeja y Spam; vuelve al inicio de sesión e introduce ese correo y el código de seis dígitos en Contraseña o código de acceso. Vence en 10 minutos y se usa una sola vez; si lo necesitas, solicita otro al terminar la espera. El código de reserva que empieza con VS- y el código de verificación del correo previo al pago no sirven para entrar al portal. Allí puedes consultar estancia, check-in, servicios y cuenta según el estado de tu reserva.</>;
+    if (key === "payment") return en
+      ? <>Returning from Recurrente or closing its page does not confirm or immediately cancel a payment. The result page checks the booking and payment status. If it is pending, being verified or cannot be checked, use Check status and do not start another booking or payment for the same stay. Never assume a connection error means a rejected payment. If you closed the result page, contact <a className={linkClass} href="#contacto">Reception</a> with your booking code; if you do not have it, explain what happened before retrying. Read the <a className={linkClass} href="/privacidad">privacy policy</a> for information about payment data.</>
+      : <>Volver de Recurrente o cerrar su página no confirma ni cancela inmediatamente un pago. La pantalla de resultado consulta el estado de la reserva y del pago. Si sigue pendiente, en verificación o no puede consultarse, pulsa Consultar estado y no inicies otra reserva ni otro pago para la misma estancia. Un error de conexión no significa que el pago haya sido rechazado. Si cerraste el resultado, contacta a <a className={linkClass} href="#contacto">Recepción</a> con tu código de reserva; si no lo tienes, explica lo ocurrido antes de reintentar. Consulta la <a className={linkClass} href="/privacidad">política de privacidad</a> sobre los datos de pago.</>;
+    if (key === "password") return en
+      ? <>Staff sign in with their email and password. On <a className={linkClass} href="/login">Sign in</a>, select Forgot your password?, enter your staff email and select Send link. If it belongs to an active account, a temporary link is sent to set and confirm a new password. A configured, accessible mailbox is required. If the link expires or you cannot receive email, contact <a className={linkClass} href="mailto:hotelvillaserena.gt@gmail.com">the hotel</a>. Guests use an access code instead of this password recovery process.</>
+      : <>El personal entra con su correo y contraseña. En <a className={linkClass} href="/login">Iniciar sesión</a>, pulsa ¿Olvidaste tu contraseña?, introduce tu correo laboral y pulsa Enviar enlace. Si corresponde a una cuenta activa, recibirás un enlace temporal para establecer y confirmar una contraseña nueva. Necesitas una bandeja configurada y accesible. Si el enlace vence o no puedes recibir correo, contacta al <a className={linkClass} href="mailto:hotelvillaserena.gt@gmail.com">hotel</a>. Los huéspedes utilizan su código de acceso, no esta recuperación de contraseña.</>;
     return en
-      ? <>Contact <a className={linkClass} href="#contacto">Reception</a> and provide your reservation code and the change or cancellation you wish to request. Your reservation conditions apply. If you booked through an external platform, cancellation must be handled on that platform.</>
-      : <>Contacta a <a className={linkClass} href="#contacto">Recepción</a> e indica tu código de reserva y la modificación o cancelación que necesitas solicitar. Se aplicarán las condiciones de tu reserva. Si reservaste mediante una plataforma externa, la cancelación debe gestionarse en esa plataforma.</>;
+      ? <>Contact <a className={linkClass} href="#contacto">Reception</a> with your booking code. Guests cannot directly change or cancel bookings from the public website or portal. A change requires cancellation and a new booking, subject to availability. A full online payment refund applies when Reception executes the cancellation at least 48 hours before 15:00 on arrival day, Guatemala time; with less notice there is no refund. Sending the request within that period does not itself guarantee a refund. Read the <a className={linkClass} href="/terminos">cancellation and refund conditions</a>. For bookings through an external platform, contact that platform.</>
+      : <>Contacta a <a className={linkClass} href="#contacto">Recepción</a> con tu código de reserva. El huésped no puede modificar ni cancelar directamente desde la web pública o el portal. Un cambio requiere cancelar y crear otra reserva, sujeto a disponibilidad. Corresponde reembolso total del pago en línea si Recepción ejecuta la cancelación al menos 48 horas antes de las 15:00 del día de llegada, hora de Guatemala; con menos anticipación no hay reembolso. Enviar la solicitud dentro del plazo no garantiza por sí mismo el reembolso. Consulta las <a className={linkClass} href="/terminos">condiciones de cancelación y reembolso</a>. Si reservaste mediante una plataforma externa, contacta a esa plataforma.</>;
   };
   const { en } = usePublicLanguage();
   useEffect(()=>{const mq=matchMedia('(max-width:700px)');const update=()=>{setReviewsPerPage(mq.matches?1:3);setReviewPage(0);};update();mq.addEventListener('change',update);return()=>mq.removeEventListener('change',update);},[]);
@@ -524,7 +530,7 @@ function HomeContent() {
       {serviceOpen && (<div className="booking-modal-backdrop" onMouseDown={() => {
         setServiceOpen(null);
       }}>
-        <section className="service-info-modal service-info-rich" onMouseDown={(e) => e.stopPropagation()}>
+        <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="service-info-modal service-info-rich" onMouseDown={(e) => e.stopPropagation()}>
           <button className="booking-modal-close" onClick={() => {
             setServiceOpen(null);
           }}>
@@ -759,8 +765,8 @@ function HomeContent() {
           <div className="contact-details">
             <span>
               <Mail />
-              <a href="mailto:villaserenagt@gmail.com">
-                <UiText text="villaserenagt@gmail.com" />
+              <a href="mailto:hotelvillaserena.gt@gmail.com">
+                <UiText text="hotelvillaserena.gt@gmail.com" />
               </a>
             </span>
             <span>
@@ -774,7 +780,7 @@ function HomeContent() {
               </a>
             </span>
           </div>
-          <div className="help-links help-accordion">
+          <div id="ayuda" className="help-links help-accordion">
             <h3>
               <UiText text="Ayuda" />
             </h3>
@@ -785,17 +791,19 @@ function HomeContent() {
               ["services", "¿Qué servicios y experiencias ofrece el hotel?"],
               ["stay", "¿Cómo gestiono mi estancia?"],
               ["changes", "¿Cómo modifico o cancelo una reserva?"],
+              ["payment", "¿Qué hago si mi pago queda pendiente?"],
+              ["password", "¿Cómo recupero mi contraseña de personal?"],
             ].map(([k, t]) => (<article key={k}>
-              <button onClick={() => setHelpOpen(helpOpen === k ? null : k)}>
+              <button type="button" id={`help-question-${k}`} aria-expanded={helpOpen === k} aria-controls={`help-answer-${k}`} onClick={() => setHelpOpen(helpOpen === k ? null : k)}>
                 <HelpCircle />
-                <UiText text={t} />
+                {en ? ({availability:'How do I check availability?',rooms:'Where can I see all rooms?',book:'How do I book a stay?',services:'What services and experiences does the hotel offer?',stay:'How do I manage my stay?',changes:'How do I change or cancel a booking?',payment:'What if my payment is pending?',password:'How do staff reset their password?'} as Record<string,string>)[k] : t}
                 <ChevronDown className={helpOpen === k ? "help-chevron open" : "help-chevron"} aria-hidden />
               </button>
-              {helpOpen === k && (<div>
+              <div hidden={helpOpen !== k} id={`help-answer-${k}`} role="region" aria-labelledby={`help-question-${k}`}>
                 <p>
                   {renderHelpAnswer(k)}
                 </p>
-              </div>)}
+              </div>
             </article>))}
           </div>
         </div>
@@ -920,8 +928,8 @@ function HomeContent() {
           <span>
             <UiText text="Huehuetenango, Guatemala" />
           </span>
-          <a href="mailto:villaserenagt@gmail.com">
-            <UiText text="villaserenagt@gmail.com" />
+          <a href="mailto:hotelvillaserena.gt@gmail.com">
+            <UiText text="hotelvillaserena.gt@gmail.com" />
           </a>
           <a href="tel:+50277642580">+502 7764-2580</a>
         </div>

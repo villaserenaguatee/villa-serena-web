@@ -54,10 +54,10 @@ export default function HistorialPedidos({ pedidos, turno }: Props) {
   }
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
 
-    <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
+    <div data-vs-page-header="roomservice" className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
       <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
         <div>
-          <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Historial de pedidos</h1>
+          <h1 data-vs-page-title="roomservice" className="text-[32px] font-semibold text-[#18345C] leading-tight">Historial de pedidos</h1>
           <p className="text-[14px] text-[#71839B] mt-1">
             {filtrados.length} registro{filtrados.length !== 1 ? 's' : ''} · turno de {turno}
             {entregados.length > 0 && <> · tiempo promedio de entrega: {formatoDuracion(promedio)}</>}
@@ -84,7 +84,7 @@ export default function HistorialPedidos({ pedidos, turno }: Props) {
         No hay pedidos cerrados con los filtros aplicados.
       </div>) : (<>
 
-        <div className="hidden sm:block bg-white border border-[#E5E0D8] rounded-xl overflow-hidden">
+        <div data-vs-card="roomservice" className="hidden sm:block bg-white border border-[#E5E0D8] rounded-xl overflow-hidden">
           <div className="grid grid-cols-12 px-4 py-3 bg-[#F8F6F0] border-b border-[#E5E0D8] text-[11px] text-[#AEBCC1] uppercase tracking-widest font-medium">
             <div className="col-span-3">Habitación</div>
             <div className="col-span-2">Fecha y hora</div>
@@ -134,7 +134,7 @@ export default function HistorialPedidos({ pedidos, turno }: Props) {
         </div>
 
         <div className="sm:hidden space-y-3">
-          {filtrados.map(p => (<div key={p.id} className="bg-white border border-[#E5E0D8] rounded-xl p-4">
+          {filtrados.map(p => (<div data-vs-card="roomservice" key={p.id} className="bg-white border border-[#E5E0D8] rounded-xl p-4">
             {fotoHabitacion(p.habitacionNumero) && <img src={fotoHabitacion(p.habitacionNumero)} alt={`Habitación ${p.habitacionNumero}`} className="w-full h-32 object-cover rounded-lg mb-3" />}
             <div className="flex items-start justify-between gap-3 mb-3">
               <div className="flex items-center gap-2 text-[#18345C]">

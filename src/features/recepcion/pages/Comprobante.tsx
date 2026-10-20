@@ -35,7 +35,7 @@ export default function Comprobante({ pago, reserva, huesped, habitacion, onCerr
             <p className="font-serif text-lg font-bold text-[#18345C]">Villa Serena Hotel</p>
             <p className="text-xs text-[#52677F]">Huehuetenango, Guatemala</p>
             <p className="text-xs text-[#52677F]">NIT: {HOTEL.nit}</p>
-            <p className="text-xs text-[#52677F]">villaserenagt@gmail.com</p>
+            <p className="text-xs text-[#52677F]">hotelvillaserena.gt@gmail.com</p>
           </div>
           <div className="sm:text-right">
             <p className="font-serif text-xl font-bold text-[#18345C]">COMPROBANTE DE PAGO</p>

@@ -62,7 +62,7 @@ export function parseContractBooking(value: unknown): CreatePublicDto {
 export function demoCreate(input: CreatePublicDto, attempt: string): CreatedPublicDto {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(attempt)) throw new AvailabilityError('DATOS_INVALIDOS', 400);
   const fingerprint = createHash('sha256').update(JSON.stringify(input)).digest('hex');
-  // Comparte el bloqueo de inventario de #13: las creaciones hotel y Stripe no compiten sin coordinación.
+  // Comparte el bloqueo de inventario de #13: las creaciones hotel y pago en línea no compiten sin coordinación.
   return bookingTransaction(hotelState => ({ changed: false, value: publicContractTransaction(state => {
     const previous = state.entries.find(e => e.attempt === attempt);
     if (previous) {

@@ -1,5 +1,10 @@
 // Interface copy only. Guest messages, names and reservation data are never dictionary keys.
 export const connectedMessages: Record<string, string> = {
+ 'Equipo o activo relacionado (opcional)':'Related equipment or asset (optional)',
+ 'Selecciona un equipo registrado si este mantenimiento corresponde a uno.':'Select registered equipment if this maintenance applies to it.',
+ 'Sin equipo relacionado':'No related equipment','Equipo o elemento (detalle)':'Equipment or item (details)',
+ 'Fecha y hora en que se encontró':'Date and time it was found','Lugar donde se encontró':'Location where it was found',
+ 'Todas las categorías':'All categories','Buscar disponibilidad':'Search availability',
  'Ver calendario':'View calendar','Volver a vista del día':'Back to daily view',
  'Datos del hotel':'Hotel data','Libres':'Unoccupied','Pendiente de limpieza':'Awaiting housekeeping',
  'Habitaciones ocupadas ahora':'Currently occupied rooms','Importe de reservas':'Reservation amount',
@@ -19,7 +24,7 @@ export const connectedMessages: Record<string, string> = {
  'La confirmación no coincide con la nueva contraseña.':'Confirmation does not match the new password.',
  'La nueva contraseña debe tener al menos 8 caracteres, una letra y un número, y ser distinta de la actual.':'The new password must contain at least 8 characters, a letter and a number, and differ from the current password.',
  'Los datos enviados no son válidos.':'The submitted information is invalid.',
- '· Hasta':'· Until','Correo: villaserenagt@gmail.com':'Email: villaserenagt@gmail.com',
+ '· Hasta':'· Until','Correo: hotelvillaserena.gt@gmail.com':'Email: hotelvillaserena.gt@gmail.com',
  'Volver al inicio':'Back to home','En':'In','; si no lo recibiste, pulsa':'; if you did not receive it, select','Contacta a':'Contact',
  'Acceso denegado':'Access denied','Mensajes':'Messages','Volver a consultar':'Check again','Preparando factura…':'Preparing invoice…','Guardando…':'Saving…',
  'No hay incidencias reportadas.':'No issues have been reported.','Reportado:':'Reported:','Reportar incidencia':'Report an issue','Prioridad':'Priority','Impide utilizar':'Prevents use','Foto opcional (JPG o PNG, hasta 5 MB)':'Optional photo (JPG or PNG, up to 5 MB)',

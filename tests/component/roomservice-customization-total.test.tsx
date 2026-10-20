@@ -1,0 +1,20 @@
+import {render,screen,within} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import {expect,test,vi} from 'vitest';
+import NuevoPedido from '@/features/roomservice/pages/NuevoPedidoModal';
+import {MENU_INICIAL} from '@/data/pms';
+test('the local telephone summary includes configured extras and retains them when editing',async()=>{
+ const save=vi.fn(),close=vi.fn();const {container}=render(<NuevoPedido menu={MENU_INICIAL} onGuardar={save} onCerrar={close}/>);
+ const first=container.querySelector('article')!;
+ await userEvent.click(within(first).getByRole('button',{name:'Personalizar'}));
+ const extra=screen.getByText(/^Tocino ·/).parentElement!;
+ await userEvent.click(within(extra).getByRole('button',{name:'+'}));
+ await userEvent.click(screen.getByRole('button',{name:/Agregar · Q 80.00/}));
+ expect(container.querySelector('aside')).toHaveTextContent('80.00');
+ await userEvent.click(within(first).getByRole('button',{name:'+'}));
+ expect(container.querySelector('aside')).toHaveTextContent('160.00');
+ await userEvent.click(within(first).getByRole('button',{name:'Personalizar'}));
+ expect(screen.getByRole('button',{name:/Agregar · Q 160.00/})).toBeVisible();
+ expect(screen.getByText(/^Tocino ·/).parentElement).toHaveTextContent('1');
+ expect(save).not.toHaveBeenCalled();
+});
