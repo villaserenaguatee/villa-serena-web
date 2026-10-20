@@ -46,9 +46,12 @@ for (const { name, viewport } of viewports) {
       expect(savedCode).toMatch(/^VS-[A-Z0-9]{6}$/);
       await page.reload();
       const recover = page.getByRole('button', { name: 'Recuperar intento anterior', exact: true });
-      await expect(recover).toBeDisabled();
-      await page.locator('.terms-check input').check();
+      // Recovering an existing request only queries its status; it must not create another charge.
+      await expect(recover).toBeEnabled();
+      await expect(page.locator('.terms-check input')).not.toBeChecked();
       await page.unroute('**/api/publico/reservas/*/pago');
+      const newPayments: string[] = [];
+      page.on('request', request => { if (request.method() === 'POST' && /\/api\/publico\/reservas\/[^/]+\/pago$/.test(new URL(request.url()).pathname)) newPayments.push(request.url()); });
       await recover.click();
       await expect(page.getByRole('heading', { name: 'Pago en proceso', exact: true })).toBeVisible();
       await expect(page).toHaveURL(url => url.searchParams.get('codigo') === savedCode);
@@ -58,6 +61,7 @@ for (const { name, viewport } of viewports) {
       await page.reload();
       await expect(page.getByRole('heading', { name: 'Pago en proceso', exact: true })).toBeVisible();
       expect(creates).toHaveLength(1);
+      expect(newPayments).toEqual([]);
     });
   });
 }

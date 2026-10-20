@@ -14,7 +14,7 @@ export function operationsConfig(suite: 'orders' | 'rooms' | 'maintenance') {
     outputDir: projectPath(`test-results/operations-${suite}`), reporter: reporters(`operations-${suite}`),
     webServer: [
       { cwd: projectPath(), command: 'node tests/integration/operations-api-server.mjs', url: 'http://127.0.0.1:3049/health', reuseExistingServer: false, timeout: 15_000, env: { ISSUE48_OPERATIONS_MOCK_TOKEN: token }, gracefulShutdown: { signal: 'SIGTERM', timeout: 5000 } },
-      { ...nextServer, env: { ...nextServer.env, STAFF_AUTH_MODE: 'spring', API_URL: 'http://127.0.0.1:3049', NEXT_PUBLIC_WS_URL: 'ws://127.0.0.1:3049/ws' } },
+      { ...nextServer, env: { ...nextServer.env, STAFF_AUTH_MODE: 'spring', GUEST_AUTH_MODE: 'spring', VILLA_SERENA_BFF_MODE: 'api', API_URL: 'http://127.0.0.1:3049', NEXT_PUBLIC_WS_URL: 'ws://127.0.0.1:3049/ws' } },
     ],
   });
 }

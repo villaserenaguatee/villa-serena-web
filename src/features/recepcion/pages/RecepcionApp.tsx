@@ -1,4 +1,3 @@
-import {useDemoSection} from '@/hooks/useDemoSection';
 import ReceptionCloseButton from './ReceptionCloseButton';
 import { calcularCuentaRecepcion as calcularCuenta } from '../accountTotals';
 import ReceptionNotice from './ReceptionNotice';
@@ -252,12 +251,12 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
   },
     [reservas]);
   const [calendarOpen,setCalendarOpen]=useState(false);
-  const [seccion, setSeccionActual] = useDemoSection<SeccionRecepcion>(seccionDesdeRuta(pathname), !conectado && user?.id ? `vs-demo-section:recepcion:${user.id}` : undefined, SECCIONES.map(s=>s.id));
+  // The URL is the source of truth on reload and explicit navigation in both modes.
+  const [seccion, setSeccionActual] = useState<SeccionRecepcion>(() => seccionDesdeRuta(pathname));
   function setSeccion(section: SeccionRecepcion) {
     setCalendarOpen(false);
     setSeccionActual(section);
     setBffCodeActual(null);
-    if (!conectado) return;
     const target = section === 'dia' ? '/recepcion' : `/recepcion/${section}`;
     if (pathname !== target) router.push(target);
   }
@@ -319,7 +318,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
   const [legacyAction, setLegacyAction] = useState<ExistingAction | undefined>();
   const [legacyTab, setLegacyTab] = useState<'resumen' | 'cuenta'>('resumen');
   useEffect(() => {
-    if(conectado || pathname!=='/recepcion')setSeccionActual(seccionDesdeRuta(pathname));
+    setSeccionActual(seccionDesdeRuta(pathname));
     setBffCodeActual(codigoDesdeRuta(pathname));
     setReservaAbiertaId(null);
   }, [pathname,conectado,setSeccionActual]);
