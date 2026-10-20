@@ -10,6 +10,7 @@ import type { SessionUser } from '@/lib/auth/types';
 interface AuthContextValue {
   user: SessionUser | null;
   loading: boolean;
+  localDemo?: boolean;
   login: (email: string, password: string, staffOnly?: boolean) => Promise<SessionUser>;
   logout: () => Promise<void>;
 }
@@ -60,6 +61,6 @@ export function AuthProvider({ children, localDemo = false }: { children: ReactN
     if (user?.role !== 'huesped') await staffRequest<void>('logout', {});
     localStorage.removeItem(KEY); setUser(null);
   }, [user]);
-  const value = useMemo(() => ({ user, loading, login, logout }), [user, loading, login, logout]);
+  const value = useMemo(() => ({ user, loading, login, logout, localDemo: demoEnabled }), [user, loading, login, logout, demoEnabled]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

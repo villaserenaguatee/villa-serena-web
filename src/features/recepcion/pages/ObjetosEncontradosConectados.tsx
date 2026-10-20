@@ -4,6 +4,7 @@ import { getReservation, searchReservations, getRooms } from '@/lib/api/receptio
 import type { ReservationDetail, ReservationSummary, RoomState } from '@/lib/bff/contracts/reception';
 import { leerObjetosOlvidados } from '@/store/lostFoundEvents';
 import type { ObjetoOlvidado } from '@/lib/pms/types';
+import LostObjectImageField from '@/components/common/LostObjectImageField';
 import ReceptionCloseButton from './ReceptionCloseButton';
 import ReintentoObjetoIncierto from './ReintentoObjetoIncierto';
 
@@ -27,6 +28,7 @@ export default function ObjetosEncontradosConectados(){
  const [rows,setRows]=useState<Objeto[]>([]),[active,setActive]=useState<Objeto|null>(null),[rooms,setRooms]=useState<RoomState[]>([]);
  const [error,setError]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[nuevo,setNuevo]=useState(false);
  const [filtro,setFiltro]=useState<'pendientes'|'devueltos'>('pendientes');
+ const [selectedPhoto,setSelectedPhoto]=useState<File>();
  const [legacy,setLegacy]=useState<ObjetoOlvidado[]>([]),[foto,setFoto]=useState('');
  const [texto,setTexto]=useState(''),[results,setResults]=useState<ReservationSummary[]>([]),[selected,setSelected]=useState<ReservationDetail|null>(null);
  const [correo,setCorreo]=useState(''),[mensaje,setMensaje]=useState(''),[includePhoto,setIncludePhoto]=useState(false);
@@ -40,10 +42,10 @@ export default function ObjetosEncontradosConectados(){
  function review(o:Objeto){setActive(o);setSelected(null);setResults([]);setTexto('');setCorreo('');setMensaje('');setIncludePhoto(false);setConfirmRecipient(false);invalidate();setError('');}
  async function create(event:FormEvent<HTMLFormElement>){event.preventDefault();const data=new FormData(event.currentTarget);await run(async()=>{
   const o=await api<Objeto>('',{descripcion:data.get('descripcion'),habitacionNumero:data.get('habitacion'),halladoEn:new Date(String(data.get('fecha'))).toISOString(),notaInterna:data.get('nota'),fotoBase64:foto||null});
-  setNuevo(false);setFoto('');await load();review(o);
+  setNuevo(false);setFoto('');setSelectedPhoto(undefined);await load();review(o);
  });}
  return <div className="flex-1 overflow-y-auto bg-[#F8F6F0] text-[#18345C]">
-  <header data-vs-page-header="recepcion" className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E5E0D8] bg-white px-4 py-5 sm:px-6"><div><h1 data-vs-page-title="recepcion" className="text-[30px] font-semibold">Objetos olvidados</h1><p className="mt-1 text-sm text-[#52677F]">Revisa y confirma el destinatario antes de enviar un aviso.</p></div><button className={primary} onClick={()=>{setFoto('');setNuevo(true);setError('');}}>Registrar objeto</button></header>
+  <header data-vs-page-header="recepcion" className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E5E0D8] bg-white px-4 py-5 sm:px-6"><div><h1 data-vs-page-title="recepcion" className="text-[30px] font-semibold">Objetos olvidados</h1><p className="mt-1 text-sm text-[#52677F]">Revisa y confirma el destinatario antes de enviar un aviso.</p></div><button className={primary} onClick={()=>{setFoto('');setSelectedPhoto(undefined);setNuevo(true);setError('');}}>Registrar objeto</button></header>
   {error&&<p role="alert" className="m-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
   {loading&&<p role="status" className="p-4">Consultando objetos…</p>}
   <div className="flex gap-2 px-4 pt-4"><button className={filtro==='pendientes'?primary:secondary} onClick={()=>setFiltro('pendientes')}>Por entregar</button><button className={filtro==='devueltos'?primary:secondary} onClick={()=>setFiltro('devueltos')}>Devueltos</button></div>
@@ -70,8 +72,7 @@ export default function ObjetosEncontradosConectados(){
    <label className="block text-sm">Habitación<select required name="habitacion" className={input}><option value="">Selecciona</option>{rooms.map(r=><option key={r.id} value={r.numero}>{r.numero}</option>)}</select></label>
    <label className="block text-sm">Fecha y hora del hallazgo<input required type="datetime-local" name="fecha" className={input}/></label>
    <label className="block text-sm">Nota interna (no se envía)<textarea maxLength={500} name="nota" className={input}/></label>
-   <label className="block text-sm">Fotografía opcional<input type="file" accept="image/jpeg,image/png" className={input} onChange={e=>{const file=e.target.files?.[0];setFoto('');if(file)void run(async()=>setFoto(await readPhoto(file)));}}/></label>
-   {foto&&<img src={foto} alt="Fotografía seleccionada" className="max-h-44 w-full object-contain"/>}
+   <LostObjectImageField label="Fotografía opcional" value={selectedPhoto} disabled={busy} onError={setError} onChange={file=>{setSelectedPhoto(file);setFoto('');if(file)void run(async()=>setFoto(await readPhoto(file)));}}/>
    {error&&<p role="alert" className="text-sm text-red-800">{error}</p>}
    <button className={primary} disabled={busy}>Guardar objeto</button>
   </form></section></div>}
