@@ -1,6 +1,7 @@
 import {fireEvent,render,screen} from '@testing-library/react';
 import {useState} from 'react';import {beforeEach,expect,test,vi} from 'vitest';
 import ImageField from '@/components/common/LostObjectImageField';
+import ReportarIncidencia from '@/components/common/ReportarIncidencia';
 const error=vi.fn(),create=vi.fn(()=> 'blob:local-preview'),revoke=vi.fn();
 beforeEach(()=>{Object.defineProperty(URL,'createObjectURL',{configurable:true,value:create});Object.defineProperty(URL,'revokeObjectURL',{configurable:true,value:revoke});error.mockReset();});
 function Form(){const [file,setFile]=useState<File>();return <ImageField label="Imagen (opcional)" value={file} onChange={setFile} onError={error}/>;}
@@ -10,3 +11,16 @@ test('selection, preview, replacement and removal stay local and release object 
  fireEvent.change(input,{target:{files:[new File(['image'],'photo.jpg',{type:'image/jpeg'})]}});expect(revoke).toHaveBeenCalled();
  fireEvent.click(screen.getByRole('button',{name:'Quitar imagen'}));expect(screen.queryByRole('img')).toBeNull();view.unmount();});
 for(const [name,type,size] of [['file.svg','image/svg+xml',2],['large.png','image/png',5*1024*1024+1],['empty.png','image/png',0]] as const)test('reject '+name,()=>{render(<Form/>);fireEvent.change(screen.getByLabelText('Imagen (opcional)'),{target:{files:[new File([new Uint8Array(size)],name,{type})]}});expect(error).toHaveBeenCalledWith(expect.any(String));expect(error.mock.calls.at(-1)?.[0]).not.toBe('');expect(screen.queryByRole('img')).toBeNull();});
+
+test('an invalid incident image blocks submission until replaced or removed',()=>{
+ render(<ReportarIncidencia rooms={[]} cerrar={vi.fn()} creado={vi.fn()}/>);
+ const input=screen.getByLabelText('Imagen (opcional)'),submit=screen.getByRole('button',{name:'Reportar daño'});
+ fireEvent.change(input,{target:{files:[new File(['bad'],'invalid.svg',{type:'image/svg+xml'})]}});
+ expect(submit).toBeDisabled();expect(screen.getByRole('alert')).toBeVisible();
+ fireEvent.click(screen.getByRole('button',{name:'Quitar imagen'}));expect(submit).toBeEnabled();
+ fireEvent.change(input,{target:{files:[new File(['image'],'valid.png',{type:'image/png'})]}});
+ expect(submit).toBeEnabled();
+ fireEvent.change(input,{target:{files:[new File(['bad'],'invalid.svg',{type:'image/svg+xml'})]}});
+ expect(submit).toBeDisabled();
+ fireEvent.click(screen.getByRole('button',{name:'Quitar imagen'}));expect(submit).toBeEnabled();
+});

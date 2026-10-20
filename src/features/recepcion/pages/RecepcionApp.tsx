@@ -255,10 +255,12 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
   const [seccion, setSeccionActual] = useState<SeccionRecepcion>(() => seccionDesdeRuta(pathname));
   function setSeccion(section: SeccionRecepcion) {
     setCalendarOpen(false);
-    setSeccionActual(section);
     setBffCodeActual(null);
     const target = section === 'dia' ? '/recepcion' : `/recepcion/${section}`;
+    // Do not expose the next section before navigation commits: a pending route
+    // could otherwise remount it after the user has already opened a room dialog.
     if (pathname !== target) router.push(target);
+    else setSeccionActual(section);
   }
   const [perfilAbierto, setPerfilAbierto] = useState(false);
   const [perfil, setPerfil] = useState(() => {
@@ -305,12 +307,14 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
   const [reservaAbiertaId, setReservaAbiertaId] = useState<string | null>(null);
   const [bffCode, setBffCodeActual] = useState<string | null>(() => codigoDesdeRuta(pathname));
   function setBffCode(code: string | null) {
-    setBffCodeActual(code);
-    if (!conectado) return;
     if (code) {
       const target = `/recepcion/reservas/${encodeURIComponent(code)}`;
-      if (pathname !== target) router.push(target);
-    } else if (codigoDesdeRuta(pathname)) {
+      // Opening a detail must wait for its route, including repeated demo visits.
+      // Otherwise its heading becomes clickable while an older navigation is pending.
+      if (pathname !== target) { router.push(target); return; }
+    }
+    setBffCodeActual(code);
+    if (conectado && !code && codigoDesdeRuta(pathname)) {
       router.push('/recepcion/reservas');
     }
   }
