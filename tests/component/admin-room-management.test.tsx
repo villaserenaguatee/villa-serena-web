@@ -92,7 +92,7 @@ test('repeated submissions share one in-flight write and navigation is disabled 
   expect(screen.getByRole('button', { name: 'Categorías de habitación' })).toBeDisabled();
   release({ id: 11, version: 3 });
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-  expect(screen.getByRole('button', { name: 'Categorías de habitación' })).toBeEnabled();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Categorías de habitación' })).toBeEnabled());
 });
 
 test('invalid fields retain values, focus the first error, and do not submit', async () => {
