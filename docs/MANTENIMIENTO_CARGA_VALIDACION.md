@@ -11,4 +11,4 @@ Se separan las consultas oficiales de las adicionales. Si estas últimas no est�
 - TypeScript, lint dirigido e i18n pasan. Compilación de producción comprobada por separado.
 - Identidad, HTTP y estados del servidor son de pruebas aisladas; no prueban persistencia o acceso real a Spring. No se ejecutaron reservas, pagos, correos ni escrituras de producción.
 
-Las operaciones adicionales de gestión no forman parte del OpenAPI revisado. Se conserva su integración existente sin extenderla ni presentar su disponibilidad como garantizada. La verificación con API compatible y sesión de técnico autorizada sigue pendiente. No se modifican los flujos de Limpieza o Room Service ya cubiertos por CI.
+La ruta gestion/insumos forma parte del OpenAPI 77225a1 como inventario compartido. Las rutas gestion/activos, gestion/preventivos y gestion/ordenes no forman parte de esa revisión. Se conserva su integración existente sin extenderla ni presentar su disponibilidad como garantizada. La verificación con API compatible y sesión de técnico autorizada sigue pendiente. No se modifican los flujos de Limpieza o Room Service ya cubiertos por CI.
