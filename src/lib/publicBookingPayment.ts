@@ -13,7 +13,9 @@ async function preparePayment(params: URLSearchParams, draftId: string, recover 
   {
     const reason = publicSearchError(params.get('llegada') || '', params.get('salida') || '', Number(params.get('adultos')), Number(params.get('ninos')), 5);
     if (reason) throw new Error(reason);
-    input = { ofertaSlug: params.get('slug') || undefined, tipoHabitacionId: Number(params.get('tipoHabitacionId')), entrada: params.get('llegada') || '', salida: params.get('salida') || '',
+    const hora = params.get('hora');
+    if (hora && !/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(hora)) throw new Error('Ingrese una hora de llegada válida (HH:mm).');
+    input = { ...(hora ? { horaEstimadaLlegada: hora } : {}), ofertaSlug: params.get('slug') || undefined, tipoHabitacionId: Number(params.get('tipoHabitacionId')), entrada: params.get('llegada') || '', salida: params.get('salida') || '',
       numeroHuespedes: Number(params.get('adultos')) + Number(params.get('ninos')), huesped: {
         nombreCompleto: `${params.get('nombre') || ''} ${params.get('apellidos') || ''}`.trim(), correo: params.get('correo') || '',
         telefono: params.get('telefono') || '', tipoDocumento: 'DPI',

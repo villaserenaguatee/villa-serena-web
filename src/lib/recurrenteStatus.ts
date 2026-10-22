@@ -1,11 +1,8 @@
 import type {components} from '@/lib/api/schema';
-/** Temporary frontend adapter for API dev 8d6e7e8e8cea8847aa45601487bb73f9da6e88ac.
- * Docs 1fa07d4 lacks these fields and GET publico/reservas/intento.
- * Do not edit generated types. Replace this extension when docs is reconciled.
- */
-export type CheckoutState='SIN_CHECKOUT'|'ABIERTO'|'PROCESANDO'|'PAGADO'|'VENCIDO'|'NO_VERIFICADO';
-export type PaymentAction='INICIAR'|'CONTINUAR'|'ESPERAR'|'REINTENTAR'|'NINGUNA';
-export type RecurrenteStatus=components['schemas']['EstadoReservaPublico'] & {mode?:string;estadoCheckout?:CheckoutState;accionPago?:PaymentAction;urlPago?:string|null;expiraEn?:string|null;pagoVenceEn?:string|null};
+export type CheckoutState=components['schemas']['EstadoCheckout'];
+export type PaymentAction=components['schemas']['AccionPago'];
+// Read older responses defensively; new API fields come exclusively from docs.
+export type RecurrenteStatus=Pick<components['schemas']['EstadoReservaPublico'],'codigo'|'estadoReserva'|'estadoPago'|'puedeReintentar'> & Partial<components['schemas']['EstadoReservaPublico']> & {mode?:string};
 export function paymentAction(s:RecurrenteStatus,currentRequest=false):PaymentAction{
  const extended=['estadoCheckout','accionPago','urlPago','expiraEn','pagoVenceEn'].some(k=>k in s);
  if(extended){
@@ -20,6 +17,6 @@ export function paymentAction(s:RecurrenteStatus,currentRequest=false):PaymentAc
   if(s.puedeReintentar!==(action==='REINTENTAR'))throw Error('El pago necesita verificarse.');
   return action;
  }
- // Compatibility with the pinned contract. Never infer a new charge from an unknown historical payment.
+ // Older responses must never authorize a new charge from an unknown historical payment.
  return s.estadoReserva==='PENDIENTE_PAGO'&&s.puedeReintentar?(s.estadoPago==='FALLIDO'?'REINTENTAR':s.estadoPago===null&&currentRequest?'INICIAR':'ESPERAR'):'NINGUNA';
 }
