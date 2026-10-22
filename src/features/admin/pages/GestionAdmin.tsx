@@ -7,6 +7,7 @@ import type {Insumo,MovimientoInsumo,CompraHotel,GastoHotel,Activo,ActivoHotel} 
 import TarifasAdmin from './TarifasAdmin';
 import MenuAdmin from './MenuAdmin';
 import HotelAdmin from './HotelAdmin';
+import AmenidadesAdmin from './AmenidadesAdmin';
 import AdminRoomsManagement from './AdminRoomsManagement';
 import ReportesConectados from './ReportesConectados';
 import LaboralAdmin from './LaboralAdmin';
@@ -19,6 +20,7 @@ export default function GestionAdmin({seccion,personalInitial='catalogo'}:{secci
  async function save(tipo:string,datos:object){if(lock.current||unavailable)return false;lock.current=true;setBusy(true);setError('');const key=tipo+JSON.stringify(datos);const id=attempts.current.get(key)??crypto.randomUUID();attempts.current.set(key,id);try{await operacion(`gestion/${tipo}`,'POST',{id,version:0,datos});attempts.current.delete(key);setReload(n=>n+1);return true;}catch(e){setError(e instanceof Error?e.message:'No se pudo guardar.');return false;}finally{lock.current=false;setBusy(false);}}
  const financeAssets:ActivoHotel[]=activos.map(a=>({id:a.id,codigo:a.codigo??'',nombre:a.nombre,categoria:a.categoria,ubicacion:a.ubicacion,fechaCompra:a.instaladoEn,costo:a.costo??0,estado:a.estado==='en-reparacion'?'en reparación':a.estado==='fuera-servicio'?'fuera de servicio':'operativo',vinculadoMantenimiento:true}));
  if(unavailable&&['inventario','finanzas'].includes(seccion))return <section className="flex-1 overflow-auto bg-[#F8F6F0] p-4 sm:p-6 text-[#18345C]"><h1 className="text-[32px] font-semibold">{seccion==='inventario'?'Inventario y compras':'Finanzas'}</h1><p role="status" className="mt-4 rounded-md border bg-white p-3">{ADMIN_DEMO_UNAVAILABLE}</p></section>;
+ if(seccion==='amenidades')return <AmenidadesAdmin/>;
  if(seccion==='panel')return <AdminRoomsManagement/>;
  if(seccion==='mantenimiento')return <SupervisionMantenimiento/>;
  if(seccion==='reportes')return <ReportesConectados/>;

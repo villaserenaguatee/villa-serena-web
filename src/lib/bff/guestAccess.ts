@@ -52,6 +52,7 @@ async function springGuestRoute(request: NextRequest, segments: string[]) {
   const verify = request.method === 'POST' && path === 'acceso/verificar-codigo';
   const logout = request.method === 'POST' && path === 'cerrar-sesion';
   const resume = request.method === 'GET' && path === 'sesion';
+  const hotelInfo=request.method==='GET'&&segments.length===1&&['amenidades','wifi'].includes(segments[0]);
   const profile = request.method === 'GET' && path === 'perfil';
   const query = request.method === 'GET' && segments[0] === 'reservas' && segments.length <= 2;
   const account = request.method === 'GET' && segments.length === 3 && segments[0] === 'reservas' && /^VS-[A-Z0-9]{6}$/.test(segments[1]) && ['cuenta','checkout'].includes(segments[2]);
@@ -68,7 +69,7 @@ async function springGuestRoute(request: NextRequest, segments: string[]) {
   const canonicalCleaning=request.method==='POST'&&segments.length===4&&segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1])&&segments[2]==='solicitudes'&&segments[3]==='limpieza';
   const menu = request.method==='GET' && segments.length===3 && segments[0]==='reservas' && /^VS-[A-Z0-9]{6}$/.test(segments[1]) && segments[2]==='menu';
   const orders = segments.length===3 && segments[0]==='reservas' && /^VS-[A-Z0-9]{6}$/.test(segments[1]) && segments[2]==='pedidos' && ['GET','POST'].includes(request.method);
-  if (!requestCode && !verify && !logout && !query && !resume && !account && !checkout && !payment && !profile && !menu && !orders && !cleaning && !communication && !editMessage && !articles && !invoice && !requests && !cancelRequest && !canonicalArticle && !canonicalCleaning) throw new AuthError('RUTA_NO_PERMITIDA', 403, 'Esta operación no está disponible.');
+  if (!requestCode && !verify && !logout && !query && !resume && !account && !checkout && !payment && !profile && !menu && !orders && !cleaning && !communication && !editMessage && !articles && !invoice && !requests && !cancelRequest && !canonicalArticle && !canonicalCleaning && !hotelInfo) throw new AuthError('RUTA_NO_PERMITIDA', 403, 'Esta operación no está disponible.');
   if (!process.env.API_URL) throw new AuthError('CONFIGURACION_INVALIDA', 503, 'Revisa la configuración del API.');
   let access = request.cookies.get(GUEST_COOKIE)?.value ?? '';
   let refresh = request.cookies.get(REFRESH_COOKIE)?.value ?? '';
