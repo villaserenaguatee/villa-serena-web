@@ -58,6 +58,7 @@ async function springGuestRoute(request: NextRequest, segments: string[]) {
   const account = request.method === 'GET' && segments.length === 3 && segments[0] === 'reservas' && /^VS-[A-Z0-9]{6}$/.test(segments[1]) && ['cuenta','checkout'].includes(segments[2]);
   const checkout = request.method === 'POST' && segments.length === 3 && segments[0] === 'reservas' && /^VS-[A-Z0-9]{6}$/.test(segments[1]) && segments[2] === 'checkout';
   const payment = request.method==='POST'&&segments.length===3&&segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1])&&segments[2]==='pago-saldo';
+  const balanceState=request.method==='GET'&&segments.length===4&&segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1])&&segments[2]==='pago-saldo'&&segments[3]==='estado';
   const editMessage=segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1]??'')&&segments[2]==='chat'&&segments.length===4&&/^\d+$/.test(segments[3])&&['PUT','DELETE'].includes(request.method);
   const communication = segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1]??'')&&((segments.length===3&&['chat','documentos'].includes(segments[2])&&['GET','POST'].includes(request.method))||(request.method==='GET'&&segments.length===5&&segments[2]==='documentos'&&/^\d+$/.test(segments[3])&&segments[4]==='archivo'));
   const invoice = request.method==='GET'&&segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1]??'')&&segments[2]==='factura'&&(segments.length===3||(segments.length===4&&segments[3]==='pdf'));
@@ -69,7 +70,7 @@ async function springGuestRoute(request: NextRequest, segments: string[]) {
   const canonicalCleaning=request.method==='POST'&&segments.length===4&&segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1])&&segments[2]==='solicitudes'&&segments[3]==='limpieza';
   const menu = request.method==='GET' && segments.length===3 && segments[0]==='reservas' && /^VS-[A-Z0-9]{6}$/.test(segments[1]) && segments[2]==='menu';
   const orders = segments.length===3 && segments[0]==='reservas' && /^VS-[A-Z0-9]{6}$/.test(segments[1]) && segments[2]==='pedidos' && ['GET','POST'].includes(request.method);
-  if (!requestCode && !verify && !logout && !query && !resume && !account && !checkout && !payment && !profile && !menu && !orders && !cleaning && !communication && !editMessage && !articles && !invoice && !requests && !cancelRequest && !canonicalArticle && !canonicalCleaning && !hotelInfo) throw new AuthError('RUTA_NO_PERMITIDA', 403, 'Esta operación no está disponible.');
+  if (!requestCode && !verify && !logout && !query && !resume && !account && !checkout && !payment && !balanceState && !profile && !menu && !orders && !cleaning && !communication && !editMessage && !articles && !invoice && !requests && !cancelRequest && !canonicalArticle && !canonicalCleaning && !hotelInfo) throw new AuthError('RUTA_NO_PERMITIDA', 403, 'Esta operación no está disponible.');
   if (!process.env.API_URL) throw new AuthError('CONFIGURACION_INVALIDA', 503, 'Revisa la configuración del API.');
   let access = request.cookies.get(GUEST_COOKIE)?.value ?? '';
   let refresh = request.cookies.get(REFRESH_COOKIE)?.value ?? '';
