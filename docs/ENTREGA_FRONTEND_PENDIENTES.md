@@ -1,5 +1,7 @@
 # Entrega consolidada del frontend
 
+> Registro histórico de la entrega consolidada anterior a las PR #76–#90. El estado publicado del 22/10/2026 utiliza el contrato canónico de docs 77225a11d06daf576a404e2a557185868bd49c56; estados de checkout, recuperación y llegada pública ya están adoptados. Las dependencias descritas abajo conservan el contexto de aquella fase y no sustituyen la auditoría actual ni acreditan validaciones reales pendientes.
+
 Rama `feat/issue-61-recurrente`, destino `develop`. Backend fuera de esta
 entrega por decisión del usuario. No se autoriza merge ni despliegue.
 
