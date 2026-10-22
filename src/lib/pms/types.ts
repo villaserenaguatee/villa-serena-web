@@ -241,7 +241,7 @@ export interface SolicitudHuesped {
   fecha: string;
 }
 export type SeccionRecepcion = 'dia' | 'reservas' | 'disponibilidad' | 'habitaciones' | 'huespedes' | 'solicitudes' | 'incidencias' | 'reportes' | 'chat' | 'objetos';
-export type SeccionAdmin = 'panel' | 'tarifas' | 'reportes' | 'personal' | 'inventario' | 'finanzas';
+export type SeccionAdmin = 'panel' | 'tarifas' | 'reportes' | 'personal' | 'inventario' | 'finanzas' | 'menu' | 'hotel';
 export type CriterioTarifa = 'temporada' | 'ocupacion' | 'evento';
 export type AjusteTarifa = 'porcentaje' | 'fijo';
 export interface ReglaTarifa {

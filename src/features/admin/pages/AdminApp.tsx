@@ -31,6 +31,8 @@ const SECCIONES: {
 }[] = [
     { id: 'panel', label: 'Panel de habitaciones', corto: 'Panel' },
     { id: 'tarifas', label: 'Tarifas y ofertas', corto: 'Tarifas' },
+    { id: 'menu', label: 'Menú de Room Service', corto: 'Menú' },
+    { id: 'hotel', label: 'Configuración del hotel', corto: 'Hotel' },
     { id: 'reportes', label: 'Reportes', corto: 'Reportes' },
     { id: 'personal', label: 'Personal', corto: 'Personal' },
     { id: 'inventario', label: 'Inventario y compras', corto: 'Inventario' },
@@ -61,6 +63,10 @@ function SeccionIcon({ id, size = 18 }: {
         <rect x="12" y="8" width="3" height="10" />
         <rect x="17" y="4" width="3" height="14" />
       </svg>;
+    case 'hotel':
+      return <svg {...p}><path d="M4 21V4h16v17M8 8h2m4 0h2M8 12h2m4 0h2M10 21v-5h4v5" /></svg>;
+    case 'menu':
+      return <svg {...p}><circle cx="14" cy="12" r="6"/><path d="M3 3v6m3-6v6M3 6h3M4.5 9v12" /></svg>;
     case 'personal':
       return <svg {...p}>
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
