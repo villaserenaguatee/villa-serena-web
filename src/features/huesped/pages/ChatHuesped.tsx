@@ -102,13 +102,13 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
   }
   return (<div
     data-guest-reference="chat-38cf2a3"
-    className="flex-1 min-w-0 overflow-y-auto bg-[#F8F6F0]"
+    className="flex-1 min-w-0 overflow-y-auto bg-[#F2F4F5]"
     style={{
       fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif',
     }}
     onClick={() => setMenuId(null)}>
-    <header data-vs-page-header="huesped" className="relative border-b border-[#E5E0D8] bg-white px-6 py-6 sm:px-8">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#B38B2C]">
+    <header data-vs-page-header="huesped" className="relative border-b border-[#AEBCC1] bg-white px-6 py-6 sm:px-8">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#18345C]">
         {en?'Communication during your stay':'Comunicación durante tu estancia'}
       </p>
 
@@ -122,9 +122,9 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
     </header>
 
     <div className="mx-auto max-w-[720px] px-4 py-4 sm:px-5 lg:py-5">
-      <section data-vs-card="huesped" className="flex h-[min(540px,calc(100vh-225px))] flex-col overflow-hidden rounded-2xl border border-[#E5E0D8] bg-white shadow-[0_8px_28px_rgba(16,39,71,0.06)]">
+      <section data-vs-card="huesped" className="flex h-[min(540px,calc(100vh-225px))] flex-col overflow-hidden rounded-2xl border border-[#AEBCC1] bg-white shadow-[0_8px_28px_rgba(16,39,71,0.06)]">
 
-        <header className="flex items-center justify-between gap-3 border-b border-[#E5E0D8] px-4 py-3 sm:px-5">
+        <header className="flex items-center justify-between gap-3 border-b border-[#AEBCC1] px-4 py-3 sm:px-5">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#18345C] text-white">
               <Icono tipo="recepcion" size={23} />
@@ -135,24 +135,24 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
                 <UiText text="Recepción" />
               </h2>
 
-              <p className="mt-0.5 flex items-center gap-2 text-[14px] text-[#188247]">
-                <span className={`h-3 w-3 rounded-full ${transport?"bg-[#AEBCC1]":"bg-[#159447]"}`} />
+              <p className="mt-0.5 flex items-center gap-2 text-[14px] text-[#536579]">
+                <span className={`h-3 w-3 rounded-full ${transport?"bg-[#AEBCC1]":"bg-[#AEBCC1]"}`} />
                 {transport?(en?'Messages about your stay':'Mensajes de tu estancia'):<UiText text="En línea"/>}
               </p>
             </div>
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#FBFAF7] px-4 py-3 sm:px-5">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#F2F4F5] px-4 py-3 sm:px-5">
 
           {mensajesVisibles.length > 0 && <div className="flex items-center gap-4">
-            <span className="h-px flex-1 bg-[#E5E0D8]" />
+            <span className="h-px flex-1 bg-[#AEBCC1]" />
 
-            <span className="rounded-full border border-[#E5E0D8] bg-white px-5 py-1.5 text-sm text-[#18345C]">
+            <span className="rounded-full border border-[#AEBCC1] bg-white px-5 py-1.5 text-sm text-[#18345C]">
               {transport?(en?'Conversation':'Conversación'):(en?'Today':'Hoy')}
             </span>
 
-            <span className="h-px flex-1 bg-[#E5E0D8]" />
+            <span className="h-px flex-1 bg-[#AEBCC1]" />
           </div>}
 
           <div className="flex items-start gap-2">
@@ -181,7 +181,7 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
                 type="button"
                 disabled={!habilitado||transport?.busy}
                 onClick={() => enviar(pregunta)}
-                className="flex min-h-10 items-center justify-between rounded-xl border border-[#E1E4E8] bg-white px-3 py-2 text-left text-[12px] font-medium text-[#18345C] shadow-sm transition hover:border-[#B38B2C] hover:bg-[#FFFDF7]">
+                className="flex min-h-10 items-center justify-between rounded-xl border border-[#E1E4E8] bg-white px-3 py-2 text-left text-[12px] font-medium text-[#18345C] shadow-sm transition hover:border-[#18345C] hover:bg-[#F3D98B]">
                 <span>
                   {pregunta}
                 </span>
@@ -205,7 +205,7 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
                 ? "border border-dashed border-[#C9CED5] bg-[#F2F3F4] italic text-[#7A8798]"
                 : mio
                   ? "rounded-br-sm bg-[#18345C] text-white"
-                  : "rounded-bl-sm border border-[#E5E0D8] bg-white text-[#18345C]"}`}>
+                  : "rounded-bl-sm border border-[#AEBCC1] bg-white text-[#18345C]"}`}>
                 {editandoId === m.id ? (<div className="min-w-[260px]">
                   <textarea
                     value={editandoTexto}
@@ -263,11 +263,11 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
                   mio &&
                   !m.eliminadoParaTodos && (<div data-vs-card="huesped"
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute right-0 top-6 z-20 w-44 overflow-hidden rounded-xl border border-[#E5E0D8] bg-white text-sm text-[#18345C] shadow-xl">
+                    className="absolute right-0 top-6 z-20 w-44 overflow-hidden rounded-xl border border-[#AEBCC1] bg-white text-sm text-[#18345C] shadow-xl">
                     <button
                       type="button"
                       onClick={() => abrirEdicion(m)}
-                      className="block w-full px-4 py-2.5 text-left hover:bg-[#F8F6F0]">
+                      className="block w-full px-4 py-2.5 text-left hover:bg-[#F2F4F5]">
                       {en ? "Edit" : "Editar"}
                     </button>
 
@@ -289,9 +289,9 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
         {transport?.loading&&<p role="status" className="px-4 text-sm">{en?'Loading messages…':'Consultando mensajes…'}</p>}
         {transport?.error&&<p role="alert" className="px-4 text-sm text-red-800">{transport.error}</p>}
         {transport?.blockedReason&&<GuestRestriction reason={transport.blockedReason}/>}
-        <footer className="border-t border-[#E5E0D8] bg-white px-4 py-3 sm:px-5">
+        <footer className="border-t border-[#AEBCC1] bg-white px-4 py-3 sm:px-5">
 
-          {archivo && (<div className="mb-3 rounded-lg bg-[#F8F6F0] px-3 py-2 text-sm text-[#52677F]">
+          {archivo && (<div className="mb-3 rounded-lg bg-[#F2F4F5] px-3 py-2 text-sm text-[#52677F]">
             {archivo}
           </div>)}
 
@@ -369,7 +369,7 @@ export default function ChatHuesped({ habilitado=true, transport, nombreHuesped,
               onEliminar(eliminarId, true);
               setEliminarId(null);
             }}
-            className="rounded-lg bg-[#B32D2D] px-4 py-2 text-sm font-semibold text-white">
+            className="rounded-lg bg-[#18345C] px-4 py-2 text-sm font-semibold text-white">
             {en
               ? "Delete for everyone"
               : "Eliminar para todos"}

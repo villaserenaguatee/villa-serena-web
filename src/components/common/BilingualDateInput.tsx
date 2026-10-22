@@ -1,8 +1,10 @@
 'use client';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import AnchoredPopover from './AnchoredPopover';
 import { usePublicLanguage } from './PublicLanguageToggle';
 type Props = {
+  portal?: boolean;
   value: string;
   onChange: (value: string) => void;
   min?: string;
@@ -14,7 +16,7 @@ type Props = {
 };
 const pad = (n: number) => String(n).padStart(2, '0');
 const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-export default function BilingualDateInput({ value, onChange, min, className = '', rangeStart = '', rangeEnd = '', rangeEdge, minExclusive = false }: Props) {
+export default function BilingualDateInput({ value, onChange, min, className = '', rangeStart = '', rangeEnd = '', rangeEdge, minExclusive = false, portal = false }: Props) {
   const { en } = usePublicLanguage();
   const calendar = useRef<HTMLDivElement>(null);
   const [above,setAbove]=useState(false);
@@ -30,7 +32,7 @@ export default function BilingualDateInput({ value, onChange, min, className = '
   }, [value]);
   useEffect(() => {
     const close = (e: MouseEvent) => {
-      if (box.current && !box.current.contains(e.target as Node))
+      if (box.current && !box.current.contains(e.target as Node) && !calendar.current?.contains(e.target as Node))
         setOpen(false);
     };
     document.addEventListener('mousedown', close);
@@ -61,14 +63,7 @@ export default function BilingualDateInput({ value, onChange, min, className = '
     const escape=(event:KeyboardEvent)=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();setOpen(false);setPreview('');trigger.current?.focus();}};
     document.addEventListener('keydown',escape);return()=>document.removeEventListener('keydown',escape);
   },[open]);
-  return <div className={`vs-date ${rangeEdge?'vs-date-range':''} ${className}`} data-range-edge={rangeEdge} ref={box}>
-    <button type="button" ref={trigger} className="vs-date-trigger" aria-expanded={open} aria-haspopup="dialog" onClick={() => {setPreview('');if(!open)setView(new Date((value||rangeStart||minDate)+'T12:00:00'));setOpen(!open);}}>
-      <span>
-        {label}
-      </span>
-      <CalendarDays size={17} />
-    </button>
-    {open && <div ref={calendar} data-placement={above?"above":"below"} className="vs-calendar" role="dialog" aria-label={en ? 'Calendar' : 'Calendario'}>
+  const popup = <div ref={calendar} style={portal ? {position: 'static', width: '100%'} : undefined} data-placement={above?"above":"below"} className="vs-calendar" role="dialog" aria-label={en ? 'Calendar' : 'Calendario'}>
       <div className="vs-calendar-head">
         <button
           type="button"
@@ -128,6 +123,14 @@ export default function BilingualDateInput({ value, onChange, min, className = '
           {en ? 'Today' : 'Hoy'}
         </button>
       </div>
-    </div>}
+    </div>;
+  return <div className={`vs-date ${rangeEdge?'vs-date-range':''} ${className}`} data-range-edge={rangeEdge} ref={box}>
+    <button type="button" ref={trigger} className="vs-date-trigger" aria-expanded={open} aria-haspopup="dialog" onClick={() => {setPreview('');if(!open)setView(new Date((value||rangeStart||minDate)+'T12:00:00'));setOpen(!open);}}>
+      <span>
+        {label}
+      </span>
+      <CalendarDays size={17} />
+    </button>
+    {open && (portal ? <AnchoredPopover anchor={trigger} onClose={() => {setOpen(false);setPreview('');}} className={rangeEdge ? 'vs-date-range' : ''}>{popup}</AnchoredPopover> : popup)}
   </div>;
 }

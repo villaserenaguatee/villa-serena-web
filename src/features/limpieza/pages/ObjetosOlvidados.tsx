@@ -1,3 +1,4 @@
+import PhotoPicker from '@/components/common/PhotoPicker';
 import { useState } from 'react';
 import type { Habitacion, ObjetoOlvidado } from '@/lib/pms/types';
 import { generarId, horaActual } from '@/data/pms';
@@ -41,8 +42,7 @@ export default function Objetos({ objetos, habitaciones, onRegistrar, mensajeErr
     setErrores(e);
     return Object.keys(e).length === 0;
   }
-  function handleFoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const archivo = e.target.files?.[0];
+  function handleFoto(archivo: File) {
     if (!archivo)
       return;
     if(archivo.size>5*1024*1024||!['image/jpeg','image/png'].includes(archivo.type)){setErrores(e=>({...e,foto:'Usa JPEG o PNG de hasta 5 MiB.'}));return;}
@@ -217,13 +217,7 @@ export default function Objetos({ objetos, habitaciones, onRegistrar, mensajeErr
             </Campo>
 
             <Campo label="Foto del objeto" error={errores.foto}>
-              <label className="flex h-32 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-[#D7D1C7] bg-[#F8F6F0] text-sm text-[#71839B]">
-                {form.foto ? <img src={form.foto} alt="Vista previa" className="h-full w-full object-cover" /> : <span>+ Agregar fotografía</span>}
-                <input type="file" accept="image/jpeg,image/png" className="hidden" onChange={handleFoto} />
-              </label>
-              {form.foto && (<div className="mt-2 overflow-hidden rounded-lg border border-[#E5E0D8] bg-[#F8F6F0]">
-                <img src={form.foto} alt="Objeto olvidado" className="h-28 w-full object-contain" />
-              </div>)}
+              <PhotoPicker label="Foto del objeto" accept="image/jpeg,image/png" preview={form.foto} onSelect={handleFoto} onRemove={()=>{setForm(f=>({...f,foto:''}));setErrores(e=>({...e,foto:undefined}));}} />
             </Campo>
 
             <Campo label="Fecha y hora en que se encontró" error={errores.fechaHora}>

@@ -1,5 +1,6 @@
 "use client";
-import { ArrowRight, Camera, CreditCard, DoorOpen, Globe2, IdCard, LockKeyhole, Shield, UserRound, X, } from "lucide-react";
+import PhotoPicker from '@/components/common/PhotoPicker';
+import { ArrowRight, CreditCard, DoorOpen, Globe2, IdCard, LockKeyhole, Shield, UserRound, X, } from "lucide-react";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { agregarTarjeta, eliminarTarjeta, leerTarjetas } from "@/store/paymentStore";
 import { actualizarHuespedCentral, leerHuespedes } from "@/store/guestStore";
@@ -101,7 +102,6 @@ export default function PerfilHuesped({ connected, huespedId, nombre, correo, te
     document.addEventListener('keydown', key);
     return () => { document.removeEventListener('keydown', key); previous?.focus(); };
   }, [seccion, onVolver]);
-  const inputFoto = useRef<HTMLInputElement>(null);
   const nombreActual = perfil?.nombre || nombre;
   const iniciales = nombreActual
     .split(" ")
@@ -193,15 +193,7 @@ export default function PerfilHuesped({ connected, huespedId, nombre, correo, te
             <p className="text-sm text-[#72829A]">{tr("Huésped", "Guest")}</p>
           </div>
 
-          <button
-            type="button"
-            disabled={Boolean(connected)} onClick={() => inputFoto.current?.click()}
-            className="flex shrink-0 items-center gap-2 rounded-lg border border-[#17365D] px-3 py-2 text-sm font-semibold text-[#17365D] transition hover:bg-[#F8F6F0]">
-            <Camera size={17} />
-            {tr("Cambiar foto", "Change photo")}
-          </button>
-
-          <input disabled={Boolean(connected)} ref={inputFoto} type="file" accept="image/*" className="hidden" onChange={(e) => cargarFoto(e.target.files?.[0])} />
+          <PhotoPicker compact label={tr("Cambiar foto", "Change photo")} accept="image/*" disabled={Boolean(connected)} preview={foto} onSelect={cargarFoto} onRemove={()=>{if(!connected){setFoto('');onFoto?.('');}}} />
         </div>
       </div>
 
