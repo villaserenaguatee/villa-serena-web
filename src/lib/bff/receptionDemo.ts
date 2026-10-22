@@ -39,7 +39,7 @@ export function receptionSeed(): ReceptionState {
     const total = Math.round((noches * (HABITACIONES_CENTRALES.find(h => h.tipo === r.tipoHabitacion)!.precioNoche) - r.descuento) * 100) / 100;
     const paid = r.pagos.reduce((sum, p) => sum + p.monto, 0);
     const estado = states[r.estado];
-    const detail: ReservationDetail = { codigo: `VS-TEST0${i + 1}`, estado, canal: r.pagos.some(p => p.metodo === 'tarjeta') || r.estado === 'pendiente' ? 'DIRECTO_WEB' : 'RECEPCION', identificadorExterno: null,
+    const detail: ReservationDetail = { horaEstimadaLlegada: null, codigo: `VS-TEST0${i + 1}`, estado, canal: r.pagos.some(p => p.metodo === 'tarjeta') || r.estado === 'pendiente' ? 'DIRECTO_WEB' : 'RECEPCION', identificadorExterno: null,
       entrada: r.fechaEntrada, salida: r.fechaSalida, noches, numeroHuespedes: r.personas, tipoHabitacion: { id: types.indexOf(r.tipoHabitacion) + 1, nombre: r.tipoHabitacion }, habitacion: room ? reference(room) : null,
       huesped: { id: HUESPEDES_INICIALES.indexOf(g) + 1, nombreCompleto: g.nombre, correo: g.correo, telefono: g.telefono, nacionalidad: g.nacionalidad, tipoDocumento: g.tipoDocumento === 'DPI' ? 'DPI' : 'PASAPORTE', numeroDocumento: g.documento },
       huespedesAdicionales: r.acompanantes.map((g, index) => ({ id: index + 1, nombreCompleto: g.nombre, tipoDocumento: 'DPI', numeroDocumento: g.documento, nacionalidad: 'Guatemala' })), total, saldoPendiente: Math.max(0, total - paid), creadaEn: r.creadoEn,
@@ -158,7 +158,7 @@ export function createReceptionReservation(input: Record<string, unknown>, respo
     const noches = (Date.parse(data.salida) - Date.parse(data.entrada)) / 86400000;
     const total = Math.round(noches * TARIFAS_PREDETERMINADAS[type.nombre as TipoHabitacion] * 100) / 100;
     const now = new Date().toISOString();
-    const detail: ReservationDetail = { codigo, estado: 'CONFIRMADA', canal: 'RECEPCION', identificadorExterno: null,
+    const detail: ReservationDetail = { horaEstimadaLlegada: null, codigo, estado: 'CONFIRMADA', canal: 'RECEPCION', identificadorExterno: null,
       entrada: data.entrada, salida: data.salida, noches, numeroHuespedes: data.numeroHuespedes, tipoHabitacion: type,
       habitacion: room ? reference(room) : null, huesped: structuredClone(guest), huespedesAdicionales: [], total,
       saldoPendiente: total, creadaEn: now, historial: [{ estadoAnterior: null, estadoNuevo: 'CONFIRMADA', responsable: responsible, fechaHora: now, motivo: null }] };

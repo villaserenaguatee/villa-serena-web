@@ -23,5 +23,28 @@ for (const { name, viewport } of viewports) {
       expect(state.calls.find(call => call.path.endsWith('/resolver'))?.body).toEqual({ solucion: 'Daño reparado en prueba' });
       await expectNoOverflow(page); await page.screenshot({ path: testInfo.outputPath('maintenance.png'), fullPage: true });
     });
+    test('official incidents remain usable when additional management endpoints are unavailable',async({page,context,baseURL,mock},info)=>{
+      await login(context,baseURL!,'mantenimiento');await page.route('**/api/gestion/**',route=>route.fulfill({status:404,json:{codigo:'NO_DISPONIBLE',mensaje:'Operación adicional no disponible'}}));await page.goto('/mantenimiento');const card=page.getByRole('article').filter({hasText:'Fuga de prueba'});await expect(card.getByRole('button',{name:'Tomar',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Crear tarea de mantenimiento'})).toHaveCount(0);await card.getByRole('button',{name:'Tomar',exact:true}).click();await expect(card.getByRole('button',{name:'Resolver',exact:true})).toBeVisible();expect((await mock.state()).incidents[0].estado).toBe('EN_PROCESO');await expectNoOverflow(page);if(viewport.width<768){const box=await card.boundingBox();expect(box!.width).toBeGreaterThan(viewport.width*.75);}await page.screenshot({path:info.outputPath('independent-incidents.png'),fullPage:true});
+    });
   });
+}
+
+for(const width of [1440,390,320]){
+ test.describe(`Administración ${width}px`,()=>{
+  test.use({viewport:{width,height:900}});
+  test('supervisión de solo lectura conserva ruta al recargar y permite consultar/cerrar el detalle',async({page,context,baseURL,mock},testInfo)=>{
+   await login(context,baseURL!,'admin');await page.goto('/admin/mantenimiento');
+   await expect(page.getByRole('heading',{name:'Supervisión de mantenimiento'})).toBeVisible();
+   await page.getByRole('button',{name:width<1024?'Mant.':'Mantenimiento',exact:true}).click();
+   await expect(page).toHaveURL(/\/admin\/mantenimiento$/);
+   const card=page.getByRole('article').filter({hasText:'Fuga de prueba'});await expect(card).toBeVisible();
+   await card.getByRole('button',{name:'Ver detalle'}).click();const dialog=page.getByRole('dialog',{name:'Detalle de incidencia'});
+   await expect(dialog.getByRole('heading',{name:'Historial'})).toBeVisible();await expectNoOverflow(page);
+   await page.screenshot({path:testInfo.outputPath('supervision.png'),fullPage:true});
+   await dialog.getByRole('button',{name:'Cerrar',exact:true}).click();await expect(dialog).toHaveCount(0);
+   await page.reload();await expect(page.getByRole('heading',{name:'Supervisión de mantenimiento'})).toBeVisible();
+   await page.getByRole('combobox',{name:'Estado',exact:true}).selectOption('RESUELTA');await expect(page.getByText('Sin incidencias',{exact:true})).toBeVisible();
+   await expectNoOverflow(page);expect((await mock.state()).calls.filter(call=>call.path.startsWith('/api/v1/incidencias')).every(call=>call.method==='GET')).toBe(true);
+  });
+ });
 }

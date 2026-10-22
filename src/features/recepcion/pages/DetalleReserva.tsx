@@ -334,7 +334,7 @@ function TabResumen({ accountOnly = false, bffAction, reserva, huesped, habitaci
         <Dato k="Entrada" v={formatoFecha(reserva.fechaEntrada)} />
         <Dato k="Salida" v={formatoFecha(reserva.fechaSalida)} />
         {/* Pending the published API contract; do not infer an arrival time. */}
-        <Dato k="Hora estimada de llegada" v="No indicada" />
+        <Dato k="Hora estimada de llegada" v={reserva.horaEstimadaLlegada ?? 'No indicada'} />
         <Dato k="Noches" v={String(nochesEntre(reserva.fechaEntrada, reserva.fechaSalida))} />
         <Dato k="Huéspedes" v={`${reserva.adultos ?? reserva.personas} adultos · ${reserva.ninos ?? 0} niños`} />
         <Dato k="Categoría" v={reserva.tipoHabitacion} />

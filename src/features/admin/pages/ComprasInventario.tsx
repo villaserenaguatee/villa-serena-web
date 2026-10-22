@@ -11,6 +11,7 @@ interface Props {
   insumos: Insumo[];
   movimientos: MovimientoInsumo[];
   compras: CompraHotel[];
+  onEditarInsumo?: (id: string, i: Omit<Insumo, 'id'>) => void | boolean | Promise<void | boolean>;
   onAgregarInsumo: (i: Omit<Insumo, 'id'>) => void | boolean | Promise<void | boolean>;
   onRegistrarMovimiento: (insumoId: string, tipo: TipoMovimiento, cantidad: number, motivo: string) => void | boolean | Promise<void | boolean>;
   onRegistrarCompra: (c: Omit<CompraHotel, 'id' | 'subtotal' | 'impuesto' | 'total'>) => void | boolean | Promise<void | boolean>;

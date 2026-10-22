@@ -1,5 +1,5 @@
 /** Generado desde villa-serena-docs/openapi.yaml. No editar.
- * Contrato SHA-256: 0cf7f1586bc07040a7bb7fcae94b9a2829652dd874ae1079e7ea35e543c30e62
+ * Contrato SHA-256: cc77894550d8d86717e6bdf1efb21d4ff68f2266ff7c87d184f65276ce65368c
  */
 export interface paths {
     "/api/v1/auth/login": {
@@ -205,6 +205,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/publico/ofertas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar catálogo de ofertas
+         * @description Catálogo comercial usado por la web, ordenado por el orden del catálogo.
+         *     Una oferta tiene slug propio y se vincula a un tipo mediante apiTypeId.
+         *     Varias ofertas pueden compartir el mismo inventario de habitaciones.
+         *     bookable indica tipo activo y existencia de una habitación elegible por
+         *     características; no garantiza disponibilidad para unas fechas concretas.
+         *     No devuelve pendingFeatures (notas editoriales internas).
+         */
+        get: operations["listarOfertasPublicas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/publico/ofertas/disponibilidad": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar ofertas disponibles y cotización
+         * @description Requiere entrada, salida y huespedes: 1 a 30 noches, sin fechas pasadas,
+         *     entrada a no más de 365 días y al menos un huésped (America/Guatemala).
+         *     Filtra por bookable, capacidad de la oferta, cupo del tipo y una misma
+         *     habitación elegible libre durante toda la estadía. Lista vacía si no hay.
+         *     Cotiza al precio fijo de la oferta por noche, sin ajustes de temporada o
+         *     fin de semana. Ofertas con el mismo inventarioCompartido no son cupos
+         *     independientes ni deben sumarse. No expone cantidades restantes ni IDs
+         *     de habitaciones. La creación de reserva vuelve a validar disponibilidad.
+         */
+        get: operations["buscarDisponibilidadOfertasPublicas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/publico/reservas": {
         parameters: {
             query?: never;
@@ -220,9 +272,34 @@ export interface paths {
          *     disponibilidad antes de crear. Si ya existe un huésped con ese correo, la
          *     reserva se asocia a ese perfil sin cambiar sus datos. La reserva nace
          *     `PENDIENTE_PAGO`, canal `DIRECTO_WEB`, con precio fijo y cuenta `ABIERTA`
-         *     con el cargo por alojamiento. Si no se paga en 30 minutos se cancela sola.
+         *     con el cargo por alojamiento. Si no se paga en 30 minutos se cancela sola. La web conserva Idempotency-Key antes de enviar. El comprobante corresponde al correo y borrador enviados. Reserva, prueba consumida y respuesta se guardan atómicamente. Repetir la misma clave y datos devuelve la respuesta inicial sin duplicar; cambiar los datos produce BOOKING_REQUEST_CONFLICT. Para intentos nuevos, el replay exige también prueba vigente del mismo correo y borrador. Los históricos conservan su replay.
+         *
+         *
+         *     Hora estimada de llegada opcional, local de America/Guatemala, HH:mm entre 00:00 y 23:59. Omitida o null significa sin indicar; no tiene valor por defecto ni modifica el horario de check-in. Vacío, segundos o zona horaria devuelven 400 DATOS_INVALIDOS. Cambiar la hora con la misma Idempotency-Key devuelve 409 BOOKING_REQUEST_CONFLICT; omitirla y enviar null son equivalentes para los reenvíos.
          */
         post: operations["crearReservaWeb"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/publico/ofertas/{slug}/reservas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crear reserva web de una oferta
+         * @description HU-HUE-05 · Reserva una oferta identificada por slug con el mismo cuerpo de reserva pública. tipoHabitacionId debe coincidir con el tipo de la oferta y numeroHuespedes con su capacidad. Revalida cupo y habitación elegible; nace PENDIENTE_PAGO y usa el precio de la oferta.
+         *
+         *     Hora estimada de llegada opcional, local de America/Guatemala, HH:mm entre 00:00 y 23:59. Omitida o null significa sin indicar; no tiene valor por defecto ni modifica el horario de check-in. Vacío, segundos o zona horaria devuelven 400 DATOS_INVALIDOS. Cambiar la hora con la misma Idempotency-Key devuelve 409 BOOKING_REQUEST_CONFLICT; omitirla y enviar null son equivalentes para los reenvíos.
+         */
+        post: operations["crearReservaWebOferta"];
         delete?: never;
         options?: never;
         head?: never;
@@ -242,10 +319,15 @@ export interface paths {
          * Iniciar (o retomar) el pago con Recurrente
          * @description HU-HUE-06 · RF-PAG-003, RF-PAG-012. Crea **una** sesión de Recurrente
          *     Checkout por el 100 % del total, o devuelve la misma si sigue abierta.
-         *     Si la sesión ya figura pagada o payment_in_progress devuelve 409 PAGO_EN_VERIFICACION;
-         *     no crea otra sesión ni se debe repetir la reserva.
          *     El pago queda `PENDIENTE`. Recurrente regresa (pagado o cancelado) a
-         *     `{WEB_URL}/reserva/resultado?codigo={codigo}`. El pago se verifica en el backend por webhook o conciliación del job de vencimiento, nunca por la redirección.
+         *     `{WEB_URL}/reserva/resultado?codigo={codigo}`. El pago se verifica en el backend por webhook o conciliación del job de vencimiento,
+         *     nunca por la redirección.
+         *     Revalida plazo y estado aunque una consulta previa permitiera la acción.
+         *     Si el checkout está pagado pendiente de registro o payment_in_progress, responde
+         *     409 PAGO_EN_VERIFICACION sin crear otro. Si la pasarela falla, responde 502
+         *     ERROR_PASARELA sin habilitar un nuevo cobro. Solo un checkout confirmado expired
+         *     permite sustituir el intento pendiente; un unpaid con fecha vencida debe esperar
+         *     confirmación de vencimiento de la pasarela. Plazo vencido: 409 PLAZO_PAGO_VENCIDO.
          */
         post: operations["iniciarPagoReserva"];
         delete?: never;
@@ -262,12 +344,21 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Estado de la reserva al volver de Recurrente
+         * Estado de la reserva y proceso de pago
          * @description HU-HUE-06 (criterio 6) · RF-PAG-004. Solo el estado de la reserva y de su
          *     pago (VIS-03); ningún dato personal. Casos de la página: `CONFIRMADA` →
          *     confirmada; `PENDIENTE_PAGO` → pago en proceso o no completado (con
-         *     reintento si `puedeReintentar`); `CANCELADA` → venció el plazo de 30
-         *     minutos.
+         *     acción explícita); `CANCELADA` → reserva cancelada.
+         *     estadoPago representa el registro local; estadoCheckout representa la observación
+         *     del proveedor. PAGADO con estadoPago PENDIENTE significa esperar confirmación local,
+         *     nunca reserva confirmada. La consulta no acredita pagos ni crea sesiones.
+         *     accionPago distingue INICIAR, CONTINUAR, ESPERAR, REINTENTAR y NINGUNA.
+         *     puedeReintentar es true únicamente para REINTENTAR; ya no significa simplemente
+         *     PENDIENTE_PAGO. No se ofrecen acciones de cobro fuera de plazo. Un fallo de pasarela con la reserva aún PENDIENTE_PAGO
+         *     devuelve NO_VERIFICADO/ESPERAR y puedeReintentar=false. urlPago solo se devuelve para
+         *     CONTINUAR; expiraEn limita esa sesión y pagoVenceEn limita la reserva.
+         *     Web y app deben usar accionPago y volver a consultar mientras sea ESPERAR.
+         *     Las respuestas de estado y recuperación no se almacenan en caché.
          */
         get: operations["obtenerEstadoReservaPublica"];
         put?: never;
@@ -2423,7 +2514,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/admin/inventario/productos": {
+    "/api/v1/gestion/insumos": {
         parameters: {
             query?: never;
             header?: never;
@@ -2431,65 +2522,102 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Consultar inventario
-         * @description HU-ADM-13
+         * Consultar insumos
+         * @description GET permite ADMIN o MANTENIMIENTO_LIMPIEZA con área MANTENIMIENTO o AMBAS; POST solo ADMIN. No hay filtros de servidor: la web calcula stock bajo y filtra en memoria. POST permite crear o actualizar con la versión actual, enviando todos los datos requeridos.
          */
-        get: operations["listarProductosInventarioAdmin"];
+        get: operations["listarInsumoGestion"];
         put?: never;
         /**
-         * Crear producto de inventario
-         * @description HU-ADM-13
-         *
-         *     Nombre único; stock inicial cero. Stock nunca se edita en catálogo.
+         * Registrar insumos
+         * @description GET permite ADMIN o MANTENIMIENTO_LIMPIEZA con área MANTENIMIENTO o AMBAS; POST solo ADMIN. No hay filtros de servidor: la web calcula stock bajo y filtra en memoria. POST permite crear o actualizar con la versión actual, enviando todos los datos requeridos. UUID generado por el cliente. Un reenvío con el mismo id, version=0 y datos de creación idénticos devuelve el registro sin repetir sus efectos. Reutilizar el id con otros datos y version=0 devuelve 409 VERSION_CAMBIADA. Una versión distinta de la actual devuelve 409 VERSION_CAMBIADA.
          */
-        post: operations["crearProductoInventarioAdmin"];
+        post: operations["guardarInsumoGestion"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/admin/inventario/productos/{id}": {
+    "/api/v1/gestion/compras": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Consultar compras
+         * @description Solo ADMIN. Compras y repuestos de órdenes comparten las existencias de insumos. Las compras no se sobrescriben: intentarlo con la versión actual devuelve 400 DATOS_INVALIDOS.
+         */
+        get: operations["listarCompraInventarioGestion"];
+        put?: never;
+        /**
+         * Registrar compras
+         * @description Solo ADMIN. Compras y repuestos de órdenes comparten las existencias de insumos. Las compras no se sobrescriben: intentarlo con la versión actual devuelve 400 DATOS_INVALIDOS. UUID generado por el cliente. Un reenvío con el mismo id, version=0 y datos de creación idénticos devuelve el registro sin repetir sus efectos. Reutilizar el id con otros datos y version=0 devuelve 409 VERSION_CAMBIADA. Una versión distinta de la actual devuelve 409 VERSION_CAMBIADA.
+         */
+        post: operations["guardarCompraInventarioGestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gestion/movimientos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar movimientos de inventario
+         * @description Solo ADMIN. Lista todos los movimientos manuales por creado_en e id, sin filtros ni paginación; la web relaciona por insumoId y ordena por fecha. Los movimientos son inmutables: intentar modificarlos con la versión actual devuelve 400 DATOS_INVALIDOS. Salida o merma sin existencias suficientes devuelve 409 STOCK_INSUFICIENTE. Movimiento, stock y auditoría se escriben en una transacción, con bloqueos compartidos con compras y repuestos.
+         */
+        get: operations["listarMovimientoInventarioGestion"];
+        put?: never;
+        /**
+         * Registrar movimientos de inventario
+         * @description Solo ADMIN. Lista todos los movimientos manuales por creado_en e id, sin filtros ni paginación; la web relaciona por insumoId y ordena por fecha. Los movimientos son inmutables: intentar modificarlos con la versión actual devuelve 400 DATOS_INVALIDOS. Salida o merma sin existencias suficientes devuelve 409 STOCK_INSUFICIENTE. Movimiento, stock y auditoría se escriben en una transacción, con bloqueos compartidos con compras y repuestos. UUID generado por el cliente. Un reenvío con el mismo id, version=0 y datos de creación idénticos devuelve el registro sin repetir sus efectos. Reutilizar el id con otros datos y version=0 devuelve 409 VERSION_CAMBIADA. Una versión distinta de la actual devuelve 409 VERSION_CAMBIADA.
+         */
+        post: operations["guardarMovimientoInventarioGestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/publico/reservas/intento": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recuperar una reserva por su intento de creación
+         * @description Consulta sin crear reservas, consumir comprobantes ni repetir el cuerpo original.
+         *     Requiere clave, borrador y comprobante vigente del correo del intento original.
+         *     Se acepta renovar la verificación del mismo correo y borrador; conocer solo la
+         *     clave o el correo no autoriza la consulta. RESERVA y OFERTA son alcances separados.
+         *     Devuelve el código y estado actual, sin datos personales ni la respuesta inicial.
+         *     Un intento en otra transacción devuelve 409 SOLICITUD_EN_PROCESO sin esperar.
+         *     Un 404 puede significar intento sin resultado, credenciales incorrectas/vencidas
+         *     o intento histórico sin vínculo de verificación; nunca autoriza generar otra clave.
+         *     Se debe conservar la clave y consultar de nuevo o reenviar el POST original con
+         *     la misma clave y datos. La consulta no identifica una operación en tránsito que
+         *     todavía no haya llegado al API. Los intentos históricos mantienen el replay previo.
+         *     Límite 60 consultas por minuto e IP; 429 con Retry-After. Cache-Control no-store.
+         */
+        get: operations["consultarIntentoReserva"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /**
-         * Editar producto de inventario
-         * @description HU-ADM-13
-         */
-        patch: operations["editarProductoInventarioAdmin"];
-        trace?: never;
-    };
-    "/api/v1/admin/inventario/productos/{id}/desactivar": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Desactivar producto
-         * @description HU-ADM-13
-         */
-        post: operations["desactivarProductoInventarioAdmin"];
-        delete?: never;
-        options?: never;
-        head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/admin/inventario/productos/{id}/movimientos": {
+    "/api/v1/app/reservas/{codigo}/pago-saldo/estado": {
         parameters: {
             query?: never;
             header?: never;
@@ -2497,20 +2625,20 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Consultar movimientos de producto
-         * @description HU-ADM-13
-         *
-         *     Historial por fecha con tipo, cantidad, motivo y responsable.
+         * Consultar el checkout y la acción de pago del saldo
+         * @description Solo el huésped titular; reserva ajena responde 404. Consulta sin crear sesiones
+         *     ni acreditar pagos. La acción de cobro requiere EN_ESTADIA, saldo positivo,
+         *     ventana 00:00 inclusive a 12:00 exclusiva del día de salida en America/Guatemala
+         *     y ningún pedido EN_CAMINO. Respeta la expiración de la sesión y el límite de salida.
+         *     Un pago aprobado anterior no impide pagar nuevos cargos; con saldo positivo se
+         *     considera que aún no hay checkout para ese nuevo saldo. Saldo cero: NINGUNA.
+         *     Una pasarela inaccesible produce NO_VERIFICADO y no permite reintentar.
+         *     La misma semántica de estados y acciones del proceso público; sin datos de tarjeta
+         *     ni identificadores internos del proveedor. Cache-Control no-store.
          */
-        get: operations["historialInventarioAdmin"];
+        get: operations["consultarProcesoPagoSaldoApp"];
         put?: never;
-        /**
-         * Registrar entrada o salida
-         * @description HU-ADM-13
-         *
-         *     Cantidad>0 y motivo obligatorio. SALIDA que supera stock=409; bloquear producto y registrar responsable. Solo movimientos manuales: otros módulos no modifican stock.
-         */
-        post: operations["registrarMovimientoInventarioAdmin"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2777,13 +2905,71 @@ export interface components {
         OpcionDisponiblePublica: {
             tipoHabitacion: components["schemas"]["TipoHabitacionPublico"];
         } & components["schemas"]["CotizacionEstadia"];
+        /** @description Contenido público del catálogo, más precio, tipo e indicador calculados por API. */
+        OfertaPublica: {
+            /** @description Identificador comercial usado al reservar por oferta. */
+            slug: string;
+            name: string;
+            /** @description Nombre comercial de la categoría; no sustituye apiTypeId. */
+            type: string;
+            floor: number;
+            price: components["schemas"]["Monto"];
+            capacity: number;
+            beds: string;
+            /** @description Superficie en metros cuadrados. */
+            size: number;
+            /** @description Ruta relativa o URL de imagen; puede ser ilustrativa. */
+            image: string;
+            gallery: string[];
+            description: string;
+            features: string[];
+            preferences: string[];
+            apiTypeId: components["schemas"]["Id"];
+            /** @description Elegibilidad general; consultar disponibilidad antes de reservar. */
+            bookable: boolean;
+            illustrativePhotos?: boolean;
+            verifiedFeatures?: string[];
+            inventoryNote?: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Cotización de una oferta, distinta de la cotización tarifaria por tipo. */
+        OpcionOfertaDisponible: {
+            ofertaSlug: string;
+            /** @description Identifica el inventario común del tipo; no representa una cantidad. */
+            inventarioCompartido: string;
+            tipoHabitacion: {
+                id: components["schemas"]["Id"];
+                /** @description Nombre comercial de la oferta. */
+                nombre: string;
+                descripcion: string;
+                capacidad: number;
+                precioBaseNoche: components["schemas"]["Monto"];
+                /** @description Imagen principal de la oferta; admite ruta relativa. */
+                fotos: string[];
+            };
+            noches: number;
+            total: components["schemas"]["Monto"];
+            desglose: (components["schemas"]["PrecioNoche"] & {
+                temporada?: null;
+                /** @constant */
+                finDeSemana?: false;
+            })[];
+        };
         ReservaWebPeticion: {
             tipoHabitacionId: components["schemas"]["Id"];
             entrada: components["schemas"]["FechaEstadia"];
             salida: components["schemas"]["FechaEstadia"];
             numeroHuespedes: number;
             huesped: components["schemas"]["HuespedDatos"];
+            horaEstimadaLlegada?: components["schemas"]["HoraEstimadaLlegada"];
         };
+        /**
+         * @description Hora local de America/Guatemala, HH:mm (00:00–23:59), independiente del check-in. En entrada, opcional y nullable: omitida/null = sin indicar. En detalle de Recepción, null si no se indicó o la reserva es histórica. Sin valor por defecto ni relleno histórico. Etiqueta web: Hora estimada de llegada.
+         * @example 18:30
+         * @example null
+         */
+        HoraEstimadaLlegada: string | null;
         ReservaWebCreada: {
             codigo: components["schemas"]["CodigoReserva"];
             estado: components["schemas"]["EstadoReserva"];
@@ -2805,14 +2991,43 @@ export interface components {
             /** @description Vencimiento ISO 8601. En pago de saldo puede ser null si el proveedor no lo informa. */
             expiraEn: components["schemas"]["FechaHora"] | null;
         };
-        /** @description Solo el estado; sin datos personales (VIS-03). */
-        EstadoReservaPublico: {
+        /**
+         * @description Observación del checkout, independiente del estado contable local. PAGADO no
+         *     confirma por sí solo la reserva. VENCIDO también representa un intento local
+         *     FALLIDO. NO_VERIFICADO incluye error del proveedor o unpaid cuya fecha venció
+         *     sin confirmación del proveedor. Un pago local aprobado o reembolsado se representa
+         *     como PAGADO y no requiere consultar el checkout.
+         * @enum {string}
+         */
+        EstadoCheckout: "SIN_CHECKOUT" | "ABIERTO" | "PROCESANDO" | "PAGADO" | "VENCIDO" | "NO_VERIFICADO";
+        /**
+         * @description INICIAR crea el primer checkout; CONTINUAR reutiliza el enlace; ESPERAR requiere
+         *     consultar otra vez sin cobrar; REINTENTAR permite sustituir un intento fallido
+         *     o expired confirmado dentro del plazo; NINGUNA no ofrece acciones de cobro.
+         *     El POST siempre revalida las condiciones actuales.
+         * @enum {string}
+         */
+        AccionPago: "INICIAR" | "CONTINUAR" | "ESPERAR" | "REINTENTAR" | "NINGUNA";
+        ProcesoPago: {
+            /** @description Registro local; null si aún no hay intento para el saldo actual. No reinterpreta pagos STRIPE históricos. */
+            estadoPago: components["schemas"]["EstadoPago"] | null;
+            estadoCheckout: components["schemas"]["EstadoCheckout"];
+            accionPago: components["schemas"]["AccionPago"];
+            /** @description True solo para REINTENTAR. Para iniciar o continuar usar accionPago. */
+            puedeReintentar: boolean;
+            /**
+             * Format: uri
+             * @description Enlace solo cuando accionPago es CONTINUAR.
+             */
+            urlPago: string | null;
+            /** @description Expiración de sesión limitada por la ventana de pago; null si no aplica o no se conoce. */
+            expiraEn: components["schemas"]["FechaHora"] | null;
+        };
+        /** @description Estado público del último pago RECURRENTE; no reinterpreta pagos STRIPE históricos. */
+        EstadoReservaPublico: components["schemas"]["ProcesoPago"] & {
             codigo: components["schemas"]["CodigoReserva"];
             estadoReserva: components["schemas"]["EstadoReserva"];
-            /** @description Estado del último pago RECURRENTE; null si no existe un pago de ese método. No reinterpreta pagos STRIPE históricos. */
-            estadoPago: components["schemas"]["EstadoPago"] | null;
-            /** @description Verdadero mientras la reserva siga PENDIENTE_PAGO; iniciar pago aún puede devolver 409 PAGO_EN_VERIFICACION. */
-            puedeReintentar: boolean;
+            pagoVenceEn: components["schemas"]["FechaHora"];
         };
         /**
          * @description Cuerpo original firmado por Svix. Se usa event_type; si falta o es null,
@@ -2923,6 +3138,7 @@ export interface components {
             creadaEn: components["schemas"]["FechaHora"];
             /** @description Cambios de estado, del más antiguo al más reciente. */
             historial: components["schemas"]["HistorialEstado"][];
+            horaEstimadaLlegada: components["schemas"]["HoraEstimadaLlegada"];
         };
         RegistroHuespedRespuesta: {
             /** @description Verdadero si ya había un huésped con ese correo (se usa su perfil sin cambios). */
@@ -4875,95 +5091,184 @@ export interface components {
             turno: components["schemas"]["TurnoAdmin"];
             fecha: components["schemas"]["FechaEstadia"];
         };
-        /**
-         * @example {
-         *       "nombre": "Jabón",
-         *       "categoria": "Amenidades",
-         *       "unidadMedida": "Unidad",
-         *       "stockMinimo": 5
-         *     }
-         */
-        ProductoInventarioPeticion: {
+        /** @description Stock inicial no negativo indicado al crear. Al actualizar no puede cambiar el stock directamente. No se exige nombre único ni existe desactivación. Los campos adicionales, como vencimiento, se conservan sin validación específica. */
+        InsumoDatos: {
+            /** @description No admite texto compuesto únicamente de espacios. */
             nombre: string;
+            /** @description No admite texto compuesto únicamente de espacios. */
             categoria: string;
-            unidadMedida: string;
-            stockMinimo: number;
+            /** @description No admite texto compuesto únicamente de espacios. */
+            unidad: string;
+            stock: number | string;
+            stockMinimo: number | string;
+            costoUnitario: number | string;
+        } & {
+            [key: string]: unknown;
         };
-        /**
-         * @example {
-         *       "nombre": "Villa Serena",
-         *       "categoria": "Amenidades",
-         *       "unidadMedida": "Unidad",
-         *       "stockMinimo": 0
-         *     }
-         */
-        EditarProductoInventarioPeticion: {
-            nombre?: string;
-            categoria?: string;
-            unidadMedida?: string;
-            stockMinimo?: number;
-        };
-        /**
-         * @description Nuevo stock=0. stockBajo cuando stockActual<=stockMinimo.
-         * @example {
-         *       "id": 1,
-         *       "nombre": "Villa Serena",
-         *       "categoria": "Amenidades",
-         *       "unidadMedida": "Unidad",
-         *       "stockMinimo": 0,
-         *       "stockActual": 0,
-         *       "stockBajo": false,
-         *       "estado": "ACTIVO"
-         *     }
-         */
-        ProductoInventario: {
-            id: components["schemas"]["Id"];
-            nombre: string;
-            categoria: string;
-            unidadMedida: string;
-            stockMinimo: number;
-            stockActual: number;
-            stockBajo: boolean;
-            estado: components["schemas"]["EstadoCatalogo"];
-        };
-        /**
-         * @example {
-         *       "tipo": "ENTRADA",
-         *       "cantidad": 10,
-         *       "motivo": "Reposición de prueba"
-         *     }
-         */
-        MovimientoInventarioPeticion: {
+        /** @description Entrada suma; salida y merma restan. Se conservan los campos adicionales y los valores originales, excepto id/version internos y fecha, que fija el servidor. */
+        MovimientoInventarioDatos: {
+            /** Format: uuid */
+            insumoId: string;
             /** @enum {string} */
-            tipo: "ENTRADA" | "SALIDA";
-            cantidad: number;
+            tipo: "entrada" | "salida" | "merma";
+            cantidad: number | string;
+            /** @description No admite texto compuesto únicamente de espacios. */
             motivo: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Registrar la compra aumenta stock tanto pagada como pendiente. Calcula subtotal, impuesto del 12 % y total; ivaIncluido=true extrae el impuesto del importe. No actualiza el costoUnitario del insumo. La compra no se sobrescribe. */
+        CompraInventarioDatos: {
+            /** @description No admite texto compuesto únicamente de espacios. */
+            numeroFactura: string;
+            /** @description No admite texto compuesto únicamente de espacios. */
+            proveedor: string;
+            /** Format: date */
+            fecha: string;
+            /** Format: uuid */
+            insumoId: string;
+            cantidad: number | string;
+            costoUnitario: number | string;
+            /** @enum {string} */
+            estado: "pagada" | "pendiente";
+            ivaIncluido?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description La web envía id, version y datos. version omitida toma 0. datos serializado no puede superar 64000 caracteres. id/version dentro de datos se ignoran. */
+        InsumoPeticion: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description 0 para crear o reenviar la creación; en insumos, la versión actual para actualizar.
+             * @default 0
+             */
+            version: number;
+            datos: components["schemas"]["InsumoDatos"];
+        } & {
+            [key: string]: unknown;
         };
         /**
          * @example {
-         *       "id": 1,
-         *       "productoId": 1,
-         *       "tipo": "ENTRADA",
-         *       "cantidad": 1,
-         *       "motivo": "Registrado por error",
-         *       "fechaHora": "2026-10-02T20:30:00.000Z",
-         *       "responsable": {
-         *         "id": 7,
-         *         "nombre": "María López"
-         *       },
-         *       "stockResultante": 0
+         *       "id": "7f81edc9-cdbc-48f2-8c6a-52b9301117ac",
+         *       "version": 1,
+         *       "nombre": "Foco LED",
+         *       "categoria": "Mantenimiento",
+         *       "unidad": "Unidad",
+         *       "stock": 10,
+         *       "stockMinimo": 2,
+         *       "costoUnitario": 15
+         *     }
+         */
+        Insumo: {
+            /** @description No admite texto compuesto únicamente de espacios. */
+            nombre: string;
+            /** @description No admite texto compuesto únicamente de espacios. */
+            categoria: string;
+            /** @description No admite texto compuesto únicamente de espacios. */
+            unidad: string;
+            /** @description Existencias actuales; compras y entradas pueden acumular más que el máximo permitido por movimiento. */
+            stock: number | string;
+            stockMinimo: number | string;
+            costoUnitario: number | string;
+            /** Format: uuid */
+            id: string;
+            version: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description La web envía id, version y datos. version omitida toma 0. datos serializado no puede superar 64000 caracteres. id/version dentro de datos se ignoran. */
+        MovimientoInventarioPeticion: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description 0 para crear o reenviar la creación; en insumos, la versión actual para actualizar.
+             * @default 0
+             */
+            version: number;
+            datos: components["schemas"]["MovimientoInventarioDatos"];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description Respuesta plana. No incluye responsable ni stockResultante generados por el servidor; el empleado queda registrado en auditoría. GET lista solo movimientos manuales, no compras ni consumos de repuestos.
+         * @example {
+         *       "id": "d10b41f7-370a-4c02-a254-f653b39c069f",
+         *       "version": 1,
+         *       "insumoId": "7f81edc9-cdbc-48f2-8c6a-52b9301117ac",
+         *       "tipo": "salida",
+         *       "cantidad": 2,
+         *       "motivo": "Entrega a un área",
+         *       "fecha": "2026-10-19T15:00:00Z"
          *     }
          */
         MovimientoInventario: {
-            id: components["schemas"]["Id"];
-            productoId: components["schemas"]["Id"];
+            /** Format: uuid */
+            insumoId: string;
             /** @enum {string} */
-            tipo: "ENTRADA" | "SALIDA";
-            cantidad: number;
+            tipo: "entrada" | "salida" | "merma";
+            cantidad: number | string;
+            /** @description No admite texto compuesto únicamente de espacios. */
             motivo: string;
-            fechaHora: components["schemas"]["FechaHora"];
-            responsable: components["schemas"]["ResponsableEmpleado"];
-            stockResultante: number;
+            /** Format: uuid */
+            id: string;
+            version: number;
+            fecha: components["schemas"]["FechaHora"];
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description La web envía id, version y datos. version omitida toma 0. datos serializado no puede superar 64000 caracteres. id/version dentro de datos se ignoran. */
+        CompraInventarioPeticion: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description 0 para crear o reenviar la creación; en insumos, la versión actual para actualizar.
+             * @default 0
+             */
+            version: number;
+            datos: components["schemas"]["CompraInventarioDatos"];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @example {
+         *       "id": "1d92ff74-9b70-4cb1-b57f-33de75784649",
+         *       "version": 1,
+         *       "numeroFactura": "DEMO-001",
+         *       "proveedor": "Proveedor ficticio",
+         *       "fecha": "2026-10-19",
+         *       "insumoId": "7f81edc9-cdbc-48f2-8c6a-52b9301117ac",
+         *       "cantidad": 10,
+         *       "costoUnitario": 15,
+         *       "estado": "pagada",
+         *       "ivaIncluido": false,
+         *       "subtotal": 150,
+         *       "impuesto": 18,
+         *       "total": 168
+         *     }
+         */
+        CompraInventario: {
+            /** @description No admite texto compuesto únicamente de espacios. */
+            numeroFactura: string;
+            /** @description No admite texto compuesto únicamente de espacios. */
+            proveedor: string;
+            /** Format: date */
+            fecha: string;
+            /** Format: uuid */
+            insumoId: string;
+            cantidad: number | string;
+            costoUnitario: number | string;
+            /** @enum {string} */
+            estado: "pagada" | "pendiente";
+            ivaIncluido?: boolean;
+            /** Format: uuid */
+            id: string;
+            version: number;
+            subtotal: number;
+            impuesto: number;
+            total: number;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * @example {
@@ -5268,6 +5573,11 @@ export interface components {
         };
     };
     parameters: {
+        /** @description Identificador guardado antes de crear; nunca sustituirlo tras una respuesta perdida. */
+        BookingIdempotencyKey: string;
+        BookingDraft: string;
+        /** @description Comprobante secreto de verificación del correo para ese borrador; nunca ponerlo en URLs ni logs. */
+        BookingEmailVerification: string;
         IdPath: components["schemas"]["Id"];
         /**
          * @description Código de la reserva.
@@ -5732,10 +6042,165 @@ export interface operations {
             };
         };
     };
-    crearReservaWeb: {
+    listarOfertasPublicas: {
         parameters: {
             query?: never;
             header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Catálogo completo; puede estar vacío. Incluye ofertas con bookable=false. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example [
+                     *       {
+                     *         "slug": "estandar-jardin",
+                     *         "name": "Estándar Jardín",
+                     *         "type": "Estándar",
+                     *         "floor": 1,
+                     *         "apiTypeId": 3,
+                     *         "price": 420,
+                     *         "capacity": 2,
+                     *         "beds": "1 cama queen",
+                     *         "size": 27,
+                     *         "image": "/images/catalogo-aprobado/ejemplo.jpg",
+                     *         "gallery": [
+                     *           "/images/catalogo-aprobado/ejemplo.jpg"
+                     *         ],
+                     *         "description": "Habitación con vista al jardín.",
+                     *         "features": [
+                     *           "Vista al jardín",
+                     *           "Wi-Fi incluido"
+                     *         ],
+                     *         "preferences": [
+                     *           "Descanso"
+                     *         ],
+                     *         "bookable": true,
+                     *         "illustrativePhotos": true,
+                     *         "verifiedFeatures": [
+                     *           "Vista al jardín",
+                     *           "Wi-Fi incluido"
+                     *         ],
+                     *         "inventoryNote": "1 cama queen · Hasta 2 huéspedes · Piso 1"
+                     *       }
+                     *     ]
+                     */
+                    "application/json": components["schemas"]["OfertaPublica"][];
+                };
+            };
+        };
+    };
+    buscarDisponibilidadOfertasPublicas: {
+        parameters: {
+            query: {
+                /**
+                 * @description Fecha de entrada (YYYY-MM-DD).
+                 * @example 2026-10-15
+                 */
+                entrada: components["parameters"]["Entrada"];
+                /**
+                 * @description Fecha de salida (YYYY-MM-DD).
+                 * @example 2026-10-17
+                 */
+                salida: components["parameters"]["Salida"];
+                /**
+                 * @description Número de huéspedes.
+                 * @example 2
+                 */
+                huespedes: components["parameters"]["Huespedes"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ofertas disponibles, en orden de catálogo, con total en GTQ y desglose por noche. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example [
+                     *       {
+                     *         "ofertaSlug": "estandar-jardin",
+                     *         "inventarioCompartido": "tipo-3",
+                     *         "tipoHabitacion": {
+                     *           "id": 3,
+                     *           "nombre": "Estándar Jardín",
+                     *           "descripcion": "Habitación con vista al jardín.",
+                     *           "capacidad": 2,
+                     *           "precioBaseNoche": 420,
+                     *           "fotos": [
+                     *             "/images/catalogo-aprobado/ejemplo.jpg"
+                     *           ]
+                     *         },
+                     *         "noches": 2,
+                     *         "total": 840,
+                     *         "desglose": [
+                     *           {
+                     *             "fecha": "2026-10-15",
+                     *             "precio": 420,
+                     *             "temporada": null,
+                     *             "finDeSemana": false
+                     *           },
+                     *           {
+                     *             "fecha": "2026-10-16",
+                     *             "precio": 420,
+                     *             "temporada": null,
+                     *             "finDeSemana": false
+                     *           }
+                     *         ]
+                     *       }
+                     *     ]
+                     */
+                    "application/json": components["schemas"]["OpcionOfertaDisponible"][];
+                };
+            };
+            /** @description Parámetro ausente o mal formado, FECHAS_INVALIDAS o DATOS_INVALIDOS. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "codigo": "DATOS_INVALIDOS",
+                     *       "mensaje": "Los datos enviados no son válidos.",
+                     *       "detalles": [
+                     *         {
+                     *           "campo": "huespedes",
+                     *           "mensaje": "Debe haber al menos un huésped."
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    crearReservaWeb: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Identificador del intento. Repetir los mismos datos devuelve la reserva original; cambiar hora u otro dato devuelve 409 BOOKING_REQUEST_CONFLICT.
+                 * @example reserva-ejemplo-0001
+                 */
+                "Idempotency-Key": string;
+                /** @description Borrador verificado, obligatorio para una nueva reserva y para recuperar reenvíos con verificación asociada. Puede omitirse en reenvíos históricos sin verificación. */
+                "X-Booking-Draft"?: string;
+                /** @description Comprobante vigente del correo y borrador. Obligatorio para nuevas reservas; no se omite al usar hora opcional. Los reenvíos históricos sin verificación conservan su compatibilidad. */
+                "X-Booking-Email-Verification"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -5753,7 +6218,8 @@ export interface operations {
                  *         "telefono": "+502 5555 1234",
                  *         "tipoDocumento": "DPI",
                  *         "numeroDocumento": "2547896320101"
-                 *       }
+                 *       },
+                 *       "horaEstimadaLlegada": "18:30"
                  *     }
                  */
                 "application/json": components["schemas"]["ReservaWebPeticion"];
@@ -5786,19 +6252,127 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
-            /** @description Ya no hay disponibilidad para esas fechas. */
+            /** @description CORREO_NO_VERIFICADO: falta verificación vigente para crear la reserva. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No se autoriza recuperar un intento con la verificación presentada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Sin disponibilidad o datos distintos para la misma clave idempotente (BOOKING_REQUEST_CONFLICT). */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    crearReservaWebOferta: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Identificador del intento. Repetir los mismos datos devuelve la reserva original; cambiar hora u otro dato devuelve 409 BOOKING_REQUEST_CONFLICT.
+                 * @example reserva-ejemplo-0001
+                 */
+                "Idempotency-Key": string;
+                /** @description Borrador verificado, obligatorio para una nueva reserva y para recuperar reenvíos con verificación asociada. Puede omitirse en reenvíos históricos sin verificación. */
+                "X-Booking-Draft"?: string;
+                /** @description Comprobante vigente del correo y borrador. Obligatorio para nuevas reservas; no se omite al usar hora opcional. Los reenvíos históricos sin verificación conservan su compatibilidad. */
+                "X-Booking-Email-Verification"?: string;
+            };
+            path: {
+                /** @example estandar-jardin */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "tipoHabitacionId": 1,
+                 *       "entrada": "2026-10-15",
+                 *       "salida": "2026-10-17",
+                 *       "numeroHuespedes": 2,
+                 *       "huesped": {
+                 *         "nombreCompleto": "María José López",
+                 *         "correo": "maria.lopez@example.com",
+                 *         "telefono": "+502 5555 1234",
+                 *         "tipoDocumento": "DPI",
+                 *         "numeroDocumento": "2547896320101"
+                 *       },
+                 *       "horaEstimadaLlegada": "18:30"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ReservaWebPeticion"];
+            };
+        };
+        responses: {
+            /** @description Reserva creada, pendiente de pago. */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     /**
                      * @example {
-                     *       "codigo": "SIN_DISPONIBILIDAD",
-                     *       "mensaje": "Ya no hay habitaciones disponibles de ese tipo para esas fechas.",
-                     *       "detalles": []
+                     *       "codigo": "VS-7K2M9Q",
+                     *       "estado": "PENDIENTE_PAGO",
+                     *       "tipoHabitacion": {
+                     *         "id": 1,
+                     *         "nombre": "Doble Superior"
+                     *       },
+                     *       "entrada": "2026-10-15",
+                     *       "salida": "2026-10-17",
+                     *       "noches": 2,
+                     *       "numeroHuespedes": 2,
+                     *       "total": 1912.5,
+                     *       "pagoVenceEn": "2026-10-02T15:00:00-06:00"
                      *     }
                      */
+                    "application/json": components["schemas"]["ReservaWebCreada"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description CORREO_NO_VERIFICADO: falta verificación vigente para crear la reserva. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No se autoriza recuperar un intento con la verificación presentada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Sin disponibilidad o datos distintos para la misma clave idempotente (BOOKING_REQUEST_CONFLICT). También OFERTA_NO_ENCONTRADA u OFERTA_INCOMPATIBLE. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["Error"];
                 };
             };
@@ -5849,6 +6423,15 @@ export interface operations {
                      *       "detalles": []
                      *     }
                      */
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description ERROR_PASARELA; no se pudo verificar o completar la operación. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["Error"];
                 };
             };
@@ -6371,6 +6954,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "codigo": "VS-H3N8P1",
+                     *       "horaEstimadaLlegada": null,
                      *       "estado": "CONFIRMADA",
                      *       "canal": "RECEPCION",
                      *       "identificadorExterno": null,
@@ -6551,6 +7135,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "codigo": "VS-7K2M9Q",
+                     *       "horaEstimadaLlegada": "18:30",
                      *       "estado": "EN_ESTADIA",
                      *       "canal": "DIRECTO_WEB",
                      *       "identificadorExterno": null,
@@ -6746,6 +7331,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "codigo": "VS-H3N8P1",
+                     *       "horaEstimadaLlegada": null,
                      *       "estado": "CANCELADA",
                      *       "canal": "RECEPCION",
                      *       "identificadorExterno": null,
@@ -6860,6 +7446,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "codigo": "VS-Q4R8T2",
+                     *       "horaEstimadaLlegada": null,
                      *       "estado": "CONFIRMADA",
                      *       "canal": "BOOKING",
                      *       "identificadorExterno": "BK-99887766",
@@ -6942,6 +7529,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "codigo": "VS-H3N8P1",
+                     *       "horaEstimadaLlegada": null,
                      *       "estado": "EN_ESTADIA",
                      *       "canal": "RECEPCION",
                      *       "identificadorExterno": null,
@@ -11853,23 +12441,16 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
-    listarProductosInventarioAdmin: {
+    listarInsumoGestion: {
         parameters: {
-            query?: {
-                /** @example Demostración */
-                categoria?: string;
-                /** @example false */
-                soloStockBajo?: boolean;
-                /** @example ACTIVO */
-                estado?: components["schemas"]["EstadoCatalogo"];
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Consultar inventario. */
+            /** @description Lista completa, ordenada por creación e id. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -11878,26 +12459,25 @@ export interface operations {
                     /**
                      * @example [
                      *       {
-                     *         "id": 1,
-                     *         "nombre": "Villa Serena",
-                     *         "categoria": "Amenidades",
-                     *         "unidadMedida": "Unidad",
-                     *         "stockMinimo": 0,
-                     *         "stockActual": 0,
-                     *         "stockBajo": false,
-                     *         "estado": "ACTIVO"
+                     *         "id": "7f81edc9-cdbc-48f2-8c6a-52b9301117ac",
+                     *         "version": 1,
+                     *         "nombre": "Foco LED",
+                     *         "categoria": "Mantenimiento",
+                     *         "unidad": "Unidad",
+                     *         "stock": 10,
+                     *         "stockMinimo": 2,
+                     *         "costoUnitario": 15
                      *       }
                      *     ]
                      */
-                    "application/json": components["schemas"]["ProductoInventario"][];
+                    "application/json": components["schemas"]["Insumo"][];
                 };
             };
-            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
         };
     };
-    crearProductoInventarioAdmin: {
+    guardarInsumoGestion: {
         parameters: {
             query?: never;
             header?: never;
@@ -11908,68 +12488,23 @@ export interface operations {
             content: {
                 /**
                  * @example {
-                 *       "nombre": "Jabón",
-                 *       "categoria": "Amenidades",
-                 *       "unidadMedida": "Unidad",
-                 *       "stockMinimo": 5
+                 *       "id": "7f81edc9-cdbc-48f2-8c6a-52b9301117ac",
+                 *       "version": 0,
+                 *       "datos": {
+                 *         "nombre": "Foco LED",
+                 *         "categoria": "Mantenimiento",
+                 *         "unidad": "Unidad",
+                 *         "stock": 10,
+                 *         "stockMinimo": 2,
+                 *         "costoUnitario": 15
+                 *       }
                  *     }
                  */
-                "application/json": components["schemas"]["ProductoInventarioPeticion"];
+                "application/json": components["schemas"]["InsumoPeticion"];
             };
         };
         responses: {
-            /** @description Crear producto de inventario. */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "id": 1,
-                     *       "nombre": "Villa Serena",
-                     *       "categoria": "Amenidades",
-                     *       "unidadMedida": "Unidad",
-                     *       "stockMinimo": 0,
-                     *       "stockActual": 0,
-                     *       "stockBajo": false,
-                     *       "estado": "ACTIVO"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["ProductoInventario"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            409: components["responses"]["Conflict"];
-        };
-    };
-    editarProductoInventarioAdmin: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @example 1 */
-                id: components["schemas"]["Id"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "nombre": "Villa Serena",
-                 *       "categoria": "Amenidades",
-                 *       "unidadMedida": "Unidad",
-                 *       "stockMinimo": 0
-                 *     }
-                 */
-                "application/json": components["schemas"]["EditarProductoInventarioPeticion"];
-            };
-        };
-        responses: {
-            /** @description Editar producto de inventario. */
+            /** @description Registro plano creado, actualizado o recuperado por reenvío. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -11977,79 +12512,35 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "id": 1,
-                     *       "nombre": "Villa Serena",
-                     *       "categoria": "Amenidades",
-                     *       "unidadMedida": "Unidad",
-                     *       "stockMinimo": 0,
-                     *       "stockActual": 0,
-                     *       "stockBajo": false,
-                     *       "estado": "ACTIVO"
+                     *       "id": "7f81edc9-cdbc-48f2-8c6a-52b9301117ac",
+                     *       "version": 1,
+                     *       "nombre": "Foco LED",
+                     *       "categoria": "Mantenimiento",
+                     *       "unidad": "Unidad",
+                     *       "stock": 10,
+                     *       "stockMinimo": 2,
+                     *       "costoUnitario": 15
                      *     }
                      */
-                    "application/json": components["schemas"]["ProductoInventario"];
+                    "application/json": components["schemas"]["Insumo"];
                 };
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
         };
     };
-    desactivarProductoInventarioAdmin: {
+    listarCompraInventarioGestion: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /** @example 1 */
-                id: components["schemas"]["Id"];
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Desactivar producto. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "id": 1,
-                     *       "nombre": "Villa Serena",
-                     *       "categoria": "Amenidades",
-                     *       "unidadMedida": "Unidad",
-                     *       "stockMinimo": 0,
-                     *       "stockActual": 0,
-                     *       "stockBajo": false,
-                     *       "estado": "INACTIVO"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["ProductoInventario"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
-        };
-    };
-    historialInventarioAdmin: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @example 1 */
-                id: components["schemas"]["Id"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Consultar movimientos de producto. */
+            /** @description Lista completa, ordenada por creación e id. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -12058,71 +12549,165 @@ export interface operations {
                     /**
                      * @example [
                      *       {
-                     *         "id": 1,
-                     *         "productoId": 1,
-                     *         "tipo": "ENTRADA",
-                     *         "cantidad": 1,
-                     *         "motivo": "Registrado por error",
-                     *         "fechaHora": "2026-10-02T20:30:00.000Z",
-                     *         "responsable": {
-                     *           "id": 7,
-                     *           "nombre": "María López"
-                     *         },
-                     *         "stockResultante": 0
+                     *         "id": "1d92ff74-9b70-4cb1-b57f-33de75784649",
+                     *         "version": 1,
+                     *         "numeroFactura": "DEMO-001",
+                     *         "proveedor": "Proveedor ficticio",
+                     *         "fecha": "2026-10-19",
+                     *         "insumoId": "7f81edc9-cdbc-48f2-8c6a-52b9301117ac",
+                     *         "cantidad": 10,
+                     *         "costoUnitario": 15,
+                     *         "estado": "pagada",
+                     *         "ivaIncluido": false,
+                     *         "subtotal": 150,
+                     *         "impuesto": 18,
+                     *         "total": 168
+                     *       }
+                     *     ]
+                     */
+                    "application/json": components["schemas"]["CompraInventario"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    guardarCompraInventarioGestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "id": "1d92ff74-9b70-4cb1-b57f-33de75784649",
+                 *       "version": 0,
+                 *       "datos": {
+                 *         "numeroFactura": "DEMO-001",
+                 *         "proveedor": "Proveedor ficticio",
+                 *         "fecha": "2026-10-19",
+                 *         "insumoId": "7f81edc9-cdbc-48f2-8c6a-52b9301117ac",
+                 *         "cantidad": 10,
+                 *         "costoUnitario": 15,
+                 *         "estado": "pagada",
+                 *         "ivaIncluido": false
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["CompraInventarioPeticion"];
+            };
+        };
+        responses: {
+            /** @description Registro plano creado, actualizado o recuperado por reenvío. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "1d92ff74-9b70-4cb1-b57f-33de75784649",
+                     *       "version": 1,
+                     *       "numeroFactura": "DEMO-001",
+                     *       "proveedor": "Proveedor ficticio",
+                     *       "fecha": "2026-10-19",
+                     *       "insumoId": "7f81edc9-cdbc-48f2-8c6a-52b9301117ac",
+                     *       "cantidad": 10,
+                     *       "costoUnitario": 15,
+                     *       "estado": "pagada",
+                     *       "ivaIncluido": false,
+                     *       "subtotal": 150,
+                     *       "impuesto": 18,
+                     *       "total": 168
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CompraInventario"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listarMovimientoInventarioGestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lista completa, ordenada por creación e id. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example [
+                     *       {
+                     *         "id": "d10b41f7-370a-4c02-a254-f653b39c069f",
+                     *         "version": 1,
+                     *         "insumoId": "7f81edc9-cdbc-48f2-8c6a-52b9301117ac",
+                     *         "tipo": "salida",
+                     *         "cantidad": 2,
+                     *         "motivo": "Entrega a un área",
+                     *         "fecha": "2026-10-19T15:00:00Z"
                      *       }
                      *     ]
                      */
                     "application/json": components["schemas"]["MovimientoInventario"][];
                 };
             };
-            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
         };
     };
-    registrarMovimientoInventarioAdmin: {
+    guardarMovimientoInventarioGestion: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /** @example 1 */
-                id: components["schemas"]["Id"];
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
                 /**
                  * @example {
-                 *       "tipo": "ENTRADA",
-                 *       "cantidad": 10,
-                 *       "motivo": "Reposición de prueba"
+                 *       "id": "d10b41f7-370a-4c02-a254-f653b39c069f",
+                 *       "version": 0,
+                 *       "datos": {
+                 *         "insumoId": "7f81edc9-cdbc-48f2-8c6a-52b9301117ac",
+                 *         "tipo": "salida",
+                 *         "cantidad": 2,
+                 *         "motivo": "Entrega a un área"
+                 *       }
                  *     }
                  */
                 "application/json": components["schemas"]["MovimientoInventarioPeticion"];
             };
         };
         responses: {
-            /** @description Registrar entrada o salida. */
-            201: {
+            /** @description Registro plano creado, actualizado o recuperado por reenvío. */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     /**
                      * @example {
-                     *       "id": 1,
-                     *       "productoId": 1,
-                     *       "tipo": "ENTRADA",
-                     *       "cantidad": 1,
-                     *       "motivo": "Registrado por error",
-                     *       "fechaHora": "2026-10-02T20:30:00.000Z",
-                     *       "responsable": {
-                     *         "id": 7,
-                     *         "nombre": "María López"
-                     *       },
-                     *       "stockResultante": 0
+                     *       "id": "d10b41f7-370a-4c02-a254-f653b39c069f",
+                     *       "version": 1,
+                     *       "insumoId": "7f81edc9-cdbc-48f2-8c6a-52b9301117ac",
+                     *       "tipo": "salida",
+                     *       "cantidad": 2,
+                     *       "motivo": "Entrega a un área",
+                     *       "fecha": "2026-10-19T15:00:00Z"
                      *     }
                      */
                     "application/json": components["schemas"]["MovimientoInventario"];
@@ -12131,8 +12716,83 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    consultarIntentoReserva: {
+        parameters: {
+            query?: {
+                origen?: "RESERVA" | "OFERTA";
+            };
+            header: {
+                /** @description Identificador guardado antes de crear; nunca sustituirlo tras una respuesta perdida. */
+                "Idempotency-Key": components["parameters"]["BookingIdempotencyKey"];
+                "X-Booking-Draft": components["parameters"]["BookingDraft"];
+                /** @description Comprobante secreto de verificación del correo para ese borrador; nunca ponerlo en URLs ni logs. */
+                "X-Booking-Email-Verification": components["parameters"]["BookingEmailVerification"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reserva recuperada con su estado actual. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstadoReservaPublico"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description SOLICITUD_EN_PROCESO; conservar la clave y consultar de nuevo. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description LIMITE_SOLICITUDES; esperar Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    consultarProcesoPagoSaldoApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Código de la reserva.
+                 * @example VS-7K2M9Q
+                 */
+                codigo: components["parameters"]["CodigoReservaPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Estado observado y acción permitida. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcesoPago"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
 }

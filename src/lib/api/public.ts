@@ -40,5 +40,5 @@ export async function startPublicPayment(code: string, action?: BookingAction): 
 }
 export const getPublicStatus = (code: string, signal?: AbortSignal) => request<PublicStatusDto>(`reservas/${encodeURIComponent(code)}/estado`, { signal },true);
 
-/** Backend dev extension, kept outside the generated OpenAPI types. Proof stays in an HttpOnly cookie. */
+/** Official attempt recovery; proof stays in an HttpOnly cookie. */
 export const recoverPublicAttempt=(attemptId:string,draftId:string,origin:'RESERVA'|'OFERTA')=>request<PublicStatusDto>(`reservas/intento?origen=${origin}`,{headers:{'Idempotency-Key':attemptId,'X-Booking-Draft':draftId}},true);
