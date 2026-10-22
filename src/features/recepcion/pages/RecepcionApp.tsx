@@ -740,7 +740,11 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
 
     {perfilAbierto && (<StaffProfileModal open={perfilAbierto} onClose={() => setPerfilAbierto(false)} name={perfil.nombre} role="Recepción" email={perfil.correo} />)}
 
-    {bffCode && <DetalleReserva conectado={conectado} codigo={bffCode} onCerrar={() => { setBffCode(null); setBffRefresh(n => n + 1); }} onExistingAction={conectado ? detail => window.location.assign(`/panel/recepcion/reservas/${detail.codigo}/cuenta`) : existingAction} />}
+    {bffCode && <DetalleReserva conectado={conectado} codigo={bffCode} onCerrar={() => {
+      setBffCode(null);
+      if (!conectado && codigoDesdeRuta(pathname)) router.push('/recepcion/reservas');
+      setBffRefresh(n => n + 1);
+    }} onExistingAction={conectado ? detail => window.location.assign(`/panel/recepcion/reservas/${detail.codigo}/cuenta`) : existingAction} />}
     {reservaAbierta && huespedAbierto && (<DetalleReserva
       initialTab={legacyTab}
       bffAction={legacyAction}
@@ -772,8 +776,15 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
       onCerrar={() => setNuevaReserva({ open: false })}
       onVerReserva={id => {
         setNuevaReserva({ open: false });
-        setSeccion('reservas');
-        if (conectado) setBffCode(id); else abrirReserva(id);
+        const code = conectado ? id : reservas.find(r => r.id === id)?.codigoBff;
+        if (code) {
+          // Commit the detail route in one navigation, so its code survives
+          // route synchronization and any page remount.
+          router.push(`/recepcion/reservas/${encodeURIComponent(code)}`);
+        } else {
+          setSeccion('reservas');
+          abrirReserva(id);
+        }
       }}
       onCrearHuesped={conectado ? registrarHuespedConectado : crearHuesped}
       onCrearReserva={crearReserva} />)}
