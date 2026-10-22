@@ -3,8 +3,9 @@ import type { components } from '../../src/lib/api/schema';
 import type { PedidoRS, IncidenciaAPI } from '../../src/lib/api/operaciones';
 import type { RoomState } from '../../src/lib/bff/contracts/reception';
 type Schema = components['schemas'];
-export type OperationsRole = 'recepcion' | 'roomservice' | 'mantenimiento' | 'limpieza';
+export type OperationsRole = 'recepcion' | 'roomservice' | 'mantenimiento' | 'limpieza' | 'admin';
 const employees: Record<OperationsRole, Pick<Schema['EmpleadoSesion'], 'id' | 'rol' | 'area'>> = {
+  admin: { id: 9, rol: 'ADMIN', area: null },
   recepcion: { id: 2, rol: 'RECEPCION', area: null }, roomservice: { id: 4, rol: 'ROOM_SERVICE', area: null },
   mantenimiento: { id: 5, rol: 'MANTENIMIENTO_LIMPIEZA', area: 'MANTENIMIENTO' }, limpieza: { id: 3, rol: 'MANTENIMIENTO_LIMPIEZA', area: 'LIMPIEZA' },
 };
@@ -71,12 +72,17 @@ export function createOperationsApi() {
         uploads++; return send({ clave: 'incidencias/prueba.png' }, 201);
       }
       if (path === '/api/v1/incidencias') {
-        if (method === 'GET') { assert.equal(name, 'mantenimiento'); return send(incidents.filter(item => item.estado !== 'RESUELTA')); }
+        if (method === 'GET') { assert.ok(['admin','mantenimiento'].includes(name)); return send(name==='admin'?incidents:incidents.filter(item => item.estado !== 'RESUELTA')); }
         if (method === 'POST') {
           assert.equal(name, 'recepcion'); const value = body as { habitacionId: number; fotoClave: string; descripcion: string; impideUso: boolean };
           assert.equal(value.habitacionId, 4); assert.equal(value.fotoClave, 'incidencias/prueba.png'); reports++;
           const incident = { ...initialIncident(), id: 2, descripcion: value.descripcion, impideUso: value.impideUso }; incidents.push(incident); return send(incident, 201);
         }
+      }
+      const detailMatch=path.match(/^\/api\/v1\/incidencias\/(\d+)$/);
+      if(detailMatch&&method==='GET'){
+        assert.ok(['admin','mantenimiento'].includes(name));const incident=incidents.find(item=>item.id===Number(detailMatch[1]));assert.ok(incident);
+        const detail:Schema['IncidenciaDetalle']={...incident,solucion:null,historial:[{estadoAnterior:null,estadoNuevo:incident.estado,responsable:incident.reportadaPor.nombre,fechaHora:incident.reportadaEn,motivo:null}]};return send(detail);
       }
       const match = path.match(/^\/api\/v1\/incidencias\/(\d+)\/(tomar|resolver)$/);
       if (match && method === 'POST') {
