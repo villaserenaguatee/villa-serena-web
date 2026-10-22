@@ -1,4 +1,5 @@
 'use client';
+import PhotoPicker from '@/components/common/PhotoPicker';
 import { useMemo, useRef, useState } from 'react';
 import { Camera, ChevronRight, Contact, DoorOpen, LockKeyhole, UserRound, BriefcaseBusiness, X, KeyRound, Eye, EyeOff } from 'lucide-react';
 import type { ClipboardEvent, KeyboardEvent } from 'react';
@@ -56,7 +57,6 @@ function StaffProfileLocal({ open, onClose, name, role, email, onSolicitarCodigo
     [mensajeTelefono, setMensajeTelefono] = useState(''),
     [solicitudTelefonoOcupada, setSolicitudTelefonoOcupada] = useState(false),
     [mostrandoClaves, setMostrandoClaves] = useState({ actual: false, nueva: false, confirmar: false });
-  const ref = useRef<HTMLInputElement>(null);
   const codigoTelefonoRefs = useRef<Array<HTMLInputElement | null>>([]);
   if (!open)
     return null;
@@ -445,26 +445,7 @@ function StaffProfileLocal({ open, onClose, name, role, email, onSolicitarCodigo
         <Acciones cancel={() => setModal('seguridad')} ok={actualizarClave} text="Actualizar contraseña" />
       </div>}
       {modal === 'foto' && <div className="text-center">
-        <div className="mx-auto grid h-24 w-24 place-items-center overflow-hidden rounded-full bg-[#D8B94E] text-2xl font-bold">
-          {perfil.foto ? <img src={perfil.foto} className="h-full w-full object-cover" alt="" /> : iniciales}
-        </div>
-        <input
-          ref={ref}
-          hidden
-          type="file"
-          accept="image/*"
-          onChange={e => {
-            const f = e.target.files?.[0];
-            if (!f)
-              return;
-            const r = new FileReader();
-            r.onload = () => guardar({ ...perfil, foto: String(r.result) });
-            r.readAsDataURL(f);
-          }} />
-        <div className="mt-4 flex justify-center gap-2">
-          <button onClick={() => ref.current?.click()} className="rounded-lg bg-[#18345C] px-4 py-2 font-semibold text-white">Seleccionar una foto</button>
-          {perfil.foto && <button onClick={() => guardar({ ...perfil, foto: '' })} className="rounded-lg border px-4 py-2 font-semibold text-[#B42318]">Eliminar foto actual</button>}
-        </div>
+        <PhotoPicker label="Foto de perfil" accept="image/*" preview={perfil.foto} onRemove={()=>guardar({...perfil,foto:''})} onSelect={f=>{const reader=new FileReader();reader.onload=()=>guardar({...perfil,foto:String(reader.result)});reader.readAsDataURL(f);}} />
       </div>}
       {modal === 'salir' && <><p>¿Deseas cerrar tu sesión?</p>{mensajeClave && <p role="alert">{mensajeClave}</p>}<Acciones cancel={() => setModal(null)} ok={async () => {
         try {
