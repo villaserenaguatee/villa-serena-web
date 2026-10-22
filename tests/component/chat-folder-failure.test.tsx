@@ -1,0 +1,20 @@
+import {render,screen,fireEvent,waitFor} from '@testing-library/react';
+import {beforeEach,afterEach,expect,test,vi} from 'vitest';
+import ConnectedReceptionChat from '@/features/recepcion/pages/ConnectedReceptionChat';
+import {searchReservations,getReservation} from '@/lib/api/reception';
+vi.mock('@/lib/api/reception',()=>({searchReservations:vi.fn(),getReservation:vi.fn()}));
+vi.mock('@/components/common/PublicLanguageToggle',()=>({usePublicLanguage:()=>({en:false})}));
+vi.mock('@/components/common/EstanciaChat',()=>({default:({code}:{code:string})=><div>Conversación {code}</div>}));
+beforeEach(()=>{window.history.replaceState(null,'','/');vi.mocked(searchReservations).mockImplementation(async query=>({contenido:query.get('estado')==='EN_ESTADIA'?[{codigo:'VS-UNO'}]:[],totalPaginas:1}) as never);vi.mocked(getReservation).mockResolvedValue({codigo:'VS-UNO',estado:'EN_ESTADIA',historial:[{estadoNuevo:'EN_ESTADIA',fechaHora:'2026-10-21T15:00:00Z'}],habitacion:{id:1,numero:'101'},huesped:{id:2,nombreCompleto:'Huésped autorizado',correo:'guest@example.invalid',telefono:'55551234',numeroDocumento:'1234567890123',tipoDocumento:'DPI'},tipoHabitacion:{nombre:'Categoría'},entrada:'2026-10-21',salida:'2026-10-24',numeroHuespedes:1,creadaEn:'2026-10-20T12:00:00Z'} as never);});
+afterEach(()=>vi.unstubAllGlobals());
+for(const failure of ['404','malformed'])test('unavailable folders '+failure+' never hide authorized conversations or pretend to save preferences',async()=>{
+ const request=vi.fn(async(_path:string,_init?:RequestInit)=>{expect(_path).toContain('chat-preferencias');expect(_init?.method).toBeUndefined();return failure==='404'?Response.json({mensaje:'No existe'},{status:404}):Response.json({unexpected:true});});vi.stubGlobal('fetch',request);render(<ConnectedReceptionChat/>);
+ const guest=await screen.findByRole('button',{name:/Huésped autorizado.*101/});await screen.findByText(/Las carpetas del chat no están disponibles/);expect(screen.getByRole('button',{name:'Favoritos'})).toBeDisabled();expect(screen.getByRole('button',{name:'Archivados'})).toBeDisabled();expect(screen.getByRole('button',{name:'Opciones de Huésped autorizado'})).toBeDisabled();fireEvent.click(guest);await screen.findByText('Conversación VS-UNO');expect(request.mock.calls.every(call=>!call[1]?.method)).toBe(true);
+});
+test('available folders retain real actions and failures do not show a successful change',async()=>{
+ const pref={codigo:'VS-UNO',favorita:false,archivada:false,eliminada:false,ultimoId:1,noLeidos:0};const request=vi.fn(async(_path:string,init?:RequestInit)=>init?.method==='POST'?Response.json({mensaje:'Sin conexión'},{status:503}):Response.json([pref]));vi.stubGlobal('fetch',request);render(<ConnectedReceptionChat/>);await screen.findByRole('button',{name:/Huésped autorizado.*101/});const options=screen.getByRole('button',{name:'Opciones de Huésped autorizado'});await waitFor(()=>expect(options).toBeEnabled());fireEvent.click(options);fireEvent.click(screen.getByRole('menuitem',{name:'Poner en favoritos'}));await screen.findByRole('alert');expect(request.mock.calls.filter(([,init])=>init?.method==='POST')).toHaveLength(1);expect(screen.queryByRole('menuitem',{name:'Quitar de favoritos'})).toBeNull();
+});
+
+test('available folders preserve the existing read acknowledgement without a duplicate message',async()=>{
+ let unread=1;const request=vi.fn(async(path:string,init?:RequestInit)=>{if(init?.method==='POST'){expect(path).toBe('/api/estancias/VS-UNO/chat-preferencias');expect(JSON.parse(String(init.body))).toEqual({accion:'leido',hasta:8});unread=0;return Response.json({});}return Response.json([{codigo:'VS-UNO',favorita:false,archivada:false,eliminada:false,ultimoId:8,noLeidos:unread}]);});vi.stubGlobal('fetch',request);render(<ConnectedReceptionChat/>);fireEvent.click(await screen.findByRole('button',{name:/Huésped autorizado.*101/}));await waitFor(()=>expect(request.mock.calls.filter(([,init])=>init?.method==='POST')).toHaveLength(1));await screen.findByText('Conversación VS-UNO');expect(request.mock.calls.every(([path])=>path.includes('chat-preferencias'))).toBe(true);
+});
