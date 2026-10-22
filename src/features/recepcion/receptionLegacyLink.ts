@@ -21,6 +21,7 @@ export function prepareExistingReceptionScreen(detail: ReservationDetail): strin
   codigo: previous?.codigo ?? detail.codigo,
   codigoBff: detail.codigo,
   canal: detail.canal,
+  horaEstimadaLlegada: detail.horaEstimadaLlegada ?? null,
   huespedId: guestId,
   habitacionId: detail.habitacion
     ? `hh-${detail.habitacion.numero}`

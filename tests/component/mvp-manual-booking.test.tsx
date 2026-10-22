@@ -30,6 +30,21 @@ test('manual form keeps names and email, constrains typed/pasted DPI, and has no
   expect(screen.queryByLabelText('Nacionalidad')).not.toBeInTheDocument();
 });
 
+test('optional arrival stays local HH:mm when reviewing and returning to edit', async () => {
+  const user=userEvent.setup();
+  render(<ScopedI18nProvider><Datos /></ScopedI18nProvider>);
+  fireEvent.change(screen.getByLabelText('Nombre'),{target:{value:'Ana'}});
+  fireEvent.change(screen.getByLabelText('Apellidos'),{target:{value:'Pérez'}});
+  fireEvent.change(screen.getByRole('textbox',{name:'Número de documento'}),{target:{value:'0012345678901'}});
+  fireEvent.change(screen.getByRole('textbox',{name:'Teléfono'}),{target:{value:'55551234'}});
+  fireEvent.change(screen.getByLabelText('Correo electrónico'),{target:{value:'ana@example.invalid'}});
+  fireEvent.change(screen.getByLabelText('Hora estimada de llegada (opcional)'),{target:{value:'18:30'}});
+  await user.click(screen.getByRole('button',{name:/Revisar datos/i}));
+  expect(screen.getByText('18:30')).toBeVisible();
+  await user.click(screen.getByRole('button',{name:'Editar'}));
+  expect(screen.getByLabelText('Hora estimada de llegada (opcional)')).toHaveValue('18:30');
+});
+
 test('review shows all required errors, focuses the first and keeps incomplete values', async () => {
   const user = userEvent.setup();
   render(<ScopedI18nProvider><Datos /></ScopedI18nProvider>);

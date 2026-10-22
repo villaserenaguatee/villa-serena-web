@@ -178,6 +178,7 @@ export interface ServicioAdicional {
 }
 export interface Reserva {
   id: string;
+  horaEstimadaLlegada?: string | null;
   canal?: 'DIRECTO_WEB' | 'RECEPCION' | 'BOOKING' | 'EXPEDIA';
   /** Referencia del BFF para la copia de compatibilidad; conserva los códigos locales anteriores. */
   codigoBff?: string;
