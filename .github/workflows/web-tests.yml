@@ -120,6 +120,8 @@ jobs:
             command: pnpm test:operaciones:rooms
           - suite: operations-maintenance
             command: pnpm test:operaciones:maintenance
+          - suite: frontend-consolidado
+            command: pnpm exec playwright test --config tests/config/playwright/playwright.frontend-integration.config.ts
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4

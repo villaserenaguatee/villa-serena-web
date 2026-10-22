@@ -52,19 +52,25 @@ async function springGuestRoute(request: NextRequest, segments: string[]) {
   const verify = request.method === 'POST' && path === 'acceso/verificar-codigo';
   const logout = request.method === 'POST' && path === 'cerrar-sesion';
   const resume = request.method === 'GET' && path === 'sesion';
+  const hotelInfo=request.method==='GET'&&segments.length===1&&['amenidades','wifi'].includes(segments[0]);
   const profile = request.method === 'GET' && path === 'perfil';
   const query = request.method === 'GET' && segments[0] === 'reservas' && segments.length <= 2;
   const account = request.method === 'GET' && segments.length === 3 && segments[0] === 'reservas' && /^VS-[A-Z0-9]{6}$/.test(segments[1]) && ['cuenta','checkout'].includes(segments[2]);
   const checkout = request.method === 'POST' && segments.length === 3 && segments[0] === 'reservas' && /^VS-[A-Z0-9]{6}$/.test(segments[1]) && segments[2] === 'checkout';
   const payment = request.method==='POST'&&segments.length===3&&segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1])&&segments[2]==='pago-saldo';
+  const balanceState=request.method==='GET'&&segments.length===4&&segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1])&&segments[2]==='pago-saldo'&&segments[3]==='estado';
   const editMessage=segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1]??'')&&segments[2]==='chat'&&segments.length===4&&/^\d+$/.test(segments[3])&&['PUT','DELETE'].includes(request.method);
   const communication = segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1]??'')&&((segments.length===3&&['chat','documentos'].includes(segments[2])&&['GET','POST'].includes(request.method))||(request.method==='GET'&&segments.length===5&&segments[2]==='documentos'&&/^\d+$/.test(segments[3])&&segments[4]==='archivo'));
   const invoice = request.method==='GET'&&segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1]??'')&&segments[2]==='factura'&&(segments.length===3||(segments.length===4&&segments[3]==='pdf'));
   const articles = segments.length===3&&segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1])&&((segments[2]==='articulos'&&request.method==='GET')||(segments[2]==='solicitudes-articulos'&&request.method==='POST'));
   const cleaning = segments.length===3 && segments[0]==='reservas' && /^VS-[A-Z0-9]{6}$/.test(segments[1]) && segments[2]==='solicitudes-limpieza' && ['GET','POST'].includes(request.method);
+  const requests=request.method==='GET'&&segments.length===3&&segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1])&&segments[2]==='solicitudes';
+  const cancelRequest=request.method==='POST'&&segments.length===5&&segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1])&&segments[2]==='solicitudes'&&/^[1-9][0-9]*$/.test(segments[3])&&segments[4]==='cancelar';
+  const canonicalArticle=request.method==='POST'&&segments.length===4&&segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1])&&segments[2]==='solicitudes'&&segments[3]==='articulos';
+  const canonicalCleaning=request.method==='POST'&&segments.length===4&&segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1])&&segments[2]==='solicitudes'&&segments[3]==='limpieza';
   const menu = request.method==='GET' && segments.length===3 && segments[0]==='reservas' && /^VS-[A-Z0-9]{6}$/.test(segments[1]) && segments[2]==='menu';
   const orders = segments.length===3 && segments[0]==='reservas' && /^VS-[A-Z0-9]{6}$/.test(segments[1]) && segments[2]==='pedidos' && ['GET','POST'].includes(request.method);
-  if (!requestCode && !verify && !logout && !query && !resume && !account && !checkout && !payment && !profile && !menu && !orders && !cleaning && !communication && !editMessage && !articles && !invoice) throw new AuthError('RUTA_NO_PERMITIDA', 403, 'Esta operación no está disponible.');
+  if (!requestCode && !verify && !logout && !query && !resume && !account && !checkout && !payment && !balanceState && !profile && !menu && !orders && !cleaning && !communication && !editMessage && !articles && !invoice && !requests && !cancelRequest && !canonicalArticle && !canonicalCleaning && !hotelInfo) throw new AuthError('RUTA_NO_PERMITIDA', 403, 'Esta operación no está disponible.');
   if (!process.env.API_URL) throw new AuthError('CONFIGURACION_INVALIDA', 503, 'Revisa la configuración del API.');
   let access = request.cookies.get(GUEST_COOKIE)?.value ?? '';
   let refresh = request.cookies.get(REFRESH_COOKIE)?.value ?? '';
@@ -74,7 +80,7 @@ async function springGuestRoute(request: NextRequest, segments: string[]) {
     const raw=await readLimitedBody(request,segments[2]==='documentos'?7100000:16384);if(raw.length>(segments[2]==='documentos'?7100000:16000))throw new AuthError('DATOS_INVALIDOS',400,'Contenido demasiado largo.');
     try{input=JSON.parse(raw);}catch{throw new AuthError('DATOS_INVALIDOS',400,'Revisa el contenido.');}
   }
-  if(cleaning&&request.method==='POST'){
+  if((cleaning||canonicalCleaning)&&request.method==='POST'){
     const raw=await readLimitedBody(request,segments[2]==='documentos'?7100000:16384);if(raw.length>4096)throw new AuthError('DATOS_INVALIDOS',400,'Comentario demasiado largo.');
     try{input=JSON.parse(raw);}catch{throw new AuthError('DATOS_INVALIDOS',400,'Revisa el comentario.');}
     const value=input as {comentario?:unknown};if(!value||value.comentario!==undefined&&(typeof value.comentario!=='string'||value.comentario.length>500))throw new AuthError('DATOS_INVALIDOS',400,'El comentario admite hasta 500 caracteres.');
@@ -86,6 +92,7 @@ async function springGuestRoute(request: NextRequest, segments: string[]) {
     const value = input as {comprador?:{nit?:unknown;nombreComprador?:unknown};aceptaCancelarPedidos?:unknown};
     if (typeof value?.comprador?.nit !== 'string' || typeof value.comprador.nombreComprador !== 'string' || typeof value.aceptaCancelarPedidos !== 'boolean') throw new AuthError('DATOS_INVALIDOS',400,'Revisa los datos del comprador.');
   }
+  if(canonicalArticle){const raw=await readLimitedBody(request,16384);try{input=JSON.parse(raw);}catch{throw new AuthError('DATOS_INVALIDOS',400,'Revisa los artículos.');}if(!input||typeof input!=='object'||Object.keys(input).some(key=>key!=='articulos'))throw new AuthError('DATOS_INVALIDOS',400,'Revisa los artículos.');const value=input as {articulos?:unknown};if(!Array.isArray(value.articulos)||!value.articulos.length)throw new AuthError('DATOS_INVALIDOS',400,'Selecciona artículos válidos.');const seen=new Set<number>();for(const row of value.articulos){if(!row||typeof row!=='object'||Object.keys(row).some(key=>!['articuloId','cantidad'].includes(key))||!Number.isSafeInteger(row.articuloId)||row.articuloId<1||!Number.isSafeInteger(row.cantidad)||row.cantidad<1||seen.has(row.articuloId))throw new AuthError('DATOS_INVALIDOS',400,'Revisa los artículos y sus cantidades.');seen.add(row.articuloId);}}
   const attempt=orders&&request.method==='POST'?request.headers.get('Idempotency-Key'):null;
   if(orders&&request.method==='POST'){
     if(!attempt||!/^[a-zA-Z0-9_-]{16,100}$/.test(attempt))throw new AuthError('DATOS_INVALIDOS',400,'Identificador de solicitud inválido.');
@@ -126,7 +133,7 @@ async function springGuestRoute(request: NextRequest, segments: string[]) {
       if(section&&['inicio','checkin','restaurante','servicios','chat','habitacion','experiencias','cuenta','reservar'].includes(section))target.searchParams.set('seccion',section);
       return apply(NextResponse.redirect(target));
     }
-    return apply(NextResponse.json(value, {status:orders&&request.method==='POST'?201:200, headers: { 'Cache-Control': 'no-store' } }));
+    return apply(NextResponse.json(value, {status:(orders||canonicalArticle||canonicalCleaning)&&request.method==='POST'?201:200, headers: { 'Cache-Control': 'no-store' } }));
   } catch (error) {
     // A failed remote revocation must never preserve this browser's session.
     // Keep the error visible; clearing cookies does not assert server revocation.

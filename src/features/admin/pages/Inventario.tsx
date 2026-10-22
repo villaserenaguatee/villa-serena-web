@@ -9,19 +9,22 @@ const MOV_LABEL: Record<TipoMovimiento, string> = { entrada: 'Entrada', salida: 
 interface Props {
   insumos: Insumo[];
   movimientos: MovimientoInsumo[];
+  onEditarInsumo?: (id: string, i: Omit<Insumo, 'id'>) => void | boolean | Promise<void | boolean>;
   onAgregarInsumo: (i: Omit<Insumo, 'id'>) => void | boolean | Promise<void | boolean>;
   onRegistrarMovimiento: (insumoId: string, tipo: TipoMovimiento, cantidad: number, motivo: string) => void | boolean | Promise<void | boolean>;
   integrado?: boolean;
 }
-export default function Inventario({ insumos, movimientos, onAgregarInsumo, onRegistrarMovimiento, integrado = false }: Props) {
+export default function Inventario({ insumos, movimientos, onAgregarInsumo, onEditarInsumo, onRegistrarMovimiento, integrado = false }: Props) {
   const [filtro, setFiltro] = useState<CategoriaInsumo | 'todas'>('todas');
   const [formMov, setFormMov] = useState(false);
   const [formInsumo, setFormInsumo] = useState(false);
+  const [editing,setEditing]=useState<Insumo>();
+  const [onlyLow,setOnlyLow]=useState(false);
   const bajoMinimo = useMemo(() => insumos.filter(i => i.stock <= i.stockMinimo), [insumos]);
   const porVencer = useMemo(() => insumos.filter(i => i.vencimiento && diasHasta(i.vencimiento) <= DIAS_ALERTA_VENC), [insumos]);
   const valorTotal = insumos.reduce((s, i) => s + i.stock * i.costoUnitario, 0);
   const visibles = insumos
-    .filter(i => filtro === 'todas' || i.categoria === filtro)
+    .filter(i => (filtro === 'todas' || i.categoria === filtro) && (!onlyLow || i.stock <= i.stockMinimo))
     .sort((a, b) => Number(a.stock <= a.stockMinimo ? 0 : 1) - Number(b.stock <= b.stockMinimo ? 0 : 1) || a.nombre.localeCompare(b.nombre));
   const movRecientes = [...movimientos].sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 8);
   const insumoDe = useMemo(() => new Map(insumos.map(i => [i.id, i])), [insumos]);
@@ -46,6 +49,7 @@ export default function Inventario({ insumos, movimientos, onAgregarInsumo, onRe
           <button
             onClick={() => {
               setFormMov(false);
+              setEditing(undefined);
               setFormInsumo(true);
             }}
             className="flex items-center gap-2 px-4 py-2.5 text-[15px] font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
@@ -91,15 +95,16 @@ export default function Inventario({ insumos, movimientos, onAgregarInsumo, onRe
         }} />
     </ModalFormulario>)}
     {formInsumo && (<ModalFormulario onCerrar={() => setFormInsumo(false)}>
-      <FormInsumo onCancelar={() => setFormInsumo(false)} onGuardar={async x => {
-          if(await onAgregarInsumo(x)===false)return false;
+      <FormInsumo initial={editing} onCancelar={() => setFormInsumo(false)} onGuardar={async x => {
+          if(await (editing&&onEditarInsumo?onEditarInsumo(editing.id,x):onAgregarInsumo(x))===false)return false;
         setFormInsumo(false);
       }} />
     </ModalFormulario>)}
 
     <div className="px-4 sm:px-6 pt-5 flex gap-2 flex-wrap">
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={onlyLow} onChange={e=>setOnlyLow(e.target.checked)}/> Solo stock bajo</label>
       <BotonFiltro activo={filtro === 'todas'} onClick={() => setFiltro('todas')}>Todas</BotonFiltro>
-      {CATEGORIA_INSUMO.map(c => (<BotonFiltro key={c} activo={filtro === c} onClick={() => setFiltro(c)}>
+      {[...new Set([...CATEGORIA_INSUMO,...insumos.map(i=>i.categoria)])].map(c => (<BotonFiltro key={c} activo={filtro === c} onClick={() => setFiltro(c)}>
         {c}
       </BotonFiltro>))}
     </div>
@@ -121,8 +126,7 @@ export default function Inventario({ insumos, movimientos, onAgregarInsumo, onRe
             return (<div key={i.id} className="grid grid-cols-2 sm:grid-cols-12 gap-y-2 px-4 py-3 items-center text-[13px]">
               <div className="col-span-2 sm:col-span-4">
                 <p className="font-medium text-[#1F2933]">
-                  {i.nombre}
-                </p>
+                  {i.nombre}</p>{onEditarInsumo&&<button onClick={()=>{setEditing(i);setFormInsumo(true);}} className="mt-1 text-sm text-[#426D98] underline">Editar {i.nombre}</button>}
                 <p className="text-[12px] text-[#AEBCC1]">{i.categoria} · {i.unidad}</p>
               </div>
               <div className="col-span-2 sm:col-span-3">
@@ -197,10 +201,10 @@ function FormMovimiento({ insumos, onCancelar, onGuardar, }: {
     if (!insumoId)
       return setErr('Selecciona un insumo.');
     const c = Number(cantidad);
-    if (!Number.isFinite(c) || c <= 0)
+    if (!Number.isFinite(c) || c <= 0 || c > 99999999)
       return setErr('Cantidad inválida.');
     const motivoFinal = motivo === 'otro' ? otroMotivo.trim() : motivo;
-    if (!motivoFinal)
+    if (!motivoFinal || motivoFinal.length>500)
       return setErr('Selecciona o escribe el motivo.');
     const actual = insumos.find(i => i.id === insumoId);
     if (actual && tipo !== 'entrada' && c > actual.stock)
@@ -236,7 +240,7 @@ function FormMovimiento({ insumos, onCancelar, onGuardar, }: {
         </select>
       </Campo>
       <Campo label="Cantidad">
-        <input type="number" min="1" value={cantidad} onChange={e => {
+        <input type="number" min="0" step="any" max="99999999" value={cantidad} onChange={e => {
           setCantidad(e.target.value);
           setErr('');
         }} className={INPUT_CLS} />
@@ -267,7 +271,7 @@ function FormMovimiento({ insumos, onCancelar, onGuardar, }: {
         </Campo>
       </div>)}
     </div>
-    {err && <p className="text-xs text-[#991B1B]">
+    {err && <p role="alert" className="text-xs text-[#991B1B]">
       {err}
     </p>}
     <div data-vs-actions="compact" className="flex flex-wrap justify-end gap-2 pt-1">
@@ -320,7 +324,7 @@ function SelectorInsumo({ insumos, value, onChange }: {
         }}
         className="max-w-[145px] border-l border-[#E5E0D8] bg-[#F8F6F0] px-2 text-xs text-[#52677F] outline-none">
         <option value="todas">Todas las áreas</option>
-        {CATEGORIA_INSUMO.map(c => <option key={c} value={c}>
+        {[...new Set([...CATEGORIA_INSUMO,...insumos.map(i=>i.categoria)])].map(c => <option key={c} value={c}>
           {c}
         </option>)}
       </select>
@@ -347,34 +351,37 @@ function SelectorInsumo({ insumos, value, onChange }: {
     </div>)}
   </div>);
 }
-function FormInsumo({ onCancelar, onGuardar, }: {
+function FormInsumo({ onCancelar, onGuardar, initial }: {
+  initial?: Insumo;
   onCancelar: () => void | boolean | Promise<void | boolean>;
   onGuardar: (i: Omit<Insumo, 'id'>) => void | boolean | Promise<void | boolean>;
 }) {
-  const [nombre, setNombre] = useState('');
-  const [categoria, setCategoria] = useState<CategoriaInsumo>('Lencería');
-  const [unidad, setUnidad] = useState('Unidad');
-  const [otraUnidad, setOtraUnidad] = useState('');
-  const [tieneVencimiento, setTieneVencimiento] = useState(false);
-  const [stock, setStock] = useState('0');
-  const [stockMinimo, setStockMinimo] = useState('10');
-  const [costo, setCosto] = useState('');
-  const [vencimiento, setVencimiento] = useState('');
+  const [nombre, setNombre] = useState(initial?.nombre??'');
+  const [categoria, setCategoria] = useState<CategoriaInsumo>(initial?.categoria??'Lencería');
+  const units=['Unidad','Paquete','Botella','Caja','Litro','Kg','Par','Juego','Rollo'];
+  const [unidad, setUnidad] = useState(initial&&!units.includes(initial.unidad)?'Otro':initial?.unidad??'Unidad');
+  const [otraUnidad, setOtraUnidad] = useState(initial?.unidad??'');
+  const [tieneVencimiento, setTieneVencimiento] = useState(Boolean(initial?.vencimiento));
+  const [stock, setStock] = useState(String(initial?.stock??0));
+  const [stockMinimo, setStockMinimo] = useState(String(initial?.stockMinimo??10));
+  const [costo, setCosto] = useState(initial?String(initial.costoUnitario):'');
+  const [vencimiento, setVencimiento] = useState(initial?.vencimiento??'');
   const [err, setErr] = useState('');
   function guardar() {
     if (!nombre.trim())
       return setErr('El nombre es obligatorio.');
     const c = Number(costo);
-    if (!Number.isFinite(c) || c <= 0)
+    if (!costo.trim() || !Number.isFinite(c) || c < 0 || c > 99999999)
       return setErr('Costo unitario inválido.');
     if (!Number.isFinite(Number(stock)) || Number(stock) < 0 || !Number.isFinite(Number(stockMinimo)) || Number(stockMinimo) < 0)
       return setErr('Las existencias y el mínimo no pueden ser negativos.');
+    if(nombre.trim().length>150||!(unidad==='Otro'?otraUnidad:unidad).trim()||(unidad==='Otro'?otraUnidad:unidad).trim().length>30||[stock,stockMinimo].some(v=>!v.trim()||Number(v)>99999999))return setErr('Revisa el nombre, la unidad y los límites de existencias.');
     if (tieneVencimiento && !validPublicDate(vencimiento))
       return setErr('Selecciona una fecha de vencimiento válida.');
     onGuardar({
       nombre: nombre.trim(),
       categoria,
-      unidad: unidad === 'Otro' ? (otraUnidad.trim() || 'Unidad') : unidad,
+      unidad: unidad === 'Otro' ? otraUnidad.trim() : unidad,
       stock: Number(stock),
       stockMinimo: Number(stockMinimo),
       costoUnitario: Math.round(c * 100) / 100,
@@ -384,7 +391,7 @@ function FormInsumo({ onCancelar, onGuardar, }: {
   return (<div className="space-y-4">
     <div>
       <p className="text-[11px] font-semibold uppercase tracking-[.18em] text-[#B38719]">Agregar al catálogo</p>
-      <h2 className="mt-1 text-2xl font-semibold text-[#18345C]">Nuevo insumo</h2>
+      <h2 className="mt-1 text-2xl font-semibold text-[#18345C]">{initial?'Editar insumo':'Nuevo insumo'}</h2>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <Campo label="Nombre">
@@ -395,7 +402,7 @@ function FormInsumo({ onCancelar, onGuardar, }: {
       </Campo>
       <Campo label="Categoría">
         <select value={categoria} onChange={e => setCategoria(e.target.value as CategoriaInsumo)} className={INPUT_CLS}>
-          {CATEGORIA_INSUMO.map(c => <option key={c} value={c}>
+          {[...new Set([...CATEGORIA_INSUMO,categoria])].map(c => <option key={c} value={c}>
             {c}
           </option>)}
         </select>
@@ -425,8 +432,8 @@ function FormInsumo({ onCancelar, onGuardar, }: {
             className={`${INPUT_CLS} pl-8`} />
         </div>
       </Campo>
-      <Campo label="Stock inicial">
-        <input type="number" min="0" value={stock} onChange={e => setStock(e.target.value)} className={INPUT_CLS} />
+      <Campo label={initial?"Stock actual (solo lectura)":"Stock inicial"}>
+        <input type="number" min="0" disabled={Boolean(initial)} value={stock} onChange={e => setStock(e.target.value)} className={INPUT_CLS} />
       </Campo>
       <Campo label="Stock mínimo">
         <input type="number" min="0" value={stockMinimo} onChange={e => setStockMinimo(e.target.value)} className={INPUT_CLS} />
