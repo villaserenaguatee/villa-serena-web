@@ -22,6 +22,7 @@ export async function incidenciaFotoRoute(request: NextRequest) {
       if (!(file instanceof File) || validarFoto(file)) throw new AuthError('FOTO_INVALIDA', 400, file instanceof File ? validarFoto(file) : 'Selecciona una foto.');
       // ADMIN conserva los usos ya definidos en el proxy; MYL/Recepción solo INCIDENCIA.
       if (employee.rol !== 'ADMIN' && form.get('uso') !== 'INCIDENCIA') throw new AuthError('ACCESO_DENEGADO', 403, 'Solo puedes cargar fotos de incidencias.');
+      if (employee.rol === 'ADMIN' && !['HOTEL','TIPO_HABITACION','MENU','AMENIDAD'].includes(String(form.get('uso')))) throw new AuthError('ACCESO_DENEGADO', 403, 'Uso de fotografía no autorizado para Administración.');
       const bytes = new Uint8Array(await file.slice(0, 8).arrayBuffer());
       const jpg = bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;
       const png = [137, 80, 78, 71, 13, 10, 26, 10].every((b, i) => bytes[i] === b);

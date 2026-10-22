@@ -107,14 +107,12 @@ test('invalid fields retain values, focus the first error, and do not submit', a
   expect(posts()).toHaveLength(0);
 });
 
-test('unimplemented content stays disabled and cannot enter the category request', async () => {
+test('offer fields stay disabled and photos require a saved category without entering its basic request', async () => {
   const dialog = await openNew('tipos');
-  expect(within(dialog).getByLabelText('Fotografía principal y galería')).toBeDisabled();
+  expect(within(dialog).getByText('Primero guarda la categoría para asociar sus fotografías.')).toBeVisible();
+  expect(within(dialog).queryByLabelText('Agregar fotografía')).toBeNull();
   expect(within(dialog).getByLabelText('Superficie (m²)')).toBeDisabled();
   expect(within(dialog).getByLabelText('Publicación de la oferta')).toBeDisabled();
-  expect(within(dialog).getByLabelText('Fotografía principal y galería')).toHaveAttribute('accept', 'image/jpeg,image/png');
-  expect(within(dialog).getByLabelText('Fotografía principal y galería')).toHaveAttribute('multiple');
-  expect(within(dialog).getByText('Seleccionar imágenes')).toBeVisible();
   await userEvent.type(within(dialog).getByLabelText('Nombre'), ' Nueva categoría ');
   await userEvent.type(within(dialog).getByLabelText('Descripción'), ' Descripción manual ');
   await userEvent.type(within(dialog).getByLabelText('Precio base (Q)'), '420');

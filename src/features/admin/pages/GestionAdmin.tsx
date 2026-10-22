@@ -4,7 +4,9 @@ import {FormOperationProvider} from '@/components/common/FormOperationFeedback';
 import {useEffect,useRef,useState} from 'react';
 import {operacion} from '@/lib/api/operaciones';
 import type {Insumo,MovimientoInsumo,CompraHotel,GastoHotel,Activo,ActivoHotel} from '@/lib/pms/types';
-import CatalogosAdmin from './CatalogosAdmin';
+import TarifasAdmin from './TarifasAdmin';
+import MenuAdmin from './MenuAdmin';
+import HotelAdmin from './HotelAdmin';
 import AdminRoomsManagement from './AdminRoomsManagement';
 import ReportesConectados from './ReportesConectados';
 import LaboralAdmin from './LaboralAdmin';
@@ -21,7 +23,9 @@ export default function GestionAdmin({seccion,personalInitial='catalogo'}:{secci
  if(seccion==='mantenimiento')return <SupervisionMantenimiento/>;
  if(seccion==='reportes')return <ReportesConectados/>;
  if(seccion==='personal')return <LaboralAdmin initial={personalInitial}/>;
- if(seccion==='tarifas')return <CatalogosAdmin initial="tipos"/>;
+ if(seccion==='tarifas')return <TarifasAdmin/>;
+ if(seccion==='menu')return <MenuAdmin/>;
+ if(seccion==='hotel')return <HotelAdmin/>;
  if(!['inventario','finanzas'].includes(seccion))return <ConsultaAdmin seccion={seccion}/>;
  return <FormOperationProvider value={{error,busy}}><div className="min-w-0 w-full flex min-h-0 flex-1 flex-col">{error&&<p role="alert" className="bg-red-50 p-3 text-red-800">{error}</p>}{busy&&<p role="status" className="p-3">Guardando…</p>}{loading?<p role="status" className="p-4">Consultando datos del hotel…</p>:<div className={`min-w-0 w-full flex min-h-0 flex-1 flex-col ${busy?'pointer-events-none opacity-70':''}`}>{seccion==='inventario'?<ComprasInventario insumos={insumos} movimientos={movimientos} compras={compras} onAgregarInsumo={i=>save('insumos',i)} onRegistrarMovimiento={(insumoId,tipo,cantidad,motivo)=>save('movimientos',{insumoId,tipo,cantidad,motivo})} onRegistrarCompra={c=>save('compras',c)}/>:<FinanzasActivos nominaConectada={<LaboralAdmin initial="nomina"/>} pagosConectados={<ConsultaAdmin seccion="finanzas"/>} reportesConectados={<ReportesConectados/>} soloOperaciones empleados={[]} reservas={[]} compras={compras} gastos={gastos} activos={financeAssets} onAgregarGasto={g=>save('gastos',g)} onAgregarActivo={a=>save('activos',{...a,estado:a.estado==='en reparación'?'en-reparacion':a.estado==='fuera de servicio'?'fuera-servicio':'operativo',instaladoEn:a.fechaCompra,marcaModelo:''})}/>}</div>}</div></FormOperationProvider>;
 }
