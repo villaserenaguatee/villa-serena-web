@@ -1,3 +1,4 @@
+import GuestHotelFacilities from './GuestHotelFacilities';
 import {GuestRestriction} from './GuestRestriction';
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { fotoHabitacion } from "@/store/roomStore";
@@ -149,6 +150,7 @@ export default function MiHabitacion({ conectado=false, reserva, onCompartirExpe
         </div>
       </section>
 
+      {conectado&&<GuestHotelFacilities/>}
       <fieldset disabled={conectado} className="min-w-0 space-y-3 border-0 p-0">
       <Tarjeta titulo="Acceso a la habitación">
         {bloqueado && !conectado ? (<div className="text-center py-3.5">
@@ -417,6 +419,7 @@ export default function MiHabitacion({ conectado=false, reserva, onCompartirExpe
                 })} />
             </div>
 
+            {!conectado&&<>
             <div className={`rounded-xl border px-3 py-3 ${bloqueado ? "border-[#E5E0D8] bg-[#F7F7F5]" : "border-[#D8E6D9] bg-[#F4FAF5]"}`}>
               <div className="flex items-center gap-3">
                 <span className={bloqueado ? "text-[#9CA3AF]" : "text-[#166534]"}>
@@ -469,6 +472,7 @@ export default function MiHabitacion({ conectado=false, reserva, onCompartirExpe
                 <CodigoQR texto={`${WIFI_RED}|${WIFI_PASSWORD}`} tamano={150} />
               </div>}
             </div>
+            </>}
           </div>
         </Tarjeta>
       </div>

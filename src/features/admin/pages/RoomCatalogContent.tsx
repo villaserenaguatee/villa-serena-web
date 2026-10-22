@@ -1,26 +1,18 @@
 'use client';
 import { usePublicCatalog } from '@/lib/usePublicCatalog';
 import Image from 'next/image';
-import { ImagePlus } from 'lucide-react';
+import AdminRoomPhotos from './AdminRoomPhotos';
 
-/** Read-only until the administrative offer and photograph contracts are implemented. */
-export default function RoomCatalogContent({ typeId }: { typeId?: number }) {
+/** Offer publication has no administrative operation in the pinned contract. */
+export default function RoomCatalogContent({ typeId,onBusyChange }: { typeId?: number;onBusyChange?:(busy:boolean)=>void }) {
   const { rooms, loading, error, connected } = usePublicCatalog();
   const offers = typeId ? rooms.filter(room => room.apiTypeId === typeId) : [];
   return <section className="mt-4 rounded-lg border border-[#E5E0D8] bg-[#F8F6F0] p-3" aria-label="Contenido del catálogo público">
     <h3 className="font-semibold">Contenido del catálogo público</h3>
-    <p className="mt-1 text-sm text-[#536579]">Guardar la categoría no publica una oferta ni actualiza su precio público. La edición y vinculación del contenido dependen de API #83; la carga de fotografías depende de API #82.</p>
+    <p className="mt-1 text-sm text-[#536579]">Guardar la categoría no publica una oferta ni actualiza su precio público. La edición, publicación y vinculación de ofertas siguen pendientes de contrato y de API #83. Las fotografías usan las operaciones oficiales; si el API no las admite, se informa el error sin simular el guardado.</p>
+    <AdminRoomPhotos typeId={typeId} onBusyChange={onBusyChange}/>
     <fieldset disabled className="mt-3 grid gap-3 sm:grid-cols-2">
       <legend className="sr-only">Funciones pendientes de conexión</legend>
-      <label className="text-sm">
-        Fotografía principal y galería
-        <input type="file" multiple accept="image/jpeg,image/png" className="peer sr-only"
-          aria-label="Fotografía principal y galería" aria-describedby="category-images-hint" />
-        <span aria-hidden="true" className="mt-1 flex min-h-10 items-center justify-center gap-2 rounded-md border border-[#D9DFE5] bg-white px-3 py-2 text-[#536579] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#426D98] peer-disabled:opacity-60">
-          <ImagePlus size={17} />Seleccionar imágenes
-        </span>
-        <small id="category-images-hint" className="mt-1 block text-[#536579]">Ninguna imagen seleccionada. JPG o PNG; máximo 5 MiB por imagen. Carga pendiente de API #82.</small>
-      </label>
       <label className="text-sm">Superficie (m²)<input type="number" placeholder="Pendiente de conexión" className="mt-1 w-full rounded-md border bg-white p-2" /></label>
       <label className="text-sm">Tipo y cantidad de camas<input placeholder="Pendiente de conexión" className="mt-1 w-full rounded-md border bg-white p-2" /></label>
       <label className="text-sm">Publicación de la oferta<select className="mt-1 w-full rounded-md border bg-white p-2"><option>Pendiente de conexión</option></select></label>

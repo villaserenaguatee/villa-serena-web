@@ -1,4 +1,4 @@
-import {render,screen,waitFor} from '@testing-library/react';
+import {render,screen,waitFor,fireEvent} from '@testing-library/react';
 import {beforeEach,expect,test,vi} from 'vitest';
 import {operacion,OperationError} from '@/lib/api/operaciones';
 import CatalogosAdmin from '@/features/admin/pages/CatalogosAdmin';
@@ -15,7 +15,7 @@ for(const resource of ['tipos','habitaciones','personal','temporadas'])test(`una
 });
 test('unavailable room map and reports have clear messages and disabled data actions',async()=>{
  const view=render(<ApprovedRoomMapConnected/>);await screen.findByText(/Modo demostración/);expect(screen.getByRole('button',{name:'Volver a consultar'})).toBeDisabled();view.unmount();
- render(<ReportesConectados/>);await screen.findByText(/Modo demostración/);expect(screen.getByRole('button',{name:'Consultar'})).toBeDisabled();expect(screen.getByRole('button',{name:'Exportar CSV'})).toBeDisabled();
+ render(<ReportesConectados/>);await screen.findByText(/Modo demostración/);expect(screen.getByRole('button',{name:'Consultar'})).toBeEnabled();expect(screen.getByRole('button',{name:'Exportar CSV'})).toBeDisabled();const before=call.mock.calls.length;fireEvent.click(screen.getByRole('button',{name:'Consultar'}));await waitFor(()=>expect(call.mock.calls.length).toBeGreaterThan(before));expect(call.mock.calls.some(([path])=>path.startsWith('admin/indicadores?'))).toBe(true);expect(call.mock.calls.every(([,method])=>method==='GET')).toBe(true);await waitFor(()=>expect(screen.getByRole('button',{name:'Consultar'})).toBeEnabled());expect(screen.getByRole('button',{name:'Exportar CSV'})).toBeDisabled();
 });
 for(const section of ['inventario','finanzas'])test(`${section} does not expose write forms after unavailable data`,async()=>{
  render(<GestionAdmin seccion={section}/>);await screen.findByText(/Modo demostración/);expect(screen.queryByRole('button',{name:/Agregar|Registrar|Guardar/})).toBeNull();expect(call.mock.calls.every(([,method])=>method==='GET')).toBe(true);

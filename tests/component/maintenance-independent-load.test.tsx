@@ -1,0 +1,18 @@
+import {render,screen,fireEvent,waitFor} from '@testing-library/react';
+import {beforeEach,expect,test,vi} from 'vitest';
+import type {ReactNode} from 'react';
+import {operacion} from '@/lib/api/operaciones';
+import MantenimientoConectado from '@/features/mantenimiento/pages/MantenimientoConectado';
+vi.mock('@/lib/api/operaciones',async original=>({...await original<typeof import('@/lib/api/operaciones')>(),operacion:vi.fn()}));
+vi.mock('@/hooks/useAuth',()=>({useAuth:()=>({user:{name:'Técnico autorizado',staff:{id:8}}})}));
+vi.mock('@/components/common/RoleGuard',()=>({RoleGuard:({children}:{children:ReactNode})=><>{children}</>}));
+vi.mock('@/features/mantenimiento/pages/ApprovedMaintenanceShell',()=>({default:({children,onSection,incidenciasPendientes}:{children:ReactNode;onSection:(value:string)=>void;incidenciasPendientes:number})=><div><span>Reportadas: {incidenciasPendientes}</span><button onClick={()=>onSection('activos')}>Abrir activos</button><button onClick={()=>onSection('panel')}>Actualizar panel</button>{children}</div>}));
+vi.mock('@/features/mantenimiento/pages/IncidenciasConectadas',()=>({default:({onCrearOrden}:{onCrearOrden?:unknown})=><section>Flujo oficial de incidencias{Boolean(onCrearOrden)&&<button>Crear orden adicional</button>}</section>}));
+vi.mock('@/features/mantenimiento/pages/PanelMantenimiento',()=>({default:()=> <section>Panel completo existente</section>}));
+vi.mock('@/features/mantenimiento/pages/Activos',()=>({default:()=> <section>Gestión existente de activos</section>}));
+const call=vi.mocked(operacion);
+beforeEach(()=>{call.mockReset();window.history.replaceState(null,'','/mantenimiento');});
+test('unavailable additional operations do not discard official incidents or expose unusable write forms',async()=>{call.mockImplementation(async path=>{if(path==='incidencias')return [{id:1,estado:'REPORTADA'}];if(path==='incidencias/habitaciones')return [];throw Error('Operación adicional no disponible');});render(<MantenimientoConectado/>);await screen.findByText('Flujo oficial de incidencias');expect(screen.getByText('Reportadas: 1')).toBeVisible();expect(screen.queryByRole('button',{name:'Crear orden adicional'})).toBeNull();fireEvent.click(screen.getByRole('button',{name:'Abrir activos'}));expect(screen.queryByText('Gestión existente de activos')).toBeNull();expect(call.mock.calls.every(([,method])=>method==='GET')).toBe(true);});
+test('official incident failure is visible and never replaced by demonstration data',async()=>{call.mockImplementation(async path=>{if(path==='incidencias')throw Error('Incidencias no disponibles');return [];});render(<MantenimientoConectado/>);await screen.findByText('Incidencias no disponibles');expect(call.mock.calls.every(([,method])=>method==='GET')).toBe(true);});
+test('successful existing integrations keep the full panel and asset management',async()=>{call.mockResolvedValue([]);render(<MantenimientoConectado/>);await screen.findByText('Panel completo existente');fireEvent.click(screen.getByRole('button',{name:'Abrir activos'}));await screen.findByText('Gestión existente de activos');});
+test('refresh recovers the existing panel when the additional service becomes available',async()=>{let ready=false;call.mockImplementation(async path=>{if(path.startsWith('gestion/')&&!ready)throw Error('No disponible');return [];});render(<MantenimientoConectado/>);await screen.findByText('Flujo oficial de incidencias');ready=true;fireEvent.click(screen.getByRole('button',{name:'Actualizar panel'}));await waitFor(()=>expect(screen.getByText('Panel completo existente')).toBeVisible());});

@@ -1,0 +1,13 @@
+﻿import type {RecurrenteStatus} from '@/lib/recurrenteStatus';
+/** ProcesoPago from docs 77225a1; compatible with the generated adoption in PR #76. */
+export type BalancePaymentState=Required<Pick<RecurrenteStatus,'estadoPago'|'estadoCheckout'|'accionPago'|'puedeReintentar'|'urlPago'|'expiraEn'>>;
+export function balancePaymentState(value:unknown):BalancePaymentState{
+ if(!value||typeof value!=='object')throw Error('No se pudo comprobar el pago. Consulta nuevamente.');
+ const s=value as BalancePaymentState;
+ if(!['SIN_CHECKOUT','ABIERTO','PROCESANDO','PAGADO','VENCIDO','NO_VERIFICADO'].includes(s.estadoCheckout??'')||!['INICIAR','CONTINUAR','ESPERAR','REINTENTAR','NINGUNA'].includes(s.accionPago??'')||!['APROBADO','PENDIENTE','FALLIDO','REEMBOLSADO',null].includes(s.estadoPago)||typeof s.puedeReintentar!=='boolean'||(s.urlPago!==null&&typeof s.urlPago!=='string')||(s.expiraEn!==null&&(typeof s.expiraEn!=='string'||!Number.isFinite(Date.parse(s.expiraEn)))))throw Error('No se pudo interpretar el estado del pago. Consulta nuevamente.');
+ if(s.puedeReintentar!==(s.accionPago==='REINTENTAR')||s.accionPago==='CONTINUAR'&&(s.estadoCheckout!=='ABIERTO'||!s.urlPago)||s.accionPago==='INICIAR'&&(s.estadoCheckout!=='SIN_CHECKOUT'||s.estadoPago!==null)||s.accionPago==='REINTENTAR'&&s.estadoCheckout!=='VENCIDO'||['PROCESANDO','NO_VERIFICADO'].includes(s.estadoCheckout)&&!['ESPERAR','NINGUNA'].includes(s.accionPago)||s.estadoCheckout==='PAGADO'&&!['ESPERAR','NINGUNA'].includes(s.accionPago))throw Error('El pago necesita verificarse. Consulta nuevamente.');
+ return s;
+}
+export async function readBalancePayment(code:string,signal?:AbortSignal){const r=await fetch(`/api/app/reservas/${encodeURIComponent(code)}/pago-saldo/estado`,{cache:'no-store',signal});const v=await r.json().catch(()=>null);if(!r.ok)throw Error(v?.mensaje??'No se pudo consultar el pago. No inicies otro mientras comprobamos su estado.');return balancePaymentState(v);}
+const inFlight=new Map<string,Promise<string|null>>();
+export function startBalancePayment(code:string):Promise<string|null>{const existing=inFlight.get(code);if(existing)return existing;const task=(async()=>{const r=await fetch(`/api/app/reservas/${encodeURIComponent(code)}/pago-saldo`,{method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store'});if(r.status===204)return null;const value=await r.json().catch(()=>null);if(!r.ok)throw Error(value?.mensaje??'No se pudo iniciar el pago. Consulta su estado antes de reintentar.');if(typeof value?.urlPago!=='string')throw Error('No se pudo recuperar el enlace de pago. Consulta su estado.');return value.urlPago;})().finally(()=>inFlight.delete(code));inFlight.set(code,task);return task;}

@@ -5,8 +5,8 @@ conserva una copia YAML/JSON ni descarga el contrato durante peticiones. Version
 únicamente los tipos generados y `api-contract.json`, que fija repositorio y SHA
 completo. Local y CI leen ese mismo manifiesto.
 
-Revisión adoptada: `1fa07d480b749c12ed20c8fff09b526a1c584928` (docs PR #24; pagos Recurrente).
-Guía oficial: [contrato-api.md](https://github.com/villaserenaguatee/villa-serena-docs/blob/1fa07d480b749c12ed20c8fff09b526a1c584928/03-arquitectura/contrato-api.md).
+Revisión adoptada: `77225a11d06daf576a404e2a557185868bd49c56` (contrato oficial vigente; Recurrente y hora estimada de llegada).
+Guía oficial: [contrato-api.md](https://github.com/villaserenaguatee/villa-serena-docs/blob/77225a11d06daf576a404e2a557185868bd49c56/03-arquitectura/contrato-api.md).
 
 ## Preparación local
 
@@ -17,7 +17,7 @@ hermana ni una ruta personal concreta.
 
 ```sh
 git -c core.autocrlf=false clone https://github.com/villaserenaguatee/villa-serena-docs.git RUTA_DOCS
-git -C RUTA_DOCS -c core.autocrlf=false checkout --detach 1fa07d480b749c12ed20c8fff09b526a1c584928
+git -C RUTA_DOCS -c core.autocrlf=false checkout --detach 77225a11d06daf576a404e2a557185868bd49c56
 ```
 
 Dentro de ese checkout: `pnpm install --frozen-lockfile`. Dentro de web:
@@ -62,17 +62,15 @@ docs; este traslado no autoriza inventar endpoints o respuestas.
 
 ## Conciliación de esta revisión
 
-- Nacionalidad es opcional y admite `null` en huésped y acompañantes. Los DTO de
-  escritura vuelven a ser alias directos de los tipos generados. Para modelos de
-  presentación antiguos, ausencia se representa como cadena vacía; no se asigna
-  una nacionalidad ficticia ni se alteran registros históricos.
-- `paisEmisorPasaporte` no está en el contrato fijado. Se retira su ampliación
-  manual del generado. La lectura defensiva de un valor histórico ya recibido
-  se conserva en `guestCompatibility.ts`; no se añade a escrituras. El MVP #60
-  ya retiró la captura de pasaporte. Si se retoma, docs debe definir ese campo.
-- Las extensiones y operaciones anteriores no documentadas (verificación de
-  correo de reserva, contacto y recuperación de personal, entre otras) no se
-  incorporan al contrato por esta migración. Deben reconciliarse en docs antes
-  de presentarlas como contratos oficiales; no se cambia su comportamiento aquí.
-- No cambian autenticación BFF, cookies HttpOnly, ticket WebSocket de un solo
-  uso/60 segundos, rutas de pagos, webhooks ni diseños.
+- Los estados de checkout, acciones de pago y recuperación del intento ya vienen
+  del contrato oficial. `recurrenteStatus.ts` usa los tipos generados y mantiene
+  lectura defensiva de respuestas anteriores, sin autorizar cobros nuevos por
+  ausencia de información.
+- La reserva pública por tipo y por oferta admite `horaEstimadaLlegada` opcional,
+  en HH:mm local de Guatemala. La web omite el campo vacío y no convierte a UTC.
+  El detalle autorizado de Recepción muestra el valor recibido o «No indicada».
+- `ReservaRecepcionPeticion` no declara esta hora: no se añade al POST de
+  Recepción ni se inventa una operación de actualización. Su alta queda pendiente
+  de un contrato oficial que la admita.
+- No se reintroducen controles retirados del MVP ni se cambian datos históricos,
+  autenticación, verificación de correo, permisos, webhooks o reglas de pago.
