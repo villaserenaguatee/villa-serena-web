@@ -271,7 +271,7 @@ function HomeContent() {
             <small>
               {en ? "CHECK IN" : "LLEGADA"}
             </small>
-            <BilingualDateInput value={arrival} onChange={(v) => {
+            <BilingualDateInput portal value={arrival} rangeStart={arrival} rangeEnd={departure} rangeEdge="arrival" onChange={(v) => {
               setArrival(v);
               if (departure && departure <= v)
                 setDeparture('');
@@ -281,7 +281,7 @@ function HomeContent() {
             <small>
               {en ? "CHECK OUT" : "SALIDA"}
             </small>
-            <BilingualDateInput value={departure} min={arrival} onChange={setDeparture} />
+            <BilingualDateInput portal value={departure} min={arrival} minExclusive rangeStart={arrival} rangeEnd={departure} rangeEdge="departure" onChange={setDeparture} />
           </label>
           <div className="guest-picker">
             <small>

@@ -1,3 +1,4 @@
+import PhotoPicker from '@/components/common/PhotoPicker';
 import type { SolicitudCorreccion } from '@/store/correctionStore';
 import { useEffect, useMemo, useState } from 'react';
 import type { Empleado, RolPersonal, TurnoPersonal, PermisoModulo, EstadoAsistencia, } from '@/lib/pms/types';
@@ -300,13 +301,8 @@ function FormNuevo({ onCancelar, onGuardar, }: {
       <div className="px-4 py-4 space-y-3">
         <div className="flex items-center gap-3 rounded-lg bg-[#F8F6F0] p-3">
           <Avatar nombre={`${nombre} ${apellido}`.trim() || 'Nuevo empleado'} foto={foto} grande />
-          <div>
-            <label className="inline-flex cursor-pointer rounded-lg border border-[#18345C] px-4 py-2 text-sm font-semibold text-[#18345C]">Agregar fotografía<input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              className="hidden"
-              onChange={e => {
-                const f = e.target.files?.[0];
+          <div className="min-w-0 flex-1">
+            <PhotoPicker label="Foto del empleado" accept="image/png,image/jpeg,image/webp" preview={foto} onRemove={()=>setFoto('')} onSelect={f=>{
                 if (!f)
                   return;
                 if (f.size > 2 * 1024 * 1024)
@@ -314,7 +310,7 @@ function FormNuevo({ onCancelar, onGuardar, }: {
                 const r = new FileReader();
                 r.onload = () => setFoto(String(r.result));
                 r.readAsDataURL(f);
-              }} /></label>
+              }} />
           </div>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

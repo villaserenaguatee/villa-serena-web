@@ -179,7 +179,7 @@ export default function RoomDetail() {
         <div className="booking-modal-grid">
           <label>
             {en ? "Arrival" : "Llegada"}
-            <BilingualDateInput
+            <BilingualDateInput portal
               value={arrival}
               rangeStart={arrival} rangeEnd={departure} rangeEdge="arrival"
               min={todayISO()}
@@ -194,7 +194,7 @@ export default function RoomDetail() {
           </label>
           <label>
             {en ? "Departure" : "Salida"}
-            <BilingualDateInput
+            <BilingualDateInput portal
               value={departure}
               rangeStart={arrival} rangeEnd={departure} rangeEdge="departure" minExclusive
               min={arrival}
@@ -209,7 +209,7 @@ export default function RoomDetail() {
         </div>
         <label>
           {en ? "Guests" : "Huéspedes"}
-          <GuestSelector
+          <GuestSelector portal
             adults={adults}
             childCount={children}
             onAdults={(n) => {

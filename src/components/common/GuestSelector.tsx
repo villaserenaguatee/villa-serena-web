@@ -1,8 +1,10 @@
 'use client';
 import { Minus, Plus, Users } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import AnchoredPopover from './AnchoredPopover';
 import { usePublicLanguage } from './PublicLanguageToggle';
-export default function GuestSelector({ adults, childCount, onAdults, onChildren, max = 5, label = 'Huéspedes' }: {
+export default function GuestSelector({ adults, childCount, onAdults, onChildren, max = 5, label = 'Huéspedes', portal = false }: {
+  portal?: boolean;
   adults: number;
   childCount: number;
   onAdults: (n: number) => void;
@@ -12,18 +14,10 @@ export default function GuestSelector({ adults, childCount, onAdults, onChildren
 }) {
   const { en } = usePublicLanguage();
   const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
   const total = adults + childCount;
   const canAdd = total < max;
-  return <div className="guest-select-control">
-    <button type="button" className="guest-select-trigger" onClick={() => setOpen(!open)}>
-      <Users size={16} />
-      <span>
-        {adults}
-        {en ? (adults === 1 ? 'adult' : 'adults') : `adulto${adults === 1 ? '' : 's'}`}
-        {childCount > 0 ? ` · ${childCount} ${en ? (childCount === 1 ? 'child' : 'childCount') : `niño${childCount === 1 ? '' : 's'}`}` : ''}
-      </span>
-    </button>
-    {open && <div className="guest-popover guest-popover-inline">
+  const popup = <div className="guest-popover guest-popover-inline" style={portal ? {position: 'static', width: '100%'} : undefined}>
       <div>
         <span>
           {en ? 'Adults' : 'Adultos'}
@@ -65,6 +59,16 @@ export default function GuestSelector({ adults, childCount, onAdults, onChildren
       <button type="button" className="guest-confirm" onClick={() => setOpen(false)}>
         {en ? 'Confirm' : 'Confirmar'}
       </button>
-    </div>}
+    </div>;
+  return <div className="guest-select-control">
+    <button ref={trigger} type="button" aria-expanded={open} className="guest-select-trigger" onClick={() => setOpen(!open)}>
+      <Users size={16} />
+      <span>
+        {adults}
+        {en ? (adults === 1 ? 'adult' : 'adults') : `adulto${adults === 1 ? '' : 's'}`}
+        {childCount > 0 ? ` · ${childCount} ${en ? (childCount === 1 ? 'child' : 'childCount') : `niño${childCount === 1 ? '' : 's'}`}` : ''}
+      </span>
+    </button>
+    {open && (portal ? <AnchoredPopover anchor={trigger} width={290} onClose={() => setOpen(false)}>{popup}</AnchoredPopover> : popup)}
   </div>;
 }

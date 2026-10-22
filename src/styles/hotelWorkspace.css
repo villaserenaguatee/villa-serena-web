@@ -95,3 +95,16 @@
  [data-vs-workspace] button[aria-label*="Cerrar"],[data-vs-workspace] button[aria-label*="Close"]{min-width:44px;min-height:44px}
  [data-vs-workspace] [data-vs-page-header]>div{min-width:0}
 }
+
+/* Keep mobile chat composers inside the space above the in-flow navigation. */
+@media(max-width:1023px){
+ [data-vs-shell-main]:has([data-guest-reference="chat-38cf2a3"], [data-reception-chat]),
+ [data-vs-shell-main]>div:has(>[data-guest-reference="chat-38cf2a3"], >[data-reception-chat]){min-height:0}
+ [data-guest-reference="chat-38cf2a3"]{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+ [data-guest-reference="chat-38cf2a3"]>header{flex-shrink:0}
+ [data-guest-reference="chat-38cf2a3"]>div{display:flex;flex-direction:column;flex:1;min-height:0;width:100%}
+ [data-guest-reference="chat-38cf2a3"] [data-vs-card="huesped"]{height:auto;flex:1;min-height:0}
+}
+@media(max-width:767px){
+ [data-reception-chat]>section>aside{max-height:min(300px,45dvh)}
+}
