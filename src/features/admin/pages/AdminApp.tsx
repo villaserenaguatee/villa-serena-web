@@ -1,3 +1,4 @@
+import AmenidadesAdmin from './AmenidadesAdmin';
 import GestionAdmin from './GestionAdmin';
 import {useAdminVisualDemo} from '../demo/AdminDemoContext';
 import AdminVisualDemo from '../demo/AdminVisualDemo';
@@ -31,6 +32,7 @@ const SECCIONES: {
 }[] = [
     { id: 'panel', label: 'Panel de habitaciones', corto: 'Panel' },
     { id: 'tarifas', label: 'Tarifas y ofertas', corto: 'Tarifas' },
+    { id: 'amenidades', label: 'Amenidades y Wi-Fi', corto: 'Amenidades' },
     { id: 'reportes', label: 'Reportes', corto: 'Reportes' },
     { id: 'personal', label: 'Personal', corto: 'Personal' },
     { id: 'inventario', label: 'Inventario y compras', corto: 'Inventario' },
@@ -61,6 +63,8 @@ function SeccionIcon({ id, size = 18 }: {
         <rect x="12" y="8" width="3" height="10" />
         <rect x="17" y="4" width="3" height="14" />
       </svg>;
+    case 'amenidades':
+      return <svg {...p}><path d="M3 8a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0M9 16a4 4 0 0 1 6 0"/><circle cx="12" cy="20" r="1"/></svg>;
     case 'personal':
       return <svg {...p}>
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
