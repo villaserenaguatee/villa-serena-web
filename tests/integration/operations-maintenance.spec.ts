@@ -25,3 +25,23 @@ for (const { name, viewport } of viewports) {
     });
   });
 }
+
+for(const width of [1440,390,320]){
+ test.describe(`Administración ${width}px`,()=>{
+  test.use({viewport:{width,height:900}});
+  test('supervisión de solo lectura conserva ruta al recargar y permite consultar/cerrar el detalle',async({page,context,baseURL,mock},testInfo)=>{
+   await login(context,baseURL!,'admin');await page.goto('/admin/mantenimiento');
+   await expect(page.getByRole('heading',{name:'Supervisión de mantenimiento'})).toBeVisible();
+   await page.getByRole('button',{name:width<1024?'Mant.':'Mantenimiento',exact:true}).click();
+   await expect(page).toHaveURL(/\/admin\/mantenimiento$/);
+   const card=page.getByRole('article').filter({hasText:'Fuga de prueba'});await expect(card).toBeVisible();
+   await card.getByRole('button',{name:'Ver detalle'}).click();const dialog=page.getByRole('dialog',{name:'Detalle de incidencia'});
+   await expect(dialog.getByRole('heading',{name:'Historial'})).toBeVisible();await expectNoOverflow(page);
+   await page.screenshot({path:testInfo.outputPath('supervision.png'),fullPage:true});
+   await dialog.getByRole('button',{name:'Cerrar',exact:true}).click();await expect(dialog).toHaveCount(0);
+   await page.reload();await expect(page.getByRole('heading',{name:'Supervisión de mantenimiento'})).toBeVisible();
+   await page.getByRole('combobox',{name:'Estado',exact:true}).selectOption('RESUELTA');await expect(page.getByText('Sin incidencias',{exact:true})).toBeVisible();
+   await expectNoOverflow(page);expect((await mock.state()).calls.filter(call=>call.path.startsWith('/api/v1/incidencias')).every(call=>call.method==='GET')).toBe(true);
+  });
+ });
+}
