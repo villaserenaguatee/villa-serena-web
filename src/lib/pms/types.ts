@@ -93,6 +93,7 @@ export interface LineaPedido {
 export interface CambioEstado {
   estado: EstadoPedido;
   fechaHora: string;
+  responsable?: string;
   motivo?: string;
 }
 export interface Pedido {
