@@ -30,6 +30,7 @@ interface Props {
     entrada?: string;
     salida?: string;
     tipo?: TipoHabitacion;
+    tipoHabitacionId?: number;
     habitacionId?: string;
     adultos?: number;
     ninos?: number;
@@ -102,11 +103,11 @@ telefono: '',
     getRooms(new URLSearchParams(), controller.signal).then(rooms => {
       const types = [...new Map(rooms.map(r => [r.tipoHabitacion.id, r.tipoHabitacion])).values()];
       setCatalogo(types);
-      setRemoteTypeId((types.find(t => t.nombre === preset?.tipo) ?? types[0])?.id);
+      setRemoteTypeId((types.find(t => t.id === preset?.tipoHabitacionId) ?? types.find(t => t.nombre === preset?.tipo) ?? types[0])?.id);
       setTipo(current => types.some(t => t.nombre === current) ? current : (types[0]?.nombre ?? '') as TipoHabitacion);
     }).catch(e => { if (!controller.signal.aborted) setCatalogoError(e.message); });
     return () => controller.abort();
-  }, [conectado]);
+  }, [conectado, preset?.tipo, preset?.tipoHabitacionId]);
   const tipoId = remoteTypeId;
   const tipos = conectado ? catalogo.map(t => t.nombre as TipoHabitacion) : TIPOS;
   const [habitacionId, setHabitacionId] = useState<string>(preset?.habitacionId ?? '');

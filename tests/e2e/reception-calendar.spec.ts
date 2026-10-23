@@ -14,7 +14,7 @@ async function monthCodes(calendar: Locator) {
   return [...codes].sort();
 }
 
-for (const { name, viewport } of viewports) {
+for (const { name, viewport } of [...viewports, { name: 'móvil estrecho', viewport: { width: 320, height: 844 } }]) {
   test.describe(name, () => {
     test.use({ viewport });
     test('calendario: datos BFF, mes/habitaciones, filtros, detalle y períodos', async ({ page }, testInfo) => {
@@ -54,6 +54,13 @@ for (const { name, viewport } of viewports) {
       await expect(table.locator('[colspan]')).toHaveCount(0);
       const filtered = data.reservas.filter(r => r.tipoHabitacionId === group.tipoHabitacion.id && rooms.some(h => h.id === r.habitacionId)).map(r => r.codigo).sort();
       await expect.poll(codes).toEqual(filtered);
+      // A short filtered table must keep the reservation clear of sticky controls.
+      const filteredReservation = calendar.locator(`[data-reservation-code="${first.codigo}"]`).first();
+      await filteredReservation.scrollIntoViewIfNeeded();
+      const reservationBox = await filteredReservation.boundingBox();
+      const actionsBox = await calendar.getByRole('group', { name: 'Selección de noches', exact: true }).boundingBox();
+      expect(reservationBox).not.toBeNull(); expect(actionsBox).not.toBeNull();
+      expect(reservationBox!.y + reservationBox!.height).toBeLessThanOrEqual(actionsBox!.y + 1);
       await calendar.locator(`[data-reservation-code="${first.codigo}"]`).first().click();
       await expect(detail).toContainText(first.codigo); await detail.getByRole('button', { name: 'Cerrar' }).click();
       await calendar.getByRole('button', { name: 'Mes', exact: true }).click();
