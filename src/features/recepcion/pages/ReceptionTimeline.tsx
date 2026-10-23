@@ -23,7 +23,7 @@ export default function ReceptionTimeline({ days, groupByFloor, reservas, huespe
     onCreate({entrada:range.entrada,salida,habitacionId:room.id,tipo:room.tipo,tipoHabitacionId:room.tipoId});
   }
   const floors = [...new Set(habitaciones.map(h => h.piso))].sort((a,b) => a-b);
-  return <div tabIndex={0} aria-label="Desplazamiento del calendario por habitaciones" className="vs-table-scroll h-full min-h-0 max-h-[640px] overflow-auto overscroll-contain"><table data-vs-table="recepcion" aria-label="Reservas por habitación y día" className="w-max border-separate border-spacing-0 text-xs">
+  return <div tabIndex={0} aria-label="Desplazamiento del calendario por habitaciones" className="vs-table-scroll h-full min-h-0 max-h-[640px] overflow-auto overscroll-contain scroll-pt-10 scroll-pl-24"><table data-vs-table="recepcion" aria-label="Reservas por habitación y día" className="w-max border-separate border-spacing-0 text-xs">
     <thead><tr><th scope="col" className="sticky top-0 left-0 z-30 min-w-24 border border-[#E5E0D8] bg-[#F8F6F0] p-2 text-left">Habitación</th>
       {days.map(day => <th key={day} scope="col" className="sticky top-0 z-20 min-w-24 border-b border-r border-t border-[#E5E0D8] bg-[#F8F6F0] p-2 font-semibold">
         {weekdays[new Date(`${day}T12:00:00Z`).getUTCDay()]} {Number(day.slice(-2))}
@@ -49,7 +49,7 @@ export default function ReceptionTimeline({ days, groupByFloor, reservas, huespe
         </td>)}
       </tr>)}
     </Fragment>)}</tbody>
-  </table>{onCreate&&<div className="sticky bottom-0 left-0 max-w-[calc(100vw-3rem)] space-y-2 border-t bg-white p-3 text-sm">
+  </table>{onCreate&&<div role="group" aria-label="Selección de noches" className="sticky left-0 max-w-[calc(100vw-3rem)] space-y-2 border-t bg-white p-3 text-sm">
     <p role="status">{range?`Llegada: ${range.entrada} · Salida: ${nextCalendarDay(range.last)}. Selecciona otra noche para ampliar el rango.`:'Selecciona la primera y la última noche libre de una habitación.'}</p>
     {error&&<p role="alert" className="text-red-800">{error}</p>}
     <div className="flex flex-wrap gap-2"><button type="button" disabled={!range||busy} onClick={create} className="rounded bg-[#18345C] px-3 py-2 text-white disabled:opacity-40">Reservar selección</button>
