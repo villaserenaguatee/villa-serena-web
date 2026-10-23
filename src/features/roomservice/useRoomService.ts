@@ -10,7 +10,7 @@ export function presentarPedido(p: PedidoRS): Pedido {
     origen: 'app', turno: turnoActual(), estado: estados[p.estado], creadoEn: p.creadoEn,
     notaGeneral: p.notas ?? '', motivoCancelacion: p.motivoCancelacion ?? undefined,
     lineas: p.items.map(i => ({ itemId: String(i.itemId), nombre: i.nombre, cantidad: i.cantidad, precioUnitario: i.precioUnitario })),
-    historial: p.historial.map(h => ({ estado: estados[h.estadoNuevo as PedidoRS['estado']], fechaHora: h.fechaHora, motivo: h.motivo ?? undefined })),
+    historial: p.historial.map(h => ({ estado: estados[h.estadoNuevo as PedidoRS['estado']], fechaHora: h.fechaHora, responsable: h.responsable, motivo: h.motivo ?? undefined })),
   };
 }
 export function useRoomService(enabled: boolean, avisar: (pedido: Pedido) => void) {

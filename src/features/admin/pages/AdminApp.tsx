@@ -1,7 +1,8 @@
+import AmenidadesAdmin from './AmenidadesAdmin';
 import GestionAdmin from './GestionAdmin';
 import {useAdminVisualDemo} from '../demo/AdminDemoContext';
 import AdminVisualDemo from '../demo/AdminVisualDemo';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Bell, X } from 'lucide-react';
 import StaffProfileModal from '@/components/common/StaffProfileModal';
@@ -33,10 +34,12 @@ const SECCIONES: {
     { id: 'tarifas', label: 'Tarifas y ofertas', corto: 'Tarifas' },
     { id: 'menu', label: 'Menú de Room Service', corto: 'Menú' },
     { id: 'hotel', label: 'Configuración del hotel', corto: 'Hotel' },
+    { id: 'amenidades', label: 'Amenidades y Wi-Fi', corto: 'Amenidades' },
     { id: 'reportes', label: 'Reportes', corto: 'Reportes' },
     { id: 'personal', label: 'Personal', corto: 'Personal' },
     { id: 'inventario', label: 'Inventario y compras', corto: 'Inventario' },
     { id: 'finanzas', label: 'Finanzas', corto: 'Finanzas' },
+    { id: 'mantenimiento', label: 'Mantenimiento', corto: 'Mant.' },
   ];
 function SeccionIcon({ id, size = 18 }: {
   id: SeccionAdmin;
@@ -44,6 +47,8 @@ function SeccionIcon({ id, size = 18 }: {
 }) {
   const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.75 } as const;
   switch (id) {
+    case 'mantenimiento':
+      return <svg {...p}><path d="m14 6 4 4M4 20l8-8M16 3a5 5 0 0 0-6 6L3 16a3 3 0 0 0 4 4l7-7a5 5 0 0 0 6-6l-4 4-3-3 3-5Z" /></svg>;
     case 'panel':
       return <svg {...p}>
         <rect x="3" y="3" width="7" height="7" />
@@ -67,6 +72,8 @@ function SeccionIcon({ id, size = 18 }: {
       return <svg {...p}><path d="M4 21V4h16v17M8 8h2m4 0h2M8 12h2m4 0h2M10 21v-5h4v5" /></svg>;
     case 'menu':
       return <svg {...p}><circle cx="14" cy="12" r="6"/><path d="M3 3v6m3-6v6M3 6h3M4.5 9v12" /></svg>;
+    case 'amenidades':
+      return <svg {...p}><path d="M3 8a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0M9 16a4 4 0 0 1 6 0"/><circle cx="12" cy="20" r="1"/></svg>;
     case 'personal':
       return <svg {...p}>
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -101,6 +108,8 @@ function AdminAppExisting({ onCambiarModulo }: Props) {
   const pathname = usePathname(), router = useRouter();
   const fromPath = (path: string): SeccionAdmin => SECCIONES.find(s => path === `/admin/${s.id}`)?.id ?? 'panel';
   const [seccion, setSeccionActual] = useState<SeccionAdmin>(() => fromPath(pathname));
+  const activeMobileItem=useRef<HTMLButtonElement>(null);
+  useEffect(()=>{activeMobileItem.current?.scrollIntoView?.({block:'nearest',inline:'nearest'});},[seccion]);
   function setSeccion(section: SeccionAdmin) {
     setSeccionActual(section);
     const target = section === 'panel' ? '/admin' : `/admin/${section}`;
@@ -434,6 +443,7 @@ function AdminAppExisting({ onCambiarModulo }: Props) {
               key={s.id}
               onClick={() => setSeccion(s.id)}
               className="flex-1 min-w-[64px] flex flex-col items-center justify-center py-2 gap-0.5 relative transition-colors"
+              ref={active?activeMobileItem:undefined}
               style={{ color: active ? '#D8B94E' : '#AEBCC1' }}>
               {active && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5" style={{ backgroundColor: '#D8B94E' }} />}
               <span className="relative">

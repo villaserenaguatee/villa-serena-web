@@ -93,6 +93,7 @@ export interface LineaPedido {
 export interface CambioEstado {
   estado: EstadoPedido;
   fechaHora: string;
+  responsable?: string;
   motivo?: string;
 }
 export interface Pedido {
@@ -178,6 +179,7 @@ export interface ServicioAdicional {
 }
 export interface Reserva {
   id: string;
+  horaEstimadaLlegada?: string | null;
   canal?: 'DIRECTO_WEB' | 'RECEPCION' | 'BOOKING' | 'EXPEDIA';
   /** Referencia del BFF para la copia de compatibilidad; conserva los códigos locales anteriores. */
   codigoBff?: string;
@@ -241,7 +243,7 @@ export interface SolicitudHuesped {
   fecha: string;
 }
 export type SeccionRecepcion = 'dia' | 'reservas' | 'disponibilidad' | 'habitaciones' | 'huespedes' | 'solicitudes' | 'incidencias' | 'reportes' | 'chat' | 'objetos';
-export type SeccionAdmin = 'panel' | 'tarifas' | 'reportes' | 'personal' | 'inventario' | 'finanzas' | 'menu' | 'hotel';
+export type SeccionAdmin = 'panel' | 'tarifas' | 'reportes' | 'personal' | 'inventario' | 'finanzas' | 'mantenimiento' | 'menu' | 'hotel' | 'amenidades';
 export type CriterioTarifa = 'temporada' | 'ocupacion' | 'evento';
 export type AjusteTarifa = 'porcentaje' | 'fijo';
 export interface ReglaTarifa {

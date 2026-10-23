@@ -53,10 +53,11 @@ export function demoQuotes(entrada: string, salida: string, numeroHuespedes: num
 export function parseContractBooking(value: unknown): CreatePublicDto {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new AvailabilityError('DATOS_INVALIDOS', 400);
   const input = value as CreatePublicDto, g = input.huesped;
+  if (input.horaEstimadaLlegada != null && (typeof input.horaEstimadaLlegada !== 'string' || !/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(input.horaEstimadaLlegada))) throw new AvailabilityError('DATOS_INVALIDOS', 400);
   if (!Number.isInteger(input.tipoHabitacionId) || input.tipoHabitacionId < 1 || !g || typeof g !== 'object' || Array.isArray(g) || typeof input.entrada !== 'string' || typeof input.salida !== 'string' ||
     Object.entries({ nombreCompleto: 150, correo: 150, telefono: 30, numeroDocumento: 30 }).some(([key, max]) => typeof g[key as keyof typeof g] !== 'string' || !String(g[key as keyof typeof g]).trim() || String(g[key as keyof typeof g]).length > max) ||
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(g.correo) || (g.nacionalidad != null && (typeof g.nacionalidad !== 'string' || g.nacionalidad.length > 60)) || !['DPI', 'PASAPORTE'].includes(g.tipoDocumento)) throw new AvailabilityError('DATOS_INVALIDOS', 400);
-  return { tipoHabitacionId: input.tipoHabitacionId, entrada: input.entrada, salida: input.salida, numeroHuespedes: input.numeroHuespedes,
+  return { ...(input.horaEstimadaLlegada != null ? {horaEstimadaLlegada: input.horaEstimadaLlegada} : {}), tipoHabitacionId: input.tipoHabitacionId, entrada: input.entrada, salida: input.salida, numeroHuespedes: input.numeroHuespedes,
     huesped: { nombreCompleto: g.nombreCompleto.trim(), correo: g.correo.trim().toLowerCase(), telefono: g.telefono.trim(), ...(g.nacionalidad ? {nacionalidad: g.nacionalidad.trim()} : {}), tipoDocumento: g.tipoDocumento, numeroDocumento: g.numeroDocumento.trim() } };
 }
 export function demoCreate(input: CreatePublicDto, attempt: string): CreatedPublicDto {
