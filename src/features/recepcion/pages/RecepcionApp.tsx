@@ -353,6 +353,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
       entrada?: string;
       salida?: string;
       tipo?: TipoHabitacion;
+      tipoHabitacionId?: number;
       habitacionId?: string;
       adultos?: number;
       ninos?: number;
@@ -581,7 +582,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
   }
   const contenido = (() => {
     if (conectado) {
-      if (seccion === "dia") return calendarOpen?<div className="flex-1 min-h-0 flex flex-col bg-[#F8F6F0]"><div className="px-4 pt-3"><button type="button" onClick={()=>setCalendarOpen(false)} className="rounded-md border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#18345C]">← Volver a vista del día</button></div><div className="min-h-0 flex-1 p-4"><CalendarioReservas conectado reservas={EMPTY_RESERVATIONS} huespedes={EMPTY_GUESTS} habitaciones={EMPTY_ROOMS} onAbrir={id=>{setCalendarOpen(false);setBffCode(id.replace("bff-reservation-", ""));}} onNueva={()=>setNuevaReserva({open:true})}/></div></div>:<ConnectedReceptionDay onVerCalendario={()=>setCalendarOpen(true)} refreshTick={bffRefresh} onAbrirReserva={setBffCode} onIr={setSeccion}/>;
+      if (seccion === "dia") return calendarOpen?<div className="flex-1 min-h-0 flex flex-col bg-[#F8F6F0]"><div className="px-4 pt-3"><button type="button" onClick={()=>setCalendarOpen(false)} className="rounded-md border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#18345C]">← Volver a vista del día</button></div><div className="min-h-0 flex-1 p-4"><CalendarioReservas conectado reservas={EMPTY_RESERVATIONS} huespedes={EMPTY_GUESTS} habitaciones={EMPTY_ROOMS} onAbrir={id=>{setCalendarOpen(false);setBffCode(id.replace("bff-reservation-", ""));}} onNueva={preset=>setNuevaReserva({open:true,preset:preset?{...preset,tipo:preset.tipo as TipoHabitacion}:undefined})}/></div></div>:<ConnectedReceptionDay onVerCalendario={()=>setCalendarOpen(true)} refreshTick={bffRefresh} onAbrirReserva={setBffCode} onIr={setSeccion}/>;
       if (seccion === "reservas") return <Reservas refreshTick={bffRefresh} reservas={EMPTY_RESERVATIONS} huespedes={EMPTY_GUESTS} habitaciones={EMPTY_ROOMS} onAbrir={setBffCode} onNueva={() => setNuevaReserva({ open: true })} />;
       if (seccion === "huespedes") return <Huespedes conectado huespedes={EMPTY_GUESTS} reservas={EMPTY_RESERVATIONS} habitaciones={EMPTY_ROOMS} onRegistrar={() => {}} onActualizar={() => {}} onAbrirReserva={setBffCode} />;
       if (seccion === "habitaciones") return <HabitacionesRecepcion conectado habitaciones={EMPTY_ROOMS} reservas={EMPTY_RESERVATIONS} huespedes={EMPTY_GUESTS} onCambiarEstado={() => {}} onVerReserva={() => {}} onVerReservaBff={setBffCode} />;
@@ -708,7 +709,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
         </div>
 
         <div className="flex-1 flex overflow-hidden relative">
-          {!conectado && seccion === 'dia' ? <div className="flex-1 overflow-y-auto">{contenido}<section aria-label="Calendario de reservas" className="h-[62dvh] min-h-[400px] max-h-[650px] p-4"><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={abrirReserva} onNueva={() => setNuevaReserva({ open: true })} /></section></div> : contenido}
+          {!conectado && seccion === 'dia' ? <div className="flex-1 overflow-y-auto">{contenido}<section aria-label="Calendario de reservas" className="h-[62dvh] min-h-[400px] max-h-[650px] p-4"><CalendarioReservas reservas={reservas} huespedes={huespedes} habitaciones={habitaciones} onAbrir={abrirReserva} onNueva={preset=>setNuevaReserva({open:true,preset:preset?{...preset,tipo:preset.tipo as TipoHabitacion}:undefined})} /></section></div> : contenido}
         </div>
 
         <div data-vs-mobile-nav="recepcion" className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>

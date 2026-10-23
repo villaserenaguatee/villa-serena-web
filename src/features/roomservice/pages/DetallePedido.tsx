@@ -153,10 +153,13 @@ export default function DetallePedido({ pedido, onCerrar, onAvanzarEstado, onCan
                     {ESTADO_META[c.estado].label}
                   </p>
                   {c.motivo && (<p className="text-[13px] text-[#991B1B] mt-0.5">Motivo: {c.motivo}</p>)}
+                  {c.responsable?.trim() && <p className="text-[13px] text-[#536579]">Responsable: {c.responsable}</p>}
                 </div>
                 <p className="text-[12px] text-[#AEBCC1] shrink-0 flex items-center gap-1">
                   <ClockIcon size={11} />
-                  {formatoHoraISO(c.fechaHora)}
+                  {c.fechaHora && Number.isFinite(Date.parse(c.fechaHora))
+                    ? new Intl.DateTimeFormat('es-GT', {day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit', timeZone:'America/Guatemala'}).format(new Date(c.fechaHora))
+                    : 'Fecha no disponible'}
                 </p>
               </div>))}
           </div>

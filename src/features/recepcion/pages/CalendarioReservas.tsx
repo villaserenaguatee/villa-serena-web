@@ -1,6 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { getCalendar } from '@/lib/api/reception';
+import { useEffect, useRef, useState } from 'react';
+import { getCalendar, getRooms, getAvailableRoomReferences } from '@/lib/api/reception';
+import type {RoomState} from '@/lib/bff/contracts/reception';
+import {calendarRangeError,type CalendarPreset} from '../calendarSelection';
 import type { ReceptionCalendar } from '@/lib/bff/contracts/reception';
 import { calendarWithBff } from '@/features/recepcion/receptionCalendarLink';
 import { BedDouble, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -42,11 +44,15 @@ export function monthWeekSegments(week: (string | null)[], reservations: Reserva
   }
   return segments;
 }
-type Props = { conectado?: boolean; reservas: Reserva[]; huespedes: Huesped[]; habitaciones: HabitacionHotel[]; onAbrir: (id: string) => void; onNueva: () => void };
+type Props = { conectado?: boolean; reservas: Reserva[]; huespedes: Huesped[]; habitaciones: HabitacionHotel[]; onAbrir: (id: string) => void; onNueva: (preset?:CalendarPreset) => void };
 export default function CalendarioReservas({ conectado = false, reservas, huespedes, habitaciones, onAbrir, onNueva }: Props) {
   const [presentation, setPresentation] = useState<'month' | 'rooms'>('month');
   const [floor, setFloor] = useState('');
   const [category, setCategory] = useState('');
+  const [roomStates,setRoomStates]=useState<RoomState[]>([]),[selectionBusy,setSelectionBusy]=useState(false),[selectionError,setSelectionError]=useState('');
+  const selectionRequest=useRef<AbortController|null>(null),selectionLock=useRef(false);
+  useEffect(()=>()=>selectionRequest.current?.abort(),[]);
+  useEffect(()=>{if(!conectado)return;const c=new AbortController();getRooms(new URLSearchParams(),c.signal).then(rows=>{if(!c.signal.aborted)setRoomStates(rows);}).catch(()=>{if(!c.signal.aborted)setSelectionError('No se pudo comprobar el estado de las habitaciones. Actualiza el calendario antes de seleccionar.');});return()=>c.abort();},[conectado]);
   const view = 'month' as const;
   const [date, setDate] = useState(fechaHoyISO());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -69,16 +75,34 @@ export default function CalendarioReservas({ conectado = false, reservas, huespe
       .catch(e => { if (!controller.signal.aborted) { setData(null); setError(e instanceof Error ? e.message : 'No se pudo consultar el calendario.'); } })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [desde, hasta, reservas]);
+  }, [desde, hasta, reservas, conectado]);
   const merged = data ? calendarWithBff(data, conectado ? [] : reservas, conectado ? [] : huespedes) : { reservas: conectado ? [] : reservas, huespedes: conectado ? [] : huespedes };
   // El contrato agrupa por categoría; el piso viene en cada referencia de habitación.
   const rooms = data ? data.grupos.flatMap(g => g.habitaciones.map(h => ({
-    id: `hh-${h.numero}`, numero: h.numero, piso: h.piso, tipo: g.tipoHabitacion.nombre,
-  }))) : habitaciones;
+    id: `hh-${h.numero}`, numero: h.numero, piso: h.piso, tipo: g.tipoHabitacion.nombre, tipoId:g.tipoHabitacion.id,
+    seleccionable: conectado ? roomStates.some(r=>r.id===h.id&&r.condicion!=='FUERA_DE_SERVICIO') : habitaciones.some(r=>r.numero===h.numero&&r.estado!=='mantenimiento'),
+  }))) : habitaciones.map(h=>({...h,tipoId:undefined,seleccionable:!conectado&&h.estado!=='mantenimiento'}));
   const filteredRooms = rooms.filter(h => (!floor || String(h.piso) === floor) && (!category || h.tipo === category));
   const visible = visibleReservations(merged.reservas, days).filter(r =>
     (!category || r.tipoHabitacion === category) && (!r.habitacionId || filteredRooms.some(h => h.id === r.habitacionId)));
   const assigned = visible.filter(r => r.habitacionId);
+  async function createSelection(preset:CalendarPreset){
+    if(selectionLock.current||loading||(conectado&&(!data||error)))return;
+    const room=rooms.find(r=>r.id===preset.habitacionId);if(!room)return;
+    const message=calendarRangeError(room,preset.entrada,preset.salida,merged.reservas,fechaHoyISO());
+    if(message){setSelectionError(message);return;}
+    selectionLock.current=true;setSelectionBusy(true);setSelectionError('');
+    const c=new AbortController();selectionRequest.current=c;
+    try{
+      if(conectado){
+        if(!preset.tipoHabitacionId)throw Error('No se pudo identificar la categoría de la habitación.');
+        const available=await getAvailableRoomReferences(preset.tipoHabitacionId,preset.entrada,preset.salida,c.signal);
+        if(!available.some(r=>r.numero===room.numero))throw Error('La habitación ya no está disponible para esas fechas. Actualiza el calendario.');
+      }
+      if(!c.signal.aborted)onNueva(preset);
+    }catch(e){if(!c.signal.aborted)setSelectionError(e instanceof Error?e.message:'No se pudo comprobar la disponibilidad.');}
+    finally{selectionLock.current=false;if(!c.signal.aborted)setSelectionBusy(false);}
+  }
   const label = (r: Reserva) => `${r.habitacionId ? `Hab. ${rooms.find(h => h.id === r.habitacionId)?.numero ?? '—'}` : 'Sin asignar'} · ${merged.huespedes.find(h => h.id === r.huespedId)?.nombre ?? 'Huésped'}`;
   const reservationButton = (r: Reserva) => <button key={r.id} data-reservation-code={r.codigo} onClick={() => { setSelectedDay(null); onAbrir(r.id); }}
     aria-label={`${r.codigo}, ${RESERVA_META[r.estado].label}`} title={`${label(r)} · ${r.codigo}`}
@@ -94,10 +118,10 @@ export default function CalendarioReservas({ conectado = false, reservas, huespe
     <div className="mb-3 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
       <h2 className="text-xl font-semibold">Calendario de reservas</h2>
       <div aria-hidden="true" className="col-span-2 row-start-2 h-10 w-36 justify-self-center md:col-span-1 md:col-start-2 md:row-start-1" />
-      <button onClick={onNueva} className="relative top-1 col-start-2 row-start-1 h-10 justify-self-end whitespace-nowrap rounded-md bg-[#18345C] px-3 text-sm text-white md:col-start-3">+ Nueva reserva</button>
+      <button disabled={selectionBusy} onClick={()=>onNueva()} className="relative top-1 col-start-2 row-start-1 h-10 justify-self-end whitespace-nowrap rounded-md bg-[#18345C] px-3 text-sm text-white disabled:opacity-40 md:col-start-3">+ Nueva reserva</button>
     </div>
     <div className="relative mb-3 flex shrink-0 flex-wrap items-center gap-3">
-      <div role="group" aria-label="Vista del calendario" className="absolute right-0 top-[52px] flex h-10 overflow-hidden rounded-md border border-[#E5E0D8] text-sm md:top-0">
+      <div role="group" aria-label="Vista del calendario" className="order-last ml-auto flex h-10 overflow-hidden rounded-md border border-[#E5E0D8] text-sm md:absolute md:right-0 md:top-0">
         {([['month', 'Mes'], ['rooms', 'Habitaciones']] as const).map(([value, text]) => <button key={value} aria-pressed={presentation === value} onClick={() => setPresentation(value)} className={`px-3 ${presentation === value ? 'bg-[#18345C] text-white' : ''}`}>{text}</button>)}
       </div>
       <div role="group" aria-label="Navegación del calendario" className="flex h-10 shrink-0 items-center gap-1 text-sm">
@@ -109,6 +133,7 @@ export default function CalendarioReservas({ conectado = false, reservas, huespe
       <label className="flex h-10 items-center gap-2 text-sm">Categoría<select aria-label="Categoría del calendario" value={category} onChange={e => setCategory(e.target.value)} className="h-10 max-w-full rounded-md border border-[#E5E0D8] px-2"><option value="">Todas</option>{[...new Set(rooms.map(h => h.tipo))].map(t => <option key={t}>{t}</option>)}</select></label>
     </div>
     {loading && <p role="status" className="mb-2 text-sm">Consultando reservas…</p>}
+    {selectionError&&<p role="alert" className="mb-2 text-sm text-red-800">{selectionError}</p>}
     {error && <p role="alert" className="mb-2 text-sm text-red-800">{error}{!conectado && " Se conservan las reservas locales."}</p>}
     <div className={`relative isolate min-h-0 w-full min-w-0 flex-1 overflow-auto overscroll-contain ${presentation === 'rooms' ? 'rounded border border-[#E5E0D8]' : ''}`}
       tabIndex={0}
@@ -131,7 +156,7 @@ export default function CalendarioReservas({ conectado = false, reservas, huespe
               className={`absolute h-5 truncate rounded border px-2 text-left text-xs ${RESERVA_META[r.estado].chip}`}><BedDouble size={14} aria-hidden="true" className="mr-1 inline-block align-middle" /> {label(r)}</button>)}
           </div>;
         })}</div>
-      </div> : <ReceptionTimeline days={days} groupByFloor={!floor} reservas={assigned} huespedes={merged.huespedes} habitaciones={filteredRooms} onSelect={r => onAbrir(r.id)} />}
+      </div> : <ReceptionTimeline days={days} groupByFloor={!floor} reservas={assigned} huespedes={merged.huespedes} habitaciones={filteredRooms} onSelect={r => onAbrir(r.id)} onCreate={loading||(conectado&&Boolean(error))?undefined:p=>void createSelection(p)} busy={selectionBusy} />}
     </div>
     <div aria-label="Leyenda de estados" className="mt-2 flex shrink-0 flex-wrap gap-1.5 text-[11px]">{Object.entries(RESERVA_META).map(([key, meta]) => <span key={key} className={`rounded border px-2 py-0.5 ${meta.chip}`}>{meta.label}</span>)}</div>
     {selectedDay && <div className="fixed inset-0 z-50 grid place-items-center bg-[#071D34]/45 p-4" onClick={() => setSelectedDay(null)}>
