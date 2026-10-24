@@ -9,7 +9,7 @@ vi.mock('@/lib/api/operaciones', async original => ({...await original<typeof im
 const call=vi.mocked(operacion);
 const employee={id:51,version:3,nombre:'María O’Neill',correo:'staff@example.test',telefono:'+502 55555555',rol:'RECEPCION',area:null,estado:'ACTIVO',perfil:{salarioBase:3000,turno:'Mañana',historico:'conservar'}};
 beforeEach(()=>{call.mockReset();call.mockImplementation(async(path,method)=>{if(path==='admin/empleados'&&method==='POST')return {empleado:{...employee,id:52},contrasenaTemporal:'isolated-response-only'};if(path==='admin/empleados')return [{...employee,nombreCompleto:employee.nombre}];if(['admin/empleados','admin/catalogos/personal'].includes(path))return [employee,{...employee,id:52,perfil:{}}];throw Error('Unexpected request: '+path);});});
-async function openNew(){render(<CatalogosAdmin initial="personal"/>);const button=await screen.findByRole('button',{name:'Nuevo registro'});await waitFor(()=>expect(button).toBeEnabled());await userEvent.click(button);return screen.getByRole('dialog');}
+async function openNew(){render(<CatalogosAdmin initial="personal"/>);const button=await screen.findByRole('button',{name:'+ Nuevo empleado'});await waitFor(()=>expect(button).toBeEnabled());await userEvent.click(button);return screen.getByRole('dialog');}
 function field(dialog:HTMLElement,name:string){return dialog.querySelector<HTMLInputElement|HTMLSelectElement>(`[name="${name}"]`)!;}
 function fill(dialog:HTMLElement){for(const [name,value] of Object.entries({nombre:'Ana Pérez',correo:'new@example.test',telefono:'55555555'}))fireEvent.change(field(dialog,name),{target:{value}});}
 const posts=()=>call.mock.calls.filter(([,method])=>method==='POST');
@@ -47,7 +47,7 @@ test('backend field errors stay beside their fields without losing the form',asy
 });
 test('demo explicitly disables unavailable employee writes instead of pretending to save',async()=>{
  call.mockRejectedValue(new OperationError('Demo',501,{codigo:'SIMULACION_NO_DISPONIBLE'}));render(<CatalogosAdmin initial="personal"/>);
- expect(await screen.findByText(/Modo demostración/)).toBeVisible();expect(screen.getByRole('button',{name:'Nuevo registro'})).toBeDisabled();expect(screen.queryByRole('dialog')).toBeNull();expect(posts()).toHaveLength(0);
+ expect(await screen.findByText(/Modo demostración/)).toBeVisible();expect(screen.getByRole('button',{name:'+ Nuevo empleado'})).toBeDisabled();expect(screen.queryByRole('dialog')).toBeNull();expect(posts()).toHaveLength(0);
 });
 test('validation preserves valid Unicode names and checks phone, enums, optional labor amounts and dates',()=>{
  const valid={...employee,id:undefined,accesoInicial:'fixture-password-123'};expect(validatePersonal(valid)).toEqual({});
