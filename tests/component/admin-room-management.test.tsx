@@ -26,8 +26,8 @@ beforeEach(() => {
 const posts = () => call.mock.calls.filter(([, method]) => method === 'POST');
 async function openNew(resource = 'habitaciones') {
   render(<CatalogosAdmin initial={resource} resources={[resource]} roomManagement />);
-  await waitFor(() => expect(screen.getByRole('button', { name: '+ Nueva habitación' })).toBeEnabled());
-  await userEvent.click(screen.getByRole('button', { name: '+ Nueva habitación' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: resource === 'habitaciones' ? '+ Nueva habitación' : 'Nuevo registro' })).toBeEnabled());
+  await userEvent.click(screen.getByRole('button', { name: resource === 'habitaciones' ? '+ Nueva habitación' : 'Nuevo registro' }));
   return screen.getByRole('dialog');
 }
 
@@ -156,7 +156,7 @@ test('inventory count failure does not block category editing or pretend there a
   call.mockImplementation(async path => { if (path === 'admin/catalogos/tipos') return [type]; throw new OperationError('Sin conexión', 502); });
   render(<CatalogosAdmin initial="tipos" resources={['tipos']} roomManagement />);
   expect(await screen.findByText('Habitaciones físicas: No disponible')).toBeVisible();
-  expect(screen.getByRole('button', { name: '+ Nueva habitación' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Nuevo registro' })).toBeEnabled();
 });
 
 test('load failure blocks creation without demo fallback; rejected update keeps the form and error', async () => {
