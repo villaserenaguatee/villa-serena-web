@@ -1,3 +1,4 @@
+import SelectPlaceholder from '@/components/common/SelectPlaceholder';
 import {validPublicDate} from "@/lib/publicStayValidation";
 import BilingualDateInput from "@/components/common/BilingualDateInput";
 import {ArrowLeft} from "lucide-react";
@@ -351,7 +352,7 @@ export default function ReservarEstancia({ ofertas, habitaciones, reservas, hues
               </Campo>
               <Campo label="Tipo de documento" error={erroresDatos.tipoDocumento}>
                 <select value={tipoDocumento} onChange={e => setTipoDocumento(e.target.value)} className={INPUT_CLS}>
-                  <option value="">Seleccionar</option>
+                  <SelectPlaceholder/>
                   <option>DPI</option>
 
                 </select>

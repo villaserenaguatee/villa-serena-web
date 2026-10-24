@@ -239,11 +239,11 @@ function PanelDetalle({ hab, solicitudes, usuarioActual, onClose, onComenzarLimp
   return (<div className="absolute inset-0 z-20 flex items-stretch justify-end">
     <div className="absolute inset-0 bg-black/25" onClick={onClose} />
 
-    <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="
+    <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="medium" className="
           relative
           z-10
           w-full
-          sm:max-w-lg
+          sm:max-w-xl
           bg-[#F8F6F0]
           shadow-2xl
           flex
@@ -383,7 +383,7 @@ function PanelDetalle({ hab, solicitudes, usuarioActual, onClose, onComenzarLimp
             <div className="h-full rounded-full bg-[#18345C] transition-all" style={{ width: `${porcentaje}%` }} />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+          <div data-cleaning-task-grid className="grid w-full grid-cols-1 min-[400px]:grid-cols-2 gap-1.5">
             {tareasNormales.map((t) => renderTarea(t))}
           </div>
 
@@ -546,12 +546,7 @@ export default function Mapa({ habitaciones, solicitudes, onComenzarLimpieza, on
     }
     return h.estado!=='fuera-servicio' && obtenerEstadoLimpieza(h) === filtroEstado;
   });
-  const stats = {
-    limpias: habitaciones.filter((h) => obtenerEstadoLimpieza(h) === "limpia").length,
-    pendientes: habitaciones.filter((h) => h.estado!=='fuera-servicio' && obtenerEstadoLimpieza(h) === "pendiente").length,
-    enLimpieza: habitaciones.filter((h) => obtenerEstadoLimpieza(h) === "en-limpieza").length,
-    prioritarias: habitaciones.filter((h) => esPrioritaria(h)).length,
-  };
+
   if (soloDetalle) {
     const habDetalle = habitaciones.find((h) => h.numero === habitacionInicialNumero && h.personal === usuarioActual);
     if (!habDetalle)
@@ -579,149 +574,12 @@ export default function Mapa({ habitaciones, solicitudes, onComenzarLimpieza, on
       `}
     </style>
 
-    <div data-vs-page-header="limpieza" className="
-          px-4
-          sm:px-6
-          py-4
-          bg-white
-          border-b
-          border-[#E5E0D8]
-          shrink-0
-        ">
-      <div className="
-            flex
-            items-center
-            justify-between
-            gap-4
-            flex-wrap
-            mb-4
-          ">
-        <div>
-          <h1 data-vs-page-title="limpieza" className="
-                text-xl
-                sm:text-2xl
-                font-semibold
-                text-[#18345C]
-              ">
-            Mapa de habitaciones
-          </h1>
-
-          <p className="text-xs text-[#AEBCC1] mt-1">
-            {habitaciones.length} habitaciones
-          </p>
-        </div>
-
-        <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:grid-cols-4">
-          {[
-            {
-              label: "Limpias",
-              val: stats.limpias,
-              color: "#4ADE80",
-              fondo: "#F0FAF4",
-              filtro: "limpia" as FiltroEstado,
-            },
-            {
-              label: "Pendientes",
-              val: stats.pendientes,
-              color: "#F3D98B",
-              fondo: "#FFF9E8",
-              filtro: "pendiente" as FiltroEstado,
-            },
-            {
-              label: "En limpieza",
-              val: stats.enLimpieza,
-              color: "#60A5FA",
-              fondo: "#EFF6FF",
-              filtro: "en-limpieza" as FiltroEstado,
-            },
-            {
-              label: "Prioritarias",
-              val: stats.prioritarias,
-              color: "#D8B94E",
-              fondo: "#FFF8DD",
-              filtro: "prioritarias" as FiltroEstado,
-            },
-          ].map((s) => (<button
-            key={s.label}
-            type="button"
-            onClick={() => setFiltroEstado(s.filtro)}
-            className={`min-w-[112px] rounded-xl border px-3 py-2.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm ${filtroEstado === s.filtro ? 'border-[#18345C] ring-1 ring-[#18345C]' : 'border-[#E5E0D8]'}`}
-            style={{ backgroundColor: s.fondo }}>
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.color }} />
-              <span className="text-[11px] font-medium text-[#71839B]">
-                {s.label}
-              </span>
-            </div>
-            <p className="mt-1 text-2xl font-bold leading-none text-[#18345C]">
-              {s.val}
-            </p>
-          </button>))}
-        </div>
-      </div>
-
-      <div className="flex gap-2 flex-wrap mb-2">
-        {(["todos", ...Array.from(new Set(habitaciones.map(h=>h.piso))).sort((a,b)=>a-b).map(String)]).map((p) => (<button
-          key={p}
-          onClick={() => setFiltroPiso(p)}
-          className={`
-                  px-3
-                  py-2
-                  text-xs
-                  rounded-md
-                  font-medium
-                  transition-colors
-
-                  ${filtroPiso === p
-              ? "bg-[#18345C] text-white"
-              : "bg-[#F8F6F0] text-[#6B7280] hover:bg-[#E5E0D8]"}
-                `}>
-          {p === "todos" ? "Todos" : `Piso ${p}`}
-        </button>))}
-      </div>
-
-      <div className="flex gap-2 flex-wrap">
-        {([
-          {
-            val: "todos",
-            label: "Todos",
-          },
-          {
-            val: "limpia",
-            label: "Limpias",
-          },
-          {
-            val: "pendiente",
-            label: "Pendientes",
-          },
-          {
-            val: "en-limpieza",
-            label: "En limpieza",
-          },
-          {
-            val: "prioritarias",
-            label: "Prioritarias",
-          },
-        ] as {
-          val: FiltroEstado;
-          label: string;
-        }[]).map((f) => (<button
-          key={f.val}
-          onClick={() => setFiltroEstado(f.val)}
-          className={`
-                  px-3
-                  py-2
-                  text-xs
-                  rounded-md
-                  font-medium
-                  transition-colors
-
-                  ${filtroEstado === f.val
-              ? "bg-[#D8B94E] text-[#102747]"
-              : "bg-[#F8F6F0] text-[#6B7280] hover:bg-[#E5E0D8]"}
-                `}>
-          {f.label}
-        </button>))}
+    <div data-vs-page-header="limpieza" className="shrink-0 border-b border-[#E5E0D8] bg-white px-4 py-4 sm:px-6">
+      <h1 data-vs-page-title="limpieza" className="text-xl font-semibold text-[#18345C] sm:text-2xl">Mapa de habitaciones</h1>
+      <p className="mt-1 text-xs text-[#AEBCC1]">{habitaciones.length} habitaciones</p>
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <label className="text-sm font-medium text-[#18345C]">Piso<select value={filtroPiso} onChange={e=>setFiltroPiso(e.target.value)} className="mt-1 block h-10 w-full rounded-md border border-[#E5E0D8] bg-white px-3 text-sm font-normal text-[#18345C] sm:w-44"><option value="todos">Todos los pisos</option>{Array.from(new Set(habitaciones.map(h=>h.piso))).sort((a,b)=>a-b).map(piso=><option key={piso} value={String(piso)}>Piso {piso}</option>)}</select></label>
+        <label className="text-sm font-medium text-[#18345C]">Estado de limpieza<select value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value as FiltroEstado)} className="mt-1 block h-10 w-full rounded-md border border-[#E5E0D8] bg-white px-3 text-sm font-normal text-[#18345C] sm:w-48">{([['todos','Todos los estados'],['limpia','Limpias'],['pendiente','Pendientes'],['en-limpieza','En limpieza'],['prioritarias','Prioritarias']] as const).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
       </div>
     </div>
 
@@ -765,7 +623,7 @@ export default function Mapa({ habitaciones, solicitudes, onComenzarLimpieza, on
       })}
 
       {filtradas.length === 0 && (<div className="text-center py-6 text-[#AEBCC1] text-sm">
-        No hay habitaciones que coincidan con los filtros seleccionados.
+        No hay habitaciones que coincidan con los filtros
       </div>)}
     </div>
     {habitacionSeleccionada && detalleConectado ? detalleConectado(habitaciones.find(h=>h.id===habitacionSeleccionada.id)??habitacionSeleccionada,()=>setHabitacionSeleccionada(null)) : habitacionSeleccionada && (<PanelDetalle

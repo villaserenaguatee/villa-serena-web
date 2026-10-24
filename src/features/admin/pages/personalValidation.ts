@@ -5,7 +5,7 @@ export function validatePersonal(d: PersonalDraft, serverPassword = false): Pers
   const errors: PersonalErrors = {};
   const text = (key: string) => typeof d[key] === 'string' ? (d[key] as string).trim() : '';
   for (const key of ['nombre', 'correo', 'telefono', 'rol', 'estado']) {
-    if (!text(key)) errors[key] = 'Complete este campo';
+    if (!text(key)) errors[key] = key==='rol'?'Selecciona un rol para continuar':key==='estado'?'Selecciona un estado para continuar':'Complete este campo';
   }
   if (text('nombre').length > 150) errors.nombre = 'Use hasta 150 caracteres';
   if (text('correo') && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text('correo')) || text('correo').length > 150)) errors.correo = 'Ingrese un correo electrónico válido';

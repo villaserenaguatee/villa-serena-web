@@ -80,6 +80,8 @@ export default function Solicitudes({
   busy = false,
 }: Props) {
   const [detalleLocal, setDetalleLocal] = useState<string | null>(null);
+  const [detalleRemotoId, setDetalleRemotoId] = useState<number | null>(null);
+  const detalleRemoto = solicitudesConectadas.find(s => s.id === detalleRemotoId);
   const solicitudesLimpieza = solicitudes
     .filter(s => s.tipo === 'limpieza')
     .sort((a,
@@ -185,6 +187,7 @@ export default function Solicitudes({
                       </div>
                     </div>
 
+                    <button type="button" onClick={()=>setDetalleRemotoId(sol.id)} className="w-full sm:w-auto rounded-md border border-[#18345C] px-4 py-2.5 text-sm font-semibold text-[#18345C]">Ver detalles</button>
                     {sol.estado === 'PENDIENTE' && (
                       <button
                         type="button"
@@ -303,6 +306,7 @@ export default function Solicitudes({
       </div>)
       )}
     </div>
+    {detalleRemoto && <div className="fixed inset-0 z-[70] grid place-items-center bg-[#071D34]/45 p-4"><section role="dialog" aria-modal="true" aria-label="Detalle de solicitud" className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-5 text-[#18345C]"><header className="flex items-start justify-between gap-3"><h2 className="text-xl font-semibold">Habitación {detalleRemoto.habitacion.numero}</h2><button type="button" aria-label="Cerrar detalle" onClick={()=>setDetalleRemotoId(null)}>×</button></header><p className="mt-2">Piso {detalleRemoto.habitacion.piso} · {detalleRemoto.estado === 'PENDIENTE' ? 'Pendiente' : 'En proceso'}</p>{detalleRemoto.comentario && <p className="mt-3 break-words">{detalleRemoto.comentario}</p>}{detalleRemoto.articulos?.map(a=><p key={a.articuloId}>{a.cantidad} × {a.nombre}</p>)}{detalleRemoto.empleadoACargo && <p className="mt-3">Responsable: {detalleRemoto.empleadoACargo.nombre}</p>}<div className="mt-4 flex flex-wrap justify-end gap-3"><button type="button" onClick={()=>setDetalleRemotoId(null)} className="rounded-lg border px-4 py-2">Cerrar</button>{detalleRemoto.estado === 'PENDIENTE' && <button disabled={busy} className="rounded-lg bg-[#18345C] px-4 py-2 text-white disabled:opacity-50" onClick={()=>onTomarSolicitud?.(detalleRemoto.id)}>Tomar solicitud</button>}{detalleRemoto.estado === 'EN_PROCESO' && estaACargo?.(detalleRemoto.empleadoACargo) && <button disabled={busy} className="rounded-lg bg-[#18345C] px-4 py-2 text-white disabled:opacity-50" onClick={()=>onAtenderSolicitud?.(detalleRemoto.id)}>Marcar atendida</button>}</div></section></div>}
     {detalle && <div className="fixed inset-0 z-[70] flex items-end justify-end bg-[#071D34]/45" onMouseDown={cerrarDetalle}>
       <aside data-vs-ui="compact" data-vs-drawer="compact" className="h-full w-full max-w-lg overflow-y-auto bg-white shadow-2xl" onMouseDown={e => e.stopPropagation()}>
         <div className="sticky top-0 z-10 flex items-start justify-between border-b bg-white p-5">

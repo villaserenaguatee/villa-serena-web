@@ -1,3 +1,4 @@
+import SelectPlaceholder from '@/components/common/SelectPlaceholder';
 import { useState } from 'react';
 import type { OrdenTrabajo, Repuesto } from '@/lib/pms/types';
 import { formatoFecha, formatoFechaHora, formatoDuracion } from '@/data/pms';
@@ -442,7 +443,7 @@ function FormRepuesto({ repuestos, onGuardar, onCancelar, }: {
     </div>
     {!manual ? <><Campo label="Repuesto" error={errores.id}>
       <select value={id} onChange={e => setId(e.target.value)} className={INPUT_CLS}>
-        <option value="">Seleccionar…</option>
+        <SelectPlaceholder/>
         {repuestos.map(r => <option key={r.id} value={r.id}>
           {r.nombre}
         </option>)}

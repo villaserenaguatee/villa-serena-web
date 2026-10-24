@@ -1,3 +1,4 @@
+import SelectPlaceholder from '@/components/common/SelectPlaceholder';
 import { useState } from 'react';
 import type { Activo, TipoAveria, PrioridadIncidencia } from '@/lib/pms/types';
 import { HABITACIONES_HOTEL } from '@/data/pms';
@@ -105,7 +106,7 @@ export default function NuevaOrdenModal({ activos, habitaciones, onCerrar, onGua
               setErrores(x => ({ ...x, ubicacion: undefined }));
             }}
             className={INPUT_CLS}>
-            <option value="">Seleccionar…</option>
+            <SelectPlaceholder/>
             {(habitaciones?habitaciones.filter(h=>String(h.piso)===piso).map(h=>h.numero):HABITACIONES_HOTEL.filter(n=>String(n).startsWith(piso))).map(n => <option key={n} value={n}>Habitación {n}</option>)}
           </select>
         </Campo>
@@ -130,7 +131,7 @@ export default function NuevaOrdenModal({ activos, habitaciones, onCerrar, onGua
             setErrores(x => ({ ...x, tipo: undefined }));
           }}
           className={INPUT_CLS}>
-          <option value="">Seleccionar…</option>
+          <SelectPlaceholder/>
           {TIPOS_AVERIA.map(t => (<option key={t} value={t}>
             {t}
           </option>))}

@@ -1,3 +1,4 @@
+import RoomInformationDialog from './RoomInformationDialog';
 import { useEffect, useMemo, useState } from 'react';
 import type { HabitacionHotel, Reserva, Huesped, EstadoHabHotel } from '@/lib/pms/types';
 import { formatoFecha } from '@/data/pms';
@@ -6,6 +7,8 @@ import { BedIcon } from '@/features/admin/pages/adminUtils';
 import { publicRoomForHotelType } from '@/data/publicRooms';
 interface Props {
   conectado?: boolean;
+  onEditarHabitacion?: (id:string)=>void;
+  detalles?:Record<string,{descripcion?:string;fotos?:string[];servicios?:string[]}>;
   condiciones?:Record<string,string>;
   estadosCatalogo?:Record<string,string>;
   fotos?: Record<string,string>;
@@ -15,10 +18,11 @@ interface Props {
   onCambiarEstadoHab?: (id: string, estado: EstadoHabHotel) => void;
 }
 const ESTADOS: EstadoHabHotel[] = ['disponible', 'reservada', 'ocupada', 'en-limpieza', 'mantenimiento'];
-export default function PanelHabitaciones({ habitaciones, reservas, huespedes, onCambiarEstadoHab, conectado=false, fotos, condiciones, estadosCatalogo, }: Props) {
+export default function PanelHabitaciones({ habitaciones, reservas, huespedes, onCambiarEstadoHab, onEditarHabitacion, detalles, conectado=false, fotos, condiciones, estadosCatalogo, }: Props) {
   const [ahora, setAhora] = useState<Date | null>(null);
   const [piso, setPiso] = useState<'todos' | 1 | 2 | 3>('todos');
   const [filtro, setFiltro] = useState<EstadoHabHotel | 'todas'>('todas');
+  const [editando,setEditando]=useState(false);
   const [seleccionada, setSeleccionada] = useState<HabitacionHotel | null>(null);
   useEffect(() => {
     setAhora(new Date());
@@ -42,21 +46,21 @@ export default function PanelHabitaciones({ habitaciones, reservas, huespedes, o
     return <button
       type="button"
       key={h.id}
-      onClick={() => setSeleccionada(h)}
-      className="text-left bg-white border border-[#E5E0D8] rounded-xl overflow-hidden hover:border-[#B38719] hover:shadow-md transition-shadow">
-      {visual && <img src={visual.image} alt={`Habitación ${h.numero}`} className="w-full h-32 object-cover" />}
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <span className="w-10 h-10 rounded-lg bg-[#F8F6F0] flex items-center justify-center text-[#18345C]">
+      onClick={() => {setEditando(false);setSeleccionada(h);}}
+      className="text-left flex flex-col min-w-0 w-full bg-white border border-[#E5E0D8] rounded-xl p-3 hover:border-[#B38719] hover:shadow-md transition-shadow">
+      {visual?.image ? <img src={visual.image} alt={`Habitación ${h.numero}`} className="w-full h-[88px] shrink-0 rounded-lg mb-2 object-cover" /> : <div className="flex h-[88px] shrink-0 w-full items-center justify-center gap-2 rounded-lg mb-2 bg-[#F8F6F0] text-sm text-[#6B7280]"><BedIcon size={24}/><span>Sin fotografía disponible</span></div>}
+      <div>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <div className="flex items-center gap-2">
+            <span className="w-8 h-8 rounded-lg bg-[#F8F6F0] flex items-center justify-center shrink-0 text-[#18345C]">
               <BedIcon size={18} />
             </span>
-            <div>
-              <p className="text-[22px] font-bold text-[#18345C] leading-none">
+              <p className="text-[28px] font-semibold text-[#18345C] leading-none">
                 {h.numero}
               </p>
-              <p className="text-[12px] text-[#AEBCC1] mt-0.5">{h.tipo} · Piso {h.piso}</p>
             </div>
+              <p className="text-[14px] text-[#6B7280] mt-1 ml-10">{h.tipo} · Piso {h.piso}</p>
           </div>
           <Chip cls={meta.chip}>
             {conectado&&h.estado==='disponible'?'Libre':meta.label}
@@ -116,14 +120,15 @@ export default function PanelHabitaciones({ habitaciones, reservas, huespedes, o
             <h2 className="text-xl font-semibold text-[#18345C]">Piso {p}</h2>
             <span className="text-sm text-[#71839B]">{delPiso.length} habitaciones</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid auto-rows-fr gap-3" style={{gridTemplateColumns:'repeat(auto-fill,minmax(min(100%,max(232px,calc((100% - 36px)/4))),1fr))'}} >
             {delPiso.map(tarjetaHabitacion)}
           </div>
         </section>;
       })}
     </div>
 
-    {seleccionada && (<div
+    {seleccionada&&!editando&&<RoomInformationDialog numero={seleccionada.numero} tipo={seleccionada.tipo} estado={conectado&&seleccionada.estado==='disponible'?'Libre':HAB_META[seleccionada.estado].label} piso={seleccionada.piso} capacidad={seleccionada.capacidad} precio={seleccionada.precioNoche} descripcion={detalles?.[seleccionada.id]?.descripcion} servicios={detalles?.[seleccionada.id]?.servicios} fotos={detalles?.[seleccionada.id]?.fotos??(fotos?.[seleccionada.id]?[fotos[seleccionada.id]]:[])} onClose={()=>setSeleccionada(null)} onEdit={onEditarHabitacion?()=>{onEditarHabitacion(seleccionada.id);setSeleccionada(null);}:onCambiarEstadoHab?()=>setEditando(true):undefined}/>}
+    {seleccionada && editando && (<div
       className="fixed inset-0 z-50 flex items-end justify-center bg-[#071D34]/50 sm:items-center sm:p-4"
       onMouseDown={e => {
         if (e.target === e.currentTarget)

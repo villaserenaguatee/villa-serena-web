@@ -13,7 +13,7 @@ test('three official indicators use real denominator and approved-income total; 
  render(<ReportesConectados/>);const panel=await screen.findByRole('region',{name:'Indicadores principales'});
  expect(within(panel).getByText('25.00 %')).toBeVisible();expect(within(panel).getByText('2 / 8 habitaciones activas')).toBeVisible();expect(within(panel).getByText('Q 1,200.00')).toBeVisible();expect(within(panel).getByText('6')).toBeVisible();
  expect(within(panel).getByText(/Booking: 1/)).toBeVisible();expect(panel.children).toHaveLength(3);
- expect(screen.getByRole('heading',{name:'Reservas registradas'})).toBeVisible();expect(screen.getByRole('button',{name:'Exportar CSV'})).toBeEnabled();
+ expect(screen.getByRole('heading',{name:'Reservas registradas'})).toBeVisible();expect(screen.getByRole('button',{name:'Exportar Excel'})).toBeEnabled();
  const request=call.mock.calls.find(([path])=>path.startsWith('admin/indicadores'))![0];const query=new URLSearchParams(request.split('?')[1]);expect(query.get('inicio')).toMatch(/-01$/);expect(query.get('fin')).toBeTruthy();expect(query.has('desde')).toBe(false);
 });
 test('invalid date range shows an inline error and does not issue either request',async()=>{

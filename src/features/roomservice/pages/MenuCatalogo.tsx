@@ -81,7 +81,7 @@ export default function MenuCatalogo({ menu, onMarcarAgotado, onReactivar, categ
 
     <div className="px-4 py-5 sm:px-6">
 
-      <div className="mb-5">
+      <div className="mb-3">
         <div className="flex flex-wrap gap-2">
           {categorias.map((itemCategoria) => (<button
             key={itemCategoria}
@@ -92,7 +92,7 @@ export default function MenuCatalogo({ menu, onMarcarAgotado, onReactivar, categ
                   whitespace-nowrap
                   rounded-lg
                   border
-                  px-5
+                  px-4
                   text-[14px]
                   font-semibold
                   transition-colors
@@ -105,8 +105,8 @@ export default function MenuCatalogo({ menu, onMarcarAgotado, onReactivar, categ
         </div>
       </div>
 
-      {subcategorias.length > 0 && (<div data-vs-card="roomservice" className="mb-5 rounded-xl border border-[#E5E0D8] bg-white p-4">
-        <p className="mb-3 text-[12px] font-semibold uppercase tracking-wider text-[#71839B]">
+      {subcategorias.length > 0 && (<div data-vs-card="roomservice" className="mb-3 rounded-xl border border-[#E5E0D8] bg-white p-3">
+        <p className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-[#71839B]">
           {nombreCategoria(categoria)}
         </p>
 
@@ -150,7 +150,7 @@ export default function MenuCatalogo({ menu, onMarcarAgotado, onReactivar, categ
         </div>
       </div>)}
 
-      <div className="mb-5">
+      <div className="mb-3">
         <div className="relative max-w-md">
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 text-[#71839B]"
@@ -189,19 +189,19 @@ export default function MenuCatalogo({ menu, onMarcarAgotado, onReactivar, categ
         <p className="text-[15px] text-[#71839B]">
           No se encontraron productos.
         </p>
-      </div>) : (<div className="space-y-3">
+      </div>) : (<div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
         {visibles.map((item) => (<article data-vs-card="roomservice"
           key={item.id}
           className="
                   flex
                   flex-col
-                  gap-4
+                  gap-3
                   rounded-xl
                   border
                   border-[#E5E0D8]
                   bg-white
                   px-5
-                  py-4
+                  py-3
                   transition-shadow
                   hover:shadow-sm
                   sm:flex-row

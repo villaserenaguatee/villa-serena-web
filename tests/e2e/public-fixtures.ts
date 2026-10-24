@@ -55,7 +55,7 @@ export async function fillGuest(page: Page, email = 'issue48@example.test', firs
   await page.getByLabel('Apellidos', { exact: true }).fill('Reserva');
   await page.getByLabel('Número de documento', { exact: true }).fill('1234567890123');
   await page.getByLabel('Correo electrónico', { exact: true }).fill(email);
-  await page.locator('.phone-number-input').fill('55555555');
+  await page.getByRole('textbox', { name: 'Teléfono', exact: true }).fill('55555555');
 }
 
 export async function reviewGuest(page: Page) {

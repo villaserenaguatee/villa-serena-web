@@ -1,3 +1,4 @@
+import SelectPlaceholder from '@/components/common/SelectPlaceholder';
 import { approvedExperienceEnglish } from "./approvedExperienceEnglish";
 import { leerReservas } from "@/store/reservationStore";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
@@ -573,9 +574,7 @@ export default function ReservasExperiencias({ connected=false,reserva, huespedI
 
               <select value={hora} onChange={(e) => setHora(e.target.value)} className="mt-1 w-full rounded-lg border border-[#D7DCE2] p-3 font-normal">
 
-                <option value="">
-                  {ui("Seleccionar horario")}
-                </option>
+                <SelectPlaceholder/>
 
                 {horas.map((t) => (<option key={t.id} value={t.id}>
                   {t.hora} ·{" "}

@@ -1,4 +1,6 @@
 'use client';
+import SidebarBrand from '@/components/common/SidebarBrand';
+import StaffSidebarIdentity from '@/components/common/StaffSidebarIdentity';
 import ApprovedCleaningDetail from './ApprovedCleaningDetail';
 import {useRoomTypeImages} from '@/lib/useRoomTypeImages';
 import { useEffect, useState } from 'react';
@@ -107,18 +109,9 @@ function Sidebar({ pantalla, setPantalla, solPendientes, incPendientes, onCambia
     return () => window.removeEventListener('vs-profile-updated', actualizar);
   },
     [perfilKey,nombreLimpieza,user?.staff]);
-  const iniciales = perfil.nombre.split(/\s+/).filter(Boolean).map(x => x[0]).slice(0, 2).join('').toUpperCase();
   return (<nav data-vs-sidebar="limpieza" className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
 
-    <div className="px-5 pt-6 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
-      <img src="/villa-serena-logo.png" alt="Villa Serena" className="mx-auto h-24 w-32 object-contain mb-3" />
-      <p className="text-white text-xl font-bold leading-tight" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif', letterSpacing: '0.02em' }}>
-        Villa Serena
-      </p>
-      <p className="text-xs mt-1" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>
-        Limpieza
-      </p>
-    </div>
+    <div className="shrink-0 border-b px-[22px] pb-5 pt-6" style={{borderColor:'#1d3a5f'}}><SidebarBrand module="Limpieza"/></div>
 
     <div className="vs-scroll-clean flex-1 py-3 overflow-y-auto">
       {PANTALLAS.map(id => {
@@ -150,20 +143,7 @@ function Sidebar({ pantalla, setPantalla, solPendientes, incPendientes, onCambia
       <button
         onClick={onEditarPerfil}
         className="w-full min-h-16 flex items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-[#18345C] transition-colors"
-        title="Abrir mi perfil">
-        {perfil.foto ? <img src={perfil.foto} alt={perfil.nombre} className="h-9 w-9 shrink-0 rounded-full object-cover" /> : <div
-          className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
-          style={{ backgroundColor: '#D8B94E', color: '#102747' }}>
-          {iniciales}
-        </div>}
-        <div className="min-w-0 flex-1">
-          <p className="text-white text-xs font-semibold truncate">
-            {perfil.nombre}
-          </p>
-          <p className="text-[10px] truncate" style={{ color: '#AEBCC1' }}>Limpieza · turno {empleadoLimpieza?.turno ?? '—'}</p>
-          <p className="text-[14px] leading-5 no-underline" style={{ color: '#D8B94E' }}>Perfil</p>
-        </div>
-      </button>
+        title="Abrir mi perfil"><StaffSidebarIdentity/></button>
     </div>
   </nav>);
 }
@@ -190,6 +170,7 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
   const [objetos, setObjetos] = useState<ObjetoOlvidado[]>([]);
   const [historial, setHistorial] = useState<EntradaHistorial[]>([]);
   const [habitacionAbrir, setHabitacionAbrir] = useState<string | null>(null);
+  const [errorLimpieza, setErrorLimpieza] = useState('');
   const [solicitudAbrir, setSolicitudAbrir] = useState<string | null>(null);
   const [usuarioActual, setUsuarioActual] = useState(nombreLimpieza);
   const [toasts, setToasts] = useState<SolicitudAviso[]>([]);
@@ -238,7 +219,11 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
       if (!automaticas.length)
         return;
       setSolicitudes(actuales => [...automaticas, ...actuales.filter(a => !automaticas.some(s => s.id === a.id))]);
-      setHabitaciones(actuales => actuales.map(h => automaticas.some(s => s.habitacionNumero === h.numero && s.estado !== 'finalizada') ? { ...h, estado: 'pendiente' as EstadoHabitacion } : h));
+      setHabitaciones(actuales => actuales.map(h => {
+        const solicitud = automaticas.find(s => s.habitacionNumero === h.numero && s.estado !== 'finalizada');
+        if (!solicitud) return h;
+        return { ...h, estado: solicitud.estado === 'en-proceso' || solicitud.estado === 'en-limpieza' || h.estado === 'en-limpieza' ? 'en-limpieza' as const : 'pendiente' as const };
+      }));
     };
     incorporar();
     const evento = () => incorporar();
@@ -283,17 +268,20 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
   function finalizarLimpieza(id: string) {
     const hora = horaActual();
     const hab = habitaciones.find(h => h.id === id);
-    setHabitaciones(hs => hs.map(h => h.id === id
+    if (!hab || hab.estado !== 'en-limpieza' || hab.personal !== usuarioActual || !hab.tareas.length || !hab.tareas.every(t => t.completada)) return;
+    const siguientes = habitaciones.map(h => h.id === id
       ? {
         ...h,
         estado: 'limpia' as EstadoHabitacion,
         finalizadaEn: hora,
         tareas: h.tareas.map(t => ({ ...t, completada: true })),
       }
-      : h));
+      : h);
+    guardarEstadoLimpieza(siguientes);
+    setHabitaciones(siguientes);
     if (hab) {
       setSolicitudes(ss => ss.map(s => {
-        if (s.tipo !== 'limpieza' || s.habitacionNumero !== hab.numero || (s.estado !== 'pendiente' && s.estado !== 'en-limpieza'))
+        if (s.tipo !== 'limpieza' || s.habitacionNumero !== hab.numero || (s.estado !== 'pendiente' && s.estado !== 'en-limpieza' && s.estado !== 'en-proceso'))
           return s;
         const actualizada = { ...s, estado: 'finalizada' as const, horaEntrega: hora };
         actualizarTareaLimpiezaSalida(actualizada);
@@ -363,6 +351,12 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
     habitacionNumero: string) {
     const sol = solicitudes.find(s => s.id === solicitudId);
     const hab = habitaciones.find(h => h.numero === habitacionNumero);
+    if (!sol || !hab || (hab.personal && hab.personal !== usuarioActual)) {
+      setErrorLimpieza(!hab ? 'No se encontró la habitación de esta solicitud.' : 'No se puede continuar esta solicitud: comprueba su responsable y estado.');
+      return;
+    }
+    setErrorLimpieza('');
+    setHabitaciones(hs => hs.map(h => h.id === hab.id ? { ...h, personal: usuarioActual, estado: 'en-limpieza' as EstadoHabitacion } : h));
     if (sol?.estado === 'pendiente') {
       setSolicitudes(ss => ss.map(s => {
         if (s.id !== solicitudId)
@@ -445,6 +439,7 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
           busy={remoto.busy} />);
       case 'mapa':
         return (<Mapa
+          usuarioActual={usuarioActual}
           habitaciones={conectado ? remoto.mapa.map(h=>({id:String(h.id),numero:h.numero,piso:h.piso,tipo:h.tipo,estado:h.condicion==='FUERA_DE_SERVICIO'?'fuera-servicio':h.condicion==='LIMPIA'?'limpia':h.condicion==='EN_LIMPIEZA'?'en-limpieza':'pendiente',personal:h.responsable,proximaLlegada:null,tareas:[],observaciones:'',foto:roomTypeImages[h.tipo]??'',ocupacion:h.ocupacion,condicionReal:h.condicion,empleadoId:h.empleadoId})) : habitaciones}
           detalleConectado={conectado ? (h,cerrar)=><ApprovedCleaningDetail hab={h} onClose={cerrar}><p className="mt-3">{h.tipo} · Piso {h.piso}</p><p className="mt-3">{h.ocupacion==='OCUPADA'?'Ocupada':h.condicionReal==='FUERA_DE_SERVICIO'?'Fuera de servicio':'Libre'} · {h.condicionReal==='LIMPIA'?'Limpia':h.condicionReal==='SUCIA'?'Pendiente':h.condicionReal==='FUERA_DE_SERVICIO'?'Fuera de servicio':'En limpieza'}</p>{h.personal&&<p className="mt-3">Responsable: {h.personal}</p>}<div className="mt-6 flex gap-3 flex-wrap">{h.ocupacion==='LIBRE'&&h.condicionReal==='SUCIA'&&<button disabled={remoto.busy} onClick={()=>void remoto.iniciar(Number(h.id))} className="rounded-lg bg-[#18345C] text-white px-4 py-2">Iniciar limpieza</button>}{h.condicionReal==='EN_LIMPIEZA'&&remoto.estaACargo({id:h.empleadoId??undefined})&&<><button disabled={remoto.busy} onClick={()=>void remoto.interrumpir(Number(h.id))} className="border rounded-lg px-4 py-2">Interrumpir limpieza</button><button disabled={remoto.busy} onClick={()=>void remoto.terminar(Number(h.id))} className="rounded-lg bg-[#18345C] text-white px-4 py-2">Finalizar limpieza</button></>}<button onClick={()=>{cerrar();setPantalla('incidencias');}} className="border border-[#18345C] rounded-lg px-4 py-2">Reportar incidencia</button></div>{remoto.error&&<p role="alert" className="mt-4 text-red-700">{remoto.error}</p>}</ApprovedCleaningDetail> : undefined}
           solicitudes={solicitudes}
@@ -470,7 +465,12 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
           estaACargo={remoto.estaACargo}
           busy={remoto.busy} />);
       case 'incidencias': return conectado ? <IncidenciasConectadas soloReportar/> : <Incidencias incidencias={incidencias} habitaciones={habitaciones} onRegistrar={registrarIncidencia} />;
-      case 'objetos': return conectado ? <ObjetosLimpiezaConectados/> : <Objetos objetos={objetos} habitaciones={habitaciones} onRegistrar={registrarObjeto} />;
+      case 'objetos': return conectado ? <ObjetosLimpiezaConectados/> : <Objetos objetos={objetos} habitaciones={habitaciones} onRegistrar={registrarObjeto} onEditar={obj => {
+        const actual = leerObjetosOlvidados().find(o => o.id === obj.id);
+        if (!actual || actual.estado === 'devuelto') return Promise.resolve(false);
+        registrarObjetoOlvidado({ ...actual, descripcion: obj.descripcion, foto: obj.foto, habitacionNumero: obj.habitacionNumero, observaciones: obj.observaciones });
+        return Promise.resolve(true);
+      }} />;
       case 'historial': if(conectado)return <HistorialSolicitudesConectado/>;return <Historial historial={historial} habitaciones={habitaciones} usuarioActual={usuarioActual} />;
     }
   })();
@@ -512,10 +512,7 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
       <div data-vs-shell-main="limpieza" className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
 
         <div className="lg:hidden flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: '#102747' }}>
-          <p className="text-white text-lg font-bold" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-            Villa Serena
-          </p>
-          <span className="text-[#AEBCC1] text-xs">·</span>
+          <div className="min-w-0 shrink-0"><SidebarBrand module="Limpieza"/></div>
           <p className="text-[#AEBCC1] text-xs font-medium truncate flex-1">
             {NAV_LABELS_SIDEBAR[pantalla]}
           </p>
@@ -540,9 +537,11 @@ export default function App({ onCambiarModulo, conectado = false }: Props = {}) 
           )}
 
           <div className="flex-1 flex overflow-hidden relative">
+            {errorLimpieza && <p role="alert" className="absolute top-0 inset-x-0 z-50 bg-red-50 p-3 text-red-800">{errorLimpieza}</p>}
             {screenContent}
 
             {(pantalla === 'solicitudes' || pantalla === 'inicio') && habitacionAbrir && (<Mapa
+              usuarioActual={usuarioActual}
               habitaciones={habitaciones}
               solicitudes={solicitudes}
               onComenzarLimpieza={comenzarLimpieza}

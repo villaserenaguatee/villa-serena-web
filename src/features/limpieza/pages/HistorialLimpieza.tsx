@@ -119,13 +119,13 @@ export default function Historial({ historial, habitaciones, usuarioActual = 'Pe
       </div>}
     </header>
     <main className="p-4 sm:p-6">
-      {visibles.length ? <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      {visibles.length ? <div className="grid grid-cols-1 gap-3">
         {visibles.map(e => {
           const h = habitaciones.find(x => x.numero === e.habitacionNumero);
-          return <article data-vs-card="limpieza" key={e.id} className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-white sm:flex">
-            <img src={h?.foto || '/villa-serena-logo.png'} alt={`Habitación ${e.habitacionNumero}`} className="h-44 w-full object-cover sm:h-auto sm:w-48" />
+          return <article data-vs-card="limpieza" key={e.id} className="flex overflow-hidden rounded-xl border border-[#E5E0D8] bg-white">
+            <img src={h?.foto || '/villa-serena-logo.png'} alt={`Habitación ${e.habitacionNumero}`} className="h-28 w-20 shrink-0 object-cover sm:h-36 sm:w-40" />
             <div className="flex min-w-0 flex-1 flex-col justify-between p-4">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-wrap items-start justify-between gap-2 break-words">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-[#B38719]">Habitación {e.habitacionNumero} · Piso {h?.piso ?? '—'}</p>
                   <h2 className="mt-1 text-lg font-semibold text-[#18345C]">
@@ -139,7 +139,7 @@ export default function Historial({ historial, habitaciones, usuarioActual = 'Pe
                   {e.estado}
                 </span>
               </div>
-              <div className="mt-5 flex items-center justify-between border-t border-[#EEE9E1] pt-3">
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-[#EEE9E1] pt-2">
                 <span className="rounded-full bg-[#F8F6F0] px-3 py-1 text-xs font-semibold text-[#52677F]">
                   {categoria(e.tipo)}
                 </span>

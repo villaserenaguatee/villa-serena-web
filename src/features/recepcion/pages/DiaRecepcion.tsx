@@ -1,11 +1,12 @@
 import { checkInRealizado, checkInWebPendiente } from '@/store/reservationStore';
 import { fechaHotel } from "@/lib/hotel";
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import type { Reserva, Huesped, HabitacionHotel, SeccionRecepcion } from '@/lib/pms/types';
 import { fechaHoyISO, fechaRelativaISO, formatoFecha } from '@/data/pms';
 import { Chip, RECEPTION_RESERVA_META, habitacionesDisponibles, BedIcon, CalendarIcon } from '@/features/recepcion/pages/recUtils';
 import { publicRoomForHotelType } from '@/data/publicRooms';
 interface Props {
+  calendario?:ReactNode;
   onVerCalendario?:()=>void;
   reservas: Reserva[];
   huespedes: Huesped[];
@@ -15,7 +16,7 @@ interface Props {
 }
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-export default function DiaRecepcion({ reservas, huespedes, habitaciones, onAbrirReserva, onIr, onVerCalendario }: Props) {
+export default function DiaRecepcion({ reservas, huespedes, habitaciones, onAbrirReserva, onIr, onVerCalendario, calendario }: Props) {
   const hoy = fechaHoyISO();
   const d = new Date();
   const titulo = `${DIAS[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]}`;
@@ -48,6 +49,7 @@ export default function DiaRecepcion({ reservas, huespedes, habitaciones, onAbri
     </div>
 
     <div className="px-4 sm:px-8 py-3 space-y-3">
+      {calendario}
       <div className="grid gap-4 xl:grid-cols-2">
       <Bloque
         titulo="Entradas programadas (check-in)"
@@ -106,7 +108,7 @@ function Stat({ valor, label }: {
   label: string;
 }) {
   return (<div data-vs-metric="recepcion" className="flex flex-col items-center justify-center bg-[#102747] rounded-lg py-3 px-2 gap-1">
-    <span className="text-2xl sm:text-3xl font-bold leading-none text-[#D8B94E]">
+    <span className="text-2xl sm:text-3xl font-bold leading-none text-black">
       {valor}
     </span>
     <span className="text-[9px] sm:text-[10px] text-center leading-tight text-[#AEBCC1]">

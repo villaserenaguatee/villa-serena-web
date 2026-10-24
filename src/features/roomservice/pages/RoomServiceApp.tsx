@@ -1,3 +1,5 @@
+import SidebarBrand from '@/components/common/SidebarBrand';
+import StaffSidebarIdentity from '@/components/common/StaffSidebarIdentity';
 import {useDemoSection} from '@/hooks/useDemoSection';
 import { useEffect, useMemo, useState } from 'react';
 import type { Modulo, Pedido, ItemMenu, LineaPedido, NotificacionRS, SeccionRS, EstadoPedido, } from '@/lib/pms/types';
@@ -470,13 +472,7 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
     <div className="flex-1 flex overflow-hidden">
 
       <nav data-vs-sidebar="roomservice" className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
-        <div className="px-4 pt-5 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
-          <img src="/villa-serena-logo.png" alt="Villa Serena" className="h-32 w-44 object-contain mx-auto mb-2" />
-          <p className="text-white text-xl font-bold leading-tight" style={{ letterSpacing: '0.02em' }}>Villa Serena</p>
-          <p className="text-xs mt-1" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>
-            Room Service
-          </p>
-        </div>
+        <div className="shrink-0 border-b px-[22px] pb-5 pt-6" style={{borderColor:'#1d3a5f'}}><SidebarBrand module="Room Service"/></div>
 
         <div className="vs-scroll-clean flex-1 py-3 overflow-y-auto">
           {SECCIONES.filter(s => !conectado || !['cargos', 'historial'].includes(s.id)).map(s => {
@@ -505,26 +501,14 @@ export default function RoomServiceApp({ onCambiarModulo, conectado = false }: P
           <button
             onClick={() => setPerfilAbierto(true)}
             className="w-full min-h-16 flex items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-[#18345C] transition-colors"
-            title="Abrir mi perfil">
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
-              style={{ backgroundColor: '#D8B94E', color: '#102747' }}>DF</div>
-            <div className="min-w-0 flex-1">
-              <p className="text-white text-xs font-semibold truncate">
-                {encargadoRS}
-              </p>
-              <p className="text-[10px] truncate" style={{ color: '#AEBCC1' }}>Room Service · turno de {turno}</p>
-              <p className="text-[14px] leading-5 no-underline" style={{ color: '#D8B94E' }}>Perfil</p>
-            </div>
-          </button>
+            title="Abrir mi perfil"><StaffSidebarIdentity/></button>
         </div>
       </nav>
 
       <div data-vs-shell-main="roomservice" className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
 
         <div data-vs-topbar="roomservice" className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: '#102747' }}>
-          <p className="lg:hidden text-white text-lg font-bold">Villa Serena</p>
-          <span className="lg:hidden text-[#AEBCC1] text-xs">·</span>
+          <div className="min-w-0 shrink-0 lg:hidden"><SidebarBrand module="Room Service"/></div>
           <p className="text-[#AEBCC1] text-xs font-medium truncate flex-1">
             {SECCIONES.find(s => s.id === seccion)?.label}
           </p>

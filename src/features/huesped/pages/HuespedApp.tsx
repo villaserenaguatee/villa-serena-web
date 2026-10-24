@@ -1,3 +1,4 @@
+import SidebarBrand from '@/components/common/SidebarBrand';
 import {ArrowLeft} from "lucide-react";
 import {reservationOptionLabel} from "@/lib/reservationOptionLabel";
 import ConnectedManageStay from './ConnectedManageStay';
@@ -1205,15 +1206,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
     <div className="flex-1 flex overflow-hidden">
 
       <nav data-vs-sidebar="huesped" className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-[245px] h-[100dvh]" style={{ backgroundColor: "#102747" }}>
-        <div className="px-5 pt-6 pb-5 border-b shrink-0 text-center" style={{ borderColor: "#1d3a5f" }}>
-          <img src="/villa-serena-logo.png" alt="Villa Serena Hotel" className="mx-auto w-28 h-auto object-contain mb-2" />
-          <p className="text-white text-xl font-bold leading-tight" style={{ letterSpacing: "0.02em" }}>
-            <UiText text="Villa Serena" />
-          </p>
-          <p className="text-xs mt-1" style={{ color: "#AEBCC1", letterSpacing: "0.06em" }}>
-            <UiText text="Portal del huésped" />
-          </p>
-        </div>
+        <div className="shrink-0 border-b px-[22px] pb-5 pt-6" style={{borderColor:'#1d3a5f'}}><SidebarBrand module="Huésped"/></div>
 
         <div className="vs-scroll-clean flex-1 py-3 overflow-y-auto">
           {seccionesPortal(reserva.estado).map((s) => {
@@ -1276,12 +1269,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
 
       <div data-vs-shell-main="huesped" className="flex-1 lg:ml-[245px] flex flex-col overflow-hidden">
         <div data-vs-topbar="huesped" className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: "#102747" }}>
-          <p className="lg:hidden shrink-0 whitespace-nowrap text-white text-lg font-bold">
-            <UiText text="Villa Serena" />
-          </p>
-          <span className="lg:hidden text-[#AEBCC1] text-xs">
-            <UiText text="·" />
-          </span>
+          <div data-vs-mobile-brand className="min-w-0 shrink-0 lg:hidden"><SidebarBrand module="Huésped"/></div>
           <p className="text-[#AEBCC1] text-xs font-medium truncate flex-1">
             {ui(SECCIONES.find((s) => s.id === seccion)?.label ?? "")}
           </p>

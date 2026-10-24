@@ -17,7 +17,9 @@ for (const { name, viewport } of viewports) {
       await login(page); await page.goto('/recepcion/reservas');
       await expect(page.getByText('14 reservas', { exact: true })).toBeVisible();
       await page.getByLabel('Buscar por nombre o documento', { exact: true }).fill('Marta');
-      await page.getByLabel('Origen de la reserva', { exact: true }).selectOption('BOOKING');
+      await expect(page.getByLabel('Origen de la reserva', { exact: true })).toHaveCount(0);
+      await expect(page.getByLabel('Mostrar reservas', { exact: true })).toHaveCount(0);
+      await page.getByLabel('Código de reserva', { exact: true }).fill('VS-CANA01');
       const filtered = await search(page, () => page.getByRole('button', { name: 'Buscar', exact: true }).click());
       expect(filtered.totalElementos).toBe(1); expect(filtered.contenido[0].codigo).toBe('VS-CANA01');
       const detail = await openDetail(page, 'VS-CANA01');
@@ -38,9 +40,9 @@ for (const { name, viewport } of viewports) {
       await page.getByLabel('Inicio del período de estancia', { exact: true }).fill('2026-11-10'); await page.getByLabel('Fin del período de estancia', { exact: true }).fill('2026-11-01');
       await page.getByRole('button', { name: 'Buscar', exact: true }).click();
       await expect(page.getByRole('alert').filter({ hasText: 'Selecciona un rango de fechas válido.' })).toBeVisible(); expect(requests).toBe(0);
-      await search(page, () => page.getByRole('button', { name: 'Restablecer', exact: true }).click());
-      for (const [label, state] of [['LLEGAN_HOY', 'CONFIRMADA'], ['SALEN_HOY', 'EN_ESTADIA']]) {
-        const result = await search(page, () => page.getByLabel('Mostrar reservas', { exact: true }).selectOption(label));
+      await search(page, () => page.getByRole('button', { name: 'Restablecer filtros', exact: true }).click());
+      for (const state of ['CONFIRMADA', 'EN_ESTADIA']) {
+        const result = await search(page, () => page.getByLabel('Estado', { exact: true }).selectOption(state).then(() => page.getByRole('button', { name: 'Buscar', exact: true }).click()));
         expect(result.contenido.length).toBeGreaterThan(0); expect(result.contenido.every(r => r.estado === state)).toBe(true);
       }
       expect(await page.evaluate(() => document.cookie.includes('vs_staff_'))).toBe(false);

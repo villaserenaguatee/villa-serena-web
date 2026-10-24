@@ -1,3 +1,4 @@
+import SelectPlaceholder from '@/components/common/SelectPlaceholder';
 import { useMemo, useState } from 'react';
 import type { ItemMenu, LineaPedido } from '@/lib/pms/types';
 import { pisoDeHabitacion } from '@/data/pms';
@@ -158,7 +159,7 @@ export default function NuevoPedidoModal({ menu, onCerrar, onGuardar }: Props) {
                 value={habitacion}
                 onChange={e => chooseRoom(e.target.value)}
                 className="mt-1 w-full border rounded-md px-3 py-2.5 text-sm text-[#18345C] bg-white">
-                <option value="">Seleccionar habitación…</option>
+                <SelectPlaceholder/>
                 {habitaciones.filter(h => String(h.piso) === piso).map(h => <option key={h.numero}>
                   {h.numero}
                 </option>)}

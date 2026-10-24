@@ -1,25 +1,8 @@
-'use client';
-import { useState, type FormEvent } from 'react';
-import { staffPassword } from '@/lib/auth/staff-client';
-import { staffHome } from '@/lib/auth/staff-contract';
-import { validatePassword } from '@/lib/bff/auth/errors';
-export default function PasswordPage() {
-  const [actual, setActual] = useState(''), [nueva, setNueva] = useState(''), [confirmacion, setConfirmacion] = useState('');
-  const [busy, setBusy] = useState(false), [error, setError] = useState('');
-  async function submit(event: FormEvent) {
-    event.preventDefault(); setBusy(true); setError('');
-    try {
-      const input = { contrasenaActual: actual, contrasenaNueva: nueva, confirmacion }; validatePassword(input);
-      const employee = await staffPassword(input); window.location.assign(staffHome(employee));
-    } catch (error) { setError(error instanceof Error ? error.message : 'No se pudo cambiar la contraseña.'); }
-    finally { setBusy(false); }
-  }
-  return <section className="max-w-md rounded-2xl bg-white p-6 shadow"><h1 className="text-2xl font-semibold">Cambiar contraseña</h1>
-    <p className="my-4">Si tu contraseña es temporal, debes cambiarla antes de abrir otras secciones. Usa al menos 8 caracteres, una letra y un número.</p>
-    <form data-vs-ui="compact" onSubmit={submit} className="flex flex-col gap-4">
-      <label>Contraseña actual<input className="mt-1 w-full rounded-lg border p-2" type="password" autoComplete="current-password" required value={actual} onChange={e => setActual(e.target.value)} /></label>
-      <label>Nueva contraseña<input className="mt-1 w-full rounded-lg border p-2" type="password" autoComplete="new-password" required value={nueva} onChange={e => setNueva(e.target.value)} /></label>
-      <label>Confirmar nueva contraseña<input className="mt-1 w-full rounded-lg border p-2" type="password" autoComplete="new-password" required value={confirmacion} onChange={e => setConfirmacion(e.target.value)} /></label>
-      {error && <p role="alert" className="text-red-700">{error}</p>}<button disabled={busy} className="login-submit">{busy ? 'Guardando…' : 'Guardar contraseña'}</button>
-    </form></section>;
+import Image from 'next/image';
+import {LockKeyhole} from 'lucide-react';
+import {requireStaff} from '@/lib/bff/auth/page-session';
+import StaffPasswordPageForm from '@/components/common/StaffPasswordPageForm';
+export default async function PasswordPage(){
+ const employee=await requireStaff();
+ return <main className="flex min-h-dvh items-center justify-center bg-[#F8F6F0] p-3 text-[#18345C] sm:p-6"><section className="w-full max-w-md rounded-2xl bg-white p-5 shadow-sm sm:p-7"><header className="mb-5 text-center"><Image src="/villa-serena-logo.png" alt="Villa Serena" width={105} height={90} className="mx-auto mb-3 h-auto"/><LockKeyhole size={26} className="mx-auto mb-2"/><h1 className="text-2xl font-semibold">{employee.debeCambiarContrasena?'Establece tu contraseña':'Cambiar contraseña'}</h1><p className="mt-1 text-sm text-[#536579]">{employee.debeCambiarContrasena?'Protege tu cuenta antes de continuar':'Actualiza tu contraseña para mantener tu cuenta segura'}</p></header><StaffPasswordPageForm mandatory={employee.debeCambiarContrasena}/></section></main>;
 }

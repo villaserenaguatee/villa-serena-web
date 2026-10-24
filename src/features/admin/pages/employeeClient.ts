@@ -40,3 +40,19 @@ export async function saveEmployee(draft:EmployeeRow|Record<string,unknown>,onCr
 export async function resetEmployeePassword(id:number) {
  return temporaryPasswordFromResponse(await operacion(`admin/empleados/${id}/restablecer-contrasena`,'POST'));
 }
+
+export async function changeEmployeeState(id:number,estado:'ACTIVO'|'INACTIVO'):Promise<Employee>{
+ if(!Number.isSafeInteger(id)||id<=0||!['ACTIVO','INACTIVO'].includes(estado))throw Error('No se pudo identificar al empleado o su estado.');
+ const saved=await operacion<Employee>(`admin/empleados/${id}/estado`,'PATCH',{estado});
+ if(saved?.id!==id||saved.estado!==estado||typeof saved.nombreCompleto!=='string')throw Error('No se pudo confirmar el estado. Actualiza la lista antes de volver a intentarlo.');
+ return saved;
+}
+
+// Inline editing uses only the fields and mutations in the official contract.
+export async function updateEmployeeSection(original:Record<string,unknown>,draft:Record<string,unknown>,section:'personal'|'laboral',lockIdentity:boolean):Promise<EmployeeRow>{
+ const id=Number(original.id);if(!Number.isSafeInteger(id)||id<=0)throw Error('No se pudo identificar al empleado.');
+ const changes:components['schemas']['EditarEmpleadoPeticion']=section==='personal'?{nombreCompleto:String(draft.nombre).trim(),telefono:String(draft.telefono).trim()}:lockIdentity?{}:{rol:draft.rol as Employee['rol'],area:draft.rol==='MANTENIMIENTO_LIMPIEZA'?draft.area as Employee['area']:null};
+ let result={...original} as EmployeeRow;
+ if(Object.keys(changes).length){const saved=await operacion<Employee>(`admin/empleados/${id}`,'PATCH',changes);if(saved?.id!==id||typeof saved.nombreCompleto!=='string')throw Error('El servicio no confirmó los datos guardados. Consulta nuevamente el empleado.');result={...result,...saved,nombre:saved.nombreCompleto};}
+ return result;
+}

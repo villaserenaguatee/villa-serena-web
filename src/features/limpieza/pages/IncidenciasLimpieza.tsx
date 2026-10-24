@@ -1,3 +1,4 @@
+import SelectPlaceholder from '@/components/common/SelectPlaceholder';
 import { useState } from 'react';
 import type { Habitacion, Incidencia, PrioridadIncidencia, EstadoIncidencia } from '@/lib/pms/types';
 import { generarId, horaActual } from '@/data/pms';
@@ -183,9 +184,7 @@ export default function Incidencias({ incidencias, habitaciones, onRegistrar }: 
                 value={form.habitacionNumero}
                 onChange={e => setForm(f => ({ ...f, habitacionNumero: e.target.value }))}
                 className="w-full border border-[#E5E0D8] rounded-lg px-3 py-3 text-sm text-[#1F2933] focus:outline-none focus:border-[#18345C] bg-white disabled:bg-[#F3F4F6]">
-                <option value="">
-                  Seleccionar habitación…
-                </option>
+                <SelectPlaceholder/>
                 {habitaciones.filter(h => !piso || String(h.piso) === piso).map(h => <option key={h.id} value={h.numero}>Habitación {h.numero} · {h.tipo === 'Standard' ? 'Estándar' : h.tipo}</option>)}
               </select>
             </Campo>
@@ -196,7 +195,7 @@ export default function Incidencias({ incidencias, habitaciones, onRegistrar }: 
                 value={form.tipo}
                 onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}
                 className="w-full border border-[#E5E0D8] rounded-lg px-3 py-3 text-sm text-[#1F2933] focus:outline-none focus:border-[#18345C] bg-white">
-                <option value="">Seleccionar tipo…</option>
+                <SelectPlaceholder/>
                 {TIPOS.map(t => <option key={t} value={t}>
                   {t}
                 </option>)}
@@ -223,8 +222,8 @@ export default function Incidencias({ incidencias, habitaciones, onRegistrar }: 
 
             <Campo label="Nivel de prioridad"><select aria-label="Nivel de prioridad" value={form.prioridad} onChange={e=>setForm(f=>({...f,prioridad:e.target.value as PrioridadIncidencia}))} className="w-full rounded-lg border border-[#E5E0D8] bg-white px-3 py-2.5">{(['alta','media','baja'] as PrioridadIncidencia[]).map(p=><option key={p} value={p}>{p.charAt(0).toUpperCase()+p.slice(1)}</option>)}</select></Campo>
 
-            <div>
-              <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-2">
+            <div data-vs-field="compact">
+              <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-1.5">
                 ¿Impide utilizar la habitación?
               </p>
               <div className="flex gap-3">

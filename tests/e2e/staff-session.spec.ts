@@ -66,13 +66,13 @@ test('sesión demo: acceso por rol, cookies, renovación, Origin, cierre y contr
     await page.goto('/recepcion'); await expect(page).toHaveURL(/\/panel\/cambiar-contrasena$/);
     const blocked = await context.request.get('/api/reservas'); expect(blocked.status()).toBe(403);
     expect((await blocked.json()).codigo).toBe('CONTRASENA_TEMPORAL');
-    await page.getByLabel('Contraseña actual', { exact: true }).fill('VillaSerena26');
+    await page.getByLabel('Contraseña temporal', { exact: true }).fill('VillaSerena26');
     await page.getByLabel('Nueva contraseña', { exact: true }).fill('NuevaClave123');
-    await page.getByLabel('Confirmar nueva contraseña', { exact: true }).fill('distinta');
-    await page.getByRole('button', { name: 'Guardar contraseña' }).click();
+    await page.getByLabel('Confirmar contraseña', { exact: true }).fill('distinta');
+    await page.getByRole('button', { name: 'Guardar y continuar' }).click();
     await expect(page.getByText('La confirmación no coincide con la nueva contraseña.', { exact: true })).toBeVisible();
-    await page.getByLabel('Confirmar nueva contraseña', { exact: true }).fill('NuevaClave123');
-    await page.getByRole('button', { name: 'Guardar contraseña' }).click();
+    await page.getByLabel('Confirmar contraseña', { exact: true }).fill('NuevaClave123');
+    await page.getByRole('button', { name: 'Guardar y continuar' }).click();
     await expect(page.getByRole('heading', { name: 'Calendario de reservas', exact: true })).toBeVisible();
   });
   await test.step('cada rol llega a su módulo y conserva sus enlaces autorizados', async () => {

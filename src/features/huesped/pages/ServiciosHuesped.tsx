@@ -1,3 +1,4 @@
+import SelectPlaceholder from '@/components/common/SelectPlaceholder';
 import { fechaHotel } from "@/lib/hotel";
 import { UiText, useUiText } from "@/i18n/UiText";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
@@ -910,7 +911,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
                   tipo: e.target.value,
                 }))}
                 className={INPUT_CLS}>
-                <option value="">Seleccionar</option>
+                <SelectPlaceholder/>
                 <option>Junto a la cama</option>
                 <option>Área disponible de la habitación</option>
               </select>) : (<input
@@ -963,7 +964,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
                   tipo: e.target.value,
                 }))}
                 className={INPUT_CLS}>
-                <option value="">Seleccionar</option>
+                <SelectPlaceholder/>
                 <option>Rosas</option>
                 <option>Flores mixtas</option>
                 <option>Flores de temporada</option>
@@ -978,7 +979,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
                   tipo: e.target.value,
                 }))}
                 className={INPUT_CLS}>
-                <option value="">Seleccionar</option>
+                <SelectPlaceholder/>
                 <option>Chocolate</option>
                 <option>Vainilla</option>
                 <option>Fresa</option>
@@ -1036,7 +1037,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
                 tipo: e.target.value,
               }))}
               className={INPUT_CLS}>
-              <option value="">Seleccionar</option>
+              <SelectPlaceholder/>
               <option>Lavado</option>
               <option>Lavado y planchado</option>
             </select>

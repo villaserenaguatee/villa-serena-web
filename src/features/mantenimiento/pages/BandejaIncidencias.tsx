@@ -65,7 +65,7 @@ export default function BandejaIncidencias({ incidencias, ordenes, habitaciones,
       </div>
     </div>)}
 
-    <div className="grid gap-3 px-4 sm:px-6 pt-5 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 px-4 sm:px-6 pt-5 sm:grid-cols-[repeat(3,minmax(0,220px))]">
       <CompactFilter label="Prioridad" value={fPrioridad} onChange={setFPrioridad}><option value="todas">Todas</option>{(['alta','media','baja'] as PrioridadIncidencia[]).map(p=><option key={p} value={p}>{PRIORIDAD_META[p].label}</option>)}</CompactFilter>
       <CompactFilter label="Estado" value={fEstado} onChange={setFEstado}><option value="todos">Todos</option>{(['pendiente','en-proceso','resuelta'] as EstadoIncidencia[]).map(e=><option key={e} value={e}>{INC_META[e].label}</option>)}</CompactFilter>
       <CompactFilter label="Reportado por" value={fArea} onChange={setFArea}><option value="todas">Todas</option>{AREAS.map(a=><option key={a} value={a}>{a}</option>)}</CompactFilter>

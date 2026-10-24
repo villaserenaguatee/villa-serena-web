@@ -1,3 +1,4 @@
+import SelectPlaceholder from '@/components/common/SelectPlaceholder';
 import ReceptionCloseButton from './ReceptionCloseButton';
 import { useMemo, useState } from 'react';
 import type { HabitacionHotel, Huesped, Reserva } from '@/lib/pms/types';
@@ -121,7 +122,7 @@ export default function ReportesRecepcion({ habitaciones, reservas, huespedes }:
             value={habitacion}
             onChange={e => setHabitacion(e.target.value)}
             className="mt-1 w-full rounded-lg border border-[#D9D5CC] bg-white p-2 outline-none focus:border-[#B58B2A]">
-            <option value="">Seleccionar</option>
+            <SelectPlaceholder/>
             {habs.map(h => <option key={h.id}>
               {h.numero}
             </option>)}

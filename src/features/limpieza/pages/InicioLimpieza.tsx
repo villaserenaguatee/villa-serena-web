@@ -259,24 +259,24 @@ export default function Inicio({
             const total = h.tareas.length;
             const porcentaje = total > 0 ? Math.round((tareasDone / total) * 100) : 0;
             const prioritaria = Boolean(h.proximaLlegada) && h.estado !== 'limpia';
-            return (<div data-vs-card="limpieza" key={h.id} className="bg-white border border-[#E5E0D8] rounded-xl p-4 relative overflow-hidden">
+            return (<div data-vs-card="limpieza" key={h.id} className="bg-white border border-[#E5E0D8] rounded-xl p-3 relative overflow-hidden">
               {prioritaria && (<div className="absolute top-0 left-0 w-1 h-full bg-[#D8B94E]" />)}
-              <img src={h.foto} alt={`Habitación ${h.numero}`} className="w-full h-36 object-cover rounded-lg mb-3" />
+              <img src={h.foto} alt={`Habitación ${h.numero}`} className="w-full h-24 object-cover rounded-lg mb-2" />
 
               <div className={prioritaria ? "pl-3" : ""}>
-                <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-start justify-between gap-3 mb-2">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="w-8 h-8 rounded-lg bg-[#F8F6F0] flex items-center justify-center text-[#18345C]">
+                      <span className="w-7 h-7 rounded-lg bg-[#F8F6F0] flex items-center justify-center text-[#18345C]">
                         <BedIcon />
                       </span>
 
-                      <p className="text-[28px] font-semibold text-[#18345C] leading-none">
+                      <p className="text-[24px] font-semibold text-[#18345C] leading-none">
                         {h.numero}
                       </p>
                     </div>
 
-                    <p className="text-[14px] text-[#AEBCC1] mt-1 ml-10">
+                    <p className="text-[14px] text-[#AEBCC1] mt-0.5 ml-9">
                       {tipoHabitacionEnEspanol(h.tipo)}
                     </p>
                   </div>
@@ -290,7 +290,7 @@ export default function Inicio({
                   </Chip>)}
                 </div>
 
-                {h.estado === 'en-limpieza' && (<div className="mb-3">
+                {h.estado === 'en-limpieza' && (<div className="mb-2">
                   <div className="flex justify-between text-[13px] text-[#6B7280] mb-1">
                     <span>{tareasDone} de {total} tareas</span>
                     <span>{porcentaje}%</span>
@@ -313,7 +313,7 @@ export default function Inicio({
                   </span>
                 </div>
 
-                {h.proximaLlegada && h.estado !== 'limpia' && (<div className="flex items-center gap-1.5 text-[14px] text-[#B88A18] font-medium mb-3">
+                {h.proximaLlegada && h.estado !== 'limpia' && (<div className="flex items-center gap-1.5 text-[14px] text-[#B88A18] font-medium mb-2">
                   <ClockIcon />
                   <span>Próxima llegada: {h.proximaLlegada}</span>
                 </div>)}
@@ -321,18 +321,18 @@ export default function Inicio({
                 {h.estado === 'pendiente' && (<button
                   type="button"
                   onClick={() => onAbrirHabitacion(h.id, true)}
-                  className="w-full py-2.5 text-[15px] font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
+                  className="w-full min-h-10 py-2 text-[15px] font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
                   Comenzar limpieza
                 </button>)}
 
                 {h.estado === 'en-limpieza' && (<button
                   type="button"
                   onClick={() => onAbrirHabitacion(h.id, false)}
-                  className="w-full py-2.5 text-[15px] font-semibold border border-[#18345C] text-[#18345C] rounded-md hover:bg-[#F8F6F0] transition-colors">
+                  className="w-full min-h-10 py-2 text-[15px] font-semibold border border-[#18345C] text-[#18345C] rounded-md hover:bg-[#F8F6F0] transition-colors">
                   Continuar limpieza
                 </button>)}
 
-                {h.estado === 'limpia' && (<div className="w-full py-2.5 text-[14px] font-semibold text-center text-[#15803D] bg-[#ECFDF3] border border-[#86EFAC] rounded-md">
+                {h.estado === 'limpia' && (<div className="w-full min-h-10 py-2 text-[14px] font-semibold text-center text-[#15803D] bg-[#ECFDF3] border border-[#86EFAC] rounded-md">
                   ✓ Limpieza finalizada
                 </div>)}
               </div>
