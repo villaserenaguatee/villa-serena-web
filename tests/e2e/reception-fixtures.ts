@@ -66,7 +66,7 @@ export async function prepareCreation(page: Page, options: { assigned?: boolean;
     await form.getByLabel('Correo electrónico', { exact: true }).fill('issue48@example.test');
     await form.getByLabel('Teléfono', { exact: true }).fill('55551234');
   } else {
-    await form.getByPlaceholder('Buscar por nombre…').fill('Ana');
+    await form.getByPlaceholder('Buscar por nombre...').fill('Ana');
     await form.getByRole('button', { name: /^Ana Morales/ }).click();
   }
   await form.getByLabel('Entrada', { exact: true }).fill(entry);
