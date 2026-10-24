@@ -22,7 +22,7 @@ test('cancelled reset never calls server',async()=>{
  vi.spyOn(window,'confirm').mockReturnValue(false);render(<CatalogosAdmin initial="personal" resources={['personal']}/>);await userEvent.click(within((await screen.findByRole('button',{name:/^Empleado aislado/})).parentElement!).getByRole('button',{name:'Editar empleado'}));await userEvent.click(screen.getByRole('button',{name:'Restablecer contraseña'}));expect(call.mock.calls.some(([,method])=>method==='POST')).toBe(false);
 });
 test('uncertain account creation requires list review instead of repeating a POST',async()=>{
- render(<CatalogosAdmin initial="personal" resources={['personal']}/>);const add=await screen.findByRole('button',{name:'Nuevo registro'});await waitFor(()=>expect(add).toBeEnabled());await userEvent.click(add);const dialog=screen.getByRole('dialog');
+ render(<CatalogosAdmin initial="personal" resources={['personal']}/>);const add=await screen.findByRole('button',{name:'+ Nuevo empleado'});await waitFor(()=>expect(add).toBeEnabled());await userEvent.click(add);const dialog=screen.getByRole('dialog');
  for(const [key,value] of Object.entries({nombre:'Empleado aislado',correo:'isolated@example.test',telefono:'55550000'}))fireEvent.change(dialog.querySelector(`[name=${key}]`)!,{target:{value}});
  call.mockRejectedValueOnce(new OperationError('No se pudo contactar al servidor.',502));fireEvent.submit(dialog);fireEvent.submit(dialog);await screen.findByRole('alert');expect(add).toBeDisabled();expect(call.mock.calls.filter(([,method])=>method==='POST')).toHaveLength(1);
 });

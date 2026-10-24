@@ -11,7 +11,7 @@ vi.mock('@/lib/usePublicCatalog',()=>({usePublicCatalog:()=>({rooms:[]})}));
 const call=vi.mocked(operacion);
 beforeEach(()=>{call.mockReset();call.mockRejectedValue(new OperationError('Unsupported demo',501,{codigo:'SIMULACION_NO_DISPONIBLE'}));});
 for(const resource of ['tipos','habitaciones','personal','temporadas'])test(`unavailable ${resource} cannot open a create form`,async()=>{
- render(<CatalogosAdmin initial={resource}/>);await screen.findByText(/Modo demostración/);expect(screen.getByRole('button',{name:'Nuevo registro'})).toBeDisabled();expect(screen.queryByRole('dialog')).toBeNull();
+ render(<CatalogosAdmin initial={resource}/>);await screen.findByText(/Modo demostración/);expect(screen.getByRole('button',{name:resource==='habitaciones'?'+ Nueva habitación':resource==='personal'?'+ Nuevo empleado':'Nuevo registro'})).toBeDisabled();expect(screen.queryByRole('dialog')).toBeNull();
 });
 test('unavailable room map and reports have clear messages and disabled data actions',async()=>{
  const view=render(<ApprovedRoomMapConnected/>);await screen.findByText(/Modo demostración/);expect(screen.getByRole('button',{name:'Volver a consultar'})).toBeDisabled();view.unmount();

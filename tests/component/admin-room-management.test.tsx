@@ -26,8 +26,8 @@ beforeEach(() => {
 const posts = () => call.mock.calls.filter(([, method]) => method === 'POST');
 async function openNew(resource = 'habitaciones') {
   render(<CatalogosAdmin initial={resource} resources={[resource]} roomManagement />);
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Nuevo registro' })).toBeEnabled());
-  await userEvent.click(screen.getByRole('button', { name: 'Nuevo registro' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: resource === 'habitaciones' ? '+ Nueva habitación' : 'Nuevo registro' })).toBeEnabled());
+  await userEvent.click(screen.getByRole('button', { name: resource === 'habitaciones' ? '+ Nueva habitación' : 'Nuevo registro' }));
   return screen.getByRole('dialog');
 }
 
@@ -35,11 +35,11 @@ test('rooms, categories and existing map are accessible without mixing personnel
   render(<AdminRoomsManagement />);
   await screen.findByText('Habitación 101');
   expect(screen.getByText(/2 de 2 habitaciones físicas registradas/)).toHaveTextContent('1 activas');
-  await userEvent.click(screen.getByRole('button', { name: 'Categorías de habitación' }));
+  await userEvent.click(screen.getByRole('tab', { name: 'Categorías de habitación' }));
   await screen.findByText('Estándar');
   expect(await screen.findByText('Habitaciones físicas: 2 · 1 activas')).toBeVisible();
   expect(screen.queryByRole('button', { name: 'Personal' })).toBeNull();
-  await userEvent.click(screen.getByRole('button', { name: 'Mapa de habitaciones' }));
+  await userEvent.click(screen.getByRole('tab', { name: 'Mapa de habitaciones' }));
   expect(screen.getByText('Mapa existente')).toBeVisible();
 });
 
@@ -89,10 +89,10 @@ test('repeated submissions share one in-flight write and navigation is disabled 
   const dialog = screen.getByRole('dialog');
   fireEvent.submit(dialog); fireEvent.submit(dialog);
   await waitFor(() => expect(posts()).toHaveLength(1));
-  expect(screen.getByRole('button', { name: 'Categorías de habitación' })).toBeDisabled();
+  expect(screen.getByRole('tab', { name: 'Categorías de habitación' })).toBeDisabled();
   release({ id: 11, version: 3 });
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Categorías de habitación' })).toBeEnabled());
+  await waitFor(() => expect(screen.getByRole('tab', { name: 'Categorías de habitación' })).toBeEnabled());
 });
 
 test('invalid fields retain values, focus the first error, and do not submit', async () => {
@@ -141,7 +141,7 @@ test('new category price starts empty and rejects empty, zero and negative value
 test('editing a category shows its registered price and consistent category naming', async () => {
   render(<AdminRoomsManagement />);
   await screen.findByText('Habitación 101');
-  await userEvent.click(screen.getByRole('button', { name: 'Categorías de habitación' }));
+  await userEvent.click(screen.getByRole('tab', { name: 'Categorías de habitación' }));
   await userEvent.click(await screen.findByRole('button', { name: 'Editar' }));
   const dialog = screen.getByRole('dialog');
   expect(within(dialog).getByRole('heading', { name: 'Editar · Categorías de habitación' })).toBeVisible();
@@ -163,7 +163,7 @@ test('load failure blocks creation without demo fallback; rejected update keeps 
   call.mockRejectedValue(new OperationError('No se pudo contactar al servidor', 502));
   const view = render(<CatalogosAdmin initial="habitaciones" resources={['habitaciones']} roomManagement />);
   await screen.findByRole('alert');
-  expect(screen.getByRole('button', { name: 'Nuevo registro' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '+ Nueva habitación' })).toBeDisabled();
   expect(screen.queryByText('Habitación 101')).toBeNull();
   view.unmount();
   call.mockImplementation(async (path, method) => { if (method === 'POST') throw new OperationError('La habitación tiene reservas activas.', 409); return path.endsWith('/tipos') ? [type] : rooms; });
