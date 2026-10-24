@@ -355,7 +355,7 @@ function AdminAppExisting({ onCambiarModulo }: Props) {
 
     <div className="flex-1 flex overflow-hidden">
 
-      <nav className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
+      <nav className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-[228px] h-[100dvh]" style={{ backgroundColor: '#102747' }}>
         <div className="shrink-0 border-b px-[22px] pb-5 pt-6" style={{borderColor:'#1d3a5f'}}><SidebarBrand module="Administración"/></div>
 
         <div className="vs-scroll-clean flex-1 py-3 overflow-y-auto">
@@ -365,10 +365,10 @@ function AdminAppExisting({ onCambiarModulo }: Props) {
             return (<button
               key={s.id}
               onClick={() => setSeccion(s.id)}
-              className="w-full flex items-center gap-3 px-5 py-3 text-left transition-colors relative"
-              style={{ color: active ? '#FFFFFF' : '#AEBCC1', backgroundColor: active ? '#18345C' : 'transparent' }}>
-              {active && <span className="absolute left-0 top-0 h-full w-0.5" style={{ backgroundColor: '#D8B94E' }} />}
-              <span className="w-5 h-5 shrink-0 grid place-items-center" style={{ color: active ? '#D8B94E' : '#AEBCC1' }} aria-hidden="true">
+              className="mx-2 my-0.5 flex w-[calc(100%-1rem)] items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors relative"
+              style={{ color: active ? '#102747' : '#C0CCD8', backgroundColor: active ? '#F4EEDC' : 'transparent' }}>
+              
+              <span className="w-5 h-5 shrink-0 grid place-items-center" style={{ color: active ? '#102747' : '#C0CCD8' }} aria-hidden="true">
                 <SeccionIcon id={s.id} />
               </span>
               <span className="text-sm font-medium flex-1">
@@ -388,10 +388,10 @@ function AdminAppExisting({ onCambiarModulo }: Props) {
         </div>
       </nav>
 
-      <div className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
-        <div className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: '#102747' }}>
+      <div className="flex-1 lg:ml-[228px] flex flex-col overflow-hidden bg-[#F5F4EF]">
+        <div className="flex items-center gap-3 border-b border-[#E2E4E8] bg-white px-4 py-3 shrink-0 lg:px-7">
           <div className="min-w-0 shrink-0 lg:hidden"><SidebarBrand module="Administración"/></div>
-          <p className="text-[#AEBCC1] text-xs font-medium truncate flex-1">
+          <p className="text-[#536579] text-xs font-medium truncate flex-1">
             {SECCIONES.find(s => s.id === seccion)?.label}
           </p>
           <button
@@ -401,7 +401,7 @@ function AdminAppExisting({ onCambiarModulo }: Props) {
               setNotificacionesAbiertas(true);
               guardarCorrecciones(leerCorrecciones().map(n => ({ ...n, leidaAdmin: true })));
             }}
-            className="relative grid h-9 w-9 place-items-center rounded-full border border-[#365270] text-white"
+            className="relative grid h-9 w-9 place-items-center rounded-full border border-[#D8DFE5] text-[#18345C]"
             aria-label="Notificaciones">
             <Bell size={18} />
             {!user?.staff && correccionesPersonal.filter(n => n.estado === 'pendiente' && !n.leidaAdmin).length > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#D8B94E] px-1 text-[9px] font-bold text-[#102747]">
