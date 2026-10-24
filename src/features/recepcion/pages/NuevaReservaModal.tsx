@@ -1,3 +1,5 @@
+import GuatemalaPhoneInput from '@/components/common/GuatemalaPhoneInput';
+import styles from './NuevaReservaModal.module.css';
 import { historicalPassportIssuer } from '@/lib/api/guestCompatibility';
 import { validDocument, validNationalPhone } from '@/lib/guestValidation';
 import ReceptionCloseButton from './ReceptionCloseButton';
@@ -6,7 +8,7 @@ import { ReceptionRequestError, receptionFieldErrors, searchGuests, getReception
 import { Minus, Plus, Users } from 'lucide-react';
 import type { Huesped, HabitacionHotel, Reserva, TipoHabitacion, TipoDocumento, } from '@/lib/pms/types';
 import { nochesEntre, fechaHoyISO, fechaRelativaISO, RESERVAS_INICIALES } from '@/data/pms';
-import { dinero, Campo, INPUT_CLS } from '@/features/recepcion/pages/recUtils';
+import { dinero, Campo, INPUT_CLS, habitacionesDisponibles } from '@/features/recepcion/pages/recUtils';
 import { publicRoomForHotelType } from '@/data/publicRooms';
 import { fotoHabitacion } from '@/store/roomStore';
 const TIPOS: TipoHabitacion[] = ['Standard', 'Superior', 'Deluxe', 'Suite Deluxe', 'Suite'];
@@ -68,7 +70,7 @@ export default function NuevaReservaModal({ conectado = false, huespedes: localG
     }).catch(e => { if (!controller.signal.aborted) setGuestSearchError(e.message); }); }, 250);
     return () => { clearTimeout(timer); controller.abort(); };
   }, [conectado, modoNuevoHuesped, buscarHuesped, huespedId]);
-  const [campoBusqueda, setCampoBusqueda] = useState<'nombre' | 'correo' | 'telefono'>('nombre');
+  const [campoBusqueda, setCampoBusqueda] = useState<'nombre' | 'documento'>('nombre');
   const [piso, setPiso] = useState('Todos');
   const [usarHoraLlegada, setUsarHoraLlegada] = useState(false);
   const [revisando, setRevisando] = useState(false);
@@ -115,14 +117,21 @@ telefono: '',
   const nPersonas = Math.max(1, (Number(adultos) || 0) + (Number(ninos) || 0));
   const rangoValido = entrada < salida;
   const noches = rangoValido ? nochesEntre(entrada, salida) : 0;
-  const seleccionPrevia = Boolean(preset?.habitacionId);
+  const [cambiarHabitacion, setCambiarHabitacion] = useState(false);
+  const seleccionPrevia = Boolean(preset?.habitacionId) && !cambiarHabitacion;
+  const [revisionDisponibilidad, setRevisionDisponibilidad] = useState(0);
   const [disponibles, setDisponibles] = useState<HabitacionHotel[]>([]);
   const [consultando, setConsultando] = useState(true);
   const [disponibilidadError, setDisponibilidadError] = useState('');
   const [cupo, setCupo] = useState(0);
   useEffect(() => {
+    if (!conectado) {
+      const rooms = habitacionesDisponibles(entrada, salida, habitaciones, reservas, { personas: nPersonas, tipo });
+      setDisponibles(rooms); setCupo(rooms.length); setConsultando(false); setDisponibilidadError('');
+      return;
+    }
     const controller = new AbortController();
-    setDisponibles([]); setCupo(0); setConsultando(true); setDisponibilidadError('');
+    setCupo(0); setConsultando(true); setDisponibilidadError('');
     getReceptionAvailability(entrada, salida, nPersonas, controller.signal).then(async options => {
       const option = options.find(o => conectado ? o.tipoHabitacion.id === tipoId : o.tipoHabitacion.nombre === tipo);
       if (!option) return [];
@@ -131,7 +140,7 @@ telefono: '',
       // Conserva el bloqueo de reservas antiguas de este navegador sin recrearlas en el BFF.
       const legacy = conectado ? [] : reservas.filter(r => !/^VS-[A-Z0-9]{6}$/.test(r.codigo) && !RESERVAS_INICIALES.some(seed => seed.id === r.id) &&
         r.tipoHabitacion === tipo && !['cancelada', 'finalizada'].includes(r.estado) && r.fechaEntrada < salida && r.fechaSalida > entrada);
-      const source: HabitacionHotel[] = conectado ? refs.map(r => ({ id: 'hh-' + r.numero, numero: r.numero, piso: r.piso, tipo, capacidad: option.capacidad, precioNoche: option.total / option.noches, estado: 'disponible' })) : habitaciones;
+      const source: HabitacionHotel[] = conectado ? refs.map(r => ({ id: String(r.id), numero: r.numero, piso: r.piso, tipo, capacidad: option.capacidad, precioNoche: option.total / option.noches, estado: 'disponible' })) : habitaciones;
       const rooms = source.filter(h => h.tipo === tipo && h.capacidad >= nPersonas && refs.some(r => r.numero === h.numero) && !legacy.some(r => r.habitacionId === h.id));
       let peak = 0;
       for (let day = entrada; day < salida; day = new Date(Date.parse(day) + 86400000).toISOString().slice(0, 10))
@@ -142,13 +151,13 @@ telefono: '',
       .catch(e => { if (!controller.signal.aborted) setDisponibilidadError(e instanceof Error ? e.message : 'No se pudo consultar la disponibilidad.'); })
       .finally(() => { if (!controller.signal.aborted) setConsultando(false); });
     return () => controller.abort();
-  }, [entrada, salida, nPersonas, tipo, tipoId, habitaciones, reservas, conectado]);
+  }, [entrada, salida, nPersonas, tipo, tipoId, habitaciones, reservas, conectado, revisionDisponibilidad]);
   const habElegida = (reservaCreada && !conectado ? habitaciones : disponibles).find(h => h.id === habitacionId) ?? null;
   const huespedesFiltrados = huespedes.filter(h => {
     const q = buscarHuesped.toLowerCase().trim();
     if (!q)
       return false;
-    const valor = campoBusqueda === 'nombre' ? h.nombre : campoBusqueda === 'correo' ? h.correo : conectado ? h.documento : h.telefono;
+    const valor = campoBusqueda === 'nombre' ? h.nombre : h.documento;
     return valor.toLowerCase().includes(q);
   });
   const disponiblesPiso = disponibles.filter(h => piso === 'Todos' || String(h.piso) === piso);
@@ -174,14 +183,33 @@ telefono: '',
     if (habitacionId && !disponibles.some(h => h.id === habitacionId)) {
       e.habitacion = 'Esa habitación ya no está disponible para el rango.';
     }
+    if (preset?.habitacionId && !habitacionId) e.habitacion = 'Selecciona una habitación para continuar.';
     if (modoNuevoHuesped && !validDocument(nh.tipoDocumento, nh.documento)) e.documento = nh.tipoDocumento === 'DPI' ? 'El DPI debe contener exactamente 13 dígitos.' : 'Introduce solo letras y números, hasta el límite de almacenamiento de 30 caracteres.';
-    if (modoNuevoHuesped && !validNationalPhone(nh.prefijo, nh.telefono)) e.telefono = 'Guatemala: 8 dígitos sin repetir +502. Otros países: número internacional válido, sin letras.';
+    if (modoNuevoHuesped && !validNationalPhone(nh.prefijo, nh.telefono)) e.telefono = 'Ingrese los 8 dígitos del teléfono, sin repetir +502.';
     setErrores(e);
-    if (Object.keys(e).length > 0)
+    if (Object.keys(e).length > 0) {
+      if (e.habitacion) { setCambiarHabitacion(true); setRevisando(false); }
       return;
+    }
     saving.current = true;
     solicitud.current ??= crypto.randomUUID();
     setGuardando(true);
+    // Recheck before any guest/reservation write; a failed read has no uncertain mutation outcome.
+    try {
+      if (conectado) {
+        const options = await getReceptionAvailability(entrada, salida, nPersonas);
+        const option = options.find(o => o.tipoHabitacion.id === tipoId);
+        const refs = option ? await getAvailableRoomReferences(option.tipoHabitacion.id, entrada, salida) : [];
+        if (!option || option.habitacionesDisponibles <= 0 || (habitacionId && !refs.some(r => String(r.id) === habitacionId))) throw new Error('La habitación o categoría ya no está disponible. Selecciona otra habitación; tus datos se conservaron.');
+      } else if (habitacionId && !habitacionesDisponibles(entrada, salida, habitaciones, reservas, { personas: nPersonas, tipo }).some(h => h.id === habitacionId)) {
+        throw new Error('La habitación ya no está disponible. Selecciona otra habitación; tus datos se conservaron.');
+      }
+    } catch (error) {
+      setErrores({ habitacion: error instanceof Error ? error.message : 'No se pudo comprobar la disponibilidad. Inténtalo de nuevo.' });
+      setCambiarHabitacion(true); setRevisando(false); setRevisionDisponibilidad(n => n + 1);
+      saving.current = false; setGuardando(false);
+      return;
+    }
     try {
     if (modoNuevoHuesped) {
       const creado = await onCrearHuesped({
@@ -214,6 +242,10 @@ telefono: '',
     } catch (error) {
       const uncertain = !(error instanceof ReceptionRequestError) || error.status >= 500;
       setResultadoDesconocido(uncertain);
+      if (error instanceof ReceptionRequestError && error.status === 409) {
+        solicitud.current = null;
+        setCambiarHabitacion(true); setRevisando(false); setRevisionDisponibilidad(n => n + 1);
+      }
       const fields=receptionFieldErrors(error);if(Object.keys(fields).length)setRevisando(false);
       setErrores({ ...fields, reserva: uncertain
         ? 'No se pudo comprobar el resultado. Consulta las reservas por el huésped antes de crear otra; la solicitud no se repetirá automáticamente.'
@@ -224,21 +256,21 @@ telefono: '',
     {guestSearchError && <p role="alert" className="relative z-50 bg-white p-3 text-red-800">{guestSearchError}</p>}
     <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
 
-    <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="large" role="dialog" aria-modal="true" aria-label="Nueva reserva" className="reception-compact relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[780px] max-h-[90vh] overflow-y-auto">
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#E5E0D8] sticky top-0 bg-white z-10">
-        <h2 className="text-[20px] font-semibold text-[#18345C]">Nueva reserva</h2>
+    <div data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="large" role="dialog" aria-modal="true" aria-label="Nueva reserva" className={`${styles.form} reception-compact relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[780px] max-h-[90vh] overflow-y-auto`}>
+      <div className={`${revisando?'hidden':'flex'} items-center justify-between px-5 py-3.5 border-b border-[#E5E0D8] sticky top-0 bg-white z-10`}>
+        <h2 className="text-[20px] font-bold text-[#18345C]">Nueva reserva</h2>
         <ReceptionCloseButton onClick={onCerrar} />
       </div>
 
-      <div className="px-5 py-4 space-y-4">
+      <div className={`${revisando?'hidden':''} px-5 py-3 space-y-3`}>
         {modoNuevoHuesped && nh.correo && huespedes.some(h => h.correo.trim().toLowerCase() === nh.correo.trim().toLowerCase()) && <p role="status">Ese correo ya existe. Se usará el perfil registrado sin modificarlo.</p>}
         {!revisando && Object.entries(errores).map(([key, message]) => <p key={key} role="alert" className="text-sm text-[#991B1B]">{message}</p>)}
         {consultando && <p role="status">Consultando disponibilidad…</p>}
         {disponibilidadError && <p role="alert" className="text-sm text-[#991B1B]">{disponibilidadError}</p>}
 
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest">Huésped</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[10px] text-[#71839B] uppercase tracking-widest">Huésped</p>
             {modoNuevoHuesped && <button onClick={() => {
               setModoNuevoHuesped(v => !v);
               setErrores({});
@@ -250,19 +282,18 @@ telefono: '',
           {!modoNuevoHuesped ? (<div className="space-y-2">
             <div className="grid sm:grid-cols-[124px_minmax(0,1fr)] gap-2">
               <div className="flex items-end">
-                <select value={campoBusqueda} onChange={e => setCampoBusqueda(e.target.value as 'nombre' | 'correo' | 'telefono')} className={`${INPUT_CLS} !h-10 !py-2 !px-3`}>
+                <select aria-label="Criterio de búsqueda de huésped" value={campoBusqueda} onChange={e => {setCampoBusqueda(e.target.value as 'nombre' | 'documento');setBuscarHuesped('');setRemoteGuests([]);setGuestSearchError('');}} className={`${INPUT_CLS} !h-10 !py-2 !px-3`}>
                   <option value="nombre">Nombre</option>
-                  <option value="correo">Correo</option>
-                  <option value="telefono">{conectado ? 'Documento' : 'Teléfono'}</option>
+                  <option value="documento">Documento</option>
                 </select>
               </div>
               <Campo label="Buscar huésped" error={errores.huesped}>
                 <div className="flex flex-wrap items-center gap-2">
-                  <input value={buscarHuesped} onChange={e => setBuscarHuesped(e.target.value)} placeholder={`Buscar por ${campoBusqueda}…`} className={`${INPUT_CLS} !h-10 !py-2 min-w-[180px] flex-1`} />
+                  <input type="text" inputMode={campoBusqueda==='documento'?'numeric':'text'} maxLength={campoBusqueda==='documento'?30:150} value={buscarHuesped} onChange={e => setBuscarHuesped((campoBusqueda==='documento'?e.target.value.replace(/[^0-9]/g,''):e.target.value.replace(/[^\p{L}\p{M} '’-]/gu,'')).slice(0,campoBusqueda==='documento'?30:150))} placeholder={campoBusqueda==='nombre'?'Buscar por nombre...':'Buscar por documento...'} className={`${INPUT_CLS} !h-10 !py-2 min-w-[180px] flex-1`} />
                   <button onClick={() => {
                     setModoNuevoHuesped(v => !v);
                     setErrores({});
-                  }} className="ml-auto whitespace-nowrap text-[12px] font-semibold text-[#18345C] hover:underline">
+                  }} className="ml-auto whitespace-nowrap text-[12px] font-semibold text-[#18345C] hover:underline max-[400px]:basis-full max-[400px]:text-right">
                     Registrar nuevo huésped
                   </button>
                 </div>
@@ -319,39 +350,7 @@ telefono: '',
             <Campo label="Correo electrónico" error={errores.correo}>
               <input aria-label="Correo electrónico" type="email" value={nh.correo} onChange={e => setNh(f => ({ ...f, correo: e.target.value }))} className={INPUT_CLS} />
             </Campo>
-            <Campo label="Teléfono" error={errores.telefono}>
-              <div className="flex gap-3">
-                <select value={nh.prefijo} onChange={e => setNh(f => ({ ...f, prefijo: e.target.value }))} className={`${INPUT_CLS} !w-24`}>
-                  <option value="+502">+502</option>
-                  <option value="+503">+503</option>
-                  <option value="+504">+504</option>
-                  <option value="+501">+501</option>
-                  <option value="+506">+506</option>
-                  <option value="+507">+507</option>
-                  <option value="+52">+52</option>
-                  <option value="+1">+1</option>
-                  <option value="+57">+57</option>
-                  <option value="+34">+34</option>
-                  <option value="+51">+51</option>
-                  <option value="+54">+54</option>
-                  <option value="+56">+56</option>
-                  <option value="+593">+593</option>
-                  <option value="+55">+55</option>
-                  <option value="+44">+44</option>
-                  <option value="+33">+33</option>
-                  <option value="+49">+49</option>
-                  <option value="+39">+39</option>
-                </select>
-                <input
-                  aria-label="Teléfono"
-                  type="text"
-                  value={nh.telefono}
-                  onChange={e => setNh(f => ({ ...f, telefono: e.target.value }))}
-                  maxLength={24}
-                  inputMode="tel"
-                  className={`${INPUT_CLS} flex-1`} />
-              </div>
-            </Campo>
+            <Campo label="Teléfono"><GuatemalaPhoneInput label="Teléfono" value={nh.telefono} onChange={telefono=>setNh(f=>({...f,telefono}))} error={errores.telefono}/></Campo>
             <div className="rounded-xl border border-[#EEE7DA] p-4">
               <label className="flex items-center justify-between gap-3 cursor-pointer">
                 <span>
@@ -385,19 +384,19 @@ telefono: '',
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2.5 text-sm">
                 <span>
-                  <small className="block text-[#AEBCC1]">Estancia</small>
+                  <small className="block text-[#71839B]">Estancia</small>
                   <b>{entrada} → {salida}</b>
                 </span>
                 <span>
-                  <small className="block text-[#AEBCC1]">Ocupación</small>
+                  <small className="block text-[#71839B]">Ocupación</small>
                   <b>{adultos} adultos · {ninos} niños</b>
                 </span>
                 <span>
-                  <small className="block text-[#AEBCC1]">Tarifa</small>
+                  <small className="block text-[#71839B]">Tarifa</small>
                   <b>{dinero(habElegida.precioNoche)} por noche</b>
                 </span>
                 <span>
-                  <small className="block text-[#AEBCC1]">Total</small>
+                  <small className="block text-[#71839B]">Total</small>
                   <b>
                     {dinero(habElegida.precioNoche * noches)}
                   </b>
@@ -416,7 +415,7 @@ telefono: '',
               <input aria-label="Salida" type="date" value={salida} min={entrada} onChange={e => setSalida(e.target.value)} className={INPUT_CLS} />
             </Campo>
             <div className="col-span-2 sm:col-span-1">
-              <Campo label="Huéspedes">
+              <Campo label="Cantidad de huéspedes">
                 <div className="relative">
                   <button type="button" onClick={() => setHuespedesAbierto(v => !v)} className={`${INPUT_CLS} flex items-center gap-2 text-left`}>
                     <Users size={18} />
@@ -484,16 +483,17 @@ telefono: '',
 
 
           <div>
-            <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest mb-2">
+            <p className="text-xs font-semibold text-[#18345C] uppercase tracking-wider mb-2">
               Habitaciones disponibles {rangoValido && `· ${noches} noche${noches !== 1 ? 's' : ''}`}
             </p>
-            {!rangoValido ? (<p className="text-[13px] text-[#AEBCC1]">Indica un rango de fechas válido.</p>) : disponiblesPiso.length === 0 ? (<p className="text-[13px] text-[#991B1B] bg-[#FEF2F2] border border-[#FCA5A5] rounded-lg px-3 py-2">
+            {!rangoValido ? (<p className="text-[13px] text-[#71839B]">Indica un rango de fechas válido.</p>) : disponiblesPiso.length === 0 ? (<p className="text-[13px] text-[#991B1B] bg-[#FEF2F2] border border-[#FCA5A5] rounded-lg px-3 py-2">
               No hay habitaciones {tipo} para {nPersonas} persona(s) en esas fechas.
             </p>) : (<div className="space-y-2 max-h-[30vh] overflow-y-auto">
               {disponiblesPiso.map(h => (<button
                 key={h.id}
                 type="button"
-                onClick={() => setHabitacionId(id => (id === h.id ? '' : h.id))}
+                aria-pressed={habitacionId === h.id}
+                onClick={() => setHabitacionId(id => (id === h.id && !preset?.habitacionId ? '' : h.id))}
                 className={`w-full text-left flex items-center gap-3 border rounded-lg px-4 py-3 transition-colors ${habitacionId === h.id ? 'border-[#18345C] bg-[#F8F6F0]' : 'border-[#E5E0D8] hover:border-[#18345C]'}`}>
                 {(() => {
                   const v = publicRoomForHotelType(h.tipo);
@@ -501,7 +501,7 @@ telefono: '',
                 })()}
                 <div className="flex-1 min-w-0">
                   <p className="text-[15px] font-bold text-[#18345C] leading-none">Habitación {h.numero}</p>
-                  <p className="text-[12px] text-[#AEBCC1] mt-0.5">
+                  <p className="text-[12px] text-[#71839B] mt-0.5">
                     {h.tipo} · Piso {h.piso} · hasta {h.capacidad} personas
                   </p>
                 </div>
@@ -509,7 +509,7 @@ telefono: '',
                   <p className="text-[15px] font-bold text-[#18345C]">
                     {dinero(h.precioNoche)}
                   </p>
-                  <p className="text-[11px] text-[#AEBCC1]">por noche</p>
+                  <p className="text-[11px] text-[#71839B]">por noche</p>
                 </div>
               </button>))}
             </div>)}
@@ -559,17 +559,17 @@ telefono: '',
         </div>
       </div>)}
 
-      {!revisando && <div data-vs-actions="compact" className="px-5 pb-5 flex gap-3">
-        <button onClick={onCerrar} className="flex-1 py-2.5 text-sm border border-[#E5E0D8] text-[#6B7280] rounded-md hover:bg-[#F8F6F0] transition-colors">
+      {!revisando && <div data-vs-actions="compact" className={styles.actions}>
+        <button onClick={onCerrar} className="h-11 shrink-0 px-4 py-2.5 text-sm border border-[#E5E0D8] bg-white text-[#18345C] rounded-md hover:bg-[#F8F6F0] transition-colors">
           Cancelar
         </button>
         <button
           onClick={() => setRevisando(true)}
-          className="flex-1 py-2.5 text-sm font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
+          className="h-11 shrink-0 px-4 py-2.5 text-sm font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors">
           Revisar datos
         </button>
       </div>}
-      {revisando && <div className="absolute inset-0 z-20 bg-white overflow-y-auto p-4 sm:p-5">
+      {revisando && <div className={styles.review}>
         <div className="flex justify-between items-start border-b pb-3">
           <div>
             <p className="text-[10px] tracking-[.18em] text-[#B38719] uppercase">Reserva · Revisión</p>
@@ -589,47 +589,44 @@ telefono: '',
             <h3 className="font-semibold text-[#18345C] mb-2">Información del huésped</h3>
             <div className="grid sm:grid-cols-2 gap-x-5 gap-y-2 text-sm">
               <div>
-                <small className="text-[#AEBCC1]">Nombre</small>
+                <small className="text-[#71839B]">Nombre</small>
                 <b className="block">
                   {modoNuevoHuesped ? `${nh.nombre} ${nh.apellidos}`.trim() : (hg?.nombre || '—')}
                 </b>
               </div>
               <div>
-                <small className="text-[#AEBCC1]">Documento</small>
+                <small className="text-[#71839B]">Documento</small>
                 <b className="block">
                   {modoNuevoHuesped ? `${nh.tipoDocumento} · ${nh.documento}` : (hg ? `${hg.tipoDocumento} · ${hg.documento}` : '—')}
                 </b>
               </div>
               <div>
-                <small className="text-[#AEBCC1]">Teléfono</small>
+                <small className="text-[#71839B]">Teléfono</small>
                 <b className="block">
                   {modoNuevoHuesped ? `${nh.prefijo} ${nh.telefono}` : (hg?.telefono || '—')}
                 </b>
               </div>
               <div>
-                <small className="text-[#AEBCC1]">Correo</small>
+                <small className="text-[#71839B]">Correo</small>
                 <b className="block">
                   {modoNuevoHuesped ? nh.correo : (hg?.correo || '—')}
                 </b>
               </div>
-              <div>
-                <small className="text-[#AEBCC1]">Estancia</small>
-                <b className="block">{entrada} → {salida} · {adultos} adultos · {ninos} niños</b>
-              </div>
+
             </div>
-          </section>{habElegida && room ? <section className="border rounded-xl overflow-hidden flex bg-[#F8F6F0]">
-            <img src={room.image} alt={`Habitación ${habElegida?.numero ?? 'sin asignar'}`} className="w-36 h-24 object-cover" />
-            <div className="p-3">
-              <small className="text-[#AEBCC1]">Habitación seleccionada</small>
+          </section><section className="border-t border-[#E5E0D8] py-3"><h3 className="mb-2 font-semibold text-[#18345C]">Detalles de la reserva</h3><div className="mb-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2"><ResumenFinal label="Estancia" valor={`${entrada} → ${salida}`}/><ResumenFinal label="Huéspedes" valor={`${adultos} adultos · ${ninos} niños`}/></div>{habElegida && room ? <section className="border rounded-xl overflow-hidden flex bg-[#F8F6F0]">
+            <img src={room.image} alt={`Habitación ${habElegida?.numero ?? 'sin asignar'}`} className="w-24 sm:w-36 h-24 shrink-0 object-cover" />
+            <div className="min-w-0 p-3">
+              <small className="text-[#71839B]">Habitación seleccionada</small>
               <h3 className="text-lg font-semibold text-[#18345C]">Habitación {habElegida.numero}</h3>
               <p className="text-sm">{room.name} · Piso {habElegida.piso}</p>
               <p className="text-sm">{room.beds} · hasta {habElegida.capacidad} huéspedes</p>
               <b className="block mt-2 text-[#18345C]">{dinero(habElegida.precioNoche)} / noche · {noches} noches · Total {dinero(habElegida.precioNoche * noches)}</b>
             </div>
           </section> : <div className="border rounded-xl p-4 bg-[#F8F6F0]">
-            <b>Sin habitación asignada</b>
-            <p className="text-sm text-[#6B7280]">La reserva puede crearse ahora y asignar la habitación más tarde.</p>
-          </div>}<div data-vs-actions="compact" className="flex justify-end gap-3 mt-3">
+            <b>{habitacionId || preset?.habitacionId ? 'Comprueba la habitación seleccionada' : 'Sin habitación asignada'}</b>
+            <p className="text-sm text-[#6B7280]">{habitacionId || preset?.habitacionId ? 'No se puede confirmar hasta comprobar su disponibilidad. Regresa a editar para seleccionar una habitación.' : 'La reserva puede crearse ahora y asignar la habitación más tarde.'}</p>
+          </div>}</section><div data-vs-actions="compact" className={styles.reviewActions}>
               <button onClick={() => setRevisando(false)} className="px-4 py-2 border rounded-md text-sm">Editar</button>
               <button onClick={guardar} disabled={guardando || resultadoDesconocido || consultando} className="px-4 py-2 bg-[#18345C] text-white rounded-md text-sm font-semibold disabled:opacity-50">{guardando ? 'Guardando…' : 'Confirmar reserva'}</button>
             </div></>;
@@ -643,7 +640,7 @@ function ResumenFinal({ label, valor }: {
   valor: string;
 }) {
   return <div>
-    <small className="block text-[#AEBCC1]">
+    <small className="block text-[#71839B]">
       {label}
     </small>
     <b className="text-[#18345C]">

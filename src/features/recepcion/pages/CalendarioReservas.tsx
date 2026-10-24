@@ -97,7 +97,9 @@ export default function CalendarioReservas({ conectado = false, reservas, huespe
       if(conectado){
         if(!preset.tipoHabitacionId)throw Error('No se pudo identificar la categoría de la habitación.');
         const available=await getAvailableRoomReferences(preset.tipoHabitacionId,preset.entrada,preset.salida,c.signal);
-        if(!available.some(r=>r.numero===room.numero))throw Error('La habitación ya no está disponible para esas fechas. Actualiza el calendario.');
+        const selected = available.find(r=>r.numero===room.numero);
+        if(!selected)throw Error('La habitación ya no está disponible para esas fechas. Actualiza el calendario.');
+        preset = { ...preset, habitacionId: String(selected.id) };
       }
       if(!c.signal.aborted)onNueva(preset);
     }catch(e){if(!c.signal.aborted)setSelectionError(e instanceof Error?e.message:'No se pudo comprobar la disponibilidad.');}

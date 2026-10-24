@@ -15,7 +15,7 @@ for(const resource of ['tipos','habitaciones','personal','temporadas'])test(`una
 });
 test('unavailable room map and reports have clear messages and disabled data actions',async()=>{
  const view=render(<ApprovedRoomMapConnected/>);await screen.findByText(/Modo demostración/);expect(screen.getByRole('button',{name:'Volver a consultar'})).toBeDisabled();view.unmount();
- render(<ReportesConectados/>);await screen.findByText(/Modo demostración/);expect(screen.getByRole('button',{name:'Consultar'})).toBeEnabled();expect(screen.getByRole('button',{name:'Exportar CSV'})).toBeDisabled();const before=call.mock.calls.length;fireEvent.click(screen.getByRole('button',{name:'Consultar'}));await waitFor(()=>expect(call.mock.calls.length).toBeGreaterThan(before));expect(call.mock.calls.some(([path])=>path.startsWith('admin/indicadores?'))).toBe(true);expect(call.mock.calls.every(([,method])=>method==='GET')).toBe(true);await waitFor(()=>expect(screen.getByRole('button',{name:'Consultar'})).toBeEnabled());expect(screen.getByRole('button',{name:'Exportar CSV'})).toBeDisabled();
+ render(<ReportesConectados/>);await screen.findByText(/El servicio de reportes no está disponible/);expect(screen.getByRole('button',{name:'Consultar'})).toBeEnabled();expect(screen.getByRole('button',{name:'Exportar Excel'})).toBeDisabled();const before=call.mock.calls.length;fireEvent.click(screen.getByRole('button',{name:'Consultar'}));await waitFor(()=>expect(call.mock.calls.length).toBeGreaterThan(before));expect(call.mock.calls.some(([path])=>path.startsWith('admin/indicadores?'))).toBe(true);expect(call.mock.calls.every(([,method])=>method==='GET')).toBe(true);await waitFor(()=>expect(screen.getByRole('button',{name:'Consultar'})).toBeEnabled());expect(screen.getByRole('button',{name:'Exportar Excel'})).toBeDisabled();
 });
 for(const section of ['inventario','finanzas'])test(`${section} does not expose write forms after unavailable data`,async()=>{
  render(<GestionAdmin seccion={section}/>);await screen.findByText(/Modo demostración/);expect(screen.queryByRole('button',{name:/Agregar|Registrar|Guardar/})).toBeNull();expect(call.mock.calls.every(([,method])=>method==='GET')).toBe(true);
@@ -24,7 +24,7 @@ test('unavailable labor operations do not expose attendance or payroll writes',a
  render(<LaboralAdmin initial="asistencia"/>);await screen.findByText(/Modo demostración/);expect(screen.queryByRole('button',{name:'Guardar asistencia'})).toBeNull();
 });
 test('successful backend results retain normal report and catalog actions',async()=>{
- call.mockImplementation(async path=>path.startsWith('admin/reportes')?{desde:'2026-10-01',hasta:'2026-10-19',reservas:[],pagos:[],ocupacionActual:[]}:[]);
- const view=render(<ReportesConectados/>);await waitFor(()=>expect(screen.getByRole('button',{name:'Exportar CSV'})).toBeEnabled());expect(screen.getByRole('button',{name:'Consultar'})).toBeEnabled();view.unmount();
+ call.mockImplementation(async path=>path.startsWith('admin/reportes')?{desde:new URLSearchParams(path.split('?')[1]).get('desde'),hasta:new URLSearchParams(path.split('?')[1]).get('hasta'),reservas:[],pagos:[],ocupacionActual:[]}:[]);
+ const view=render(<ReportesConectados/>);await waitFor(()=>expect(screen.getByRole('button',{name:'Exportar Excel'})).toBeEnabled());expect(screen.getByRole('button',{name:'Consultar'})).toBeEnabled();view.unmount();
  render(<CatalogosAdmin initial="tipos"/>);await waitFor(()=>expect(screen.getByRole('button',{name:'Nuevo registro'})).toBeEnabled());expect(screen.queryByText(/Modo demostración/)).toBeNull();
 });

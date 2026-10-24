@@ -1,9 +1,9 @@
-import CompactFilter from "@/components/common/CompactFilter";
+import CategoriaActivoSelect from "./CategoriaActivoSelect";
 import { useState } from 'react';
 import {validPublicDate} from '@/lib/publicStayValidation';
 import type { Activo, OrdenTrabajo, CategoriaActivo, EstadoActivo } from '@/lib/pms/types';
 import { formatoFecha } from '@/data/pms';
-import { Chip, dinero, ACTIVO_META, CATEGORIAS_ACTIVO, ESTADO_OT_META, costoRepuestos, Cabecera, Kpi, Vacio, Modal, BoxIcon, } from '@/features/mantenimiento/pages/mantUtils';
+import { Chip, dinero, ACTIVO_META, ESTADO_OT_META, costoRepuestos, Kpi, Vacio, Modal, BoxIcon, } from '@/features/mantenimiento/pages/mantUtils';
 const UMBRAL_RECURRENTE = 2;
 interface Props {
   activos: Activo[];
@@ -25,22 +25,22 @@ export default function Activos({ activos, ordenes, onCambiarEstado, onAbrirOrde
     .filter(a => filtro === 'todas' || a.categoria === filtro)
     .sort((a, b) => ordenesDe(b.id).length - ordenesDe(a.id).length || a.nombre.localeCompare(b.nombre));
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-    <div className="flex items-center justify-between bg-white">
-      <Cabecera titulo="Activos y equipos" subtitulo={`${activos.length} equipos registrados`} />
-      <button onClick={() => setNuevo(true)} className="mr-6 rounded-lg bg-[#18345C] px-4 py-2.5 font-semibold text-white">+ Nuevo equipo</button>
+    <div data-vs-page-header="mantenimiento" className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E5E0D8] bg-[#F8F6F0] px-4 py-5 sm:px-6">
+      <div><h1 data-vs-page-title="mantenimiento" className="text-[32px] font-semibold text-[#18345C]">Activos y equipos</h1><p className="text-sm text-[#71839B]">{activos.length} equipos registrados</p></div>
+      <button onClick={() => setNuevo(true)} className="rounded-lg bg-[#18345C] px-4 py-2.5 font-semibold text-white">+ Nuevo equipo</button>
     </div>
 
     <div className="px-4 sm:px-6 pt-5">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Kpi valor={String(activos.length)} label="Equipos" />
-        <Kpi valor={String(operativos.length)} label="Operativos" color="#166534" />
-        <Kpi valor={String(fueraServicio.length)} label="Fuera de servicio" color={fueraServicio.length ? '#991B1B' : '#166534'} />
-        <Kpi valor={String(recurrentes.length)} label="Con fallas repetidas" color={recurrentes.length ? '#9A3412' : '#166534'} />
+        <Kpi valor={String(operativos.length)} label="Operativos" />
+        <Kpi valor={String(fueraServicio.length)} label="Fuera de servicio" />
+        <Kpi valor={String(recurrentes.length)} label="Con fallas repetidas" />
       </div>
     </div>
 
     <div className="px-4 sm:px-6 pt-5 flex gap-2 flex-wrap">
-      <CompactFilter label="Categoría" value={filtro} onChange={setFiltro}><option value="todas">Todas las categorías</option>{CATEGORIAS_ACTIVO.map(c=><option key={c} value={c}>{c}</option>)}</CompactFilter>
+      <div className="w-full sm:w-[220px]"><span className="text-sm font-medium text-[#18345C]">Categoría</span><CategoriaActivoSelect value={filtro} onChange={setFiltro} incluirTodas/></div>
     </div>
 
     <div className="px-4 sm:px-6 py-5">
@@ -209,17 +209,13 @@ function NuevoActivo({ onCerrar, onGuardar }: {
   const cls = 'mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white px-3 py-2.5 outline-none focus:border-[#B8C4D0]';
   return <Modal titulo="Nuevo equipo" onCerrar={onCerrar}>
     <div className="grid gap-3 sm:grid-cols-2">
-      <label>Nombre<input className={cls} value={nombre} onChange={e => setNombre(e.target.value)} /></label>
-      <label>Categoría<select className={cls} value={categoria} onChange={e => setCategoria(e.target.value as CategoriaActivo)}>
-        {CATEGORIAS_ACTIVO.map(c => <option key={c}>
-          {c}
-        </option>)}
-      </select></label>
-      <label>Ubicación<input className={cls} value={ubicacion} onChange={e => setUbicacion(e.target.value)} /></label>
+      <label>Nombre *<input className={cls} value={nombre} onChange={e => setNombre(e.target.value)} /></label>
+      <div><span>Categoría *</span><CategoriaActivoSelect value={categoria} onChange={v=>setCategoria(v as CategoriaActivo)}/></div>
+      <label>Ubicación *<input className={cls} value={ubicacion} onChange={e => setUbicacion(e.target.value)} /></label>
       <label>Marca<input className={cls} value={marca} onChange={e => setMarca(e.target.value)} /></label>
       <label>Modelo<input className={cls} value={modelo} onChange={e => setModelo(e.target.value)} /></label>
-      <label>Fecha de instalación<input type="date" className={cls} value={fecha} onChange={e => setFecha(e.target.value)} /></label>
-        <label>Costo<input type="number" min="0" step="0.01" inputMode="decimal" className={cls} value={costo} onChange={e => {setCosto(e.target.value);setValidationError('');}} /></label>
+      <label>Fecha de instalación *<input type="date" className={cls} value={fecha} onChange={e => setFecha(e.target.value)} /></label>
+        <label>Costo<span className="relative block"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#18345C]">Q</span><input type="number" min="0" step="0.01" inputMode="decimal" className={`${cls} pl-8`} value={costo} onChange={e => {setCosto(e.target.value);setValidationError('');}} /></span></label>
       <label>Estado<select className={cls} value={estado} onChange={e => setEstado(e.target.value as EstadoActivo)}>
         <option value="operativo">Operativo</option>
         <option value="en-reparacion">En reparación</option>

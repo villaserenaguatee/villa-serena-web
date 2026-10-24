@@ -1,3 +1,4 @@
+import SelectPlaceholder from '@/components/common/SelectPlaceholder';
 import FormOperationFeedback from '@/components/common/FormOperationFeedback';
 import { fechaHotel } from "@/lib/hotel";
 import {validPublicDate} from '@/lib/publicStayValidation';
@@ -290,7 +291,7 @@ function FormCompra({ insumos, onCancel, onSave }: {
             if (i)
               setCosto(String(i.costoUnitario));
           }}>
-          <option value="">Seleccionar…</option>
+          <SelectPlaceholder/>
           {insumos.map(i => <option key={i.id} value={i.id}>
             {i.nombre}
           </option>)}

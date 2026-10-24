@@ -1,5 +1,6 @@
 // Visual fixtures, instantiated only by the local development demo provider.
 // No storage, authentication accounts or API writes.
+import {publicRooms} from '@/data/publicRoomSeed';
 export type DemoRow = {id:string; [key:string]:unknown};
 export type AdminDemoData = ReturnType<typeof createAdminDemoData>;
 export function createAdminDemoData() {
@@ -19,6 +20,11 @@ export function createAdminDemoData() {
     {id:'demo-type-3',nombre:'Familiar',capacidad:4,camas:'2 queen',precioBase:720,estado:'ACTIVO',descripcion:'Espacio para compartir en familia.'},
     {id:'demo-type-4',nombre:'Suite',capacidad:3,camas:'1 king y sofá cama',precioBase:950,estado:'ACTIVO',descripcion:'Dormitorio y sala privada.'},
   ];
+  // Illustrative catalog images for the local demo only, not hotel photographs.
+  for (const type of types) {
+    const offer = publicRooms.find(room => room.type === type.nombre);
+    type.fotos = offer ? [...new Set([offer.image, ...offer.gallery])].filter(Boolean).map((url, orden) => ({url, principal: orden === 0, orden})) : [];
+  }
   const rooms:DemoRow[] = Array.from({length:18},(_,i)=>({id:`demo-room-${i+1}`,numero:String((Math.floor(i/6)+1)*100+i%6+1),piso:Math.floor(i/6)+1,tipoId:types[i%4].id,estado:['Disponible','Ocupada','Disponible','En limpieza','Ocupada','Mantenimiento'][i%6]}));
   const seasons:DemoRow[] = [
     {id:'demo-season-1',nombre:'Fin de año',desde:'2026-12-15',hasta:'2027-01-05',ajustePct:20,estado:'ACTIVA'},

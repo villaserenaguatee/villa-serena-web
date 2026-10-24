@@ -1,0 +1,5 @@
+.form.form [data-vs-field]>p:first-child{color:#18345c;font-weight:600;letter-spacing:normal;text-transform:none;margin-bottom:4px}.form.form input,.form.form select{color:#18345c;font-weight:400}.form.form [data-vs-field] button:has(>span){font-weight:400}@media(max-width:639px){.form.form [data-vs-field] input{min-width:0}.form.form [data-vs-field] button:has(>span)+div{max-width:calc(100vw - 64px)}}
+
+.form.form .actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:nowrap;gap:12px;margin-top:0;padding:8px 24px max(8px,env(safe-area-inset-bottom))}.form.form .actions>button{flex:none;width:auto;height:44px;min-height:44px;padding:8px 16px}.form.form .actions>button:focus-visible{outline:2px solid #426d98;outline-offset:2px}
+
+.review{position:relative;min-width:0;padding:16px;overflow-wrap:anywhere}.form.form .reviewActions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px;margin-top:0;padding:8px 0 max(8px,env(safe-area-inset-bottom))}.form.form .reviewActions>button{flex:none;width:auto;min-height:44px}@media(min-width:640px){.review{padding:20px}}

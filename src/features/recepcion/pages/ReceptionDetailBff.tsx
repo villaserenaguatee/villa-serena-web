@@ -1,3 +1,4 @@
+import SelectPlaceholder from '@/components/common/SelectPlaceholder';
 import { ArrowLeft } from 'lucide-react';
 import ReceptionActionDialog from './ReceptionActionDialog';
 import ReceptionCloseButton from './ReceptionCloseButton';
@@ -108,8 +109,8 @@ export default function ReceptionDetailBff({ conectado = false, codigo, onCerrar
           {options && <ReceptionActionDialog title={detail.habitacion ? 'Cambiar habitación' : 'Asignar habitación'} busy={busy} onClose={() => { setOptions(null); setError(''); }}>
             <form data-vs-ui="compact" className="space-y-3" onSubmit={e => { e.preventDefault(); if (!options.some(r => String(r.id) === selected && String(r.piso) === floor)) return; void run(async () => { setDetail(await assignRoom(codigo, Number(selected))); setOptions(null); setNotice('Habitación asignada.'); }); }}>
               <div className="grid grid-cols-2 gap-3">
-                <label className="block">Piso<select aria-label="Piso" required className={`${control} mt-1 w-full`} value={floor} onChange={e => { setFloor(e.target.value); setSelected(''); }}><option value="">Seleccionar</option>{[...new Set(options.map(r => r.piso))].sort((a, b) => a - b).map(p => <option key={p} value={p}>{p}</option>)}</select></label>
-                <label className="block">Habitación<select aria-label="Habitación" required disabled={!floor} className={`${control} mt-1 w-full`} value={selected} onChange={e => setSelected(e.target.value)}><option value="">Seleccionar</option>{options.filter(r => String(r.piso) === floor).map(r => <option key={r.id} value={r.id}>{r.numero}</option>)}</select></label>
+                <label className="block">Piso<select aria-label="Piso" required className={`${control} mt-1 w-full`} value={floor} onChange={e => { setFloor(e.target.value); setSelected(''); }}><SelectPlaceholder/>{[...new Set(options.map(r => r.piso))].sort((a, b) => a - b).map(p => <option key={p} value={p}>{p}</option>)}</select></label>
+                <label className="block">Habitación<select aria-label="Habitación" required disabled={!floor} className={`${control} mt-1 w-full`} value={selected} onChange={e => setSelected(e.target.value)}><SelectPlaceholder/>{options.filter(r => String(r.piso) === floor).map(r => <option key={r.id} value={r.id}>{r.numero}</option>)}</select></label>
               </div>
               {!options.length && <p>No hay habitaciones permitidas para esta reserva.</p>}
               <button className={primary} disabled={busy || !selected}>Guardar asignación</button><button type="button" className={control} disabled={busy} onClick={() => { setOptions(null); setError(''); }}>Cancelar</button>

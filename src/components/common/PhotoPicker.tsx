@@ -1,17 +1,20 @@
 'use client';
 import { useId, useRef } from 'react';
-import { Camera, Plus } from 'lucide-react';
+import { Camera, Plus, ImagePlus, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { usePublicLanguage } from './PublicLanguageToggle';
 
 /** Presentation only: callers retain file validation, permissions and storage. */
-export default function PhotoPicker({ label, accept, preview, disabled = false, compact = false, removable = Boolean(preview), onSelect, onRemove }: {
+export default function PhotoPicker({ label, accept, preview, disabled = false, compact = false, removable = Boolean(preview), actionStyle = 'links', onSelect, onRemove }: {
   label: string; accept: string; preview?: string | null; disabled?: boolean; compact?: boolean;
-  removable?: boolean; onSelect: (file: File) => void; onRemove?: () => void;
+  removable?: boolean; actionStyle?: 'links' | 'buttons'; onSelect: (file: File) => void; onRemove?: () => void;
 }) {
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
   const { en } = usePublicLanguage();
+  const actionClass = actionStyle === 'buttons'
+    ? 'inline-flex min-h-10 items-center gap-2 rounded-md border border-[#E5E0D8] bg-white px-3 py-2 text-sm font-medium text-[#18345C] transition-colors hover:bg-[#F8F6F0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18345C] focus-visible:ring-offset-2 disabled:opacity-50'
+    : 'underline underline-offset-2 disabled:opacity-50';
   return <div data-photo-picker className={compact ? 'shrink-0' : 'w-full min-w-0'}>
     <label htmlFor={id} className={`relative flex items-center justify-center overflow-hidden rounded-lg border border-[#AEBCC1] bg-[#F2F4F5] text-[#18345C] focus-within:ring-2 focus-within:ring-[#18345C] focus-within:ring-offset-2 ${compact ? 'h-11 w-11' : 'h-28 w-full'} ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#18345C]'}`}>
       <input ref={input} id={id} aria-label={label} type="file" accept={accept} disabled={disabled} className="sr-only" onChange={event => {
@@ -25,8 +28,8 @@ export default function PhotoPicker({ label, accept, preview, disabled = false, 
       </span>}
     </label>
     {removable && onRemove && <div className="mt-1.5 flex flex-wrap gap-3 text-sm text-[#18345C]">
-      {preview && <button type="button" disabled={disabled} onClick={() => input.current?.click()} className="underline underline-offset-2 disabled:opacity-50">{en ? 'Replace photo' : 'Reemplazar imagen'}</button>}
-      <button type="button" disabled={disabled} onClick={onRemove} className="underline underline-offset-2 disabled:opacity-50">{en ? 'Remove photo' : 'Quitar imagen'}</button>
+      {preview && <button type="button" disabled={disabled} onClick={() => input.current?.click()} className={actionClass}>{actionStyle === 'buttons' && <ImagePlus size={16} aria-hidden="true"/>}{en ? 'Replace photo' : 'Reemplazar imagen'}</button>}
+      <button type="button" disabled={disabled} onClick={onRemove} className={actionClass}>{actionStyle === 'buttons' && <Trash2 size={16} aria-hidden="true"/>}{en ? 'Remove photo' : 'Quitar imagen'}</button>
     </div>}
   </div>;
 }

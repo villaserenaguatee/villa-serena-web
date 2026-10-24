@@ -1,3 +1,4 @@
+import SelectPlaceholder from '@/components/common/SelectPlaceholder';
 import ReceptionCloseButton from './ReceptionCloseButton';
 import { confirmarTarifaTransporte as confirmarTarifaCanonica, leerTransportes } from "@/store/transportStore";
 import { useEffect, useMemo, useState } from 'react';
@@ -424,7 +425,7 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
                   setBuscarHuesped('');
                 }}
                 className={`${INPUT_CLS} border-[#EEE9E1] shadow-none`}>
-                <option value="">Seleccionar piso</option>
+                <SelectPlaceholder/>
                 {pisos.map(n => <option key={n} value={n}>Piso {n}</option>)}
               </select>
             </Campo>
@@ -434,7 +435,7 @@ export default function SolicitudesRecepcion({ solicitudes, huespedes, reservas,
                 value={habitacion}
                 onChange={e => seleccionarHabitacion(e.target.value)}
                 className={`${INPUT_CLS} border-[#EEE9E1] shadow-none disabled:bg-[#F8F6F0]`}>
-                <option value="">Seleccionar habitación</option>
+                <SelectPlaceholder/>
                 {habitacionesDelPiso.map(h => <option key={h.id} value={h.numero}>Habitación {h.numero}</option>)}
               </select>
             </Campo>

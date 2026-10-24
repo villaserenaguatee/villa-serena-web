@@ -1,4 +1,5 @@
 "use client";
+import GuatemalaPhoneInput from '@/components/common/GuatemalaPhoneInput';
 import PreviousBookingRequest from '@/components/public/PreviousBookingRequest';
 
 import BookingSummaryCard from '@/components/public/BookingSummaryCard';
@@ -220,28 +221,7 @@ export default function Datos() {
               </label>
               <label className="booking-phone-field">
                 <UiText text="Teléfono" />
-                <div className="phone-combo">
-                  <span className="booking-country-trigger" style={{justifyContent:'center'}}>{prefix}</span>
-                  <input
-                    name="tel"
-                    className="phone-number-input"
-                    aria-label={en ? 'Phone' : 'Teléfono'}
-                    required
-                    inputMode="tel"
-                    value={tel}
-                    aria-invalid={validationShown && Boolean(fieldErrors.tel)}
-                    aria-describedby="reservation-phone-error"
-                    onChange={(e) => setTel(e.target.value.replace(/\D/g, "").slice(0, 8))}
-                    onPaste={(e) => {
-                      e.preventDefault();
-                      const digits = e.clipboardData.getData('text').replace(/\D/g, '');
-                      const start = e.currentTarget.selectionStart ?? tel.length;
-                      const end = e.currentTarget.selectionEnd ?? tel.length;
-                      setTel((tel.slice(0, start) + digits + tel.slice(end)).slice(0, 8));
-                    }}
-                    maxLength={8} pattern="[0-9]{8}" />
-                </div>
-                {validationShown && fieldErrors.tel && <small id="reservation-phone-error" role="alert" className="text-red-800">{fieldErrors.tel}</small>}
+                <GuatemalaPhoneInput name="tel" label={en?'Phone':'Teléfono'} value={tel} onChange={setTel} error={validationShown?fieldErrors.tel:undefined} height={52}/>
               </label>
               <label>
                 <UiText text="Hora estimada de llegada (opcional)" />

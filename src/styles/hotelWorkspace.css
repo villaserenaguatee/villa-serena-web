@@ -41,8 +41,8 @@
 [data-vs-workspace] [data-vs-sidebar] [data-vs-active="true"]{background:#f4eedc!important;color:#102747!important;font-weight:600}
 [data-vs-workspace] [data-vs-sidebar] [data-vs-active="true"]>span{color:#102747!important}
 [data-vs-workspace] [data-vs-sidebar] [data-vs-active="true"]>span[class~="absolute"]{display:none}
-[data-vs-workspace] [data-vs-sidebar]>div:first-child{padding:22px 8px 18px;display:flex;align-items:center;gap:12px;text-align:left;flex-wrap:wrap}
-[data-vs-workspace] [data-vs-sidebar]>div:first-child img{width:64px;max-height:65px;margin:0;object-fit:contain}
+[data-vs-workspace] [data-vs-sidebar]>div:first-child{padding:24px 10px 20px;text-align:left}
+
 [data-vs-workspace] [data-vs-sidebar]>div:first-child p{font-size:14px!important;color:#f2e5be!important;letter-spacing:normal!important;margin:0}
 [data-vs-workspace] [data-vs-sidebar]>div:first-child p[class~="text-xl"]{font-family:Georgia,serif;font-size:20px!important;color:white!important}
 [data-vs-workspace] [data-vs-sidebar]>div:last-child{padding:12px 0;border-color:#ffffff20!important}
@@ -88,8 +88,10 @@
  [data-vs-workspace] [data-vs-topbar]>p:first-child{font-size:18px;color:white!important}
  [data-vs-workspace] [data-vs-topbar="huesped"]:has(select){display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
  [data-vs-workspace] [data-vs-topbar="huesped"]:has(select)>p:first-child{grid-column:1;grid-row:1}
- [data-vs-workspace] [data-vs-topbar="huesped"]:has(select)>span,[data-vs-workspace] [data-vs-topbar="huesped"]:has(select)>p:nth-of-type(2){display:none}
+ [data-vs-workspace] [data-vs-topbar="huesped"]:has(select)>span,[data-vs-workspace] [data-vs-topbar="huesped"]:has(select)>p{display:none}
  [data-vs-workspace] [data-vs-topbar="huesped"]:has(select)>div{grid-column:2;grid-row:1}
+ [data-vs-workspace] [data-vs-topbar="huesped"]:has(select)>[data-vs-mobile-brand]{grid-column:1;grid-row:1}
+ [data-vs-workspace] [data-vs-topbar="huesped"]:has(select)>[data-vs-reservation-picker]{grid-column:1/-1;grid-row:2}
  [data-vs-workspace] [data-vs-topbar="huesped"]>select{grid-column:1/-1;grid-row:2;width:100%;max-width:100%;padding:8px;min-height:44px}
  [data-vs-workspace] [data-vs-table] :is(th,td){padding:12px;font-size:14px}
  [data-vs-workspace] button[aria-label*="Cerrar"],[data-vs-workspace] button[aria-label*="Close"]{min-width:44px;min-height:44px}

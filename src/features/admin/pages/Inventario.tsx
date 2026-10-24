@@ -1,3 +1,4 @@
+import SelectPlaceholder from '@/components/common/SelectPlaceholder';
 import FormOperationFeedback from '@/components/common/FormOperationFeedback';
 import {validPublicDate} from '@/lib/publicStayValidation';
 import { useMemo, useState } from 'react';
@@ -250,7 +251,7 @@ function FormMovimiento({ insumos, onCancelar, onGuardar, }: {
           setMotivo(e.target.value);
           setErr('');
         }} className={INPUT_CLS}>
-          <option value="">Seleccionar motivo…</option>
+          <SelectPlaceholder/>
           {motivos[tipo].map(opcion => <option key={opcion} value={opcion}>
             {opcion}
           </option>)}

@@ -51,10 +51,10 @@ export default function OrdenesTrabajo({ ordenes, onAbrirOrden, onNuevaOrden }: 
 
     <div className="px-4 sm:px-6 pt-5">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Kpi valor={String(abiertas.length)} label="Pendientes de iniciar" color={abiertas.length ? '#9A3412' : '#166534'} />
+        <Kpi valor={String(abiertas.length)} label="Pendientes de iniciar" />
         <Kpi valor={String(enCurso.length)} label="En curso" />
-        <Kpi valor={String(atrasadas.length)} label="Atrasadas" color={atrasadas.length ? '#991B1B' : '#166534'} />
-        <Kpi valor={String(cerradas.length)} label="Cerradas" color="#166534" />
+        <Kpi valor={String(atrasadas.length)} label="Atrasadas" />
+        <Kpi valor={String(cerradas.length)} label="Cerradas" />
       </div>
     </div>
 
@@ -69,7 +69,7 @@ export default function OrdenesTrabajo({ ordenes, onAbrirOrden, onNuevaOrden }: 
       </div>
     </div>)}
 
-    <div className="grid gap-3 px-4 sm:px-6 pt-5 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+    <div className="grid grid-cols-1 gap-4 px-4 sm:px-6 pt-5 sm:grid-cols-[220px_220px] xl:grid-cols-[220px_220px_auto] sm:items-end">
       <CompactFilter label="Estado" value={fEstado} onChange={setFEstado}><option value="activas">En curso</option><option value="todos">Todas</option>{ESTADOS.map(e=><option key={e} value={e}>{ESTADO_OT_META[e].label}</option>)}</CompactFilter>
       <CompactFilter label="Prioridad" value={fPrioridad} onChange={setFPrioridad}><option value="todas">Todas</option>{(['alta','media','baja'] as PrioridadIncidencia[]).map(p=><option key={p} value={p}>{PRIORIDAD_META[p].label}</option>)}</CompactFilter>
       <label className="inline-flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={soloAtrasadas} onChange={e=>setSoloAtrasadas(e.target.checked)}/>Solo atrasadas</label>

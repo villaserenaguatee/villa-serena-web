@@ -1,6 +1,8 @@
 import {render,screen,within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import {expect,test,vi} from 'vitest';
+import {beforeEach,afterEach,expect,test,vi} from 'vitest';
+beforeEach(()=>{vi.stubGlobal('ResizeObserver',class{observe(){}disconnect(){}});});
+afterEach(()=>vi.unstubAllGlobals());
 import Incidents from '@/features/mantenimiento/pages/BandejaIncidencias';
 import Orders from '@/features/mantenimiento/pages/OrdenesTrabajo';
 import Assets from '@/features/mantenimiento/pages/Activos';
@@ -20,15 +22,19 @@ test('task filters keep terminal states and the overdue control',async()=>{
 });
 test('equipment categories are a single selector and new equipment does not display a fabricated code',async()=>{
  render(<Assets activos={[]} ordenes={[]} onCambiarEstado={vi.fn()} onAgregarActivo={vi.fn()} onAbrirOrden={vi.fn()}/>);
- expect(within(screen.getByLabelText('Categoría')).getAllByRole('option')).toHaveLength(14);
+ await userEvent.click(screen.getByRole('button',{name:'Categoría'}));
+ expect(within(screen.getByRole('listbox')).getAllByRole('option')).toHaveLength(14);
+ await userEvent.click(screen.getByRole('option',{name:'Todas las categorías'}));
  await userEvent.click(screen.getByRole('button',{name:/Nuevo equipo/}));
  expect(screen.getByRole('heading',{name:'Nuevo equipo'})).toBeVisible();expect(screen.queryByText(/^CLI-\d/)).toBeNull();
  await userEvent.click(screen.getByRole('button',{name:'Cancelar'}));expect(screen.queryByRole('heading',{name:'Nuevo equipo'})).toBeNull();
 });
-test('preventive maintenance keeps its optional equipment relationship and frequency options',async()=>{
+test('preventive maintenance accepts free equipment text without requiring an asset and keeps frequencies',async()=>{
  render(<Preventive tareas={[]} activos={[]} ordenes={[]} onGenerarOrden={vi.fn()} onToggleActiva={vi.fn()} onAgregarTarea={vi.fn()}/>);
  await userEvent.click(screen.getByRole('button',{name:/Nuevo mantenimiento preventivo/}));
- expect(screen.getByRole('combobox',{name:'Equipo o activo relacionado (opcional)'})).toHaveValue('');
+ expect(screen.queryByRole('combobox',{name:'Equipo o activo relacionado (opcional)'})).toBeNull();
+ await userEvent.type(screen.getByRole('textbox',{name:'Equipo o elemento'}),'Aire acondicionado habitación 105');
+ expect(screen.getByRole('textbox',{name:'Equipo o elemento'})).toHaveValue('Aire acondicionado habitación 105');
  expect(within(screen.getByRole('combobox',{name:'Frecuencia'})).getAllByRole('option')).toHaveLength(6);
- expect(screen.getByText('Selecciona un equipo registrado si este mantenimiento corresponde a uno.')).toBeVisible();
+ expect(screen.queryByText('Selecciona un equipo registrado si este mantenimiento corresponde a uno.')).toBeNull();
 });

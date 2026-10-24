@@ -1,3 +1,5 @@
+import SidebarBrand from '@/components/common/SidebarBrand';
+import StaffSidebarIdentity from '@/components/common/StaffSidebarIdentity';
 import AmenidadesAdmin from './AmenidadesAdmin';
 import GestionAdmin from './GestionAdmin';
 import {useAdminVisualDemo} from '../demo/AdminDemoContext';
@@ -5,7 +7,7 @@ import AdminVisualDemo from '../demo/AdminVisualDemo';
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Bell, X } from 'lucide-react';
-import StaffProfileModal from '@/components/common/StaffProfileModal';
+import AdminProfileDrawer from './AdminProfileDrawer';
 import { useAuth } from '@/hooks/useAuth';
 import { guardarEmpleados, leerEmpleados } from '@/store/employeeStore';
 import { guardarCorrecciones, leerCorrecciones, resolverCorreccion } from '@/store/correctionStore';
@@ -178,7 +180,6 @@ function AdminAppExisting({ onCambiarModulo }: Props) {
   useEffect(() => { if (!user?.staff) guardarPromociones(promociones); }, [promociones, user?.staff]);
 
   const [empleados, setEmpleados] = useState<Empleado[]>(() => user?.staff ? [] : leerEmpleados());
-  const adminActual = user?.staff ?? empleados.find(e => e.id === user?.id && e.activo);
   useEffect(() => {
     if (!user?.staff) guardarEmpleados(empleados); }, [empleados, user?.staff]);
   const [insumos, setInsumos] = useState<Insumo[]>(() => user?.staff ? [] : leerInsumosAdmin());
@@ -355,11 +356,7 @@ function AdminAppExisting({ onCambiarModulo }: Props) {
     <div className="flex-1 flex overflow-hidden">
 
       <nav className="hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col w-56 h-[100dvh]" style={{ backgroundColor: '#102747' }}>
-        <div className="px-5 pt-5 pb-5 border-b shrink-0 text-center" style={{ borderColor: '#1d3a5f' }}>
-          <img src="/villa-serena-logo.png" alt="Villa Serena" className="mx-auto w-32 h-auto object-contain mb-2" />
-          <p className="text-white text-xl font-bold leading-tight" style={{ letterSpacing: '0.02em' }}>Villa Serena</p>
-          <p className="text-xs mt-1" style={{ color: '#AEBCC1', letterSpacing: '0.06em' }}>Administración</p>
-        </div>
+        <div className="shrink-0 border-b px-[22px] pb-5 pt-6" style={{borderColor:'#1d3a5f'}}><SidebarBrand module="Administración"/></div>
 
         <div className="vs-scroll-clean flex-1 py-3 overflow-y-auto">
           {SECCIONES.map(s => {
@@ -387,27 +384,13 @@ function AdminAppExisting({ onCambiarModulo }: Props) {
         <ModuloSwitcher actual="admin" onCambiar={onCambiarModulo} />
 
         <div className="px-4 py-2 border-t shrink-0" style={{ borderColor: '#1d3a5f' }}>
-          <button onClick={() => setPerfilAbierto(true)} title="Abrir mi perfil" className="w-full min-h-16 flex items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-[#18345C] transition-colors">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
-              style={{ backgroundColor: '#D8B94E', color: '#102747' }}>
-              {adminActual?.nombre.split(/\s+/).map(x => x[0]).slice(0, 2).join('').toUpperCase() || 'AD'}
-            </div>
-            <div className="min-w-0">
-              <p className="text-white text-xs font-semibold truncate">
-                {adminActual?.nombre || 'Administración'}
-              </p>
-              <p className="text-[10px] truncate" style={{ color: '#AEBCC1' }}>Administradora</p>
-              <p className="text-[14px] leading-5 no-underline text-[#D8B94E]">Perfil</p>
-            </div>
-          </button>
+          <button onClick={() => setPerfilAbierto(true)} title="Abrir mi perfil" className="w-full min-h-16 flex items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-[#18345C] transition-colors"><StaffSidebarIdentity/></button>
         </div>
       </nav>
 
       <div className="flex-1 lg:ml-56 flex flex-col overflow-hidden">
         <div className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ backgroundColor: '#102747' }}>
-          <p className="lg:hidden text-white text-lg font-bold">Villa Serena</p>
-          <span className="lg:hidden text-[#AEBCC1] text-xs">·</span>
+          <div className="min-w-0 shrink-0 lg:hidden"><SidebarBrand module="Administración"/></div>
           <p className="text-[#AEBCC1] text-xs font-medium truncate flex-1">
             {SECCIONES.find(s => s.id === seccion)?.label}
           </p>
@@ -517,11 +500,6 @@ function AdminAppExisting({ onCambiarModulo }: Props) {
         </div>
       </section>
     </div>}
-    <StaffProfileModal
-      open={perfilAbierto}
-      onClose={() => setPerfilAbierto(false)}
-      name={adminActual?.nombre || 'Administración'}
-      role="Administración"
-      email={adminActual?.correo || ''} />
+    <AdminProfileDrawer key={user?.id??'sin-sesion'} open={perfilAbierto} onClose={()=>setPerfilAbierto(false)}/>
   </div>);
 }

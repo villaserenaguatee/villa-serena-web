@@ -2,9 +2,11 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { requireStaff } from '@/lib/bff/auth/page-session';
 import StaffSessionActions from '@/components/common/StaffSessionActions';
+import {headers} from 'next/headers';
 export const dynamic = 'force-dynamic';
 export default async function StaffPanelLayout({ children }: { children: ReactNode }) {
   const employee = await requireStaff();
+  if(employee.debeCambiarContrasena&&(await headers()).get('x-staff-path')==='/panel/cambiar-contrasena')return <>{children}</>;
   const menu = employee.debeCambiarContrasena ? [] : employee.rol === 'ADMIN' ? [['Canal simulado', '/panel/admin/canal-simulado']] :
     employee.rol === 'RECEPCION' ? [['Calendario', '/recepcion'], ['Reservas', '/recepcion/reservas'], ['Habitaciones', '/recepcion/habitaciones']] :
     employee.rol === 'ROOM_SERVICE' ? [['Pedidos', '/room-service'], ['Menú', '/room-service/menu']] :

@@ -1,5 +1,8 @@
 'use client';
-import { useEffect, useState, type FormEvent } from 'react';
+import styles from './ObjetosRecepcion.module.css';
+import { RefreshCw } from 'lucide-react';
+import SelectPlaceholder from '@/components/common/SelectPlaceholder';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { getReservation, searchReservations, getRooms } from '@/lib/api/reception';
 import type { ReservationDetail, ReservationSummary, RoomState } from '@/lib/bff/contracts/reception';
 import { leerObjetosOlvidados } from '@/store/lostFoundEvents';
@@ -27,6 +30,9 @@ function readPhoto(file:File):Promise<string>{
 export default function ObjetosEncontradosConectados(){
  const [rows,setRows]=useState<Objeto[]>([]),[active,setActive]=useState<Objeto|null>(null),[rooms,setRooms]=useState<RoomState[]>([]);
  const [error,setError]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[nuevo,setNuevo]=useState(false);
+ const operationLock=useRef(false);
+ const [devolucion,setDevolucion]=useState<Objeto|null>(null),[receptorConfirmado,setReceptorConfirmado]=useState(false);
+ const [nombreFiltro,setNombreFiltro]=useState(''),[pisoFiltro,setPisoFiltro]=useState(''),[habitacionFiltro,setHabitacionFiltro]=useState('');
  const [filtro,setFiltro]=useState<'pendientes'|'devueltos'>('pendientes');
  const [selectedPhoto,setSelectedPhoto]=useState<File>();
  const [legacy,setLegacy]=useState<ObjetoOlvidado[]>([]),[foto,setFoto]=useState('');
@@ -34,7 +40,7 @@ export default function ObjetosEncontradosConectados(){
  const [correo,setCorreo]=useState(''),[mensaje,setMensaje]=useState(''),[includePhoto,setIncludePhoto]=useState(false);
  const [confirmRecipient,setConfirmRecipient]=useState(false),[confirmMessage,setConfirmMessage]=useState(false),[preview,setPreview]=useState<Preview|null>(null);
  async function load(){const values=await api<Objeto[]>();setRows(values);setActive(current=>current?values.find(x=>x.id===current.id)??current:null);}
- async function run(work:()=>Promise<void>){setBusy(true);setError('');try{await work();}catch(e){setError(e instanceof Error?e.message:'No se pudo completar la operación.');}finally{setBusy(false);}}
+ async function run(work:()=>Promise<void>){if(operationLock.current)return;operationLock.current=true;setBusy(true);setError('');try{await work();}catch(e){setError(e instanceof Error?e.message:'No se pudo completar la operación.');}finally{operationLock.current=false;setBusy(false);}}
  useEffect(()=>{let alive=true;void Promise.all([api<Objeto[]>(),getRooms()]).then(([objects,roomList])=>{if(alive){setRows(objects);setRooms(roomList);}}).catch(e=>{if(alive)setError(e.message);}).finally(()=>{if(alive)setLoading(false);});setLegacy(leerObjetosOlvidados());return()=>{alive=false;};},[]);
  const pending=rows.some(o=>o.estadoEnvio==='PENDIENTE'||o.estadoEnvio==='ENVIANDO');
  useEffect(()=>{if(!pending)return;let alive=true;const timer=setInterval(()=>{void api<Objeto[]>().then(values=>{if(alive){setRows(values);setActive(current=>current?values.find(x=>x.id===current.id)??current:null);}}).catch(e=>{if(alive)setError(e.message);});},3000);return()=>{alive=false;clearInterval(timer);};},[pending]);
@@ -49,27 +55,31 @@ export default function ObjetosEncontradosConectados(){
   {error&&<p role="alert" className="m-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
   {loading&&<p role="status" className="p-4">Consultando objetos…</p>}
   <div className="flex gap-2 px-4 pt-4"><button className={filtro==='pendientes'?primary:secondary} onClick={()=>setFiltro('pendientes')}>Por entregar</button><button className={filtro==='devueltos'?primary:secondary} onClick={()=>setFiltro('devueltos')}>Devueltos</button></div>
-  <main className="grid grid-cols-1 gap-3 p-4 xl:grid-cols-2">{rows.filter(o=>filtro==='devueltos'?o.estadoFisico==='DEVUELTO':o.estadoFisico!=='DEVUELTO').map(o=><article data-vs-card="recepcion" key={o.id} data-object-id={o.id} className="rounded-xl border border-[#E5E0D8] bg-white p-4">
-   <div className="flex items-start justify-between gap-3"><h2 className="font-semibold">{o.descripcion}</h2><span className="rounded-md border border-[#F3D98B] bg-[#FFFBEF] px-2 py-1 text-xs">{o.estadoEnvio==='ENVIADO'&&o.notificadoEn?'Notificado':o.estadoEnvio==='PENDIENTE'?'En cola':o.estadoEnvio==='ENVIANDO'?'Enviando':o.estadoEnvio==='FALLIDO'?'Envío fallido':o.estadoEnvio==='INCIERTO'?'Resultado sin confirmar':'En resguardo'}</span></div>
-   <p className="mt-2 text-sm text-[#52677F]">Habitación {o.habitacionNumero} · {fecha(o.halladoEn)}</p>
-   {o.notaInterna&&<p className="mt-2 text-sm">Nota interna: {o.notaInterna}</p>}
-   {o.tieneFoto&&<p className="mt-2 text-xs text-[#52677F]">Fotografía privada disponible</p>}
-   {o.destinatario&&<p className="mt-2 break-all text-sm">Para: {o.destinatario}</p>}
-   {o.estadoEnvio==='ENVIADO'&&<p className="mt-2 text-sm">Aceptado por el servidor de correo · {fecha(o.enviadoEn)}</p>}
-   {o.ultimoError&&<p className="mt-2 text-sm text-red-800">{o.ultimoError}</p>}
-   {o.estadoFisico==='DEVUELTO'&&<p className="mt-2 text-sm">Devuelto · {fecha(o.devueltoEn)}</p>}
+  <div className="flex flex-wrap items-end gap-3 px-4 pt-3 sm:px-6"><label className="text-sm">Nombre<input aria-label="Buscar objeto" className={input} value={nombreFiltro} onChange={e=>setNombreFiltro(e.target.value)}/></label><label className="text-sm">Piso<select aria-label="Piso" className={input} value={pisoFiltro} onChange={e=>{setPisoFiltro(e.target.value);setHabitacionFiltro('');}}><option value="">Todos</option>{[...new Set(rooms.map(r=>r.piso))].sort((a,b)=>a-b).map(p=><option key={p} value={p}>Piso {p}</option>)}</select></label><label className="text-sm">Habitación<select aria-label="Habitación" className={input} value={habitacionFiltro} onChange={e=>setHabitacionFiltro(e.target.value)}><option value="">Todas</option>{rooms.filter(r=>!pisoFiltro||String(r.piso)===pisoFiltro).map(r=><option key={r.id} value={r.numero}>{r.numero}</option>)}</select></label><button title="Limpiar filtros" aria-label="Limpiar filtros" className="h-10 rounded-lg border border-[#E5E0D8] bg-white px-3 text-[#18345C]" onClick={()=>{setNombreFiltro('');setPisoFiltro('');setHabitacionFiltro('');}}><RefreshCw size={17}/></button><button className={secondary} disabled={busy||loading} onClick={()=>void run(load)}>Actualizar</button></div>
+  <main className={`${styles.list} grid grid-cols-1 gap-3 p-4 sm:p-6`}>{rows.filter(o=>filtro==='devueltos'?o.estadoFisico==='DEVUELTO':o.estadoFisico!=='DEVUELTO').filter(o=>o.descripcion.toLowerCase().includes(nombreFiltro.trim().toLowerCase())&&(!habitacionFiltro||o.habitacionNumero===habitacionFiltro)&&(!pisoFiltro||rooms.some(r=>r.numero===o.habitacionNumero&&String(r.piso)===pisoFiltro))).map(o=><article data-vs-card="recepcion" key={o.id} data-object-id={o.id} className={`${styles.card} flex min-w-0 rounded-xl border border-[#E5E0D8] bg-white p-3`}>
+   <div className={`${styles.photo} shrink-0 overflow-hidden rounded-lg bg-[#F8F6F0]`}>{o.tieneFoto?<img src={'/api/objetos/'+o.id+'/foto'} alt={o.descripcion} className="h-full w-full object-cover"/>:<div className="flex h-full items-center justify-center text-center text-xs text-[#71839B]">Sin fotografía</div>}</div><div className={`${styles.content} flex-1 break-words`}>
+   <div className="flex flex-wrap items-start justify-between gap-2"><h2 className="font-semibold">{o.descripcion}</h2><span className="rounded-md border border-[#F3D98B] bg-[#FFFBEF] px-2 py-1 text-xs">{o.estadoFisico==='DEVUELTO'?'DEVUELTO':'EN RESGUARDO'}</span></div>
+   <p className="mt-1 text-sm text-[#52677F]">Habitación {o.habitacionNumero}{rooms.find(r=>r.numero===o.habitacionNumero) ? ' · Piso '+rooms.find(r=>r.numero===o.habitacionNumero)!.piso : ''} · {fecha(o.halladoEn)}</p>
+   {o.notaInterna&&<p className="mt-1 text-sm">Nota interna: {o.notaInterna}</p>}
+
+   {o.destinatario&&<p className="mt-1 break-all text-sm">Para: {o.destinatario}</p>}
+   {o.estadoEnvio==='ENVIADO'&&<p className="mt-1 text-sm">Aceptado por el servidor de correo · {fecha(o.enviadoEn)}</p>}
+   {o.ultimoError&&<p className="mt-1 text-sm text-red-800">{o.ultimoError}</p>}
+   {o.estadoFisico==='DEVUELTO'&&<p className="mt-1 text-sm">Devuelto · {fecha(o.devueltoEn)}</p>}
+   <div className={styles.actions}>
    {(o.estadoEnvio||o.estadoFisico!=='DEVUELTO')&&<button className={`${secondary} mt-3`} onClick={()=>review(o)}>{o.estadoEnvio?'Ver resultado':'Preparar aviso'}</button>}
-   {o.estadoFisico!=='DEVUELTO'&&<button className={`${primary} ml-2 mt-3`} disabled={busy||o.estadoEnvio==='PENDIENTE'||o.estadoEnvio==='ENVIANDO'} onClick={()=>void run(async()=>{await api(`/${o.id}/devolver`,{});await load();})}>Marcar como devuelto</button>}
-  </article>)}</main>
+   {o.estadoFisico!=='DEVUELTO'&&<button className={`${primary} ml-2 mt-3`} disabled={busy||o.estadoEnvio==='PENDIENTE'||o.estadoEnvio==='ENVIANDO'} onClick={()=>{setDevolucion(o);setReceptorConfirmado(false);}}>Marcar como devuelto</button>}
+  </div></div></article>)}</main>
   {!loading&&!rows.length&&<p className="p-6 text-center text-sm text-[#52677F]">No hay objetos registrados en el servidor.</p>}
   {!!legacy.length&&<details className="m-4 rounded-xl border border-[#E5E0D8] bg-white p-4"><summary className="cursor-pointer font-semibold">Registros anteriores de este navegador ({legacy.length})</summary><p className="my-3 text-sm">Se conservan sin cambios. Su estado local no acredita que se haya enviado un correo.</p>{legacy.map(o=><div key={o.id} className="flex flex-wrap items-center justify-between gap-3 border-t py-3"><span>{o.descripcion} · Habitación {o.habitacionNumero}</span><button className={secondary} disabled={busy} onClick={()=>void run(async()=>{
     let prefix=localStorage.getItem('vs-objetos-importador');if(!prefix){prefix=crypto.randomUUID();localStorage.setItem('vs-objetos-importador',prefix);}
     const when=new Date(o.fechaHora);if(Number.isNaN(when.getTime()))throw Error('El registro anterior necesita una fecha completa antes de importarse. Conserva el original y registra el hallazgo con su fecha correcta.');
     let imported=await api<Objeto>('',{descripcion:o.descripcion,habitacionNumero:o.habitacionNumero,halladoEn:when.toISOString(),notaInterna:o.observaciones,referenciaLocal:`${prefix}:${o.id}`,fotoBase64:o.foto??null});if(o.estado==='devuelto')imported=await api<Objeto>(`/${imported.id}/devolver`,{});await load();if(imported.estadoFisico==='DEVUELTO')setFiltro('devueltos');else review(imported);
    })}>Importar sin borrar el original</button></div>)}</details>}
+  {devolucion&&<div className="fixed inset-0 z-50 grid place-items-center bg-black/35 p-4"><section role="dialog" aria-modal="true" aria-label="Confirmar devolución" className="w-full max-w-md rounded-2xl bg-white p-5"><h2 className="text-xl font-semibold">Confirmar devolución</h2><p className="mt-3 break-words">¿Confirmas la devolución de {devolucion.descripcion}?</p><label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" checked={receptorConfirmado} onChange={e=>setReceptorConfirmado(e.target.checked)}/>He verificado la identidad de la persona que recibe el objeto.</label>{error&&<p role="alert" className="mt-3 text-red-800">{error}</p>}<div className="mt-4 flex flex-wrap justify-end gap-3"><button disabled={busy} className={secondary} onClick={()=>setDevolucion(null)}>Cancelar</button><button disabled={busy||!receptorConfirmado} className={primary} onClick={()=>void run(async()=>{await api('/'+devolucion.id+'/devolver',{});await load();setDevolucion(null);setFiltro('devueltos');})}>Marcar como devuelto</button></div></section></div>}
   {nuevo&&<div className="fixed inset-0 z-50 overflow-y-auto bg-black/35 p-4"><section className="mx-auto max-w-xl rounded-2xl bg-white p-5"><header className="mb-4 flex items-center justify-between"><h2 className="text-2xl font-semibold">Registrar objeto encontrado</h2><ReceptionCloseButton disabled={busy} onClick={()=>setNuevo(false)}/></header><form data-vs-ui="compact" onSubmit={create} className="space-y-4">
    <label className="block text-sm">Descripción<input required maxLength={300} name="descripcion" className={input}/></label>
-   <label className="block text-sm">Habitación<select required name="habitacion" className={input}><option value="">Selecciona</option>{rooms.map(r=><option key={r.id} value={r.numero}>{r.numero}</option>)}</select></label>
+   <label className="block text-sm">Habitación<select required name="habitacion" defaultValue="" className={input}><SelectPlaceholder/>{rooms.map(r=><option key={r.id} value={r.numero}>{r.numero}</option>)}</select></label>
    <label className="block text-sm">Fecha y hora del hallazgo<input required type="datetime-local" name="fecha" className={input}/></label>
    <label className="block text-sm">Nota interna (no se envía)<textarea maxLength={500} name="nota" className={input}/></label>
    <LostObjectImageField label="Fotografía opcional" value={selectedPhoto} disabled={busy} onError={setError} onChange={file=>{setSelectedPhoto(file);setFoto('');if(file)void run(async()=>setFoto(await readPhoto(file)));}}/>

@@ -1,3 +1,4 @@
+import SelectPlaceholder from '@/components/common/SelectPlaceholder';
 import FormOperationFeedback from '@/components/common/FormOperationFeedback';
 import {validPublicDate} from '@/lib/publicStayValidation';
 import { useState } from 'react';
@@ -25,7 +26,6 @@ export default function Preventivo({ tareas, activos, ordenes, onGenerarOrden, o
   const [piso, setPiso] = useState('1');
   const [habitacion, setHabitacion] = useState('');
   const [equipo, setEquipo] = useState('');
-  const [activoId,setActivoId]=useState('');
   const [frecuencia, setFrecuencia] = useState<FrecuenciaPreventivo>('mensual');
   const [otraFrecuencia, setOtraFrecuencia] = useState('');
   const [fecha, setFecha] = useState('');
@@ -185,12 +185,12 @@ export default function Preventivo({ tareas, activos, ordenes, onGenerarOrden, o
             onChange={e => {setPiso(e.target.value);setHabitacion("");}}
             className="mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white p-2.5 outline-none focus:border-[#B8C4D0]">
             {(habitaciones?Array.from(new Set(habitaciones.map(h=>h.piso))).sort((a,b)=>a-b):[1,2,3]).map(n=><option key={n}>{n}</option>)}
-          </select></label><label>Habitación{habitaciones?<select value={habitacion} onChange={e=>setHabitacion(e.target.value)} className="mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white p-2.5"><option value="">Selecciona</option>{habitaciones.filter(h=>h.piso===Number(piso)).map(h=><option key={h.numero}>{h.numero}</option>)}</select>:<input
+          </select></label><label>Habitación{habitaciones?<select value={habitacion} onChange={e=>setHabitacion(e.target.value)} className="mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white p-2.5"><SelectPlaceholder/>{habitaciones.filter(h=>h.piso===Number(piso)).map(h=><option key={h.numero}>{h.numero}</option>)}</select>:<input
             value={habitacion}
             onChange={e => setHabitacion(e.target.value.replace(/\D/g, ''))}
             className="mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white p-2.5 outline-none focus:border-[#B8C4D0]" />}</label></>}
-          <label className="sm:col-span-2">Equipo o activo relacionado (opcional)<select aria-label="Equipo o activo relacionado (opcional)" value={activoId} onChange={e=>{setActivoId(e.target.value);}} className="mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white p-2.5"><option value="">Sin equipo relacionado</option>{activos.map(a=><option key={a.id} value={a.id}>{a.nombre}</option>)}</select><small className="mt-1 block text-sm text-[#536579]">Selecciona un equipo registrado si este mantenimiento corresponde a uno.</small></label>
-          <label>Equipo o elemento (detalle)<input
+          <label>Equipo o elemento<input
+            placeholder="Ej. Aire acondicionado habitación 105"
             value={equipo}
             onChange={e => setEquipo(e.target.value)}
             className="mt-1 w-full rounded-lg border border-[#E5E0D8] bg-white p-2.5 outline-none focus:border-[#B8C4D0]" /></label>
@@ -233,7 +233,7 @@ export default function Preventivo({ tareas, activos, ordenes, onGenerarOrden, o
                 const saved = await onAgregarTarea({
                 id: `tp-${Date.now()}`,
                 nombre: nombre.trim(),
-                activoId: activoId||null,
+                activoId: null,
                 ubicacion: [ubicacion === 'Otro' ? otraUbicacion : ubicacion === 'Habitación' ? `Habitación ${habitacion} · Piso ${piso}` : ubicacion, equipo].filter(Boolean).join(' · '),
                 frecuencia,
                 ...(frecuencia==='otra'?{intervaloDias:Number(otraFrecuencia)}:{}),

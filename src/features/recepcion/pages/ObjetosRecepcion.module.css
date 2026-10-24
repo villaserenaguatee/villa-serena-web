@@ -1,0 +1,87 @@
+.list {
+  align-content: start;
+  align-items: start;
+  grid-auto-rows: max-content;
+}
+
+.card {
+  align-items: flex-start;
+  align-self: start;
+  gap: 12px;
+}
+
+.photo {
+  width: 88px;
+  height: 88px;
+}
+
+.content {
+  min-width: 0;
+}
+
+.metadata {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 16px;
+  row-gap: 2px;
+  margin-top: 6px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.guest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+  row-gap: 2px;
+  margin-top: 6px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.guest > p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.actions > div {
+  display: contents;
+}
+
+.actions select {
+  flex: 0 1 300px;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 40px;
+}
+
+.actions button {
+  flex: 0 0 auto;
+  max-width: 100%;
+  min-height: 40px;
+  margin: 0;
+}
+
+.note {
+  margin-top: 4px;
+}
+
+@media (max-width: 639px) {
+  .photo {
+    width: 56px;
+    height: 64px;
+  }
+
+  .card {
+    gap: 10px;
+  }
+}

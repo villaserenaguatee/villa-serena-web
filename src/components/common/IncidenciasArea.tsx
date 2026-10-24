@@ -1,3 +1,4 @@
+import SelectPlaceholder from '@/components/common/SelectPlaceholder';
 import { useState } from 'react';
 import type { AreaSolicitud, HabitacionHotel, Incidencia, PrioridadIncidencia } from '@/lib/pms/types';
 import { generarId, horaActual } from '@/data/pms';
@@ -31,7 +32,9 @@ export default function IncidenciasArea({ areaReporta, incidencias, habitaciones
   function registrar() {
     const ubicacion = ubicacionTipo === 'habitacion' ? habitacion : area === 'Otra área' ? otraArea.trim() : area;
     const problema = tipo === 'Otro' ? otroTipo.trim() : tipo;
-    if (!ubicacion || !problema || !descripcion.trim()) {
+    if (!ubicacion) { setError(ubicacionTipo==='habitacion'?(piso?'Selecciona una habitación para continuar':'Selecciona un piso para continuar'):(area==='Otra área'?'Indica la otra área.':'Selecciona un área para continuar')); return; }
+    if (!problema) { setError(tipo==='Otro'?'Describe el otro tipo de problema.':'Selecciona un tipo de problema para continuar'); return; }
+    if (!descripcion.trim()) {
       setError('Completa la ubicación, el tipo de problema y la descripción.');
       return;
     }
@@ -123,19 +126,19 @@ export default function IncidenciasArea({ areaReporta, incidencias, habitaciones
                 setPiso(e.target.value);
                 setHabitacion('');
               }} className={INPUT}>
-                <option value="">Seleccionar piso…</option>
+                <SelectPlaceholder/>
                 {pisos.map(p => <option key={p} value={p}>Piso {p}</option>)}
               </select>
             </Campo>
             <Campo label="Habitación">
               <select disabled={!piso} value={habitacion} onChange={e => setHabitacion(e.target.value)} className={INPUT}>
-                <option value="">Seleccionar habitación…</option>
+                <SelectPlaceholder/>
                 {habitaciones.filter(h => String(h.piso) === piso).map(h => <option key={h.id} value={h.numero}>Habitación {h.numero}</option>)}
               </select>
             </Campo>
           </div> : <><Campo label="Área común">
             <select value={area} onChange={e => setArea(e.target.value)} className={INPUT}>
-              <option value="">Seleccionar área…</option>
+              <SelectPlaceholder/>
               {AREAS.map(a => <option key={a}>
                 {a}
               </option>)}
@@ -145,7 +148,7 @@ export default function IncidenciasArea({ areaReporta, incidencias, habitaciones
           </Campo>}</>}
           <Campo label="Tipo de problema">
             <select value={tipo} onChange={e => setTipo(e.target.value)} className={INPUT}>
-              <option value="">Seleccionar tipo…</option>
+              <SelectPlaceholder/>
               {TIPOS.map(t => <option key={t}>
                 {t}
               </option>)}

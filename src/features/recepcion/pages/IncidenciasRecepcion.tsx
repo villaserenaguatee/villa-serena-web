@@ -1,3 +1,4 @@
+import SelectPlaceholder from '@/components/common/SelectPlaceholder';
 import { useEffect, useRef, useState } from 'react';
 import { getRooms } from '@/lib/api/reception';
 import type { RoomState } from '@/lib/bff/contracts/reception';
@@ -37,7 +38,8 @@ export default function IncidenciasRecepcion() {
   async function registrar(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
-    if (!rooms.some(r => String(r.id) === room) || !description.trim()) { setError('Selecciona una habitación y describe el daño.'); return; }
+    if (!rooms.some(r => String(r.id) === room)) { setError('Selecciona una habitación para continuar'); return; }
+    if (!description.trim()) { setError('Describe el daño.'); return; }
     if (photo && validarFoto(photo)) { setError(validarFoto(photo)); return; }
     setBusy(true); setError(''); setSuccess('');
     try {
@@ -64,8 +66,8 @@ export default function IncidenciasRecepcion() {
     {open && <div className="fixed inset-0 z-50 grid place-items-center bg-[#071D34]/45 p-4"><form data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" onSubmit={registrar} role="dialog" aria-modal="true" aria-label="Reportar incidencia" className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl">
       <header className="mb-3 flex items-center justify-between"><h2 className="text-xl font-semibold text-[#18345C]">Reportar incidencia</h2><ReceptionCloseButton disabled={busy} onClick={() => setOpen(false)} /></header>
       <fieldset disabled={busy} className="space-y-3">
-        <div className="grid grid-cols-2 gap-3"><label className="text-sm">Piso<select required className={input} value={piso} onChange={e => { setPiso(e.target.value); setRoom(''); }}><option value="">Seleccionar</option>{[...new Set(rooms.map(r => r.piso))].sort((a,b) => a-b).map(p => <option key={p} value={p}>Piso {p}</option>)}</select></label>
-        <label className="text-sm">Habitación<select required disabled={!piso || busy} className={input} value={room} onChange={e => setRoom(e.target.value)}><option value="">Seleccionar</option>{rooms.filter(r => String(r.piso) === piso).map(r => <option key={r.id} value={r.id}>Hab. {r.numero}</option>)}</select></label></div>
+        <div className="grid grid-cols-2 gap-3"><label className="text-sm">Piso<select required className={input} value={piso} onChange={e => { setPiso(e.target.value); setRoom(''); }}><SelectPlaceholder/>{[...new Set(rooms.map(r => r.piso))].sort((a,b) => a-b).map(p => <option key={p} value={p}>Piso {p}</option>)}</select></label>
+        <label className="text-sm">Habitación<select required disabled={!piso || busy} className={input} value={room} onChange={e => setRoom(e.target.value)}><SelectPlaceholder/>{rooms.filter(r => String(r.piso) === piso).map(r => <option key={r.id} value={r.id}>Hab. {r.numero}</option>)}</select></label></div>
         <label className="block text-sm">Descripción del daño<textarea required maxLength={2000} rows={3} value={description} onChange={e => setDescription(e.target.value)} className={input} /></label>
         <LostObjectImageField label="Imagen (opcional)" value={photo} disabled={busy} onError={setError} onChange={file=>{setPhoto(file);setPhotoKey(undefined);}}/>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={blocking} onChange={e => setBlocking(e.target.checked)} />Impide utilizar la habitación</label>

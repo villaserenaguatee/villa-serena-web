@@ -14,6 +14,7 @@ interface Props {
     salida: string;
     tipo: TipoHabitacion;
     habitacionId: string;
+    tipoHabitacionId?: number;
     adultos?: number;
     ninos?: number;
   }) => void;
@@ -41,7 +42,7 @@ export default function Disponibilidad({ conectado = false, habitaciones, reserv
   const nPersonas = Math.max(1, (Number(adultos) || 0) + (Number(ninos) || 0));
   const rangoValido = entrada < salida;
   const noches = rangoValido ? nochesEntre(entrada, salida) : 0;
-  const [remote, setRemote] = useState<HabitacionHotel[]>([]);
+  const [remote, setRemote] = useState<(HabitacionHotel & { tipoHabitacionId?: number })[]>([]);
   const [loading, setLoading] = useState(false), [error, setError] = useState('');
   useEffect(() => {
     if (!conectado) return;
@@ -50,7 +51,7 @@ export default function Disponibilidad({ conectado = false, habitaciones, reserv
     getReceptionAvailability(entrada, salida, nPersonas, controller.signal).then(async options => {
       const groups = await Promise.all(options.filter(o => o.habitacionesDisponibles > 0 && (tipo === 'Todos' || o.tipoHabitacion.id === tipoId)).map(async o => {
         const refs = await getAvailableRoomReferences(o.tipoHabitacion.id, entrada, salida, controller.signal);
-        return refs.map(r => ({ id: 'hh-' + r.numero, numero: r.numero, piso: r.piso, tipo: o.tipoHabitacion.nombre as TipoHabitacion, capacidad: o.capacidad, precioNoche: o.total / o.noches, estado: 'disponible' as const }));
+        return refs.map(r => ({ id: String(r.id), tipoHabitacionId: o.tipoHabitacion.id, numero: r.numero, piso: r.piso, tipo: o.tipoHabitacion.nombre as TipoHabitacion, capacidad: o.capacidad, precioNoche: o.total / o.noches, estado: 'disponible' as const }));
       }));
       if (!controller.signal.aborted) setRemote(groups.flat());
     }).catch(e => { if (!controller.signal.aborted) setError(e.message); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
@@ -160,7 +161,7 @@ export default function Disponibilidad({ conectado = false, habitaciones, reserv
                     <p className="text-[12px] text-[#AEBCC1]">{money((conectado ? h.precioNoche : visual.price) * noches)} por {noches} noche{noches !== 1 ? 's' : ''}</p>
                   </div>
                   <button
-                    onClick={() => onReservar({ entrada, salida, tipo: h.tipo, habitacionId: h.id, adultos: Number(adultos), ninos: Number(ninos) })}
+                    onClick={() => onReservar({ entrada, salida, tipo: h.tipo, habitacionId: h.id, tipoHabitacionId: 'tipoHabitacionId' in h ? h.tipoHabitacionId as number : undefined, adultos: Number(adultos), ninos: Number(ninos) })}
                     className="px-4 py-2 text-[14px] font-semibold bg-[#18345C] text-white rounded-md hover:bg-[#102747] transition-colors shrink-0">
                     Reservar
                   </button>
