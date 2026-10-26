@@ -29,13 +29,25 @@ function show(employee:Employee|null=admin){
 }
 const filters=()=>({search:screen.getByRole('searchbox',{name:'Buscar por nombre o correo'}),role:screen.getByRole('combobox',{name:'Filtrar por Área'}),state:screen.getByRole('combobox',{name:'Filtrar por estado'})});
 
+test('connected employees use a semantic table and indicators derive from the complete API list',async()=>{
+ show();await screen.findByText('6 de 6 empleados');
+ const table=screen.getByRole('table',{name:'Empleados registrados'});
+ expect(within(table).getAllByRole('columnheader').map(cell=>cell.textContent)).toEqual(['Nombre','Correo','Área','Especialidad','Estado','Acciones']);
+ expect(within(table).getAllByRole('row')).toHaveLength(7);
+ const metrics=screen.getByRole('region',{name:'Indicadores de personal'});
+ for(const [name,count] of [['Empleados','6'],['Activos','5'],['Inactivos','1'],['Áreas de acceso','4']])expect(within(metrics).getByRole('heading',{name}).nextElementSibling).toHaveTextContent(count);
+ fireEvent.change(filters().search,{target:{value:'Ana'}});
+ expect(within(table).getAllByRole('row')).toHaveLength(2);
+ expect(within(metrics).getByRole('heading',{name:'Empleados'}).nextElementSibling).toHaveTextContent('6');
+});
+
 test('state control uses only the official endpoint, preserves filters and protects own account',async()=>{
  show();await screen.findByText('6 de 6 empleados');expect(screen.getByRole('button',{name:'Desactivar empleado: Administradora actual'})).toBeDisabled();
  fireEvent.change(filters().search,{target:{value:'Ana'}});fireEvent.change(filters().role,{target:{value:'RECEPCION'}});await userEvent.click(screen.getByRole('button',{name:'Desactivar empleado: Ana Recepción'}));
  expect(screen.getByRole('dialog',{name:'Desactivar empleado'})).toBeVisible();await userEvent.click(screen.getByRole('button',{name:'Desactivar'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
  expect(screen.getByRole('button',{name:'Activar empleado: Ana Recepción'})).toHaveTextContent('INACTIVO');expect(filters().search).toHaveValue('Ana');expect(filters().role).toHaveValue('RECEPCION');
  const writes=fetcher.mock.calls.filter(([,init])=>init?.method!=='GET');expect(writes.map(([path,init])=>[path,init?.method,JSON.parse(String(init?.body))])).toEqual([['/api/admin/empleados/51/estado','PATCH',{estado:'INACTIVO'}]]);
- await userEvent.click(screen.getByRole('button',{name:/^Ana Recepción/}));await userEvent.click(screen.getByRole('button',{name:'Información laboral'}));expect(screen.getByText('Estado').nextElementSibling).toHaveTextContent('INACTIVO');expect(screen.queryByRole('button',{name:'Editar'})).toBeNull();expect(screen.queryByRole('combobox',{name:'Estado'})).toBeNull();
+ await userEvent.click(screen.getByRole('button',{name:/^Ana Recepción/}));await userEvent.click(screen.getByRole('button',{name:'Información laboral'}));expect(within(screen.getByRole('dialog')).getByText('Estado').nextElementSibling).toHaveTextContent('INACTIVO');expect(within(screen.getByRole('dialog')).queryByRole('button',{name:'Editar'})).toBeNull();expect(screen.queryByRole('combobox',{name:'Estado'})).toBeNull();
 });
 
 test('selecting an API employee opens readonly information and preserves filters on close',async()=>{
@@ -64,17 +76,17 @@ test.each(['ADMIN','RECEPCION','MANTENIMIENTO_LIMPIEZA','ROOM_SERVICE'])('role %
   expect(await screen.findByText('No hay empleados que coincidan con los filtros.')).toBeVisible();expect(filters().role).toHaveValue(rol);
 });
 test('own identity is matched by session ID; role/state remain unchanged while personal data is editable',async()=>{
- show();await userEvent.click(within((await screen.findByRole('button',{name:/^Administradora actual/})).parentElement!).getByRole('button',{name:'Editar empleado'}));const dialog=screen.getByRole('dialog');
+ show();await userEvent.click(within((await screen.findByRole('button',{name:/^Administradora actual/})).closest('tr')!).getByRole('button',{name:'Editar empleado'}));const dialog=screen.getByRole('dialog');
 
  const role=within(dialog).getByRole('combobox',{name:'Área'});expect(role).toBeDisabled();expect(within(dialog).queryByRole('combobox',{name:'Estado'})).toBeNull();fireEvent.change(role,{target:{value:'RECEPCION'}});expect(role).toHaveValue('ADMIN');
- fireEvent.change(within(dialog).getByLabelText('Nombre completo'),{target:{value:'Nombre actualizado'}});await userEvent.click(within(dialog).getByRole('button',{name:'Guardar'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+ fireEvent.change(within(dialog).getByLabelText('Nombre completo'),{target:{value:'Nombre actualizado'}});await userEvent.click(within(dialog).getByRole('button',{name:'Guardar cambios'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
  const writes=fetcher.mock.calls.filter(([,init])=>init?.method!=='GET');expect(writes).toHaveLength(1);expect(writes[0][0]).toBe('/api/admin/empleados/41');expect(JSON.parse(String(writes[0][1]?.body))).toEqual({nombreCompleto:'Nombre actualizado',telefono:'55551234',rol:'ADMIN',area:null});expect(writes.some(([path])=>String(path).endsWith('/estado'))).toBe(false);
 });
 test('another administrator can be edited and backend rejection remains visible without losing input',async()=>{
- show();await userEvent.click(within((await screen.findByRole('button',{name:/^Otra administradora/})).parentElement!).getByRole('button',{name:'Editar empleado'}));const dialog=screen.getByRole('dialog');const role=within(dialog).getByRole('combobox',{name:'Área'});expect(role).toBeEnabled();expect(within(dialog).queryByRole('combobox',{name:'Estado'})).toBeNull();fireEvent.change(role,{target:{value:'RECEPCION'}});fetcher.mockResolvedValueOnce(Response.json({mensaje:'Operación no autorizada'},{status:403}));await userEvent.click(within(dialog).getByRole('button',{name:'Guardar'}));expect(await within(dialog).findByRole('alert')).toHaveTextContent('Operación no autorizada');expect(role).toHaveValue('RECEPCION');
+ show();await userEvent.click(within((await screen.findByRole('button',{name:/^Otra administradora/})).closest('tr')!).getByRole('button',{name:'Editar empleado'}));const dialog=screen.getByRole('dialog');const role=within(dialog).getByRole('combobox',{name:'Área'});expect(role).toBeEnabled();expect(within(dialog).queryByRole('combobox',{name:'Estado'})).toBeNull();fireEvent.change(role,{target:{value:'RECEPCION'}});fetcher.mockResolvedValueOnce(Response.json({mensaje:'Operación no autorizada'},{status:403}));await userEvent.click(within(dialog).getByRole('button',{name:'Guardar cambios'}));expect(await within(dialog).findByRole('alert')).toHaveTextContent('Operación no autorizada');expect(role).toHaveValue('RECEPCION');
 });
 test('editing another employee retains official role/area/state endpoints and labor history',async()=>{
- show();await userEvent.click(within((await screen.findByRole('button',{name:/^Ana Recepción/})).parentElement!).getByRole('button',{name:'Editar empleado'}));const dialog=screen.getByRole('dialog');fireEvent.change(within(dialog).getByRole('combobox',{name:'Área'}),{target:{value:'MANTENIMIENTO_LIMPIEZA'}});fireEvent.change(within(dialog).getByRole('combobox',{name:'Especialidad'}),{target:{value:'AMBAS'}});await userEvent.click(within(dialog).getByRole('button',{name:'Guardar'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());const writes=fetcher.mock.calls.filter(([,init])=>init?.method!=='GET');expect(writes.map(([path,init])=>[path,init?.method,JSON.parse(String(init?.body))])).toEqual([['/api/admin/empleados/51','PATCH',{nombreCompleto:'Ana Recepción',telefono:'55551234',rol:'MANTENIMIENTO_LIMPIEZA',area:'AMBAS'}]]);expect(screen.queryByRole('dialog')).toBeNull();expect(screen.getByRole('button',{name:/^Ana Recepci\u00f3n/})).toBeVisible();
+ show();await userEvent.click(within((await screen.findByRole('button',{name:/^Ana Recepción/})).closest('tr')!).getByRole('button',{name:'Editar empleado'}));const dialog=screen.getByRole('dialog');fireEvent.change(within(dialog).getByRole('combobox',{name:'Área'}),{target:{value:'MANTENIMIENTO_LIMPIEZA'}});fireEvent.change(within(dialog).getByRole('combobox',{name:'Especialidad'}),{target:{value:'AMBAS'}});await userEvent.click(within(dialog).getByRole('button',{name:'Guardar cambios'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());const writes=fetcher.mock.calls.filter(([,init])=>init?.method!=='GET');expect(writes.map(([path,init])=>[path,init?.method,JSON.parse(String(init?.body))])).toEqual([['/api/admin/empleados/51','PATCH',{nombreCompleto:'Ana Recepción',telefono:'55551234',rol:'MANTENIMIENTO_LIMPIEZA',area:'AMBAS'}]]);expect(screen.queryByRole('dialog')).toBeNull();expect(screen.getByRole('button',{name:/^Ana Recepci\u00f3n/})).toBeVisible();
 });
 test('missing session identity does not enable editing or disclose payroll',async()=>{
  show(null);await userEvent.click(await screen.findByRole('button',{name:/^Ana Recepción/}));const dialog=screen.getByRole('dialog');await userEvent.click(within(dialog).getByRole('button',{name:'Información laboral'}));expect(within(dialog).queryByRole('button',{name:'Editar'})).toBeNull();expect(within(dialog).queryByText('Salario base (Q)')).toBeNull();expect(within(dialog).queryByRole('combobox')).toBeNull();expect(fetcher.mock.calls.every(([,init])=>init?.method==='GET')).toBe(true);

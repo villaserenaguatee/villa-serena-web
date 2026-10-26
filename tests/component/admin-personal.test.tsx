@@ -33,7 +33,7 @@ test('area is conditional and required; switching away clears it in the current 
  expect(posts()[0][0]).toBe('admin/empleados');expect(posts()[0][2]).toMatchObject({area:null,rol:'RECEPCION',correo:'new@example.test'});expect(posts()[0][2]).not.toHaveProperty('accesoInicial');
 });
 test('editing locks the email, preserves id/version and unknown labor data, and prevents duplicate submits',async()=>{
- render(<CatalogosAdmin initial="personal"/>);await userEvent.click(within((await screen.findByRole('button',{name:/^María O’Neill/})).parentElement!).getByRole('button',{name:'Editar empleado'}));const dialog=screen.getByRole('dialog');
+ render(<CatalogosAdmin initial="personal"/>);await userEvent.click(within((await screen.findByRole('button',{name:/^María O’Neill/})).closest('tr')!).getByRole('button',{name:'Editar empleado'}));const dialog=screen.getByRole('dialog');
  expect(field(dialog,'correo')).toHaveAttribute('readonly');fireEvent.change(field(dialog,'correo'),{target:{value:'altered@example.test'}});expect(field(dialog,'correo')).toHaveValue(employee.correo);
  expect(dialog.querySelector('[name="accesoInicial"]')).toBeNull();fireEvent.change(field(dialog,'nombre'),{target:{value:'María Pérez'}});
  let release!:(value:unknown)=>void;call.mockImplementation(async(path,method)=>method==='PATCH'?await new Promise(resolve=>{release=resolve;}):[employee]);
