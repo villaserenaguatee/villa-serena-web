@@ -1,5 +1,5 @@
 /** Generado desde villa-serena-docs/openapi.yaml. No editar.
- * Contrato SHA-256: cc77894550d8d86717e6bdf1efb21d4ff68f2266ff7c87d184f65276ce65368c
+ * Contrato SHA-256: 3262d2e51424bab0b164e730f1b753504704926365b0fd4aae605067eb6aee0c
  */
 export interface paths {
     "/api/v1/auth/login": {
@@ -1504,6 +1504,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/incidencias/habitaciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Catálogo mínimo de habitaciones para reportes de incidencias
+         * @description HU-MYL-06 · HU-REC-17.
+         *     Catálogo mínimo de habitaciones operativas activas (id, número, piso) para reportar incidencias desde Recepción o Mantenimiento y Limpieza de cualquier área.
+         */
+        get: operations["listarHabitacionesIncidencias"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/incidencias/{id}": {
         parameters: {
             query?: never;
@@ -2207,17 +2228,37 @@ export interface paths {
         };
         /**
          * Consultar datos generales y fiscales
-         * @description HU-ADM-08
+         * @description HU-ADM-08. Devuelve 404 HOTEL_NO_CONFIGURADO si falta la configuración.
          */
         get: operations["consultarHotelAdmin"];
         /**
          * Actualizar datos del hotel
          * @description HU-ADM-08
          *
-         *     Todos los datos fiscales obligatorios, validar NIT. No modificar serie/correlativo ni horarios fijos 15:00/12:00. Política generada de 48 h antes de 15:00 llegada; no editable. No altera facturas anteriores.
+         *     Todos los datos fiscales obligatorios, validar NIT. No modificar serie/correlativo ni horarios fijos 15:00/12:00. Política generada de 48 h antes de 15:00 llegada; no editable. No altera facturas anteriores. Omitir fotos conserva la galería sin exigir If-Match. Si se envía una lista distinta, requiere revisión vigente; nunca se aplica parcialmente un cambio conflictivo. Solo actualiza una configuración existente; si falta responde 404 HOTEL_NO_CONFIGURADO.
          */
         put: operations["editarHotelAdmin"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/hotel/inicializacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Inicializar el hotel sin sobrescribir una configuración existente
+         * @description HU-ADM-08. Inicialización atómica por ADMIN. Crea únicamente hotel_configuration.id=1. No altera fotografías, facturas ni series/correlativos. Idempotencia natural por los nueve campos normalizados: 201 al crear, 200 sin cambios si coinciden con la configuración actual, 409 HOTEL_YA_CONFIGURADO si difieren. No requiere Idempotency-Key; un reenvío después de editar la configuración puede devolver 409. No reinicia ni sustituye datos existentes.
+         */
+        post: operations["inicializarHotelAdmin"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2645,10 +2686,271 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/ofertas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar ofertas publicadas y borradores
+         * @description Conserva snapshots y precios de reservas existentes. Los borradores no aparecen en consultas públicas ni se pueden reservar. bookable continúa indicando elegibilidad general, no publicación ni disponibilidad por fechas. Las vinculaciones son atómicas y las cantidades se derivan de registros; no se duplican tarjetas por unidad. Las escrituras dejan auditoría administrativa. Una oferta ajena al tipo, piso o atributos de sus unidades se rechaza sin guardar parcialmente.
+         */
+        get: operations["listarOfertasAdmin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/ofertas/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Consultar oferta y cantidades derivadas
+         * @description Conserva snapshots y precios de reservas existentes. Los borradores no aparecen en consultas públicas ni se pueden reservar. bookable continúa indicando elegibilidad general, no publicación ni disponibilidad por fechas. Las vinculaciones son atómicas y las cantidades se derivan de registros; no se duplican tarjetas por unidad. Las escrituras dejan auditoría administrativa. Una oferta ajena al tipo, piso o atributos de sus unidades se rechaza sin guardar parcialmente.
+         */
+        get: operations["detalleOfertaAdmin"];
+        /**
+         * Reemplazar contenido publicación precio y vínculos de oferta
+         * @description Conserva snapshots y precios de reservas existentes. Los borradores no aparecen en consultas públicas ni se pueden reservar. bookable continúa indicando elegibilidad general, no publicación ni disponibilidad por fechas. Las vinculaciones son atómicas y las cantidades se derivan de registros; no se duplican tarjetas por unidad. Las escrituras dejan auditoría administrativa. Una oferta ajena al tipo, piso o atributos de sus unidades se rechaza sin guardar parcialmente.
+         */
+        put: operations["actualizarOfertaAdmin"];
+        /**
+         * Crear oferta con slug inmutable
+         * @description Conserva snapshots y precios de reservas existentes. Los borradores no aparecen en consultas públicas ni se pueden reservar. bookable continúa indicando elegibilidad general, no publicación ni disponibilidad por fechas. Las vinculaciones son atómicas y las cantidades se derivan de registros; no se duplican tarjetas por unidad. Las escrituras dejan auditoría administrativa. Una oferta ajena al tipo, piso o atributos de sus unidades se rechaza sin guardar parcialmente.
+         */
+        post: operations["crearOfertaAdmin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/habitaciones/{id}/caracteristicas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Consultar características físicas registradas
+         * @description No modifica piso ni tipo. El registro conserva procedencia administrativa. Rechaza cambios de características con reservas activas asignadas (409 RESERVAS_ACTIVAS).
+         */
+        get: operations["consultarCaracteristicasHabitacionAdmin"];
+        /**
+         * Registrar características físicas sin afectar reservas activas
+         * @description No modifica piso ni tipo. El registro conserva procedencia administrativa. Rechaza cambios de características con reservas activas asignadas (409 RESERVAS_ACTIVAS).
+         */
+        put: operations["guardarCaracteristicasHabitacionAdmin"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/ofertas/{slug}/publicacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Publicar o despublicar sin reemplazar contenido ni vínculos
+         * @description ADMIN puede despublicar una oferta anterior aunque su contenido requiera revisión. Para publicar exige tipo activo, galería y al menos una unidad activa acreditada. Conserva vínculos, historial y precios de reservas; deja auditoría administrativa.
+         */
+        patch: operations["cambiarPublicacionOfertaAdmin"];
+        trace?: never;
+    };
+    "/api/v1/admin/hotel/editorial/{idioma}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar borrador editorial
+         * @description ADMIN. Hotel configurado. 409 CONTENIDO_CAMBIADO conserva borrador y publicación anteriores. Guardar no publica. Publicar exige revisión vigente y persiste versión inmutable; repetir esa publicación es idempotente.
+         */
+        get: operations["consultarBorradorEditorial"];
+        /**
+         * Guardar borrador editorial
+         * @description ADMIN. Hotel configurado. 409 CONTENIDO_CAMBIADO conserva borrador y publicación anteriores. Guardar no publica. Publicar exige revisión vigente y persiste versión inmutable; repetir esa publicación es idempotente.
+         */
+        put: operations["guardarBorradorEditorial"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/hotel/editorial/{idioma}/publicacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publicar borrador editorial
+         * @description ADMIN. Hotel configurado. 409 CONTENIDO_CAMBIADO conserva borrador y publicación anteriores. Guardar no publica. Publicar exige revisión vigente y persiste versión inmutable; repetir esa publicación es idempotente.
+         */
+        post: operations["publicarEditorial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/publico/hotel/editorial/{idioma}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar contenido editorial publicado
+         * @description Solo versión publicada. 404 CONTENIDO_NO_PUBLICADO si no existe; nunca devuelve borrador ni traduce otro idioma.
+         */
+        get: operations["consultarEditorialPublicado"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Texto plano. Títulos, subtítulos y botones hasta 200 caracteres; otros textos hasta 4000. Imagen exige fotoClave; botón exige texto y destino; los demás exigen texto. Prohibidos HTML, controles y campos ajenos al tipo. */
+        ElementoEditorial: {
+            /** @enum {string} */
+            id: "inicio.titulo" | "inicio.descripcion" | "inicio.boton" | "habitaciones.subtitulo" | "habitaciones.titulo" | "habitaciones.boton" | "estancias.subtitulo" | "estancias.titulo" | "estancias.descripcion" | "estancias.romantica" | "estancias.descanso" | "estancias.familiar" | "estancias.negocios" | "estancias.bienestar" | "servicios.subtitulo" | "servicios.titulo" | "nosotros.subtitulo" | "nosotros.titulo" | "nosotros.descripcion" | "nosotros.boton" | "nosotros-page.subtitulo" | "nosotros-page.titulo" | "nosotros-page.descripcion" | "nosotros-page.imagen" | "nosotros-page.cierre.titulo" | "nosotros-page.cierre.boton" | "historia.subtitulo" | "historia.titulo" | "historia.descripcion" | "historia.imagen" | "mision-vision.mision.subtitulo" | "mision-vision.mision.titulo" | "mision-vision.mision.descripcion" | "mision-vision.vision.subtitulo" | "mision-vision.vision.titulo" | "mision-vision.vision.descripcion" | "valores.subtitulo" | "valores.titulo" | "valores.item1.titulo" | "valores.item1.descripcion" | "valores.item2.titulo" | "valores.item2.descripcion" | "valores.item3.titulo" | "valores.item3.descripcion" | "valores.item4.titulo" | "valores.item4.descripcion" | "valores.item5.titulo" | "valores.item5.descripcion" | "por-que.subtitulo" | "por-que.titulo" | "por-que.descripcion" | "por-que.item1.titulo" | "por-que.item1.descripcion" | "por-que.item2.titulo" | "por-que.item2.descripcion" | "por-que.item3.titulo" | "por-que.item3.descripcion" | "por-que.item4.titulo" | "por-que.item4.descripcion" | "galeria-hotel.titulo" | "contacto.subtitulo" | "contacto.titulo" | "ayuda.titulo" | "pie.descripcion";
+            texto?: string;
+            /** @description Referencia HOTEL asociada a la galería y presente en almacenamiento; nunca URL externa. */
+            fotoClave?: string;
+            /** @enum {string} */
+            destino?: "/catalogo" | "/nosotros" | "/reservar/habitaciones" | "/#habitaciones" | "/#servicios" | "/#contacto";
+        };
+        GuardarEditorialPeticion: {
+            /** Format: int64 */
+            revision: number;
+            /** @description Documento completo del idioma, ids únicos. Elementos omitidos conservan textos anteriores en Web; sin traducción automática. */
+            elementos: components["schemas"]["ElementoEditorial"][];
+        };
+        PublicarEditorialPeticion: {
+            /** Format: int64 */
+            revision: number;
+        };
+        EditorialSitio: {
+            /** @description Mapa de claves HOTEL referenciadas a sus URL públicas, calculadas por el servidor. */
+            readonly fotografias?: {
+                [key: string]: string;
+            };
+            /** @enum {string} */
+            idioma: "es" | "en";
+            /** Format: int64 */
+            revision: number;
+            /** Format: int64 */
+            revisionPublicada: number;
+            /** Format: date-time */
+            actualizadoEn?: string;
+            /** Format: date-time */
+            publicadoEn?: string;
+            elementos: components["schemas"]["ElementoEditorial"][];
+        };
+        PublicacionOfertaPeticion: {
+            publicada: boolean;
+        };
+        CaracteristicasHabitacionPeticion: {
+            capacidad: number;
+            superficieM2: number;
+            camas: {
+                [key: string]: number;
+            };
+            caracteristicas: string[];
+        };
+        /** @description Sin características registradas devuelve un objeto vacío. Los registros históricos incompletos omiten atributos no registrados; no se inventan valores. piso procede de rooms y no es editable aquí. */
+        CaracteristicasHabitacionAdmin: {
+            piso?: number;
+            capacidad?: number;
+            superficieM2?: number;
+            camas?: {
+                [key: string]: number;
+            };
+            caracteristicas?: string[];
+        };
+        /** @description Creación o reemplazo completo. No admite cupo manual ni fotos independientes: las unidades se vinculan por ID real y la galería pertenece al tipo. Todas las vinculadas deben acreditar el mismo piso, camas, superficie y características; su capacidad debe cubrir la oferta sin superar el tipo. El precio propio de la oferta es el utilizado en catálogo y cotización. Para publicar exige tipo activo, fotos y al menos una unidad activa acreditada. */
+        GuardarOfertaAdminPeticion: {
+            tipoHabitacionId: components["schemas"]["Id"];
+            nombre: string;
+            descripcion: string;
+            piso: number;
+            capacidad: number;
+            superficieM2: number;
+            camas: {
+                [key: string]: number;
+            };
+            caracteristicas: string[];
+            preferencias: string[];
+            precioPorNoche: number;
+            publicada: boolean;
+            orden: number;
+            habitacionIds: components["schemas"]["Id"][];
+        };
+        OfertaAdmin: {
+            slug: string;
+            tipoHabitacionId: components["schemas"]["Id"];
+            nombre: string;
+            descripcion: string;
+            piso: number;
+            capacidad: number;
+            superficieM2: number;
+            camas: {
+                [key: string]: number;
+            };
+            caracteristicas: string[];
+            preferencias: string[];
+            precioPorNoche: number;
+            publicada: boolean;
+            orden: number;
+            habitacionIds: components["schemas"]["Id"][];
+            /** @description Número de vínculos físicos, no disponibilidad por fechas. */
+            cantidadHabitaciones: number;
+            /** @description Total real de rooms del tipo, incluyendo inactivas. */
+            cantidadHabitacionesTipo: number;
+            fotos: components["schemas"]["FotoCatalogo"][];
+        };
         /** @description Formato único de error del API. */
         Error: {
             /**
@@ -2842,8 +3144,8 @@ export interface components {
         };
         /**
          * Format: uri
-         * @description URL pública de la foto (bucket público de MinIO).
-         * @example http://localhost:9000/villa-serena-publico/hotel/fachada.jpg
+         * @description URL pública de la foto servida por el CDN o dominio de assets públicos configurado en ARCHIVOS_URL_PUBLICA.
+         * @example https://d13s29erv78l4g.cloudfront.net/hotel/fachada.jpg
          */
         UrlFoto: string;
         Hotel: {
@@ -4394,8 +4696,16 @@ export interface components {
         EmpleadoAdmin: {
             id: components["schemas"]["Id"];
             nombreCompleto: string;
-            /** Format: email */
+            /**
+             * Format: email
+             * @description Correo laboral, identificador de autenticación. No se modifica mediante PATCH.
+             */
             correo: string;
+            /**
+             * Format: email
+             * @description Contacto personal opcional. No se utiliza para autenticación ni recuperación. En PATCH, omitir conserva el valor y null lo elimina.
+             */
+            correoPersonal?: string | null;
             telefono: string;
             rol: components["schemas"]["RolEmpleado"];
             area: components["schemas"]["AreaMyl"] | null;
@@ -4413,8 +4723,16 @@ export interface components {
          */
         CrearEmpleadoPeticion: {
             nombreCompleto: string;
-            /** Format: email */
+            /**
+             * Format: email
+             * @description Correo laboral, identificador de autenticación. No se modifica mediante PATCH.
+             */
             correo: string;
+            /**
+             * Format: email
+             * @description Contacto personal opcional. No se utiliza para autenticación ni recuperación. En PATCH, omitir conserva el valor y null lo elimina.
+             */
+            correoPersonal?: string | null;
             telefono: string;
             rol: components["schemas"]["RolEmpleado"];
             area?: components["schemas"]["AreaMyl"] | null;
@@ -4430,6 +4748,11 @@ export interface components {
          */
         EditarEmpleadoPeticion: {
             nombreCompleto?: string;
+            /**
+             * Format: email
+             * @description Contacto personal opcional. No se utiliza para autenticación ni recuperación. En PATCH, omitir conserva el valor y null lo elimina.
+             */
+            correoPersonal?: string | null;
             telefono?: string;
             rol?: components["schemas"]["RolEmpleado"];
             area?: components["schemas"]["AreaMyl"] | null;
@@ -4472,7 +4795,7 @@ export interface components {
         /**
          * @example {
          *       "clave": "tipos/suite-demo.jpg",
-         *       "url": "http://localhost:9000/publico/tipos/suite-demo.jpg",
+         *       "url": "https://d13s29erv78l4g.cloudfront.net/tipos/suite-demo.jpg",
          *       "principal": true,
          *       "orden": 0
          *     }
@@ -4496,7 +4819,7 @@ export interface components {
          *       "fotos": [
          *         {
          *           "clave": "tipos/suite-demo.jpg",
-         *           "url": "http://localhost:9000/publico/tipos/suite-demo.jpg",
+         *           "url": "https://d13s29erv78l4g.cloudfront.net/tipos/suite-demo.jpg",
          *           "principal": true,
          *           "orden": 0
          *         }
@@ -4731,6 +5054,19 @@ export interface components {
             clave: string;
             orden: number;
         };
+        /** @description Solo datos generales y fiscales aprobados. Se recortan espacios de los nueve campos y se normaliza el NIT (dígito verificador, K mayúscula). CF no es válido para el emisor. No admite fotos, series, correlativos, horarios ni políticas. No contiene datos fiscales por defecto. */
+        InicializarHotelPeticion: {
+            nombre: string;
+            descripcion: string;
+            direccion: string;
+            telefono: string;
+            /** Format: email */
+            correo: string;
+            nombreComercial: string;
+            razonSocial: string;
+            nit: string;
+            direccionFiscal: string;
+        };
         /**
          * @description Validar NIT fiscal. No admite serie, correlativo, horas ni política de cancelación editable.
          * @example {
@@ -4763,7 +5099,8 @@ export interface components {
             /** @example 1234567-9 */
             nit: string;
             direccionFiscal: string;
-            fotos: components["schemas"]["FotoHotelPeticion"][];
+            /** @description Omitir conserva las fotos. Null no es válido. Lista vacía retira todas las asociaciones, sin borrar objetos. Cambiar claves u orden requiere If-Match vigente; claves y órdenes únicos. Las claves nuevas deben ser HOTEL y existir en almacenamiento público. */
+            fotos?: components["schemas"]["FotoHotelPeticion"][];
         };
         /**
          * @example {
@@ -5898,7 +6235,7 @@ export interface operations {
                      *         "capacidad": 4,
                      *         "precioBaseNoche": 850,
                      *         "fotos": [
-                     *           "http://localhost:9000/villa-serena-publico/tipos/1/principal.jpg"
+                     *           "https://d13s29erv78l4g.cloudfront.net/tipos/1/principal.jpg"
                      *         ]
                      *       },
                      *       {
@@ -5941,8 +6278,8 @@ export interface operations {
                      *       "capacidad": 4,
                      *       "precioBaseNoche": 850,
                      *       "fotos": [
-                     *         "http://localhost:9000/villa-serena-publico/tipos/1/principal.jpg",
-                     *         "http://localhost:9000/villa-serena-publico/tipos/1/bano.jpg"
+                     *         "https://d13s29erv78l4g.cloudfront.net/tipos/1/principal.jpg",
+                     *         "https://d13s29erv78l4g.cloudfront.net/tipos/1/bano.jpg"
                      *       ]
                      *     }
                      */
@@ -5994,7 +6331,7 @@ export interface operations {
                      *           "capacidad": 4,
                      *           "precioBaseNoche": 850,
                      *           "fotos": [
-                     *             "http://localhost:9000/villa-serena-publico/tipos/1/principal.jpg"
+                     *             "https://d13s29erv78l4g.cloudfront.net/tipos/1/principal.jpg"
                      *           ]
                      *         },
                      *         "noches": 2,
@@ -9613,6 +9950,28 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    listarHabitacionesIncidencias: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Catálogo de habitaciones operativas para reportar incidencias. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HabitacionOperativa"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
     detalleIncidencia: {
         parameters: {
             query?: never;
@@ -10290,6 +10649,15 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
+            /** @description ALMACEN_NO_DISPONIBLE. No se guardaron cambios en la galería. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     listarEmpleadosAdmin: {
@@ -10547,7 +10915,7 @@ export interface operations {
                      *         "fotos": [
                      *           {
                      *             "clave": "tipos/suite-demo.jpg",
-                     *             "url": "http://localhost:9000/publico/tipos/suite-demo.jpg",
+                     *             "url": "https://d13s29erv78l4g.cloudfront.net/tipos/suite-demo.jpg",
                      *             "principal": true,
                      *             "orden": 0
                      *           }
@@ -10602,7 +10970,7 @@ export interface operations {
                      *       "fotos": [
                      *         {
                      *           "clave": "tipos/suite-demo.jpg",
-                     *           "url": "http://localhost:9000/publico/tipos/suite-demo.jpg",
+                     *           "url": "https://d13s29erv78l4g.cloudfront.net/tipos/suite-demo.jpg",
                      *           "principal": true,
                      *           "orden": 0
                      *         }
@@ -10648,7 +11016,7 @@ export interface operations {
                      *       "fotos": [
                      *         {
                      *           "clave": "tipos/suite-demo.jpg",
-                     *           "url": "http://localhost:9000/publico/tipos/suite-demo.jpg",
+                     *           "url": "https://d13s29erv78l4g.cloudfront.net/tipos/suite-demo.jpg",
                      *           "principal": true,
                      *           "orden": 0
                      *         }
@@ -10706,7 +11074,7 @@ export interface operations {
                      *       "fotos": [
                      *         {
                      *           "clave": "tipos/suite-demo.jpg",
-                     *           "url": "http://localhost:9000/publico/tipos/suite-demo.jpg",
+                     *           "url": "https://d13s29erv78l4g.cloudfront.net/tipos/suite-demo.jpg",
                      *           "principal": true,
                      *           "orden": 0
                      *         }
@@ -10762,7 +11130,7 @@ export interface operations {
                      *       "fotos": [
                      *         {
                      *           "clave": "tipos/suite-demo.jpg",
-                     *           "url": "http://localhost:9000/publico/tipos/suite-demo.jpg",
+                     *           "url": "https://d13s29erv78l4g.cloudfront.net/tipos/suite-demo.jpg",
                      *           "principal": true,
                      *           "orden": 0
                      *         }
@@ -10824,7 +11192,7 @@ export interface operations {
                      *       "fotos": [
                      *         {
                      *           "clave": "tipos/suite-demo.jpg",
-                     *           "url": "http://localhost:9000/publico/tipos/suite-demo.jpg",
+                     *           "url": "https://d13s29erv78l4g.cloudfront.net/tipos/suite-demo.jpg",
                      *           "principal": true,
                      *           "orden": 0
                      *         }
@@ -10880,7 +11248,7 @@ export interface operations {
                      *       "fotos": [
                      *         {
                      *           "clave": "tipos/suite-demo.jpg",
-                     *           "url": "http://localhost:9000/publico/tipos/suite-demo.jpg",
+                     *           "url": "https://d13s29erv78l4g.cloudfront.net/tipos/suite-demo.jpg",
                      *           "principal": true,
                      *           "orden": 0
                      *         }
@@ -11609,6 +11977,8 @@ export interface operations {
             /** @description Consultar datos generales y fiscales. */
             200: {
                 headers: {
+                    /** @description Revisión fuerte de la galería; conservar las comillas y enviar como If-Match para cambiar fotos. */
+                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -11640,12 +12010,24 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description HOTEL_NO_CONFIGURADO. Inicializar mediante la operación específica. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     editarHotelAdmin: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Obligatorio solo si cambia la galería. Debe coincidir con el ETag de la consulta administrativa vigente. Sin revisión o con revisión obsoleta, 409 GALERIA_CAMBIADA y ningún cambio. */
+                "If-Match"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -11677,6 +12059,8 @@ export interface operations {
             /** @description Actualizar datos del hotel. */
             200: {
                 headers: {
+                    /** @description Revisión fuerte de la galería resultante. */
+                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -11708,7 +12092,70 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description HOTEL_NO_CONFIGURADO. Inicializar mediante la operación específica. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             409: components["responses"]["Conflict"];
+            /** @description ALMACEN_NO_DISPONIBLE. No se guardaron cambios en la galería. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    inicializarHotelAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InicializarHotelPeticion"];
+            };
+        };
+        responses: {
+            /** @description Los datos normalizados coinciden; configuración devuelta sin cambios. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HotelAdmin"];
+                };
+            };
+            /** @description Configuración creada; ninguna otra entidad fue modificada. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HotelAdmin"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description HOTEL_YA_CONFIGURADO. Hay una configuración con datos distintos; no se sobrescribe. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     indicadoresAdmin: {
@@ -12793,6 +13240,372 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listarOfertasAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Consultar ofertas publicadas y borradores */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfertaAdmin"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    detalleOfertaAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Consultar oferta y cantidades derivadas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfertaAdmin"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    actualizarOfertaAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuardarOfertaAdminPeticion"];
+            };
+        };
+        responses: {
+            /** @description Reemplazar contenido publicación precio y vínculos de oferta */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfertaAdmin"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    crearOfertaAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuardarOfertaAdminPeticion"];
+            };
+        };
+        responses: {
+            /** @description Crear oferta con slug inmutable */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfertaAdmin"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    consultarCaracteristicasHabitacionAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Consultar características físicas registradas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaracteristicasHabitacionAdmin"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    guardarCaracteristicasHabitacionAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaracteristicasHabitacionPeticion"];
+            };
+        };
+        responses: {
+            /** @description Registrar características físicas sin afectar reservas activas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaracteristicasHabitacionAdmin"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    cambiarPublicacionOfertaAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicacionOfertaPeticion"];
+            };
+        };
+        responses: {
+            /** @description Oferta actualizada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfertaAdmin"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    consultarBorradorEditorial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                idioma: "es" | "en";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Documento del idioma solicitado. Borrador inexistente: revisión 0 y lista vacía. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditorialSitio"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description HOTEL_NO_CONFIGURADO o CONTENIDO_NO_PUBLICADO. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    guardarBorradorEditorial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                idioma: "es" | "en";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuardarEditorialPeticion"];
+            };
+        };
+        responses: {
+            /** @description Documento del idioma solicitado. Borrador inexistente: revisión 0 y lista vacía. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditorialSitio"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description HOTEL_NO_CONFIGURADO o CONTENIDO_NO_PUBLICADO. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            /** @description ALMACEN_NO_DISPONIBLE. No se modificó el borrador ni la versión publicada. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    publicarEditorial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                idioma: "es" | "en";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicarEditorialPeticion"];
+            };
+        };
+        responses: {
+            /** @description Documento del idioma solicitado. Borrador inexistente: revisión 0 y lista vacía. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditorialSitio"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description HOTEL_NO_CONFIGURADO o CONTENIDO_NO_PUBLICADO. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            /** @description ALMACEN_NO_DISPONIBLE. No se modificó el borrador ni la versión publicada. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    consultarEditorialPublicado: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                idioma: "es" | "en";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Documento del idioma solicitado. Borrador inexistente: revisión 0 y lista vacía. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditorialSitio"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description HOTEL_NO_CONFIGURADO o CONTENIDO_NO_PUBLICADO. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
 }
