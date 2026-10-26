@@ -101,9 +101,9 @@ const prefTextEN: Record<string, string> = {
   Bienestar: "Rooms with peaceful settings, terraces or views designed for a relaxing stay.",
 };
 export type PublicHomePreview={hotel:ReturnType<typeof usePublicHotel>;rooms:ReturnType<typeof usePublicCatalog>['rooms'];loading:boolean;error:string;mobile:boolean};
-export default function PublicHome({preview,editorial,language}:{preview?:PublicHomePreview;editorial?:EditorialDocument;language?:EditorialLanguage}) {
+export default function PublicHome({preview,editorial,language,loadPublished=true}:{preview?:PublicHomePreview;editorial?:EditorialDocument;language?:EditorialLanguage;loadPublished?:boolean}) {
   return (<ScopedI18nProvider>
-    <EditorialContentProvider preview={Boolean(preview)} document={editorial} language={language}><HomeContent preview={preview}/></EditorialContentProvider>
+    <EditorialContentProvider loadPublished={loadPublished} preview={Boolean(preview)} document={editorial} language={language}><HomeContent preview={preview}/></EditorialContentProvider>
   </ScopedI18nProvider>);
 }
 function HomeContent({preview}:{preview?:PublicHomePreview}) {

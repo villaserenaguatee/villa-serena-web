@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
-export default function PublicAbout({editorial,language,preview=false}:{editorial?:EditorialDocument;language?:EditorialLanguage;preview?:boolean}) {return <EditorialContentProvider preview={preview} document={editorial} language={language}><AboutContent/></EditorialContentProvider>;}
+export default function PublicAbout({editorial,language,preview=false,loadPublished=true}:{editorial?:EditorialDocument;language?:EditorialLanguage;preview?:boolean;loadPublished?:boolean}) {return <EditorialContentProvider loadPublished={loadPublished} preview={preview} document={editorial} language={language}><AboutContent/></EditorialContentProvider>;}
 function AboutContent() {
   const r = useRouter();
   const { en } = useEditorialLanguage();

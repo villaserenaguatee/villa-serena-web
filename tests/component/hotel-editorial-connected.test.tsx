@@ -50,3 +50,10 @@ test('all canonical editorial ids bind to actual elements, while operational fie
  unmount();const about=render(<PublicAbout preview/>);for(const node of about.container.querySelectorAll('[data-editorial-id]'))ids.add(node.getAttribute('data-editorial-id'));
  expect([...ids].sort()).toEqual([...EDITORIAL_IDS].sort());
 });
+
+test('demo pages skip connected editorial requests while real pages still load publication',async()=>{
+ const demo=render(<PublicHome loadPublished={false}/>);
+ expect(readPublishedEditorial).not.toHaveBeenCalled();
+ demo.unmount();render(<PublicHome/>);
+ await waitFor(()=>expect(readPublishedEditorial).toHaveBeenCalledWith('es',expect.any(AbortSignal)));
+});
