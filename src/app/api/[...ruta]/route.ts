@@ -10,6 +10,9 @@ async function proxy(request: NextRequest, context: { params: Promise<{ ruta: st
   try {
     if (request.method !== 'GET') sameOrigin(request);
     const { ruta } = await context.params;
+    const hotel=ruta.length===2&&ruta[0]==='admin'&&ruta[1]==='hotel';
+    const revision=hotel&&request.method==='PUT'?request.headers.get('If-Match'):null;
+    if(revision&&!/^"[a-f0-9]{64}"$/.test(revision))throw new AuthError('DATOS_INVALIDOS',400,'Actualiza la galería antes de guardar.');
     if (!permittedRoots.has(ruta[0]) || (ruta[0] === 'admin' && ruta[1] === 'canal-simulado') || ruta.some(segment => !/^[a-zA-Z0-9_-]+$/.test(segment)))
       throw new AuthError('RUTA_NO_PERMITIDA', 403, 'Esta ruta no está disponible a través del BFF.');
     let body: string | undefined, bodyRead = false;
@@ -21,7 +24,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ ruta: st
       let response: Response;
       try { response = await fetch(new URL(`/api/v1/${ruta.map(encodeURIComponent).join('/')}${request.nextUrl.search}`, process.env.API_URL), {
         method: request.method, body, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(10000),
-        headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(request.headers.get('content-type') ? { 'Content-Type': request.headers.get('content-type')! } : {}), ...(ruta[0]==='incidencias'&&ruta.length===1&&request.method==='POST'&&request.headers.get('Idempotency-Key')?{'Idempotency-Key':request.headers.get('Idempotency-Key')!}:{}) },
+        headers: { Accept: 'application/json', ...(revision?{'If-Match':revision}:{}), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(request.headers.get('content-type') ? { 'Content-Type': request.headers.get('content-type')! } : {}), ...(ruta[0]==='incidencias'&&ruta.length===1&&request.method==='POST'&&request.headers.get('Idempotency-Key')?{'Idempotency-Key':request.headers.get('Idempotency-Key')!}:{}) },
       }); } catch { throw new AuthError('API_NO_DISPONIBLE', 502, 'No se pudo contactar al API.'); }
       if (response.status === 401) throw new AuthError('SESION_VENCIDA', 401, 'Tu sesión venció. Inicia sesión de nuevo.');
       if (response.status === 204) return new NextResponse(null, { status: 204 });
@@ -32,7 +35,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ ruta: st
       const payload = await response.json().catch(() => null);
       if (payload?.codigo === 'SIMULACION_NO_DISPONIBLE')
         return NextResponse.json({codigo:'OPERACION_NO_DISPONIBLE',mensaje:'El servicio no pudo completar esta operación. Intenta nuevamente más tarde.',detalles:[]},{status:response.status,headers:{'Cache-Control':'no-store'}});
-      return NextResponse.json(withoutSessionTokens(payload), { status: response.status, headers: { 'Cache-Control': 'no-store' } });
+      return NextResponse.json(withoutSessionTokens(payload), { status: response.status, headers: { 'Cache-Control': 'no-store', ...(hotel&&response.ok&&response.headers.get('ETag')?{'ETag':response.headers.get('ETag')!}:{}) } });
     };
     if (ruta[0] === 'publico') return operation();
     const result = await withStaffSession(request, (access, employee) => {
