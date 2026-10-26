@@ -9,6 +9,7 @@ import { dinero, INPUT_CLS } from '@/features/admin/pages/adminUtils';
 import { exportXlsx } from '@/lib/pms/exportXlsx';
 type Tab = 'resumen' | 'productos' | 'compras' | 'movimientos' | 'proveedores' | 'reportes';
 interface Props {
+  refreshAction?:React.ReactNode;
   insumos: Insumo[];
   movimientos: MovimientoInsumo[];
   compras: CompraHotel[];
@@ -28,11 +29,11 @@ export default function ComprasInventario(props: Props) {
     <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 className="text-3xl font-semibold text-[#18345C]">Compras e inventario</h1>
-        <p className="mt-1 text-sm text-[#71839B]">Compras, existencias y consumos de todas las áreas del hotel.</p>
+
       </div>
-      <button onClick={() => setFormCompra(true)} className="rounded-md bg-[#18345C] px-4 py-2.5 text-sm font-semibold text-white">+ Registrar compra</button>
+      <div className="flex flex-wrap gap-2">{props.refreshAction}<button onClick={() => setFormCompra(true)} className="rounded-md bg-[#18345C] px-4 py-2.5 text-sm font-semibold text-white">+ Registrar compra</button></div>
     </div>
-    <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+    <div data-admin-tabs className="mb-5 flex gap-2 overflow-x-auto pb-1">
       {([['resumen', 'Resumen'],
       ['productos', 'Productos'],
       ['compras', 'Compras'],
@@ -43,7 +44,7 @@ export default function ComprasInventario(props: Props) {
         string
       ][]).map(([id, label]) => <button
         key={id}
-        onClick={() => setTab(id)}
+        data-active={tab===id} onClick={() => setTab(id)}
         className={`whitespace-nowrap rounded-md border px-3 py-2 text-sm font-medium ${tab === id ? 'border-[#18345C] bg-[#18345C] text-white' : 'border-[#E0DAD0] bg-white text-[#52677F]'}`}>
         {label}
       </button>)}
@@ -129,7 +130,7 @@ function TablaCompras({ compras, insumos }: {
 }) {
   return <div className="overflow-x-auto rounded-xl border border-[#E5E0D8] bg-white">
     <table className="w-full min-w-[760px] text-sm">
-      <thead className="bg-[#F4F1EA] text-left text-xs uppercase tracking-wider text-[#71839B]">
+      <thead className="bg-[#F4F1EA] text-left text-xs  tracking-wider text-[#71839B]">
         <tr>
           <th className="p-3">Fecha / factura</th>
           <th>Proveedor</th>
@@ -269,9 +270,9 @@ function FormCompra({ insumos, onCancel, onSave }: {
     onSave({ numeroFactura: factura, proveedor, fecha, insumoId, cantidad: Number(cantidad), costoUnitario: Number(costo), estado, ivaIncluido });
   }
   return <div>
-    <p className="text-xs font-semibold uppercase tracking-widest text-[#B38719]">Entrada de mercadería</p>
+    <p className="text-xs font-semibold  tracking-widest text-[#B38719]">Entrada de mercadería</p>
     <h2 className="mb-4 text-2xl font-semibold text-[#18345C]">Registrar compra</h2>
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid items-start gap-x-4 gap-y-3 sm:grid-cols-2">
       <Campo label="Número de factura">
         <input className={INPUT_CLS} value={factura} onChange={e => setFactura(e.target.value)} />
       </Campo>
@@ -315,7 +316,7 @@ function FormCompra({ insumos, onCancel, onSave }: {
           <option value="pendiente">Pendiente de pago</option>
         </select>
       </Campo>
-      <div className="rounded-lg bg-[#F8F6F0] p-3 text-sm">
+      <div className="rounded-lg border border-[#E5E0D8] bg-[#F8F6F0] p-3 text-sm sm:col-span-2">
         <div className="flex justify-between">
           <span>Subtotal</span>
           <b>
@@ -350,7 +351,7 @@ function Campo({ label, children }: {
   children: React.ReactNode;
 }) {
   return <label className="block">
-    <span className="mb-1 block text-xs uppercase tracking-wider text-[#71839B]">
+    <span className="mb-1 block text-sm font-medium text-[#536579]">
       {label}
     </span>
     {children}

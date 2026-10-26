@@ -1,3 +1,4 @@
+import workspaceStyles from './AdminWorkspace.module.css';
 import SidebarBrand from '@/components/common/SidebarBrand';
 import StaffSidebarIdentity from '@/components/common/StaffSidebarIdentity';
 import AmenidadesAdmin from './AmenidadesAdmin';
@@ -389,11 +390,9 @@ function AdminAppExisting({ onCambiarModulo }: Props) {
       </nav>
 
       <div className="flex-1 lg:ml-[228px] flex flex-col overflow-hidden bg-[#F5F4EF]">
-        <div className="flex items-center gap-3 border-b border-[#E2E4E8] bg-white px-4 py-3 shrink-0 lg:px-7">
+        <div className="flex items-center gap-3 border-b border-[#E2E4E8] bg-[#102747] px-4 py-3 shrink-0 lg:bg-white lg:px-7">
           <div className="min-w-0 shrink-0 lg:hidden"><SidebarBrand module="Administración"/></div>
-          <p className="text-[#536579] text-xs font-medium truncate flex-1">
-            {SECCIONES.find(s => s.id === seccion)?.label}
-          </p>
+          <div className="flex-1" aria-hidden="true"/>
           <button
             title={user?.staff ? 'Solicitudes de corrección del personal' : 'Notificaciones'}
             onClick={() => {
@@ -414,7 +413,7 @@ function AdminAppExisting({ onCambiarModulo }: Props) {
           </div>
         </div>
 
-        <div className="min-w-0 flex-1 flex overflow-hidden relative">
+        <div className={workspaceStyles.workspace}>
           {contenido}
         </div>
 

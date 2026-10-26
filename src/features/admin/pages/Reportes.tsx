@@ -104,20 +104,20 @@ export default function Reportes({ reservas, habitaciones, tarifasBase }: Props)
 
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-[#D9E4F0] bg-[#F4F8FC] p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#71839B]">Lectura del período</p>
+          <p className="text-[11px] font-semibold  tracking-widest text-[#71839B]">Lectura del período</p>
           <p className="mt-2 text-sm text-[#18345C]">El hotel tuvo una ocupación promedio de <b>{m.ocupacionPct}%</b> y vendió <b>
             {m.nochesVendidas}
           </b> noches.</p>
         </div>
         <div className="rounded-xl border border-[#E5E0D8] bg-white p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#71839B]">Alojamiento</p>
+          <p className="text-[11px] font-semibold  tracking-widest text-[#71839B]">Alojamiento</p>
           <p className="mt-2 text-xl font-bold text-[#18345C]">
             {dinero(m.ingresoAlojamiento)}
           </p>
           <p className="text-xs text-[#71839B]">Ingresos generados por habitaciones</p>
         </div>
         <div className="rounded-xl border border-[#E5E0D8] bg-white p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#71839B]">Servicios</p>
+          <p className="text-[11px] font-semibold  tracking-widest text-[#71839B]">Servicios</p>
           <p className="mt-2 text-xl font-bold text-[#18345C]">
             {dinero(m.ingresoServicios)}
           </p>
@@ -168,7 +168,7 @@ export default function Reportes({ reservas, habitaciones, tarifasBase }: Props)
       </section>
 
       <section className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden">
-        <div className="grid grid-cols-4 px-4 py-3 bg-[#F8F6F0] border-b border-[#E5E0D8] text-[11px] text-[#AEBCC1] uppercase tracking-widest font-medium">
+        <div className="grid grid-cols-4 px-4 py-3 bg-[#F8F6F0] border-b border-[#E5E0D8] text-[11px] text-[#AEBCC1]  tracking-widest font-medium">
           <span>Fecha</span>
           <span className="text-right">Ocupadas</span>
           <span className="text-right">Ocupación</span>

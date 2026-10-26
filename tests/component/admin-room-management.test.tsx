@@ -37,7 +37,7 @@ test('rooms, categories and existing map are accessible without mixing personnel
   expect(screen.getByText(/2 de 2 habitaciones físicas registradas/)).toHaveTextContent('1 activas');
   await userEvent.click(screen.getByRole('tab', { name: 'Categorías de habitación' }));
   await screen.findByText('Estándar');
-  expect(await screen.findByText('Habitaciones físicas: 2 · 1 activas')).toBeVisible();
+  expect(await screen.findByText('2 · 1 activas')).toBeVisible();
   expect(screen.queryByRole('button', { name: 'Personal' })).toBeNull();
   await userEvent.click(screen.getByRole('tab', { name: 'Mapa de habitaciones' }));
   expect(screen.getByText('Mapa existente')).toBeVisible();
@@ -67,7 +67,7 @@ test('room creation uses the existing endpoint and only permitted fields', async
 
 test('room update preserves identifier and version and never sends occupancy or manual capacity', async () => {
   render(<CatalogosAdmin initial="habitaciones" resources={['habitaciones']} roomManagement />);
-  const card = (await screen.findByText('Habitación 101')).closest('article')!;
+  const card = (await screen.findByText('Habitación 101')).closest('tr')!;
   await userEvent.click(within(card).getByRole('button', { name: 'Editar' }));
   const dialog = screen.getByRole('dialog');
   fireEvent.change(within(dialog).getByLabelText('Piso'), { target: { value: '2' } });
@@ -85,7 +85,7 @@ test('repeated submissions share one in-flight write and navigation is disabled 
   });
   render(<AdminRoomsManagement />);
   await screen.findByText('Habitación 101');
-  await userEvent.click(within(screen.getByText('Habitación 101').closest('article')!).getByRole('button', { name: 'Editar' }));
+  await userEvent.click(within(screen.getByText('Habitación 101').closest('tr')!).getByRole('button', { name: 'Editar' }));
   const dialog = screen.getByRole('dialog');
   fireEvent.submit(dialog); fireEvent.submit(dialog);
   await waitFor(() => expect(posts()).toHaveLength(1));
@@ -155,7 +155,7 @@ test('editing a category shows its registered price and consistent category nami
 test('inventory count failure does not block category editing or pretend there are zero rooms', async () => {
   call.mockImplementation(async path => { if (path === 'admin/catalogos/tipos') return [type]; throw new OperationError('Sin conexión', 502); });
   render(<CatalogosAdmin initial="tipos" resources={['tipos']} roomManagement />);
-  expect(await screen.findByText('Habitaciones físicas: No disponible')).toBeVisible();
+  expect(await screen.findByText('No disponible')).toBeVisible();
   expect(screen.getByRole('button', { name: 'Nuevo registro' })).toBeEnabled();
 });
 
@@ -169,7 +169,7 @@ test('load failure blocks creation without demo fallback; rejected update keeps 
   call.mockImplementation(async (path, method) => { if (method === 'POST') throw new OperationError('La habitación tiene reservas activas.', 409); return path.endsWith('/tipos') ? [type] : rooms; });
   render(<CatalogosAdmin initial="habitaciones" resources={['habitaciones']} roomManagement />);
   await screen.findByText('Habitación 101');
-  await userEvent.click(within(screen.getByText('Habitación 101').closest('article')!).getByRole('button', { name: 'Editar' }));
+  await userEvent.click(within(screen.getByText('Habitación 101').closest('tr')!).getByRole('button', { name: 'Editar' }));
   await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Guardar' }));
   expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent('reservas activas');
   expect(screen.getByRole('dialog')).toBeVisible();
