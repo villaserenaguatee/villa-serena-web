@@ -10,12 +10,12 @@ export async function uploadCatalogPhoto(file:File,uso:PhotoUse):Promise<string>
  if(typeof response?.clave!=='string'||!response.clave.trim())throw Error('El servicio no devolvió la referencia de la fotografía.');
  return response.clave;
 }
-export async function resolveCatalogPhotos(photos:CatalogPhotoDraft[],uso:PhotoUse,uploaded:Map<File,string>):Promise<{clave:string;orden:number;principal:boolean}[]>{
+export async function resolveCatalogPhotos(photos:CatalogPhotoDraft[],uso:PhotoUse,uploaded:Map<File,string>,onProgress?:(completed:number,total:number)=>void):Promise<{clave:string;orden:number;principal:boolean}[]>{
  const result:{clave:string;orden:number;principal:boolean}[]=[];
  for(const [orden,photo]of photos.entries()){
   let clave=photo.clave;
   if(photo.file){clave=uploaded.get(photo.file);if(!clave){clave=await uploadCatalogPhoto(photo.file,uso);uploaded.set(photo.file,clave);}}
-  if(!clave)throw Error('Hay una fotografía sin cargar.');result.push({clave,orden,principal:photo.principal});
+  if(!clave)throw Error('Hay una fotografía sin cargar.');result.push({clave,orden,principal:photo.principal});onProgress?.(orden+1,photos.length);
  }
  return result;
 }
