@@ -5,7 +5,6 @@ import RoomServiceApp from '@/features/roomservice/pages/RoomServiceApp';
 import AdminApp from '@/features/admin/pages/AdminApp';
 import MantenimientoApp from '@/features/mantenimiento/pages/MantenimientoApp';
 import CleaningApp from '@/features/limpieza/pages/LimpiezaApp';
-import PublicLanguageToggle from '@/components/common/PublicLanguageToggle';
 import ScopedI18nProvider from '@/i18n/ScopedI18nProvider';
 import { RoleGuard } from '@/components/common/RoleGuard';
 const noop = () => { };
@@ -17,7 +16,6 @@ export function RecepcionRoleApp({ conectado = false }: { conectado?: boolean })
 export function HuespedRoleApp() {
   return <RoleGuard role="huesped">
     <ScopedI18nProvider>
-      <PublicLanguageToggle />
       <HuespedApp onCambiarModulo={noop} />
     </ScopedI18nProvider>
   </RoleGuard>;

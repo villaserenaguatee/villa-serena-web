@@ -1,4 +1,4 @@
-﻿import {render,screen} from '@testing-library/react';
+﻿import {render,screen,within,fireEvent} from '@testing-library/react';
 import {beforeEach,expect,test,vi} from 'vitest';
 import PublicHome from '@/features/public/PublicHome';
 import {usePublicCatalog,usePublicHotel} from '@/lib/usePublicCatalog';
@@ -13,4 +13,22 @@ test('the real public page reuses hotel photos in hero, gallery and about, plus 
 });
 test('missing real photos do not substitute illustrative hotel images',()=>{
  const {container}=render(<PublicHome preview={{hotel:{...hotel,fotos:[]},rooms:[],loading:false,error:'',mobile:true}}/>);expect(container.querySelector('#galeria-hotel')).toBeNull();expect(container.querySelector('#inicio')?.getAttribute('style')).not.toContain('url(');expect(screen.getByText('Sin fotografía del hotel disponible.')).toBeVisible();
+});
+
+test('service cards retain photos, descriptions and information actions without illustrative captions',()=>{
+ const {container}=render(<PublicHome preview={{hotel,rooms:[],loading:false,error:'',mobile:false}}/>);
+ const cards=container.querySelectorAll('#servicios .service-card');
+ expect(cards).toHaveLength(4);
+ expect(container.querySelector('#servicios small')).toBeNull();
+ for(const card of cards){
+  const title=within(card as HTMLElement).getByRole('heading');
+  expect(['Spa','Gimnasio','Piscina','Restaurante']).toContain(title.textContent);
+  expect(card.firstElementChild?.tagName).toBe('IMG');
+  expect(within(card as HTMLElement).getByRole('img')).toHaveAttribute('alt',title.textContent);
+  expect(card.querySelector('p')?.textContent?.trim()).toBeTruthy();
+  fireEvent.click(within(card as HTMLElement).getByRole('button'));
+  expect(container.querySelector('.service-info-modal')).not.toBeNull();
+  fireEvent.click(container.querySelector('.service-info-modal .booking-modal-close') as HTMLElement);
+  expect(container.querySelector('.service-info-modal')).toBeNull();
+ }
 });

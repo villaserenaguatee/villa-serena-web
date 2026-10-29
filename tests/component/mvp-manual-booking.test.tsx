@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event';
 import Datos from '@/app/(public)/reservar/datos/page';
 import ScopedI18nProvider from '@/i18n/ScopedI18nProvider';
 import TranslatedChatText from '@/components/common/TranslatedChatText';
-import PublicLanguageToggle from '@/components/common/PublicLanguageToggle';
 
 // Isolated presentation fixtures, not evidence of API connectivity or real availability.
 vi.mock('next/navigation', () => ({useRouter: () => ({push: vi.fn(),replace: vi.fn(),back: vi.fn()}), useSearchParams: () => new URLSearchParams('slug=fixture-room&llegada=2027-11-16&salida=2027-11-18&adultos=2&ninos=0')}));
@@ -99,7 +98,7 @@ test('email format blocks incomplete addresses before review without restricting
 test('previous EN preference does not enable translations; chat shows original without provider calls', () => {
   localStorage.setItem('villa-serena-lang','EN');
   const fetch = vi.spyOn(globalThis,'fetch');
-  render(<ScopedI18nProvider><PublicLanguageToggle /><TranslatedChatText text="Good morning" received /></ScopedI18nProvider>);
+  render(<ScopedI18nProvider><TranslatedChatText text="Good morning" received /></ScopedI18nProvider>);
   expect(screen.getByText('Good morning')).toBeInTheDocument();
   expect(screen.queryByRole('button')).not.toBeInTheDocument();
   expect(fetch).not.toHaveBeenCalled();

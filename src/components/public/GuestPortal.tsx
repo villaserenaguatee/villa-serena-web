@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { AuthContext } from '@/app/providers/AuthProvider';
 import { HuespedPortal, seleccionarEstanciaHuesped } from '@/features/huesped/pages/HuespedApp';
 import ScopedI18nProvider from '@/i18n/ScopedI18nProvider';
-import PublicLanguageToggle from '@/components/common/PublicLanguageToggle';
 import type { Huesped, Reserva } from '@/lib/pms/types';
 export default function GuestPortal({ huesped, reservas, selectedCode, publicSummary, habitaciones, conectado = false }: { huesped: Huesped; reservas: Reserva[]; selectedCode?: string; publicSummary?: { total: number; estadoPago: string | null }; conectado?: boolean; habitaciones?: import('@/lib/pms/types').HabitacionHotel[] }) {
   const [valid, setValid] = useState(false);
@@ -30,6 +29,6 @@ export default function GuestPortal({ huesped, reservas, selectedCode, publicSum
     setValid(false);
   };
   return <AuthContext.Provider value={{ user: { id: `guest-account-${huesped.id}`, guestId: huesped.id, name: huesped.nombre, email: huesped.correo, role: 'huesped' }, loading: false, login: async () => { throw new Error('Verifica el correo con un código de acceso.'); }, logout }}>
-    <ScopedI18nProvider><PublicLanguageToggle /><HuespedPortal key={reserva.codigo} habitacionesApi={habitaciones} conectado={conectado} onCambiarModulo={() => {}} huesped={huesped} reservaInicial={reserva} reservasAutorizadas={reservas} publicSummary={publicSummary} /></ScopedI18nProvider>
+    <ScopedI18nProvider><HuespedPortal key={reserva.codigo} habitacionesApi={habitaciones} conectado={conectado} onCambiarModulo={() => {}} huesped={huesped} reservaInicial={reserva} reservasAutorizadas={reservas} publicSummary={publicSummary} /></ScopedI18nProvider>
   </AuthContext.Provider>;
 }

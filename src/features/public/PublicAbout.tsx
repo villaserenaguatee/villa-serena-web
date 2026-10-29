@@ -1,22 +1,23 @@
 "use client";
-import {EditorialContentProvider,EditorialText,EditorialLink,EditorialImage,EditorialLanguageSelect,useEditorialLanguage} from './EditorialContent';
-import type {EditorialDocument,EditorialLanguage,EditorialId} from '@/lib/editorial/catalog';
+import {usePublicLanguage} from "@/components/common/PublicLanguageToggle";
+import {EditorialContentProvider,EditorialText,EditorialLink,EditorialImage} from './EditorialContent';
+import type {EditorialDocument,EditorialId} from '@/lib/editorial/catalog';
 
 import { UiText } from "@/i18n/UiText";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
-export default function PublicAbout({editorial,language,preview=false,loadPublished=true}:{editorial?:EditorialDocument;language?:EditorialLanguage;preview?:boolean;loadPublished?:boolean}) {return <EditorialContentProvider loadPublished={loadPublished} preview={preview} document={editorial} language={language}><AboutContent/></EditorialContentProvider>;}
+export default function PublicAbout({editorial,preview=false,loadPublished=true}:{editorial?:EditorialDocument;preview?:boolean;loadPublished?:boolean}) {return <EditorialContentProvider loadPublished={loadPublished} preview={preview} document={editorial}><AboutContent/></EditorialContentProvider>;}
 function AboutContent() {
   const r = useRouter();
-  const { en } = useEditorialLanguage();
+  const { en } = usePublicLanguage();
   return (<main className="about-page">
     <header className="reserve-nav">
       <button className="icon-back" aria-label={en ? "Back" : "Volver"} title={en ? "Back" : "Volver"} onClick={() => r.back()}>
         <ArrowLeft />
       </button>
-      <VillaSerenaLogo /><EditorialLanguageSelect/>
+      <VillaSerenaLogo />
     </header>
     <section className="about-page-hero" data-site-section="nosotros-page">
       <EditorialImage editorialId="nosotros-page.imagen" src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1800&q=90" alt="Villa Serena" />
