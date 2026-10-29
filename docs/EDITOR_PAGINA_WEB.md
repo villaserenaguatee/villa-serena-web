@@ -14,13 +14,15 @@ POST /api/v1/archivos/imagenes con uso HOTEL admite JPG/PNG decodificables de ha
 
 Las URLs utilizadas proceden del contrato público; no se construyen hosts de almacenamiento ni se exponen credenciales. Validar la entrega S3/CDN del entorno de producción antes de afirmar que las fotografías funcionan públicamente. Las pruebas con el adaptador local persistente PostgreSQL no acreditan S3.
 
-## Contenido editorial ES/EN
+## Contenido editorial en español
 
 - GET/PUT /api/v1/admin/hotel/editorial/{idioma}: consultar y guardar borradores persistentes, con revisión.
 - POST /api/v1/admin/hotel/editorial/{idioma}/publicacion: publicar explícitamente la revisión confirmada.
 - GET /api/v1/publico/hotel/editorial/{idioma}: únicamente la versión publicada.
 
-Guardar borrador no publica. Publicar cambios requiere confirmación y mantiene la versión anterior si la operación falla. Cada idioma conserva su propio estado y revisión. Los conflictos no descartan lo introducido por el administrador.
+La Web consulta, edita y publica únicamente `es`, sin selectores ni campos para inglés. Los registros existentes de otros idiomas se conservan en el backend sin modificarlos. Las rutas parametrizadas del contrato no cambian.
+
+Guardar borrador no publica. Publicar cambios requiere confirmación y mantiene la versión anterior si la operación falla. Los conflictos no descartan lo introducido por el administrador.
 
 El editor reutiliza PublicHome y PublicAbout reales; el iframe restringido no ejecuta reservas ni formularios. El panel ofrece campos del elemento seleccionado y sincroniza la vista previa sin auto-guardado. Los 64 identificadores canónicos cubren textos, botones e imágenes editoriales. La operación hotelera, tarifas, habitaciones e inventario continúan en sus módulos de origen.
 
