@@ -13,3 +13,7 @@
 .controls select{display:block;width:100%;min-width:0;margin-top:5px;padding:8px 9px;border:1px solid #d8dfe5;border-radius:6px;background:white;color:#18345c;font:inherit;font-size:13px}.actions label select{margin-left:6px}.actions{flex-wrap:wrap}@media(max-width:767px){.controls select{font-size:16px}}
 
 .photoControls{gap:8px;padding:10px 14px}.photoControls>section{display:grid;gap:8px}.photoControls>section>*{margin-top:0}.photoControls>section>div.flex{gap:8px}.photoControls input[type=file]{position:absolute;width:1px;height:1px;min-height:0;padding:0;margin:0;border:0}.photoControls label:has(input[type=file]){display:grid}.photoControls button{line-height:1}
+
+.policyFields textarea{display:block;width:100%;min-width:0;min-height:110px;margin-top:5px;padding:9px;border:1px solid #d8dfe5;border-radius:6px;color:#18345c;background:white;font:inherit;resize:vertical}.policyFields textarea:focus-visible{outline:2px solid #18345c;outline-offset:2px}
+
+.editorialActions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.policyCard[aria-labelledby="hotel-fiscal-title"]{grid-column:1/-1}
