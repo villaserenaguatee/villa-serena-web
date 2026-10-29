@@ -10560,8 +10560,8 @@ body > * {
 .hotel-nav-actions .header-lang-toggle::after { content:""; position:absolute; inset:-2px; }
 .hotel-nav-actions .header-lang-toggle:focus-visible { outline:2px solid #fff; outline-offset:3px; }
 
-/* Keep the approved navigation order at every width; scrolling changes only its background. */
-.hotel-site > .hotel-nav { background:transparent; }
+/* Keep the approved navigation order and solid background at every width. */
+.hotel-site > .hotel-nav { background:#0D2D52; }
 .hotel-site > .hotel-nav.is-scrolled { background:#0D2D52; }
 .hotel-site [id] { scroll-margin-top:calc(var(--public-nav-height, 100px) + 16px); }
 .hotel-site > .hotel-nav .header-lang-toggle { order:initial; margin-left:0; }
