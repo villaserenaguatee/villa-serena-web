@@ -10087,7 +10087,6 @@ body > * {
 .services-rich .service-card {
   display:flex;
   flex-direction:column;
-  min-height:425px;
   padding:0;
   overflow:hidden
 }
@@ -10112,8 +10111,7 @@ body > * {
 }
 
 .services-rich .service-card p {
-  min-height:48px;
-  margin:0 0 18px
+  margin:0 0 12px
 }
 
 .services-rich .service-card .schedule-link {

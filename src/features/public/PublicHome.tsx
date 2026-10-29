@@ -520,7 +520,7 @@ function HomeContent({preview}:{preview?:PublicHomePreview}) {
               } as Record<string, string>)[d] || d
               : d;
             return (<article key={n} className="service-card">
-              <div><img src={img} alt={serviceName} /><small className="block px-3 py-1 text-xs text-[#536579]">{en?'Illustrative photograph; guest amenities are consulted in the portal.':'Fotografía ilustrativa; las amenidades disponibles se consultan en el portal.'}</small></div>
+              <img src={img} alt={serviceName} />
               <div>
                 <h3>
                   {serviceName}
