@@ -40,17 +40,17 @@ export default function FinanzasActivos({ empleados, reservas, compras, gastos, 
     <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 className="text-3xl font-semibold text-[#18345C]">Finanzas</h1>
-        <p className="mt-1 text-sm text-[#71839B]">Control financiero, nómina y activos del hotel.</p>
+
       </div>
       <div className="flex gap-2">
         <button onClick={() => setModal('gasto')} className="rounded-md border border-[#18345C] bg-white px-3 py-2.5 text-sm font-semibold text-[#18345C]">Registrar gasto</button>
         <button onClick={() => setModal('activo')} className="rounded-md bg-[#18345C] px-3 py-2.5 text-sm font-semibold text-white">+ Nuevo activo</button>
       </div>
     </div>
-    <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+    <div data-admin-tabs className="mb-5 flex gap-2 overflow-x-auto pb-1">
       {tabs.filter(([id])=>!soloOperaciones||['gastos','activos'].includes(id)||(id==='nomina'&&nominaConectada)||(id==='caja'&&pagosConectados)||(id==='reportes'&&reportesConectados)).map(([id, l]) => <button
         key={id}
-        onClick={() => setTab(id)}
+        data-active={tab===id} onClick={() => setTab(id)}
         className={`whitespace-nowrap rounded-md border px-3 py-2 text-sm font-medium ${tab === id ? 'border-[#18345C] bg-[#18345C] text-white' : 'border-[#E0DAD0] bg-white text-[#52677F]'}`}>
         {id==='caja'&&pagosConectados?'Pagos registrados':l}
       </button>)}
@@ -324,7 +324,7 @@ function Tabla({ heads, children }: {
 }) {
   return <div className="overflow-x-auto rounded-xl border bg-white">
     <table className="w-full min-w-[700px] text-sm">
-      <thead className="bg-[#F4F1EA] text-left text-xs uppercase text-[#71839B]">
+      <thead className="bg-[#F4F1EA] text-left text-xs  text-[#71839B]">
         <tr>
           {heads.map((h, i) => <th key={h} className={`${i === 0 ? 'p-3' : ''} ${i === heads.length - 1 ? 'pr-3 text-right' : ''}`}>
             {h}
@@ -443,7 +443,7 @@ function Campo({ l, children }: {
   children: React.ReactNode;
 }) {
   return <label>
-    <span className="mb-1 block text-xs uppercase tracking-wider text-[#71839B]">
+    <span className="mb-1 block text-xs  tracking-wider text-[#71839B]">
       {l}
     </span>
     {children}

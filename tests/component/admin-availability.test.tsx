@@ -11,10 +11,10 @@ vi.mock('@/lib/usePublicCatalog',()=>({usePublicCatalog:()=>({rooms:[]})}));
 const call=vi.mocked(operacion);
 beforeEach(()=>{call.mockReset();call.mockRejectedValue(new OperationError('Unsupported demo',501,{codigo:'SIMULACION_NO_DISPONIBLE'}));});
 for(const resource of ['tipos','habitaciones','personal','temporadas'])test(`unavailable ${resource} cannot open a create form`,async()=>{
- render(<CatalogosAdmin initial={resource}/>);await screen.findByText(/Modo demostración/);expect(screen.getByRole('button',{name:'Nuevo registro'})).toBeDisabled();expect(screen.queryByRole('dialog')).toBeNull();
+ render(<CatalogosAdmin initial={resource}/>);await screen.findByText(/Modo demostración/);expect(screen.getByRole('button',{name:resource==='habitaciones'?'+ Nueva habitación':resource==='personal'?'+ Nuevo empleado':'Nuevo registro'})).toBeDisabled();expect(screen.queryByRole('dialog')).toBeNull();
 });
 test('unavailable room map and reports have clear messages and disabled data actions',async()=>{
- const view=render(<ApprovedRoomMapConnected/>);await screen.findByText(/Modo demostración/);expect(screen.getByRole('button',{name:'Volver a consultar'})).toBeDisabled();view.unmount();
+ const view=render(<ApprovedRoomMapConnected/>);await screen.findByText(/Modo demostración/);expect(screen.getByRole('button',{name:'Actualizar'})).toBeDisabled();view.unmount();
  render(<ReportesConectados/>);await screen.findByText(/El servicio de reportes no está disponible/);expect(screen.getByRole('button',{name:'Consultar'})).toBeEnabled();expect(screen.getByRole('button',{name:'Exportar Excel'})).toBeDisabled();const before=call.mock.calls.length;fireEvent.click(screen.getByRole('button',{name:'Consultar'}));await waitFor(()=>expect(call.mock.calls.length).toBeGreaterThan(before));expect(call.mock.calls.some(([path])=>path.startsWith('admin/indicadores?'))).toBe(true);expect(call.mock.calls.every(([,method])=>method==='GET')).toBe(true);await waitFor(()=>expect(screen.getByRole('button',{name:'Consultar'})).toBeEnabled());expect(screen.getByRole('button',{name:'Exportar Excel'})).toBeDisabled();
 });
 for(const section of ['inventario','finanzas'])test(`${section} does not expose write forms after unavailable data`,async()=>{

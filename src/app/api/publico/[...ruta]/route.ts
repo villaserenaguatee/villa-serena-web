@@ -2,6 +2,7 @@ import { AvailabilityError } from '@/lib/bff/publicAvailability';
 import { bookingEmailProof } from '@/lib/bff/bookingEmailVerification';
 import { publicBookingAudit } from '@/lib/bff/publicBookingAudit';
 import { creationResponse } from '@/lib/bff/bookingContext';
+import {withoutSessionTokens} from '@/lib/bff/publicPayload';
 import {readPublicContractState} from '@/lib/bff/publicContractStore';
 import { demoCatalog, demoCreate, demoHotel, demoOffers, demoOfferQuotes, demoPayment, demoQuotes, demoStatus, parseContractBooking } from '@/lib/bff/publicContract';
 
@@ -30,8 +31,9 @@ export async function GET(request: Request) {
   try {
     if (process.env.VILLA_SERENA_BFF_MODE === 'api') {
       const route = path(request);
+      const editorial=route.length===3&&route[0]==='hotel'&&route[1]==='editorial'&&['es','en'].includes(route[2]);
       const recovering=route.length===2&&route[0]==='reservas'&&route[1]==='intento';
-      const allowed = recovering || (route.length === 1 && ['hotel', 'tipos-habitacion', 'disponibilidad', 'ofertas'].includes(route[0])) ||
+      const allowed = editorial || recovering || (route.length === 1 && ['hotel', 'tipos-habitacion', 'disponibilidad', 'ofertas'].includes(route[0])) ||
         (route.length === 2 && route[0] === 'ofertas' && route[1] === 'disponibilidad') ||
         (route.length === 2 && route[0] === 'tipos-habitacion' && /^\d+$/.test(route[1])) ||
         (route.length === 3 && route[0] === 'reservas' && route[2] === 'estado');
@@ -58,7 +60,7 @@ export async function GET(request: Request) {
       } catch { throw new AvailabilityError('API_NO_DISPONIBLE', 502); }
       const body = await upstream.json().catch(() => null);
       if (body === null) throw new AvailabilityError('RESPUESTA_API_INVALIDA', 502);
-      return Response.json(body, { status: upstream.status, headers: { 'Cache-Control': 'no-store', 'X-Villa-Serena-Mode': 'spring' } });
+      return Response.json(editorial?withoutSessionTokens(body):body, { status: upstream.status, headers: { 'Cache-Control': 'no-store', 'X-Villa-Serena-Mode': 'spring' } });
     }
     demoOnly();
     const route = path(request), url = new URL(request.url);

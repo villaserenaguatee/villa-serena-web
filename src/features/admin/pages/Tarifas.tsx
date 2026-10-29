@@ -49,7 +49,7 @@ export default function Tarifas({ tarifasBase, reglas, promociones, ocupacionAct
                 </Campo>
               </div>
               {cambia && (<div className="mt-3 pt-3 border-t border-[#F0EBE3]">
-                <p className="text-[11px] text-[#AEBCC1] uppercase tracking-widest">Precio final vigente hoy</p>
+                <p className="text-[11px] text-[#AEBCC1]  tracking-widest">Precio final vigente hoy</p>
                 <p className="text-[20px] font-bold text-[#166534]">
                   {dinero(precio)}
                 </p>
@@ -212,7 +212,7 @@ function FormularioRegla({ onCancelar, onGuardar, }: {
   return (<div className="overflow-hidden rounded-2xl border border-[#D7D1C7] bg-white shadow-[0_12px_35px_rgba(24,52,92,.08)]">
     <div className="flex items-start justify-between gap-4 bg-[#18345C] px-5 py-4 text-white">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[.18em] text-[#E2C66D]">Nueva tarifa</p>
+        <p className="text-[11px] font-semibold  tracking-[.18em] text-[#E2C66D]">Nueva tarifa</p>
         <h3 className="mt-1 text-xl font-semibold">Crear</h3>
       </div>
       <button
@@ -223,7 +223,7 @@ function FormularioRegla({ onCancelar, onGuardar, }: {
     </div>
     <div className="space-y-5 p-5">
       <section>
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[.16em] text-[#B38719]">Información general</p>
+        <p className="mb-3 text-xs font-semibold  tracking-[.16em] text-[#B38719]">Información general</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Campo label="Nombre de la tarifa especial">
             <input type="text" placeholder="Ej. Semana Santa" value={nombre} onChange={e => {
@@ -242,7 +242,7 @@ function FormularioRegla({ onCancelar, onGuardar, }: {
         </div>
       </section>
       <section className="rounded-xl bg-[#F8F6F0] p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[.16em] text-[#B38719]">Cuándo y cómo se aplicará</p>
+        <p className="mb-3 text-xs font-semibold  tracking-[.16em] text-[#B38719]">Cuándo y cómo se aplicará</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Campo label="Cuándo se aplicará">
             <select value={criterio} onChange={e => setCriterio(e.target.value as CriterioTarifa)} className={INPUT_CLS}>
@@ -334,7 +334,7 @@ function FormularioPromo({ onCancelar, onGuardar, }: {
   return (<div className="overflow-hidden rounded-2xl border border-[#D7D1C7] bg-white shadow-[0_12px_35px_rgba(24,52,92,.08)]">
     <div className="flex items-start justify-between gap-4 bg-[#18345C] px-5 py-4 text-white">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[.18em] text-[#E2C66D]">Nueva oferta</p>
+        <p className="text-[11px] font-semibold  tracking-[.18em] text-[#E2C66D]">Nueva oferta</p>
         <h3 className="mt-1 text-xl font-semibold">Crear promoción</h3>
       </div>
       <button
@@ -345,7 +345,7 @@ function FormularioPromo({ onCancelar, onGuardar, }: {
     </div>
     <div className="space-y-5 p-5">
       <section>
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[.16em] text-[#B38719]">Datos de la promoción</p>
+        <p className="mb-3 text-xs font-semibold  tracking-[.16em] text-[#B38719]">Datos de la promoción</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Campo label="Nombre de la promoción">
             <input
@@ -378,7 +378,7 @@ function FormularioPromo({ onCancelar, onGuardar, }: {
         </div>
       </section>
       <section className="rounded-xl bg-[#F8F6F0] p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[.16em] text-[#B38719]">Vigencia</p>
+        <p className="mb-3 text-xs font-semibold  tracking-[.16em] text-[#B38719]">Vigencia</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Campo label="Fecha de inicio">
             <input type="date" value={desde} onChange={e => setDesde(e.target.value)} className={INPUT_CLS} />

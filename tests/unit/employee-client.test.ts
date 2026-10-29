@@ -8,7 +8,7 @@ const profile={id:7,version:4,nombre:account.nombreCompleto,correo:account.corre
 beforeEach(()=>{call.mockReset();});
 test('official identity wins while existing unknown employment fields are preserved',async()=>{
  call.mockImplementation(async path=>path==='admin/empleados'?[account]:[{...profile,nombre:'Old name'}]);
- expect(await loadEmployees()).toEqual([{...profile,...account,nombre:account.nombreCompleto}]);
+ expect(await loadEmployees()).toEqual([{...profile,...account,laborDisponible:true,nombre:account.nombreCompleto}]);
 });
 test('creation never sends client passwords or labor data in the official payload',async()=>{
  call.mockImplementation(async(path,method)=>method==='POST'&&path==='admin/empleados'?{empleado:account,contrasenaTemporal:'isolated-server-response'}:[{...profile,perfil:{}}]);

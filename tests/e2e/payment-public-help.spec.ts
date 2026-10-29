@@ -4,7 +4,7 @@ for(const {name,viewport} of [...viewports,{name:'320px',viewport:{width:320,hei
  test.use({viewport});
  test('all public help answers, keyboard, anchors and page links work without mutations',async({page},info)=>{
   const mutations:string[]=[],consoleErrors:string[]=[];
-  page.on('console',message=>{if(message.type()==='error')consoleErrors.push(message.text());});
+  page.on('console',message=>{if(message.type()==='error')consoleErrors.push(message.text()+" "+message.location().url);});
   await page.route('**/api/**',route=>{
    if(!['GET','HEAD'].includes(route.request().method())){mutations.push(route.request().url());return route.abort();}
    return route.continue();

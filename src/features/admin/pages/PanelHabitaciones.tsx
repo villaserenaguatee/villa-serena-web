@@ -137,7 +137,7 @@ export default function PanelHabitaciones({ habitaciones, reservas, huespedes, o
       <section data-vs-ui="compact" data-vs-dialog="compact" data-vs-size="standard" className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:max-w-xl sm:rounded-2xl sm:p-5">
         <button type="button" onClick={() => setSeleccionada(null)} className="absolute right-5 top-4 text-2xl text-[#71839B]">×</button>
         <div className="mb-4 pr-8">
-          <p className="text-[11px] uppercase tracking-widest text-[#B38719]">Mapa de habitaciones</p>
+          <p className="text-[11px]  tracking-widest text-[#B38719]">Mapa de habitaciones</p>
           <h2 className="text-2xl font-semibold text-[#18345C]">Habitación {seleccionada.numero}</h2>
           <p className="text-sm text-[#71839B]">Piso {seleccionada.piso} · {seleccionada.tipo}</p>
         </div>
@@ -153,7 +153,7 @@ export default function PanelHabitaciones({ habitaciones, reservas, huespedes, o
             <Kpi valor={`Q ${seleccionada.precioNoche.toLocaleString()}`} label="Precio por noche" color="#18345C" />
           </div>
           {onCambiarEstadoHab&&<div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#AEBCC1]">Cambiar estado de habitación</p>
+            <p className="mb-2 text-[11px] font-semibold  tracking-widest text-[#AEBCC1]">Cambiar estado de habitación</p>
             <p className="mb-3 text-sm text-[#71839B]">Administración puede actualizar el estado operativo desde este mapa.</p>
             <div className="flex flex-wrap gap-2">
               {ESTADOS.map(e => (<button

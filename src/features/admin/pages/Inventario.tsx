@@ -1,3 +1,4 @@
+import AdminSearchInput from './AdminSearchInput';
 import SelectPlaceholder from '@/components/common/SelectPlaceholder';
 import FormOperationFeedback from '@/components/common/FormOperationFeedback';
 import {validPublicDate} from '@/lib/publicStayValidation';
@@ -112,7 +113,7 @@ export default function Inventario({ insumos, movimientos, onAgregarInsumo, onEd
 
     <div className="px-4 sm:px-6 py-5">
       <div className="bg-white border border-[#E5E0D8] rounded-xl overflow-hidden">
-        <div className="hidden sm:grid grid-cols-12 px-4 py-3 bg-[#F8F6F0] border-b border-[#E5E0D8] text-[11px] text-[#AEBCC1] uppercase tracking-widest font-medium">
+        <div className="hidden sm:grid grid-cols-12 px-4 py-3 bg-[#F8F6F0] border-b border-[#E5E0D8] text-[11px] text-[#AEBCC1]  tracking-widest font-medium">
           <span className="col-span-4">Insumo</span>
           <span className="col-span-3">Stock / mínimo</span>
           <span className="col-span-2 text-right">Costo unitario</span>
@@ -219,7 +220,7 @@ function FormMovimiento({ insumos, onCancelar, onGuardar, }: {
   };
   return (<div className="space-y-4">
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-[.18em] text-[#B38719]">Actualizar existencias</p>
+      <p className="text-[11px] font-semibold  tracking-[.18em] text-[#B38719]">Actualizar existencias</p>
       <h2 className="mt-1 text-2xl font-semibold text-[#18345C]">Registrar movimiento</h2>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -297,22 +298,13 @@ function SelectorInsumo({ insumos, value, onChange }: {
   const coincidencias = insumos.filter(i => (categoria === 'todas' || i.categoria === categoria)
     && i.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()));
   const resultados = coincidencias.slice(0, 5);
-  return (<div className="relative">
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] overflow-hidden rounded-md border border-[#D8D2C8] bg-white focus-within:border-[#18345C]">
-      <input
-        type="text"
-        value={busqueda}
-        onFocus={() => setAbierto(true)}
-        onChange={e => {
+  return (<div className="relative w-full sm:max-w-[32rem]">
+    <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,20rem)_minmax(0,10rem)]">
+      <AdminSearchInput type="text" value={busqueda} onFocus={() => setAbierto(true)} onChange={e => {
           setBusqueda(e.target.value);
           onChange('');
           setAbierto(true);
-        }}
-        onBlur={() => window.setTimeout(() => setAbierto(false), 160)}
-        placeholder="Buscar o elegir de la lista"
-        aria-label="Insumo"
-        className="min-w-0 px-3 py-2.5 text-sm outline-none"
-        autoComplete="off" />
+        }} onBlur={() => window.setTimeout(() => setAbierto(false), 160)} placeholder="Buscar o elegir de la lista" aria-label="Insumo" autoComplete="off"/>
       <select
         aria-label="Filtrar insumos por categoría"
         value={categoria}
@@ -323,7 +315,7 @@ function SelectorInsumo({ insumos, value, onChange }: {
           onChange('');
           setAbierto(true);
         }}
-        className="max-w-[145px] border-l border-[#E5E0D8] bg-[#F8F6F0] px-2 text-xs text-[#52677F] outline-none">
+        className="mt-1 h-10 min-w-0 rounded-md border border-[#D8DFE5] bg-white px-2 text-sm text-[#18345C] outline-none focus:border-[#18345C] max-sm:min-h-11">
         <option value="todas">Todas las áreas</option>
         {[...new Set([...CATEGORIA_INSUMO,...insumos.map(i=>i.categoria)])].map(c => <option key={c} value={c}>
           {c}
@@ -331,7 +323,7 @@ function SelectorInsumo({ insumos, value, onChange }: {
       </select>
     </div>
     {abierto && (<div className="absolute z-30 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-[#D8D2C8] bg-white p-1 shadow-xl">
-      <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#9AA8B7]">
+      <p className="px-3 py-1.5 text-[11px] font-semibold  tracking-wider text-[#9AA8B7]">
         {busqueda ? `${coincidencias.length} resultados` : categoria === 'todas' ? 'Insumos disponibles' : categoria}
       </p>
       {resultados.length ? resultados.map(i => (<button
@@ -391,7 +383,7 @@ function FormInsumo({ onCancelar, onGuardar, initial }: {
   }
   return (<div className="space-y-4">
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-[.18em] text-[#B38719]">Agregar al catálogo</p>
+      <p className="text-[11px] font-semibold  tracking-[.18em] text-[#B38719]">Agregar al catálogo</p>
       <h2 className="mt-1 text-2xl font-semibold text-[#18345C]">{initial?'Editar insumo':'Nuevo insumo'}</h2>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

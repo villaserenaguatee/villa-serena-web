@@ -9,6 +9,7 @@ export function validatePersonal(d: PersonalDraft, serverPassword = false): Pers
   }
   if (text('nombre').length > 150) errors.nombre = 'Use hasta 150 caracteres';
   if (text('correo') && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text('correo')) || text('correo').length > 150)) errors.correo = 'Ingrese un correo electrónico válido';
+  if (text('correoPersonal') && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text('correoPersonal')) || text('correoPersonal').length > 150)) errors.correoPersonal = 'Ingrese un correo personal válido';
   if (text('telefono') && (!validPhone(text('telefono')) || text('telefono').length > 30)) errors.telefono = 'Use de 7 a 15 dígitos, sin letras, y hasta 30 caracteres con formato';
   if (text('rol') && !['ADMIN', 'RECEPCION', 'ROOM_SERVICE', 'MANTENIMIENTO_LIMPIEZA'].includes(text('rol'))) errors.rol = 'Seleccione un rol válido';
   if (text('estado') && !['ACTIVO', 'INACTIVO'].includes(text('estado'))) errors.estado = 'Seleccione un estado válido';

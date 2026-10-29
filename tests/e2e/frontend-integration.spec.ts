@@ -7,9 +7,9 @@ for(const width of [1440,390,320])test.describe('Integrated navigation '+width,(
  await page.route('**/api/incidencias**',route=>route.fulfill({json:[]}));
  expect((await context.request.post('/api/auth/login',{headers:{Origin:baseURL!},data:{correo:'admin@example.invalid',contrasena:'fixture-only'}})).status()).toBe(200);
  await page.goto('/admin/menu');await expect(page.getByRole('button',{name:'Nuevo producto',exact:true})).toBeVisible();
- await page.goto('/admin/hotel');await expect(page.getByText('Hotel no configurado en esta prueba')).toBeVisible();
+ await page.goto('/admin/hotel');await expect(page.getByRole('region',{name:'Configuración inicial del hotel'})).toBeVisible();await expect(page.getByRole('region',{name:'Configuración inicial del hotel'})).toContainText('HOTEL_NO_CONFIGURADO');await expect(page.getByRole('button',{name:'Inicializar hotel',exact:true})).toBeVisible();
  await page.goto('/admin/amenidades');await expect(page.getByRole('button',{name:'Nueva amenidad',exact:true})).toBeVisible();
- await page.goto('/admin/personal');await page.getByRole('button',{name:'Turnos',exact:true}).click();await expect(page.getByRole('heading',{name:'Turnos',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Nuevo turno',exact:true})).toBeVisible();
- await page.goto('/admin/inventario');await page.getByRole('button',{name:'Productos',exact:true}).click();await expect(page.getByRole('checkbox',{name:'Solo stock bajo'})).toBeVisible();await expect(page.getByRole('button',{name:'Actualizar inventario',exact:true})).toBeVisible();
+ await page.goto('/admin/personal');await page.getByRole('tab',{name:'Turnos',exact:true}).click();await expect(page.getByRole('heading',{name:'Turnos',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Nuevo turno',exact:true})).toBeVisible();
+ await page.goto('/admin/inventario');await page.getByRole('button',{name:'Productos',exact:true}).click();await expect(page.getByRole('checkbox',{name:'Solo stock bajo'})).toBeVisible();await expect(page.getByRole('button',{name:'Actualizar',exact:true})).toBeVisible();
  await page.goto('/admin/mantenimiento');await expect(page.getByRole('heading',{name:/mantenimiento/i})).toBeVisible();await expectNoOverflow(page);expect(errors).toEqual([]);
 });});

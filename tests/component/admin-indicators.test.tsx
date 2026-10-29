@@ -11,8 +11,8 @@ const data:Indicadores={inicio:'2026-10-01',fin:'2026-10-31',ocupacionHoy:{fecha
 beforeEach(()=>{call.mockReset().mockImplementation(async path=>path.startsWith('admin/indicadores')?data:{desde:'2026-10-01',hasta:'2026-10-31',reservas:[],pagos:[],ocupacionActual:[]});});
 test('three official indicators use real denominator and approved-income total; existing tables/export survive',async()=>{
  render(<ReportesConectados/>);const panel=await screen.findByRole('region',{name:'Indicadores principales'});
- expect(within(panel).getByText('25.00 %')).toBeVisible();expect(within(panel).getByText('2 / 8 habitaciones activas')).toBeVisible();expect(within(panel).getByText('Q 1,200.00')).toBeVisible();expect(within(panel).getByText('6')).toBeVisible();
- expect(within(panel).getByText(/Booking: 1/)).toBeVisible();expect(panel.children).toHaveLength(3);
+ expect(within(panel).getByText('25.00 %')).toBeVisible();expect(within(panel).getByRole('button',{name:'Información: Ocupación de hoy'})).toHaveAttribute('title','2 / 8 habitaciones activas');expect(within(panel).getByText('Q 1,200.00')).toBeVisible();expect(within(panel).getByText('6')).toBeVisible();
+ expect(within(panel).getByRole('button',{name:'Información: Reservas por canal'})).toHaveAttribute('title',expect.stringContaining('Booking: 1'));expect(panel.children).toHaveLength(3);
  expect(screen.getByRole('heading',{name:'Reservas registradas'})).toBeVisible();expect(screen.getByRole('button',{name:'Exportar Excel'})).toBeEnabled();
  const request=call.mock.calls.find(([path])=>path.startsWith('admin/indicadores'))![0];const query=new URLSearchParams(request.split('?')[1]);expect(query.get('inicio')).toMatch(/-01$/);expect(query.get('fin')).toBeTruthy();expect(query.has('desde')).toBe(false);
 });
@@ -26,7 +26,7 @@ test('invalid date range shows an inline error and does not issue either request
 });
 test('zero official values show zero, never an invented denominator',async()=>{
  call.mockResolvedValue({...data,ingresos:0,ocupacionHoy:{...data.ocupacionHoy,habitacionesOcupadas:0,habitacionesActivas:0,porcentaje:0},reservasPorCanal:[]});
- render(<IndicadoresAdmin inicio={data.inicio} fin={data.fin}/>);expect(await screen.findByText('0.00 %')).toBeVisible();expect(screen.getByText('0 / 0 habitaciones activas')).toBeVisible();expect(screen.getByText('Q 0.00')).toBeVisible();expect(screen.queryByRole('alert')).toBeNull();
+ render(<IndicadoresAdmin inicio={data.inicio} fin={data.fin}/>);expect(await screen.findByText('0.00 %')).toBeVisible();expect(screen.getByRole('button',{name:'Información: Ocupación de hoy'})).toHaveAttribute('title','0 / 0 habitaciones activas');expect(screen.getByText('Q 0.00')).toBeVisible();expect(screen.queryByRole('alert')).toBeNull();
 });
 test('official endpoint failure cannot be replaced by legacy counts; retry can recover',async()=>{
  call.mockImplementation(async path=>{if(path.startsWith('admin/indicadores'))throw Error('Indicadores no disponibles');return {reservas:[],pagos:[],ocupacionActual:[{ocupacion:'OCUPADA',cantidad:5}]};});

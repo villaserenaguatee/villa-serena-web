@@ -1,26 +1,41 @@
 'use client';
 import {useEffect,useId,useRef,useState} from 'react';
-import {Camera,Plus,Star,Trash2} from 'lucide-react';
+import {Camera,Plus,Star,Trash2,Eye,ChevronLeft,ChevronRight} from 'lucide-react';
 import Image from 'next/image';
+import ReceptionActionDialog from '@/features/recepcion/pages/ReceptionActionDialog';
 import PhotoPicker from '@/components/common/PhotoPicker';
 import {validarFoto} from '@/lib/incidenciaValidation';
 import {usePublicLanguage} from '@/components/common/PublicLanguageToggle';
 import type {CatalogPhotoDraft} from './catalogPhotoClient';
-function GalleryPhoto({photo,index,disabled,onReplace,onRemove,compact=false,onPrincipal}:{photo:CatalogPhotoDraft;index:number;disabled:boolean;onReplace:(file:File)=>void;onRemove:()=>void;compact?:boolean;onPrincipal?:()=>void}){
+function GalleryPhoto({photo,index,disabled,onReplace,onRemove,compact=false,onPrincipal,onPreview}:{onPreview?:(url:string)=>void;photo:CatalogPhotoDraft;index:number;disabled:boolean;onReplace:(file:File)=>void;onRemove:()=>void;compact?:boolean;onPrincipal?:()=>void}){
  const [preview,setPreview]=useState(photo.url??'');const {en}=usePublicLanguage();
  useEffect(()=>{if(!photo.file){setPreview(photo.url??'');return;}const url=URL.createObjectURL(photo.file);setPreview(url);return()=>URL.revokeObjectURL(url);},[photo.file,photo.url]);
  if(compact)return <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-[#AEBCC1] bg-[#F2F4F5]">
   {preview?<Image unoptimized src={preview} width={96} height={96} alt={`Fotografía ${index+1}`} className="h-full w-full object-cover"/>:<Camera aria-hidden="true" className="m-auto h-full text-[#18345C]" size={24}/>}
+  {preview&&onPreview&&<button type="button" aria-label={`Ampliar fotografía ${index+1}`} onClick={()=>onPreview(preview)} className="absolute bottom-1 left-1 grid h-6 w-6 place-items-center rounded bg-white text-[#18345C]"><Eye size={15}/></button>}
+  {onPreview&&<label className="absolute bottom-1 left-9 grid h-6 w-6 cursor-pointer place-items-center rounded bg-white text-[#18345C]" title="Reemplazar fotografía"><input type="file" accept="image/jpeg,image/png" aria-label={`Reemplazar fotografía ${index+1}`} disabled={disabled} className="sr-only" onChange={event=>{const file=event.currentTarget.files?.[0];event.currentTarget.value='';if(file)onReplace(file);}}/><Camera size={15}/></label>}
   {photo.principal&&<span className="pointer-events-none absolute left-1 top-1 rounded bg-[#18345C] px-1 py-0.5 text-[10px] text-white">Principal</span>}
   <button type="button" disabled={disabled} aria-label={`Eliminar fotografía ${index+1}`} title="Eliminar fotografía" onClick={onRemove} className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded bg-white text-[#18345C] shadow-sm disabled:opacity-50"><Trash2 size={14} aria-hidden="true"/></button>
   {onPrincipal&&<button type="button" disabled={disabled} aria-label={`Establecer fotografía ${index+1} como principal`} aria-pressed={photo.principal} title="Seleccionar como principal" onClick={onPrincipal} className="absolute bottom-1 right-1 grid h-6 w-6 place-items-center rounded bg-white text-[#B38719] shadow-sm disabled:opacity-50"><Star size={15} fill={photo.principal?'currentColor':'none'} aria-hidden="true"/></button>}
  </div>;
  return <PhotoPicker label={(en?'Photograph ':'Fotografía ')+(index+1)} accept="image/jpeg,image/png" preview={preview} disabled={disabled} removable onSelect={onReplace} onRemove={onRemove}/>;
 }
-export default function AdminPhotoGallery({value,onChange,onError,disabled=false,principal=false,title,demoLayout=false}:{value:CatalogPhotoDraft[];onChange:(photos:CatalogPhotoDraft[])=>void;onError?:(message:string)=>void;disabled?:boolean;principal?:boolean;title?:string;demoLayout?:boolean}){
+export default function AdminPhotoGallery({value,onChange,onError,disabled=false,principal=false,title,demoLayout=false,management=false,friendly=false}:{friendly?:boolean;management?:boolean;value:CatalogPhotoDraft[];onChange:(photos:CatalogPhotoDraft[])=>void;onError?:(message:string)=>void;disabled?:boolean;principal?:boolean;title?:string;demoLayout?:boolean}){
+ const [remove,setRemove]=useState<number|null>(null),[expanded,setExpanded]=useState('');
  const [error,setError]=useState(''),id=useId(),upload=useRef<HTMLInputElement>(null),{en}=usePublicLanguage();const ui=(es:string,english:string)=>en?english:es;
  function report(message:string){setError(message);onError?.(message);}
  function replace(index:number,file:File){const reason=validarFoto(file);report(reason);if(reason)return;onChange(value.map((p,i)=>i===index?{file,principal:p.principal}:p));}
+
+ if(management)return <section aria-label={title??'Galería fotográfica'} className="space-y-3">
+  <h3 className="font-semibold">{title??'Galería fotográfica'}</h3>
+  {!friendly&&<p className="text-sm text-[#536579]">JPG o PNG, hasta 5 MiB. Las altas, bajas y el orden se aplican al guardar.</p>}
+  {!value.length&&<p className="text-sm">No hay fotografías registradas.</p>}
+  <input ref={upload} type="file" multiple accept="image/jpeg,image/png" aria-label="Agregar fotografías" disabled={disabled} className="sr-only" onChange={event=>{const files=Array.from(event.currentTarget.files??[]);event.currentTarget.value='';const reason=files.map(validarFoto).find(Boolean)??'';report(reason);if(!reason)onChange([...value,...files.map((file,index)=>({file,principal:principal&&value.length===0&&index===0}))]);}}/>
+  <div className="flex flex-wrap gap-3">{value.map((photo,index)=><div key={index} className="w-24 min-w-0"><GalleryPhoto compact photo={photo} index={index} disabled={disabled} onReplace={file=>replace(index,file)} onPreview={setExpanded} onRemove={()=>setRemove(index)} onPrincipal={principal?()=>onChange(value.map((p,i)=>({...p,principal:i===index}))):undefined}/>{!photo.url&&!photo.file&&<p className="mt-1 break-all text-xs text-[#536579]">{friendly?'Fotografía guardada sin vista previa.':<>Referencia guardada: {photo.clave}. Sin URL de vista previa.</>}</p>}<div className="mt-1 flex justify-between"><button type="button" disabled={disabled||index===0} aria-label={"Mover fotografía "+(index+1)+" antes"} className="rounded border p-1 disabled:opacity-30" onClick={()=>{const next=[...value];[next[index-1],next[index]]=[next[index],next[index-1]];onChange(next);}}><ChevronLeft size={16}/></button><button type="button" disabled={disabled||index===value.length-1} aria-label={"Mover fotografía "+(index+1)+" después"} className="rounded border p-1 disabled:opacity-30" onClick={()=>{const next=[...value];[next[index],next[index+1]]=[next[index+1],next[index]];onChange(next);}}><ChevronRight size={16}/></button></div></div>)}<button type="button" disabled={disabled} onClick={()=>upload.current?.click()} aria-label="Agregar más fotografías" className="flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-[#AEBCC1] bg-[#F8F6F0] text-sm text-[#18345C] disabled:opacity-50"><Plus size={24}/>Agregar</button></div>
+  {error&&<p role="alert" className="text-sm text-red-800">{error}</p>}
+  {remove!==null&&<ReceptionActionDialog title="Quitar fotografía" onClose={()=>setRemove(null)}><p>¿Quitar esta fotografía de la galería? El cambio se aplicará al guardar; no elimina el archivo del almacenamiento.</p><div className="mt-4 flex justify-end gap-2"><button type="button" onClick={()=>setRemove(null)} className="rounded-md border px-3 py-2">Cancelar</button><button type="button" disabled={disabled} onClick={()=>{const next=value.filter((_,i)=>i!==remove);if(principal&&next.length&&!next.some(p=>p.principal))next[0]={...next[0],principal:true};onChange(next);report('');setRemove(null);}} className="rounded-md bg-[#18345C] px-3 py-2 text-white">Quitar fotografía</button></div></ReceptionActionDialog>}
+  {expanded&&<ReceptionActionDialog title="Vista de fotografía" onClose={()=>setExpanded('')}><Image unoptimized src={expanded} width={800} height={600} alt="Fotografía ampliada" className="max-h-[65dvh] w-full object-contain"/></ReceptionActionDialog>}
+ </section>;
  if(demoLayout)return <section aria-label={title??'Galería fotográfica'} className="space-y-3">
   <h3 className="font-semibold">{title??'Galería fotográfica'}</h3>
    <input ref={upload} id={`${id}-add`} type="file" multiple accept="image/jpeg,image/png" aria-label="Agregar fotografías" disabled={disabled} className="sr-only" style={{width:1,minHeight:1,padding:0,margin:0}} onChange={event=>{const files=Array.from(event.currentTarget.files??[]);event.currentTarget.value='';if(!files.length)return;const reason=files.map(validarFoto).find(Boolean)??'';report(reason);if(!reason)onChange([...value,...files.map((file,index)=>({file,principal:principal&&value.length===0&&index===0}))]);}}/>

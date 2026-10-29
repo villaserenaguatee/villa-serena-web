@@ -1,4 +1,5 @@
 'use client';
+import AdminRefreshButton from './AdminRefreshButton';
 import {ADMIN_DEMO_UNAVAILABLE,isAdminDemoUnavailable} from './adminAvailability';
 import {FormOperationProvider} from '@/components/common/FormOperationFeedback';
 import {useEffect,useRef,useState} from 'react';
@@ -6,7 +7,8 @@ import {operacion} from '@/lib/api/operaciones';
 import type {Insumo,MovimientoInsumo,CompraHotel,GastoHotel,Activo,ActivoHotel} from '@/lib/pms/types';
 import TarifasAdmin from './TarifasAdmin';
 import MenuAdmin from './MenuAdmin';
-import HotelAdmin from './HotelAdmin';
+import HotelConfigurationPage from './HotelWebsiteEditor';
+import HotelInitialization from './HotelInitialization';
 import AmenidadesAdmin from './AmenidadesAdmin';
 import AdminRoomsManagement from './AdminRoomsManagement';
 import ReportesConectados from './ReportesConectados';
@@ -27,7 +29,7 @@ export default function GestionAdmin({seccion,personalInitial='catalogo'}:{secci
  if(seccion==='personal')return <LaboralAdmin initial={personalInitial}/>;
  if(seccion==='tarifas')return <TarifasAdmin/>;
  if(seccion==='menu')return <MenuAdmin/>;
- if(seccion==='hotel')return <HotelAdmin/>;
+ if(seccion==='hotel')return <HotelInitialization><HotelConfigurationPage/></HotelInitialization>;
  if(!['inventario','finanzas'].includes(seccion))return <ConsultaAdmin seccion={seccion}/>;
- return <FormOperationProvider value={{error,busy}}><div className="min-w-0 w-full flex min-h-0 flex-1 flex-col">{error&&<p role="alert" className="bg-red-50 p-3 text-red-800">{error}</p>}{busy&&<p role="status" className="p-3">Guardando…</p>}{seccion==='inventario'&&<button disabled={busy||loading} onClick={()=>setReload(v=>v+1)} className="m-3 self-end rounded-md border border-[#D9D5CC] px-3 py-2 disabled:opacity-50">Actualizar inventario</button>}{loading?<p role="status" className="p-4">Consultando datos del hotel…</p>:<div className={`min-w-0 w-full flex min-h-0 flex-1 flex-col ${busy?'pointer-events-none opacity-70':''}`}>{seccion==='inventario'?<ComprasInventario insumos={insumos} movimientos={movimientos} compras={compras} onAgregarInsumo={i=>save('insumos',i)} onEditarInsumo={(id,datos)=>{const current=insumos.find(i=>i.id===id);if(!current||!current.version){setError('Actualiza el inventario antes de editar.');return false;}const {id:ignoredId,version:ignoredVersion,...previous}=current;void ignoredId;void ignoredVersion;return save('insumos',{...previous,...datos,stock:current.stock},current);}}  onRegistrarMovimiento={(insumoId,tipo,cantidad,motivo)=>save('movimientos',{insumoId,tipo,cantidad,motivo})} onRegistrarCompra={c=>save('compras',c)}/>:<FinanzasActivos nominaConectada={<LaboralAdmin initial="nomina"/>} pagosConectados={<ConsultaAdmin seccion="finanzas"/>} reportesConectados={<ReportesConectados/>} soloOperaciones empleados={[]} reservas={[]} compras={compras} gastos={gastos} activos={financeAssets} onAgregarGasto={g=>save('gastos',g)} onAgregarActivo={a=>save('activos',{...a,estado:a.estado==='en reparación'?'en-reparacion':a.estado==='fuera de servicio'?'fuera-servicio':'operativo',instaladoEn:a.fechaCompra,marcaModelo:''})}/>}</div>}</div></FormOperationProvider>;
+ return <FormOperationProvider value={{error,busy}}><div className="min-w-0 w-full flex min-h-0 flex-1 flex-col bg-[#F5F4EF] text-[#18345C]">{error&&<p role="alert" className="bg-red-50 p-3 text-red-800">{error}</p>}{busy&&<p role="status" className="p-3">Guardando…</p>}{loading?<div className="flex items-center justify-between gap-3 p-4"><p role="status">Consultando datos del hotel…</p>{seccion==='inventario'&&<AdminRefreshButton loading={loading} disabled={busy} onClick={()=>setReload(v=>v+1)}/>}</div>:<div className={`min-w-0 w-full flex min-h-0 flex-1 flex-col ${busy?'pointer-events-none opacity-70':''}`}>{seccion==='inventario'?<ComprasInventario refreshAction={<AdminRefreshButton loading={loading} disabled={busy||loading} onClick={()=>setReload(v=>v+1)}/>} insumos={insumos} movimientos={movimientos} compras={compras} onAgregarInsumo={i=>save('insumos',i)} onEditarInsumo={(id,datos)=>{const current=insumos.find(i=>i.id===id);if(!current||!current.version){setError('Actualiza el inventario antes de editar.');return false;}const {id:ignoredId,version:ignoredVersion,...previous}=current;void ignoredId;void ignoredVersion;return save('insumos',{...previous,...datos,stock:current.stock},current);}}  onRegistrarMovimiento={(insumoId,tipo,cantidad,motivo)=>save('movimientos',{insumoId,tipo,cantidad,motivo})} onRegistrarCompra={c=>save('compras',c)}/>:<FinanzasActivos nominaConectada={<LaboralAdmin initial="nomina"/>} pagosConectados={<ConsultaAdmin seccion="finanzas"/>} reportesConectados={<ReportesConectados/>} soloOperaciones empleados={[]} reservas={[]} compras={compras} gastos={gastos} activos={financeAssets} onAgregarGasto={g=>save('gastos',g)} onAgregarActivo={a=>save('activos',{...a,estado:a.estado==='en reparación'?'en-reparacion':a.estado==='fuera de servicio'?'fuera-servicio':'operativo',instaladoEn:a.fechaCompra,marcaModelo:''})}/>}</div>}</div></FormOperationProvider>;
 }
