@@ -6,7 +6,8 @@
   "git": {
     "deploymentEnabled": {
       "fix/solo-espanol-publicado": false,
-      "feat/editor-fotografico": false
+      "feat/editor-fotografico": false,
+      "fix/panel-fotografico-compacto": false
     }
   }
 }

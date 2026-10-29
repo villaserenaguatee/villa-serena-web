@@ -46,7 +46,7 @@ for(const status of [401,403,404])test('configuration error '+status+' keeps all
  call.mockRejectedValue(new OperationError('HOTEL_NO_CONFIGURADO',status,{codigo:'HOTEL_NO_CONFIGURADO'}));render(<HotelConfigurationPage/>);await userEvent.click(screen.getByRole('button',{name:'Editor de la página web'}));await screen.findByRole('alert');await userEvent.click(screen.getByRole('button',{name:'Nombre del hotel'}));expect(screen.getByLabelText('Nombre del hotel *')).toBeDisabled();expect(screen.getByRole('button',{name:'Guardar datos del hotel'})).toBeDisabled();expect(writes()).toHaveLength(0);
 });
 
-test('fixed element inspection contains only the selected text and diagnostics stay separate',async()=>{await openEditor();await userEvent.click(screen.getByRole('button',{name:'Seleccionar texto fijo'}));expect(screen.getByText('Historia seleccionada')).toBeVisible();expect(screen.getByText('Este contenido todavía no admite cambios guardados.')).toBeVisible();expect(screen.queryByText(/Persistencia disponible:/)).toBeNull();expect(screen.getByRole('button',{name:'Guardar datos del hotel'})).toBeDisabled();await userEvent.click(screen.getByRole('button',{name:'Diagnóstico técnico'}));expect(screen.getByText(/Persistencia disponible:/)).toBeVisible();expect(writes()).toHaveLength(0);});
+test('fixed element inspection retains selected text without technical controls',async()=>{await openEditor();await userEvent.click(screen.getByRole('button',{name:'Seleccionar texto fijo'}));expect(screen.getByText('Historia seleccionada')).toBeVisible();expect(screen.getByText('Este contenido todavía no admite cambios guardados.')).toBeVisible();expect(screen.queryByText(/Persistencia disponible:/)).toBeNull();expect(screen.getByRole('button',{name:'Guardar datos del hotel'})).toBeDisabled();expect(screen.queryByRole('button',{name:'Diagn\u00f3stico t\u00e9cnico'})).toBeNull();expect(writes()).toHaveLength(0);});
 
 test('photo draft conflict preserves changes and offers explicit recovery',async()=>{await openEditor();await userEvent.click(screen.getByRole('button',{name:'Fotografías del hotel'}));await userEvent.click(screen.getByRole('button',{name:'Mover fotografía 2 antes'}));vi.mocked(saveEditorialDraft).mockRejectedValueOnce(new OperationError('Conflicto',409,{codigo:'CONTENIDO_CAMBIADO'}));await userEvent.click(screen.getByRole('button',{name:'Guardar borrador'}));expect(await screen.findByRole('alert')).toHaveTextContent('Conflicto');expect(screen.getByRole('button',{name:'Consultar borrador actual'})).toBeEnabled();expect(writes()).toHaveLength(0);});
 
@@ -55,4 +55,20 @@ test('el editor no muestra controles de idioma ni campos en ingles',async()=>{
  expect(screen.queryByLabelText(/Idioma/)).toBeNull();
  expect(screen.queryByText('English')).toBeNull();
  expect(screen.queryByRole('tab',{name:/English/})).toBeNull();
+});
+
+test('el panel de fotografías no muestra explicaciones permanentes ni accesos a otros módulos',async()=>{
+ await openEditor();await userEvent.click(screen.getByRole('button',{name:'Servicios'}));
+ expect(screen.queryByRole('link',{name:'Gestionar amenidades y Wi-Fi'})).toBeNull();
+ expect(screen.queryByRole('link',{name:'Gestionar menú de Room Service'})).toBeNull();
+ expect(screen.queryByRole('button',{name:'Diagnóstico técnico'})).toBeNull();
+ await userEvent.click(screen.getByRole('button',{name:'Galería'}));await userEvent.click(screen.getByRole('button',{name:'Fotografías del hotel'}));
+ expect(screen.getByRole('region',{name:'Fotografías de esta sección'})).toBeVisible();
+ expect(screen.queryByText(/Los cambios se muestran en la vista previa/)).toBeNull();
+ expect(screen.getByRole('button',{name:'Ampliar fotografía 1'})).toBeEnabled();
+ expect(screen.getByLabelText('Reemplazar fotografía 1')).toBeEnabled();
+ expect(screen.getByRole('button',{name:'Eliminar fotografía 1'})).toBeEnabled();
+ expect(screen.getByRole('button',{name:'Mover fotografía 2 antes'})).toBeEnabled();
+ expect(screen.getByRole('button',{name:'Agregar más fotografías'})).toBeEnabled();
+ expect(writes()).toHaveLength(0);
 });
