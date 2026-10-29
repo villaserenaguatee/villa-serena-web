@@ -21,6 +21,7 @@ const englishLabels:Record<string,string>={'Gestión del hotel':'Hotel managemen
 export function validateHotelDraft(draft:Input){const problems:Record<string,string>={};for(const group of groups)for(const [key]of group.fields)if(!draft[key].trim())problems[key]='Complete este campo';if(!validBookingEmail(draft.correo.trim()))problems.correo='Ingrese un correo electrónico válido';if(!validGuatemalaNit(draft.nit))problems.nit='Ingrese un NIT válido con dígito verificador';return problems;}
 export function useHotelConfiguration(){
  const {en}=usePublicLanguage();const t=(text:string)=>en?(englishLabels[text]??text):text;
+ const [revisionDiagnostic,setRevisionDiagnostic]=useState('REVISION_NO_CONSULTADA');
  const [draft,setDraft]=useState<Input>(empty),[hotel,setHotel]=useState<Hotel>(),[photos,setPhotos]=useState<CatalogPhotoDraft[]>([]),[revision,setRevision]=useState<string|null>(null);
  const [loading,setLoading]=useState(true),[ready,setReady]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[reload,setReload]=useState(0),[photoError,setPhotoError]=useState(''),[errors,setErrors]=useState<Record<string,string>>({}),[progress,setProgress]=useState(''),[previewNotice,setPreviewNotice]=useState('');
  const [conflict,setConflict]=useState(false),[remoteGallery,setRemoteGallery]=useState<(HotelSnapshot&{photos:CatalogPhotoDraft[]})>();
@@ -31,7 +32,7 @@ export function useHotelConfiguration(){
   const sorted=[...value.fotos].sort((a,b)=>a.orden-b.orden);setPhotos(sorted.map(p=>({clave:p.clave,principal:false})));basePhotos.current=JSON.stringify(sorted.map(p=>p.clave));if(tag!==undefined)setRevision(tag);uploaded.current.clear();setConflict(false);
  },[]);
  useEffect(()=>{const c=new AbortController();setLoading(true);setReady(false);setError('');setNotice('');setPhotoError('');setPreviewNotice('');
-  readHotelConfiguration(c.signal).then(async value=>{if(c.signal.aborted)return;receive(value.hotel,value.revision);setReady(true);
+  readHotelConfiguration(c.signal).then(async value=>{if(c.signal.aborted)return;receive(value.hotel,value.revision);setRevisionDiagnostic(value.diagnosticoRevision??'SIN_DIAGNOSTICO');setReady(true);
    if(value.hotel.fotos.length)try{const publicHotel=await getPublicHotel(c.signal);if(!c.signal.aborted)setPhotos(current=>current.map(photo=>({...photo,url:photo.clave?photoUrlForKey(photo.clave,publicHotel.fotos):photo.url})));}catch{if(!c.signal.aborted)setPreviewNotice('No se pudieron consultar las vistas previas. Las fotografías guardadas se conservan.');}
   }).catch(e=>{if(!c.signal.aborted)setError(adminServiceError(e));}).finally(()=>{if(!c.signal.aborted)setLoading(false);});return()=>c.abort();
  },[reload,receive]);
@@ -54,7 +55,7 @@ export function useHotelConfiguration(){
  }
  async function consultGallery(){if(lock.current)return;lock.current=true;setBusy(true);try{const current=await readHotelConfiguration();let urls:string[]=[];try{urls=(await getPublicHotel()).fotos;}catch{/* Las referencias siguen disponibles aunque falle su vista previa. */}setRemoteGallery({...current,photos:[...current.hotel.fotos].sort((a,b)=>a.orden-b.orden).map(p=>({clave:p.clave,url:photoUrlForKey(p.clave,urls),principal:false}))});}catch(e){setError(adminServiceError(e));}finally{lock.current=false;setBusy(false);}}
  function useCurrentGallery(){if(!remoteGallery)return;setPhotos(remoteGallery.photos);basePhotos.current=JSON.stringify(remoteGallery.photos.map(p=>p.clave));setRevision(remoteGallery.revision);setHotel(current=>current?{...current,fotos:remoteGallery.hotel.fotos}:current);setRemoteGallery(undefined);setConflict(false);setError('');setPhotoError('');uploaded.current.clear();setNotice('Se cargó la galería actual. Los demás datos introducidos se conservaron.');}
- return {t,en,draft,setDraft,hotel,photos,setPhotos,loading,ready,busy,error,setError,notice,errors,setErrors,progress,previewNotice,receive,dirty,save,photoError,setPhotoError,photosDirty,gallerySupported:Boolean(revision),uploadBlocked:false,conflict,consultGallery,remoteGallery,useCurrentGallery,closeGalleryReview:()=>setRemoteGallery(undefined),refresh:()=>{if(!dirty&&!lock.current)setReload(n=>n+1);}};
+ return {revisionDiagnostic,t,en,draft,setDraft,hotel,photos,setPhotos,loading,ready,busy,error,setError,notice,errors,setErrors,progress,previewNotice,receive,dirty,save,photoError,setPhotoError,photosDirty,gallerySupported:Boolean(revision),uploadBlocked:false,conflict,consultGallery,remoteGallery,useCurrentGallery,closeGalleryReview:()=>setRemoteGallery(undefined),refresh:()=>{if(!dirty&&!lock.current)setReload(n=>n+1);}};
 }
 export type HotelConfiguration=ReturnType<typeof useHotelConfiguration>;
 export function HotelGalleryRecovery({controller}:{controller:HotelConfiguration}){

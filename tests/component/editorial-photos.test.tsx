@@ -1,0 +1,42 @@
+import {act,renderHook,waitFor,render,screen} from '@testing-library/react';
+import {afterEach,beforeEach,expect,test,vi} from 'vitest';
+import {useHotelEditorial} from '@/features/admin/pages/useHotelEditorial';
+import {readEditorialDraft,saveEditorialDraft,publishEditorial} from '@/lib/editorial/client';
+import {uploadCatalogPhoto} from '@/features/admin/pages/catalogPhotoClient';
+import type {EditorialDocument,EditorialElement} from '@/lib/editorial/catalog';
+import PublicHome from '@/features/public/PublicHome';
+vi.mock('@/lib/editorial/client',()=>({readEditorialDraft:vi.fn(),saveEditorialDraft:vi.fn(),publishEditorial:vi.fn(),readPublishedEditorial:vi.fn()}));
+vi.mock('@/features/admin/pages/catalogPhotoClient',()=>({uploadCatalogPhoto:vi.fn()}));
+vi.mock('@/lib/usePublicCatalog',()=>({usePublicCatalog:()=>({rooms:[],loading:false,error:'',connected:true}),usePublicHotel:()=>null}));
+vi.mock('@/components/public/ContactForm',()=>({default:()=>null}));
+const a='hotel/00000000-0000-0000-0000-000000000001.png',b='hotel/00000000-0000-0000-0000-000000000002.png';
+let draft:EditorialDocument;
+beforeEach(()=>{
+ vi.clearAllMocks();draft={idioma:'es',revision:1,revisionPublicada:1,elementos:[{id:'inicio.imagenes',fotoClaves:[a]}],fotografias:{[a]:'https://assets.example.invalid/a.png'}};
+ vi.stubGlobal('URL',class extends URL{static createObjectURL=vi.fn(()=> 'blob:local-photo');static revokeObjectURL=vi.fn();});
+ vi.stubGlobal('matchMedia',()=>({matches:false,addEventListener:()=>{},removeEventListener:()=>{}}));
+ vi.stubGlobal('ResizeObserver',class{observe(){}unobserve(){}disconnect(){}});
+ vi.mocked(readEditorialDraft).mockImplementation(async()=>structuredClone(draft));
+ vi.mocked(uploadCatalogPhoto).mockResolvedValue(b);
+ vi.mocked(saveEditorialDraft).mockImplementation(async(_language,revision,elementos:EditorialElement[])=>draft={...draft,revision:revision+1,elementos,fotografias:{...draft.fotografias,[b]:'https://assets.example.invalid/b.png'}});
+ vi.mocked(publishEditorial).mockImplementation(async(_language,revision)=>({...draft,revisionPublicada:revision}));
+});
+afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
+test('seleccionar y reordenar no sube archivos; guardar sube sin publicar y permite publicar solo la revision guardada',async()=>{
+ const hook=renderHook(()=>useHotelEditorial(true));await waitFor(()=>expect(hook.result.current.loading).toBe(false));
+ const file=new File(['png'],'nueva.png',{type:'image/png'});
+ act(()=>hook.result.current.setPhotos('inicio.imagenes',[{file,principal:false},{clave:a,principal:false}]));
+ expect(uploadCatalogPhoto).not.toHaveBeenCalled();expect(hook.result.current.document?.fotografias?.['blob:local-photo']).toBe('blob:local-photo');
+ expect(hook.result.current.canPublish).toBe(false);
+ await act(()=>hook.result.current.save());expect(uploadCatalogPhoto).toHaveBeenCalledWith(file,'HOTEL');
+ expect(saveEditorialDraft).toHaveBeenCalledWith('es',1,[{id:'inicio.imagenes',fotoClaves:[b,a]}]);expect(publishEditorial).not.toHaveBeenCalled();
+ act(()=>hook.result.current.setConfirmPublish(true));await act(()=>hook.result.current.publish());expect(publishEditorial).toHaveBeenCalledWith('es',2);
+ act(()=>hook.result.current.setPhotos('inicio.imagenes',[]));expect(hook.result.current.document?.elementos[0].fotoClaves).toEqual([]);
+ hook.unmount();expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:local-photo');
+});
+test('la vista previa utiliza borrador y el visitante conserva exclusivamente la publicacion recibida',()=>{
+ const document={...draft,elementos:[{id:'servicios.spa.imagen' as const,fotoClaves:[b]}],fotografias:{[b]:'https://assets.example.invalid/spa-nuevo.png'}};
+ const preview=render(<PublicHome preview={{hotel:null,rooms:[],loading:false,error:'',mobile:false}} editorial={document}/>);
+ expect(screen.getByRole('img',{name:'Spa'})).toHaveAttribute('src','https://assets.example.invalid/spa-nuevo.png');preview.unmount();
+ render(<PublicHome loadPublished={false}/>);expect(screen.getByRole('img',{name:'Spa'}).getAttribute('src')).toContain('images.unsplash.com');
+});
