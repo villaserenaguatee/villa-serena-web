@@ -2,10 +2,10 @@
 import BookingTermsContent from '@/components/common/BookingTermsContent';
 import LegalBackButton from '@/components/common/LegalBackButton';
 import VillaSerenaLogo from '@/components/common/VillaSerenaLogo';
-import PublicLanguageToggle, { usePublicLanguage } from '@/components/common/PublicLanguageToggle';
+import { usePublicLanguage } from '@/components/common/PublicLanguageToggle';
 export default function Terminos() {
   const { en } = usePublicLanguage();
-  return <><PublicLanguageToggle /><main className="legal-page">
+  return <><main className="legal-page">
     <header>
       <LegalBackButton />
       <VillaSerenaLogo />

@@ -1,6 +1,7 @@
 "use client";
-import {EditorialContentProvider,EditorialText,EditorialLink,EditorialLanguageSelect,useEditorialLanguage} from './EditorialContent';
-import type {EditorialDocument,EditorialLanguage,EditorialId} from '@/lib/editorial/catalog';
+import {usePublicLanguage} from "@/components/common/PublicLanguageToggle";
+import {EditorialContentProvider,EditorialText,EditorialLink} from './EditorialContent';
+import type {EditorialDocument,EditorialId} from '@/lib/editorial/catalog';
 
 import ContactForm from '@/components/public/ContactForm';
 import Link from "next/link";
@@ -101,9 +102,9 @@ const prefTextEN: Record<string, string> = {
   Bienestar: "Rooms with peaceful settings, terraces or views designed for a relaxing stay.",
 };
 export type PublicHomePreview={hotel:ReturnType<typeof usePublicHotel>;rooms:ReturnType<typeof usePublicCatalog>['rooms'];loading:boolean;error:string;mobile:boolean};
-export default function PublicHome({preview,editorial,language,loadPublished=true}:{preview?:PublicHomePreview;editorial?:EditorialDocument;language?:EditorialLanguage;loadPublished?:boolean}) {
+export default function PublicHome({preview,editorial,loadPublished=true}:{preview?:PublicHomePreview;editorial?:EditorialDocument;loadPublished?:boolean}) {
   return (<ScopedI18nProvider>
-    <EditorialContentProvider loadPublished={loadPublished} preview={Boolean(preview)} document={editorial} language={language}><HomeContent preview={preview}/></EditorialContentProvider>
+    <EditorialContentProvider loadPublished={loadPublished} preview={Boolean(preview)} document={editorial}><HomeContent preview={preview}/></EditorialContentProvider>
   </ScopedI18nProvider>);
 }
 function HomeContent({preview}:{preview?:PublicHomePreview}) {
@@ -213,7 +214,7 @@ function HomeContent({preview}:{preview?:PublicHomePreview}) {
       ? <>Contact <a className={linkClass} href="#contacto">Reception</a> with your booking code. Guests cannot directly change or cancel bookings from the public website or portal. A change requires cancellation and a new booking, subject to availability. A full online payment refund applies when Reception executes the cancellation at least 48 hours before 15:00 on arrival day, Guatemala time; with less notice there is no refund. Sending the request within that period does not itself guarantee a refund. Read the <a className={linkClass} href="/terminos">cancellation and refund conditions</a>. For bookings through an external platform, contact that platform.</>
       : <>Contacta a <a className={linkClass} href="#contacto">Recepción</a> con tu código de reserva. El huésped no puede modificar ni cancelar directamente desde la web pública o el portal. Un cambio requiere cancelar y crear otra reserva, sujeto a disponibilidad. Corresponde reembolso total del pago en línea si Recepción ejecuta la cancelación al menos 48 horas antes de las 15:00 del día de llegada, hora de Guatemala; con menos anticipación no hay reembolso. Enviar la solicitud dentro del plazo no garantiza por sí mismo el reembolso. Consulta las <a className={linkClass} href="/terminos">condiciones de cancelación y reembolso</a>. Si reservaste mediante una plataforma externa, contacta a esa plataforma.</>;
   };
-  const { en } = useEditorialLanguage();
+  const { en } = usePublicLanguage();
   useEffect(()=>{if(preview){setReviewsPerPage(preview.mobile?1:3);return;}const mq=matchMedia('(max-width:700px)');const update=()=>{setReviewsPerPage(mq.matches?1:3);setReviewPage(0);};update();mq.addEventListener('change',update);return()=>mq.removeEventListener('change',update);},[preview?.mobile]);
   return (<>
     <main className="hotel-site">
@@ -243,7 +244,6 @@ function HomeContent({preview}:{preview?:PublicHomePreview}) {
           <EditorialLink editorialId="inicio.boton" href="#buscar" className="gold-button">
             {en ? "Book now" : "Reservar ahora"}
           </EditorialLink>
-          <EditorialLanguageSelect/>
         </div>
       </header>
 

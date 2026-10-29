@@ -5,7 +5,7 @@ import {useSearchParams} from "next/navigation";
 import { useMemo, useState } from "react";
 import { ArrowLeft, BedDouble, Users } from "lucide-react";
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
-import PublicLanguageToggle, { usePublicLanguage, } from "@/components/common/PublicLanguageToggle";
+import { usePublicLanguage, } from "@/components/common/PublicLanguageToggle";
 import GuestSelector from "@/components/common/GuestSelector";
 import { money } from "@/data/publicRooms";
 import { usePublicCatalog, usePublicQuotes } from "@/lib/usePublicCatalog";
