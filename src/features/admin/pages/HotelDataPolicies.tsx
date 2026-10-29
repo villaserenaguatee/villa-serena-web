@@ -2,11 +2,12 @@
 import {useState} from 'react';
 import Link from 'next/link';
 import {Pencil,ExternalLink} from 'lucide-react';
-import {HotelGalleryRecovery,type HotelConfiguration} from './HotelAdmin';
+import {HotelGalleryRecovery,validateHotelDraft,type HotelConfiguration} from './HotelAdmin';
 import AdminRefreshButton from './AdminRefreshButton';
 import c from './HotelWebsiteEditor.module.css';
 
 const fields=[['nombreComercial','Nombre comercial'],['razonSocial','Razón social'],['nit','NIT del hotel'],['direccionFiscal','Dirección fiscal']] as const;
+const generalFields=[['nombre','Nombre del hotel','text'],['descripcion','Descripción','textarea'],['direccion','Dirección','text'],['telefono','Teléfono','tel'],['correo','Correo de contacto','email']] as const;
 type FiscalValues=Pick<HotelConfiguration['draft'],typeof fields[number][0]>;
 export default function HotelDataPolicies({controller}:{controller:HotelConfiguration}){
  const {hotel,draft,setDraft,ready,busy,loading,error,notice,errors,setErrors,save,dirty}=controller;
@@ -22,9 +23,15 @@ export default function HotelDataPolicies({controller}:{controller:HotelConfigur
   {!loading&&!ready&&<p className={c.status}>La configuración inicial no está disponible. La edición y el guardado permanecen bloqueados.</p>}
   {notice&&<p role="status" className={c.status+' '+c.success}>{notice}</p>}
   <HotelGalleryRecovery controller={controller}/><div className={c.policyGrid}>
+   <section className={c.policyCard} aria-labelledby="hotel-general-title"><h2 id="hotel-general-title">Datos generales del hotel</h2>
+    <form noValidate onSubmit={event=>{event.preventDefault();void save({gallery:false});}}><div className={c.policyFields}>{generalFields.map(([key,label,type])=>{
+     const input={id:'hotel-general-'+key,required:true,disabled:!ready||busy,value:draft[key],'aria-invalid':Boolean(errors[key]),'aria-describedby':errors[key]?'hotel-general-error-'+key:undefined,onChange:(event:React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement>)=>{setDraft(current=>({...current,[key]:event.target.value}));setErrors(current=>({...current,[key]:''}));},onBlur:()=>setErrors(validateHotelDraft(draft))};
+     return <div key={key}><label htmlFor={input.id}>{label} *{type==='textarea'?<textarea {...input}/>:<input {...input} type={type}/>}</label>{errors[key]&&<small role="alert" id={'hotel-general-error-'+key}>{errors[key]}</small>}</div>;
+    })}</div><footer><button className={c.button+' '+c.save} disabled={!ready||busy||!generalFields.some(([key])=>draft[key].trim()!==hotel?.[key].trim())||Object.keys(validateHotelDraft(draft)).length>0}>{busy?'Guardando…':'Guardar datos del hotel'}</button></footer></form>
+   </section>
    <section className={c.policyCard} aria-labelledby="hotel-fiscal-title"><header><div><h2 id="hotel-fiscal-title">Identificación y datos fiscales</h2><p>Datos del emisor para futuras facturas. Las facturas anteriores conservan su información fiscal.</p></div>{!editing&&<button type="button" className={c.button} disabled={!ready||busy} onClick={edit}><Pencil size={14}/>Editar</button>}</header>
     {editing?<form noValidate onSubmit={event=>{event.preventDefault();void save({gallery:false});}}><div className={c.policyFields}>{fields.map(([key,label])=><div key={key}><label htmlFor={'hotel-policy-'+key}>{label} *</label><input id={'hotel-policy-'+key} required disabled={!ready||busy} value={draft[key]} aria-invalid={Boolean(errors[key])} aria-describedby={errors[key]?'hotel-policy-error-'+key:undefined} onChange={event=>{setDraft(current=>({...current,[key]:event.target.value}));setErrors(current=>({...current,[key]:''}));}}/>{errors[key]&&<small role="alert" id={'hotel-policy-error-'+key}>{errors[key]}</small>}</div>)}</div>
-     {Object.entries(errors).filter(([key,message])=>message&&!fields.some(([field])=>field===key)).map(([key,message])=><p role="alert" key={key}>Revisa los datos del editor de la página web: {message}.</p>)}
+     {Object.entries(errors).filter(([key,message])=>message&&!fields.some(([field])=>field===key)).map(([key,message])=><p role="alert" key={key}>Revisa los datos generales del hotel: {message}.</p>)}
 
      <footer><button type="button" className={c.button} disabled={busy} onClick={cancel}>Cancelar</button><button className={c.button+' '+c.save} disabled={!ready||busy||!dirty}>{busy?'Guardando…':'Guardar cambios'}</button></footer></form>:<dl className={c.policyFields}>{fields.map(([key,label])=><div key={key}><dt>{label}</dt><dd>{value(hotel?.[key])}</dd></div>)}</dl>}
    </section>

@@ -1,10 +1,10 @@
 ﻿'use client';
 import {useCallback,useEffect,useMemo,useState} from 'react';
 import Link from 'next/link';
-import {Monitor,Smartphone,ExternalLink,ArrowLeft,LayoutTemplate,Building2,Save} from 'lucide-react';
+import {Monitor,Smartphone,ExternalLink,ArrowLeft,LayoutTemplate,Building2} from 'lucide-react';
 import {usePublicCatalog,usePublicHotel} from '@/lib/usePublicCatalog';
 import type {components} from '@/lib/api/schema';
-import {useHotelConfiguration,validateHotelDraft,HotelGalleryRecovery,type HotelConfiguration} from './HotelAdmin';
+import {useHotelConfiguration,HotelGalleryRecovery,type HotelConfiguration} from './HotelAdmin';
 import HotelDataPolicies from './HotelDataPolicies';
 import AdminPhotoGallery from './AdminPhotoGallery';
 import AdminRefreshButton from './AdminRefreshButton';
@@ -43,24 +43,23 @@ export default function HotelConfigurationPage(){
 }
 
 export function HotelWebsiteEditor({controller,editorial,onBack}:{controller:HotelConfiguration;editorial:HotelEditorial;onBack:()=>void}){
- const [selected,setSelected]=useState<SectionId>('inicio'),[mobile,setMobile]=useState(false),[element,setElement]=useState<SelectedSiteElement>(),[diagnostics,setDiagnostics]=useState(false);
+ const [selected,setSelected]=useState<SectionId>('inicio'),[mobile,setMobile]=useState(false),[element,setElement]=useState<SelectedSiteElement>();
  const catalog=usePublicCatalog(),publicHotel=usePublicHotel();
- const {draft,setDraft,photos,ready,busy,loading,dirty,photoError,errors,setErrors,hotel}=controller;
+ const {draft,photos,ready,busy,loading,photoError,hotel}=controller;
  const [photoUrls,setPhotoUrls]=useState<string[]>([]);
  useEffect(()=>{const temporary:string[]=[];const urls=photos.map(photo=>{if(photo.file){const url=URL.createObjectURL(photo.file);temporary.push(url);return url;}return photo.url??'';});setPhotoUrls(urls);return()=>temporary.forEach(url=>URL.revokeObjectURL(url));},[photos]);
  const previewHotel=useMemo<components['schemas']['Hotel']|null>(()=>ready?{nombre:draft.nombre,descripcion:draft.descripcion,fotos:photoUrls.filter(Boolean),ubicacion:{direccion:draft.direccion},contacto:{telefono:draft.telefono,correo:draft.correo},horaCheckIn:hotel?.horaCheckIn??'15:00',horaCheckOut:hotel?.horaCheckOut??'12:00'}:publicHotel,[ready,draft,photoUrls,hotel,publicHotel]);
  const section=HOTEL_SITE_SECTIONS.find(item=>item.id===selected)!;
- const canSave=ready&&dirty&&!busy&&(!controller.photosDirty||!photoError)&&Object.keys(validateHotelDraft(draft)).length===0;
  const showPhotos=element?.field==='fotos';
 
  const select=useCallback((id:string,next?:SelectedSiteElement)=>{if(next?.field==='fotos')next={...next,field:undefined,editorialId:id==='galeria-hotel'?'galeria-hotel.imagenes':id==='nosotros'?'nosotros.imagen':'inicio.imagenes'};if(HOTEL_SITE_SECTIONS.some(item=>item.id===id)){setSelected(id as SectionId);setElement(next);}},[]);
  const availableFields:Record<string,string[]>={inicio:['nombre','descripcion','fotos'],contacto:['direccion','telefono','correo'],ayuda:['correo'],pie:['direccion','telefono','correo'],nosotros:['fotos'],'galeria-hotel':['fotos']};
  const labels:Record<string,string>={nombre:'Nombre del hotel',descripcion:'Descripción',direccion:'Dirección',telefono:'Teléfono',correo:'Correo de contacto',fotos:'Fotografías del hotel'};
  function field(key:'nombre'|'descripcion'|'direccion'|'telefono'|'correo',label:string,type='text'){
-  const input={id:'site-editor-'+key,'aria-invalid':Boolean(errors[key]),'aria-describedby':errors[key]?'site-editor-error-'+key:undefined,disabled:!ready||busy,required:true,value:draft[key],onChange:(event:React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement>)=>{setDraft(current=>({...current,[key]:event.target.value}));setErrors(previous=>({...previous,[key]:''}));},onBlur:()=>setErrors(validateHotelDraft(draft))};
-  return <div key={key}><label htmlFor={input.id}>{label} *{type==='textarea'?<textarea {...input}/>:<input {...input} type={type}/>}</label>{errors[key]&&<small id={'site-editor-error-'+key} role="alert">{errors[key]}</small>}</div>;
+  const input={id:'site-editor-'+key,disabled:!ready||busy,readOnly:true,value:draft[key]};
+  return <div key={key}><label htmlFor={input.id}>{label}{type==='textarea'?<textarea {...input}/>:<input {...input} type={type}/>}</label></div>;
  }
- return <div className={c.editor}><header className={c.header}><div><button type="button" className={c.button} onClick={onBack}><ArrowLeft size={15}/>Volver</button><h1>Editor de la página web</h1></div><div className={c.actions}><div className={c.mode} aria-label="Tamaño de vista previa"><button type="button" aria-pressed={!mobile} onClick={()=>setMobile(false)}><Monitor size={15}/>Escritorio</button><button type="button" aria-pressed={mobile} onClick={()=>setMobile(true)}><Smartphone size={15}/>Móvil</button></div><a className={c.button} href={section.route} target="_blank" rel="noopener noreferrer"><ExternalLink size={14}/>Ver sitio actual</a><button type="button" className={c.button+' '+c.save} disabled={!canSave} onClick={()=>void controller.save()}><Save size={14}/>{busy?'Guardando…':'Guardar datos del hotel'}</button><EditorialActions editorial={editorial} disabled={busy}/></div></header>
+ return <div className={c.editor}><header className={c.header}><div><button type="button" className={c.button} onClick={onBack}><ArrowLeft size={15}/>Volver</button><h1>Editor de la página web</h1></div><div className={c.actions}><div className={c.mode} aria-label="Tamaño de vista previa"><button type="button" aria-pressed={!mobile} onClick={()=>setMobile(false)}><Monitor size={15}/>Escritorio</button><button type="button" aria-pressed={mobile} onClick={()=>setMobile(true)}><Smartphone size={15}/>Móvil</button></div><a className={c.button} href={section.route} target="_blank" rel="noopener noreferrer"><ExternalLink size={14}/>Ver sitio actual</a><div className={c.editorialActions}><EditorialActions editorial={editorial} disabled={busy}/></div></div></header>
  <nav className={c.tabs} aria-label="Secciones de la página web">{SECTION_GROUPS.map(([label,...ids])=><button type="button" key={label} aria-current={ids.includes(selected)?'page':undefined} onClick={()=>select(ids[0])}>{label}</button>)}</nav>
  {SECTION_GROUPS.filter(group=>group.slice(1).includes(selected)&&group.length>2).map(([label,...ids])=><nav key={label} className={c.tabs} aria-label={label}>{ids.map(id=><button type="button" key={id} aria-current={selected===id?'page':undefined} onClick={()=>select(id)}>{HOTEL_SITE_SECTIONS.find(item=>item.id===id)?.label}</button>)}</nav>)}
 
@@ -69,13 +68,10 @@ export function HotelWebsiteEditor({controller,editorial,onBack}:{controller:Hot
  <aside data-site-editor-panel className={c.panel} aria-label="Controles de la sección"><header className={c.panelHead}><h2>{element?.editorialId?editorialLabel(element.editorialId):element?(labels[element.field??'']??element.label):section.label}</h2>{!element&&<p>Selecciona un texto o una fotografía en la vista previa.</p>}</header>
  <details><summary>Elementos de la sección</summary><div className={c.controls} aria-label="Elementos de contenido">{EDITORIAL_IDS.filter(id=>id.startsWith(selected+'.')||selected==='pie'&&id==='identidad.logo.imagen'||selected==='por-que'&&id==='estancia-digital.imagen').map(id=><button type="button" className={c.button} key={id} aria-pressed={element?.editorialId===id} onClick={()=>setElement({editorialId:id,label:editorialLabel(id),value:''})}>{id.split('.').slice(1,-1).map(part=>({mision:'Misión',vision:'Visión',cierre:'Cierre'} as Record<string,string>)[part]??part.replace('item','Elemento ')).join(' · ')} {editorialLabel(id)}</button>)}</div></details>
  {element?.editorialId&&(element.editorialId.endsWith('.imagen')||element.editorialId.endsWith('.imagenes'))&&!hotel?.editorFotografico?<p className={c.note}>Esta versión del API todavía no admite borradores fotográficos por sección. No se modificaron las fotografías publicadas.</p>:element?.editorialId&&<HotelEditorialPanel editorial={editorial} element={element} photos={photos} disabled={!ready||busy}/>}
- <div className={c.controls}>{(availableFields[selected]??[]).map(key=><button type="button" className={c.button} key={key} aria-pressed={element?.field===key} onClick={()=>key==='fotos'?select(selected,{editorialId:selected==='galeria-hotel'?'galeria-hotel.imagenes':selected==='nosotros'?'nosotros.imagen':'inicio.imagenes',label:labels[key],value:''}):setElement({field:key,label:labels[key],value:''})}>{labels[key]}</button>)}</div>
+ {Boolean(availableFields[selected]?.length)&&<div className={c.controls}>{(availableFields[selected]??[]).map(key=><button type="button" className={c.button} key={key} aria-pressed={element?.field===key} onClick={()=>key==='fotos'?select(selected,{editorialId:selected==='galeria-hotel'?'galeria-hotel.imagenes':selected==='nosotros'?'nosotros.imagen':'inicio.imagenes',label:labels[key],value:''}):setElement({field:key,label:labels[key],value:''})}>{labels[key]}</button>)}</div>}
  {!element?.editorialId&&element?.field&&element.field!=='fotos'&&labels[element.field]&&<div className={c.controls}>{field(element.field as 'nombre'|'descripcion'|'direccion'|'telefono'|'correo',labels[element.field],element.field==='descripcion'?'textarea':element.field==='correo'?'email':element.field==='telefono'?'tel':'text')}</div>}
  {showPhotos&&<><div className={c.controls}><AdminPhotoGallery management friendly title="Galería del hotel" value={photos} onChange={controller.setPhotos} onError={controller.setPhotoError} disabled={!ready||busy||!controller.gallerySupported}/></div>{!controller.gallerySupported&&<p className={c.note}>La galería no admite cambios en la versión del servicio disponible.</p>}{photoError&&<p role="alert" className={c.note+' '+c.error}>{photoError}</p>}</>}
  {element&&!element.field&&!element.editorialId&&<div className={c.controls}>{element.label==='Fotografía'?<img src={element.value} alt="Fotografía seleccionada" style={{width:'100%',maxHeight:160,objectFit:'cover',borderRadius:6}}/>:<p className={c.existing}>{element.value}</p>}<p className={c.note}>Este contenido todavía no admite cambios guardados.</p></div>}
  {selected==='habitaciones'&&<div className={c.controls}><Link className={c.button} href="/admin">Gestionar habitaciones y categorías</Link></div>}
- {selected==='servicios'&&<div className={c.controls}><Link className={c.button} href="/admin/amenidades">Gestionar amenidades y Wi-Fi</Link><Link className={c.button} href="/admin/menu">Gestionar menú de Room Service</Link></div>}
- <div className={c.controls}><button type="button" className={c.button} aria-expanded={diagnostics} onClick={()=>setDiagnostics(value=>!value)}>Diagnóstico técnico</button></div>
- {diagnostics&&<div className={c.controls}><p className={c.note}>Revision de galeria: {controller.revisionDiagnostic}. El guardado conserva If-Match.</p><p className={c.note}>Persistencia disponible: nombre, descripción, dirección, teléfono, correo y referencias ordenadas de fotografías. El contenido editorial usa borradores y publicación explícita del contenido. La galería utiliza la carga HOTEL y una revisión vigente para proteger los cambios.</p>{controller.error&&<p className={c.note}>{controller.error}</p>}{controller.previewNotice&&<p className={c.note}>{controller.previewNotice}</p>}<p className={c.note}>El correo de contacto no modifica la configuración SMTP. No se ejecutan operaciones de reservas desde la vista previa.</p></div>}
  </aside></div></div>;
 }
