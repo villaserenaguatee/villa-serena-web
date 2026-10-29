@@ -1,4 +1,4 @@
-import {render,screen,fireEvent} from '@testing-library/react';
+import {render,screen,fireEvent,within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {expect,test,vi} from 'vitest';
 import EditorialPhotoPanel from '@/features/admin/pages/EditorialPhotoPanel';
@@ -32,7 +32,13 @@ test('reemplazar y quitar una imagen heredada conservan los controles y requiere
  const file=new File(['png'],'nueva.png',{type:'image/png'});fireEvent.change(screen.getByLabelText('Reemplazar fotografía 1'),{target:{files:[file]}});
  expect(editorial.setPhotos).toHaveBeenCalledWith('servicios.spa.imagen',[{file,principal:false}]);
  vi.mocked(editorial.setPhotos).mockClear();await userEvent.click(screen.getByRole('button',{name:'Eliminar fotografía 1'}));expect(editorial.setPhotos).not.toHaveBeenCalled();
- await userEvent.click(screen.getByRole('button',{name:'Quitar fotografía'}));expect(editorial.setPhotos).toHaveBeenCalledWith('servicios.spa.imagen',[]);
+ const dialog=screen.getByRole('dialog',{name:'Eliminar fotografía'});
+ expect(within(dialog).getByText('¿Estás seguro de que deseas eliminar esta fotografía?')).toBeVisible();
+ expect(within(dialog).getAllByRole('button').map(button=>button.textContent)).toEqual(['Cancelar','Eliminar']);
+ expect(dialog).not.toHaveTextContent(/galería|almacenamiento|borrador|publicación/);
+ await userEvent.click(within(dialog).getByRole('button',{name:'Cancelar'}));expect(screen.queryByRole('dialog')).toBeNull();expect(editorial.setPhotos).not.toHaveBeenCalled();
+ await userEvent.click(screen.getByRole('button',{name:'Eliminar fotografía 1'}));
+ await userEvent.click(screen.getByRole('button',{name:'Eliminar'}));expect(editorial.setPhotos).toHaveBeenCalledWith('servicios.spa.imagen',[]);
 });
 test('la selección recoge imágenes locales, URL externas y fondos, sin duplicados',()=>{
  const node=document.createElement('section');node.style.backgroundImage='url("https://images.example.invalid/fondo.jpg")';
