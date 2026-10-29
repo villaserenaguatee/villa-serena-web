@@ -1,5 +1,5 @@
 /** Generado desde villa-serena-docs/openapi.yaml. No editar.
- * Contrato SHA-256: d01ab3cd29caa425979a8b5f718e51c398d44ae8414d390e5baa5f870f1eed9a
+ * Contrato SHA-256: 9af7bb0084fe80dd70e6a6a88e1e71bb38099cf0f315f3c513c9ef5ba0aceef1
  */
 export interface paths {
     "/api/v1/auth/login": {
@@ -2852,7 +2852,7 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @description Texto plano. Títulos, subtítulos y botones hasta 200 caracteres; otros textos hasta 4000. Imagen exige fotoClave; botón exige texto y destino; los demás exigen texto. Prohibidos HTML, controles y campos ajenos al tipo. */
+        /** @description Texto plano. Títulos, subtítulos y botones hasta 200 caracteres; otros textos hasta 4000. Imagen admite fotoClave o fotoClaves; botón exige texto y destino; los demás exigen texto. Prohibidos HTML, controles y campos ajenos al tipo. */
         ElementoEditorial: {
             /** @enum {string} */
             id: "inicio.titulo" | "inicio.descripcion" | "inicio.boton" | "habitaciones.subtitulo" | "habitaciones.titulo" | "habitaciones.boton" | "estancias.subtitulo" | "estancias.titulo" | "estancias.descripcion" | "estancias.romantica" | "estancias.descanso" | "estancias.familiar" | "estancias.negocios" | "estancias.bienestar" | "servicios.subtitulo" | "servicios.titulo" | "nosotros.subtitulo" | "nosotros.titulo" | "nosotros.descripcion" | "nosotros.boton" | "nosotros-page.subtitulo" | "nosotros-page.titulo" | "nosotros-page.descripcion" | "nosotros-page.imagen" | "nosotros-page.cierre.titulo" | "nosotros-page.cierre.boton" | "historia.subtitulo" | "historia.titulo" | "historia.descripcion" | "historia.imagen" | "mision-vision.mision.subtitulo" | "mision-vision.mision.titulo" | "mision-vision.mision.descripcion" | "mision-vision.vision.subtitulo" | "mision-vision.vision.titulo" | "mision-vision.vision.descripcion" | "valores.subtitulo" | "valores.titulo" | "valores.item1.titulo" | "valores.item1.descripcion" | "valores.item2.titulo" | "valores.item2.descripcion" | "valores.item3.titulo" | "valores.item3.descripcion" | "valores.item4.titulo" | "valores.item4.descripcion" | "valores.item5.titulo" | "valores.item5.descripcion" | "por-que.subtitulo" | "por-que.titulo" | "por-que.descripcion" | "por-que.item1.titulo" | "por-que.item1.descripcion" | "por-que.item2.titulo" | "por-que.item2.descripcion" | "por-que.item3.titulo" | "por-que.item3.descripcion" | "por-que.item4.titulo" | "por-que.item4.descripcion" | "galeria-hotel.titulo" | "contacto.subtitulo" | "contacto.titulo" | "ayuda.titulo" | "pie.descripcion" | "inicio.imagenes" | "galeria-hotel.imagenes" | "nosotros.imagen" | "servicios.spa.imagen" | "servicios.gimnasio.imagen" | "servicios.piscina.imagen" | "servicios.restaurante.imagen" | "estancias.romantica.imagen" | "estancias.descanso.imagen" | "estancias.familiar.imagen" | "estancias.negocios.imagen" | "estancias.bienestar.imagen" | "estancia-digital.imagen" | "identidad.logo.imagen";
