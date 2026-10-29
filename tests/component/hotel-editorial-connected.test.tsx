@@ -47,7 +47,8 @@ test('all canonical editorial ids bind to actual elements, while operational fie
  const {container,unmount}=render(<PublicHome preview={{hotel:{nombre:'Hotel de prueba',descripcion:'Descripción',fotos:['https://assets.example.invalid/hotel/prueba.png'],ubicacion:{direccion:'Dirección'},contacto:{telefono:'55551234',correo:'hotel@example.invalid'},horaCheckIn:'15:00',horaCheckOut:'12:00'},rooms:[],loading:false,error:'',mobile:false}}/>);const ids=new Set(Array.from(container.querySelectorAll('[data-editorial-id]'),node=>node.getAttribute('data-editorial-id')));
  for(const name of ['Romántica','Descanso','Familiar','Negocios','Bienestar']){fireEvent.click(screen.getByRole('button',{name}));for(const node of container.querySelectorAll('[data-editorial-id]'))ids.add(node.getAttribute('data-editorial-id'));}
  unmount();const about=render(<PublicAbout preview/>);for(const node of about.container.querySelectorAll('[data-editorial-id]'))ids.add(node.getAttribute('data-editorial-id'));
- expect([...ids].sort()).toEqual([...EDITORIAL_IDS].sort());
+ // Cover photos for stay preferences appear only when the catalog supplies matching offers.
+ expect([...ids].sort()).toEqual(EDITORIAL_IDS.filter(id=>!/^estancias\..+\.imagen$/.test(id)).sort());
 });
 
 test('demo pages skip connected editorial requests while real pages still load publication',async()=>{

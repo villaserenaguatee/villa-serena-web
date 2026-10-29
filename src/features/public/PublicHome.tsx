@@ -1,6 +1,6 @@
 "use client";
 import {usePublicLanguage} from "@/components/common/PublicLanguageToggle";
-import {EditorialContentProvider,EditorialText,EditorialLink} from './EditorialContent';
+import {EditorialContentProvider,EditorialText,EditorialLink,EditorialImage,useEditorialPhotos} from './EditorialContent';
 import type {EditorialDocument,EditorialId} from '@/lib/editorial/catalog';
 
 import ContactForm from '@/components/public/ContactForm';
@@ -112,7 +112,9 @@ function HomeContent({preview}:{preview?:PublicHomePreview}) {
   const {rooms:publicRooms,loading:catalogLoading,error:catalogError}=preview??liveCatalog;
   const liveHotel=usePublicHotel(!preview);
   const hotel = preview?preview.hotel:liveHotel;
-  const hotelPhotos=hotel?.fotos??[];
+  const hotelPhotos=useEditorialPhotos('inicio.imagenes',hotel?.fotos??[]);
+  const aboutPhotos=useEditorialPhotos('nosotros.imagen',hotel?.fotos.slice(0,1)??[]);
+  const galleryPhotos=useEditorialPhotos('galeria-hotel.imagenes',hotel?.fotos??[]);
   const photoCount=hotelPhotos.length;
   const ui = useUiText();
   const [slide, setSlide] = useState(0),
@@ -248,7 +250,7 @@ function HomeContent({preview}:{preview?:PublicHomePreview}) {
       </header>
 
       <section
-        id="inicio" data-site-section="inicio" data-site-field="fotos"
+        id="inicio" data-site-section="inicio" data-editorial-id="inicio.imagenes"
         className="hotel-hero"
         style={{
           backgroundImage: photoCount?`linear-gradient(90deg,rgba(8,28,50,.84),rgba(16,39,71,.36),rgba(16,39,71,.08)),url(${JSON.stringify(hotelPhotos[slide%photoCount])})`:'linear-gradient(90deg,#071d34,#18345c)',
@@ -355,7 +357,7 @@ function HomeContent({preview}:{preview?:PublicHomePreview}) {
         {searchError && <p id="public-search-error" role="alert">{searchError}</p>}
       </section>
 
-      {hotelPhotos.length>0&&<section id="galeria-hotel" data-site-section="galeria-hotel" className="mx-auto max-w-7xl px-6 py-8"><EditorialText editorialId="galeria-hotel.titulo" as="h2" className="mb-4 font-serif text-3xl text-[#18345C]">{en?'Hotel gallery':'Galería del hotel'}</EditorialText><div className="grid grid-cols-2 gap-3 md:grid-cols-4">{hotelPhotos.map((src,index)=><img data-site-field="fotos" key={src+index} src={src} alt={(en?'Hotel photograph ':'Fotografía del hotel ')+(index+1)} className="h-40 w-full rounded-xl object-cover"/>)}</div></section>}
+      {galleryPhotos.length>0&&<section data-editorial-id="galeria-hotel.imagenes" id="galeria-hotel" data-site-section="galeria-hotel" className="mx-auto max-w-7xl px-6 py-8"><EditorialText editorialId="galeria-hotel.titulo" as="h2" className="mb-4 font-serif text-3xl text-[#18345C]">{en?'Hotel gallery':'Galería del hotel'}</EditorialText><div className="grid grid-cols-2 gap-3 md:grid-cols-4">{galleryPhotos.map((src,index)=><img data-site-field="fotos" key={src+index} src={src} alt={(en?'Hotel photograph ':'Fotografía del hotel ')+(index+1)} className="h-40 w-full rounded-xl object-cover"/>)}</div></section>}
       <section id="habitaciones" data-site-section="habitaciones" className="hotel-section rooms-section">
         <div className="section-heading">
           <div>
@@ -440,7 +442,7 @@ function HomeContent({preview}:{preview?:PublicHomePreview}) {
           {recommended.map((r,
             i) => (<article className="recommend-mini" key={r.slug}>
               <Link href={`/habitaciones/${r.slug}`}>
-                {r.image?<img src={r.image} alt={ui(r.name)} />:<div className="rounded-lg bg-[#F8F6F0] p-6 text-[#536579]">{en?'No photograph available':'Sin fotografía disponible'}</div>}{r.illustrativePhotos&&<small className="block text-xs text-[#536579]">{en?'Illustrative photograph':'Fotografía ilustrativa'}</small>}
+                {r.image?<EditorialImage editorialId={({Romántica:'estancias.romantica.imagen',Descanso:'estancias.descanso.imagen',Familiar:'estancias.familiar.imagen',Negocios:'estancias.negocios.imagen',Bienestar:'estancias.bienestar.imagen'} as Record<string,EditorialId>)[preference]} src={r.image} alt={ui(r.name)} />:<div className="rounded-lg bg-[#F8F6F0] p-6 text-[#536579]">{en?'No photograph available':'Sin fotografía disponible'}</div>}{r.illustrativePhotos&&<small className="block text-xs text-[#536579]">{en?'Illustrative photograph':'Fotografía ilustrativa'}</small>}
                 {i === 0 && (<span className="recommend-photo-badge">
                   {en ? "Recommended for you" : "Recomendada para ti"}
                 </span>)}
@@ -520,7 +522,7 @@ function HomeContent({preview}:{preview?:PublicHomePreview}) {
               } as Record<string, string>)[d] || d
               : d;
             return (<article key={n} className="service-card">
-              <img src={img} alt={serviceName} />
+              <EditorialImage editorialId={('servicios.'+({Spa:'spa',Gimnasio:'gimnasio',Piscina:'piscina',Restaurante:'restaurante'} as Record<string,string>)[n]+'.imagen') as EditorialId} src={img} alt={serviceName} />
               <div>
                 <h3>
                   {serviceName}
@@ -641,7 +643,7 @@ function HomeContent({preview}:{preview?:PublicHomePreview}) {
 
       <section id="nosotros" data-site-section="nosotros" className="about-showcase">
         <div className="about-showcase-photo">
-          {hotelPhotos[0]?<img data-site-field="fotos" src={hotelPhotos[0]} alt="Villa Serena" />:<div className="rounded-xl bg-[#F8F6F0] p-6 text-[#536579]">{en?'No hotel photograph available.':'Sin fotografía del hotel disponible.'}</div>}
+          {aboutPhotos.length?<img data-editorial-id="nosotros.imagen" src={aboutPhotos[0]} alt="Villa Serena" />:<div className="rounded-xl bg-[#F8F6F0] p-6 text-[#536579]">Sin fotografía del hotel disponible.</div>}
         </div>
         <div className="about-showcase-copy">
           <EditorialText editorialId="nosotros.subtitulo" as="span" className="section-kicker">
@@ -757,7 +759,7 @@ function HomeContent({preview}:{preview?:PublicHomePreview}) {
           </Link>
         </div>
         <div className="digital-photo">
-          <img src="https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=1200&q=85" alt="Estancia digital" />
+          <EditorialImage editorialId="estancia-digital.imagen" src="https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=1200&q=85" alt="Estancia digital" />
         </div>
       </section>
 

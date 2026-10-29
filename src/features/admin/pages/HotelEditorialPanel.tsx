@@ -1,4 +1,5 @@
 'use client';
+import EditorialPhotoPanel from './EditorialPhotoPanel';
 import type {HotelEditorial} from './useHotelEditorial';
 import type {SelectedSiteElement} from './PublicWebsitePreview';
 import type {CatalogPhotoDraft} from './catalogPhotoClient';
@@ -16,6 +17,7 @@ export function EditorialMessages({editorial}:{editorial:HotelEditorial}){
 }
 export default function HotelEditorialPanel({editorial,element,photos,disabled}:{editorial:HotelEditorial;element:SelectedSiteElement;photos:CatalogPhotoDraft[];disabled:boolean}){
  const id=element.editorialId;if(!id)return null;
+ if(id.endsWith('.imagen')||id.endsWith('.imagenes'))return <EditorialPhotoPanel editorial={editorial} element={element} photos={photos} disabled={disabled}/>;
  const current=editorial.state.elements.find(item=>item.id===id),image=id.endsWith('.imagen'),button=id.endsWith('.boton');
  const fieldId='editorial-'+id.replaceAll('.','-'),value=current?.texto??element.value;
  const blocked=disabled||editorial.busy||editorial.loading||!editorial.state.base;

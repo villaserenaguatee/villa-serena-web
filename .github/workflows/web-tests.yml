@@ -2,7 +2,7 @@ name: Web tests
 
 on:
   pull_request:
-    branches: [develop, main]
+    branches: [develop, main, fix/solo-espanol-publicado]
 
 permissions:
   contents: read

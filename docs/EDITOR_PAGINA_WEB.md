@@ -16,6 +16,14 @@ Las URLs utilizadas proceden del contrato público; no se construyen hosts de al
 
 ## Contenido editorial en español
 
+### Fotografías por sección
+
+El API anuncia `editorFotografico: true` antes de habilitar estos controles. Inicio y Galería tienen listas ordenadas independientes; Nosotros, Historia, Servicios, las portadas de Tipos de estancia, Estancia digital y el logotipo tienen posiciones propias. La ausencia de una posición conserva la fotografía anterior; una lista vacía la retira explícitamente al publicar (el logotipo exige una imagen).
+
+Seleccionar archivos permite revisar la vista previa local sin subirlos. Guardar borrador sube únicamente los archivos nuevos con uso HOTEL y guarda sus claves en la revisión editorial; no añade asociaciones a `hotel_photos` ni publica. Publicar requiere el borrador guardado y una confirmación. Los archivos físicos nunca se eliminan automáticamente. Las fotografías operativas de tipos de habitación, sus principales, tarifas y reservas conservan sus operaciones y reglas del catálogo.
+
+`revisionGaleria` en el cuerpo del hotel contiene el mismo valor fuerte que `ETag`. Si falta el encabezado, la Web puede enviar ese valor literalmente en `If-Match`; si cuerpo y encabezado discrepan, bloquea el cambio. El diagnóstico técnico distingue encabezado válido, ausente o inválido. Esto no identifica por sí solo el intermediario que perdió el encabezado en producción.
+
 - GET/PUT /api/v1/admin/hotel/editorial/{idioma}: consultar y guardar borradores persistentes, con revisión.
 - POST /api/v1/admin/hotel/editorial/{idioma}/publicacion: publicar explícitamente la revisión confirmada.
 - GET /api/v1/publico/hotel/editorial/{idioma}: únicamente la versión publicada.
