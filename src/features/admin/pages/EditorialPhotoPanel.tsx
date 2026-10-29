@@ -9,16 +9,17 @@ export default function EditorialPhotoPanel({editorial,element,photos,disabled}:
  const id=element.editorialId!;
  const current=editorial.state.elements.find(item=>item.id===id);
  const keys=current?.fotoClaves??(current?.fotoClave?[current.fotoClave]:null);
- const fallback=id==='inicio.imagenes'||id==='galeria-hotel.imagenes'?photos
-  :id==='nosotros.imagen'?photos.slice(0,1)
-  :element.value&&/^(https?:|blob:|\/)/.test(element.value)?[{url:element.value,principal:false}]:[];
- const value:CatalogPhotoDraft[]=keys===null?fallback:keys.map(clave=>({clave,url:editorial.document?.fotografias?.[clave],principal:false}));
+ const visible=element.photoUrls??(element.value&&/^(https?:|blob:|\/)/.test(element.value)?[element.value]:[]);
+ const registered=id==='inicio.imagenes'||id==='galeria-hotel.imagenes'?photos:id==='nosotros.imagen'?photos.slice(0,1):[];
+ const fallback=registered.length?registered.map((photo,index)=>({...photo,url:photo.url??visible[index]}))
+  :visible.map(url=>photos.find(photo=>photo.url===url)??{url,principal:false});
+ const value:CatalogPhotoDraft[]=keys===null?fallback:keys.map((clave,index)=>({clave,url:editorial.document?.fotografias?.[clave]??photos.find(photo=>photo.clave===clave)?.url??visible[index],principal:false}));
  const available=photos.filter(photo=>photo.clave&&!value.some(item=>item.clave===photo.clave));
  return <div className={c.controls+' '+c.photoControls}>
   <AdminPhotoGallery management friendly title="Fotografías de esta sección" value={value}
    onChange={next=>editorial.setPhotos(id,next)} disabled={disabled||editorial.busy||editorial.loading||!editorial.state.base}
    maxPhotos={id.endsWith('.imagenes')?30:1}/>
-  {available.length>0&&<label>Usar fotografía registrada
+  {value.length>0&&available.length>0&&<label>Usar fotografía registrada
    <select aria-label="Usar fotografía registrada" value="" disabled={disabled||editorial.busy||editorial.loading||!editorial.state.base}
     onChange={event=>{const photo=photos.find(item=>item.clave===event.target.value);if(photo)editorial.setPhotos(id,id.endsWith('.imagenes')?[...value.filter(item=>item.clave),photo]:[photo]);}}>
     <option value="" disabled>Seleccionar fotografía</option>
