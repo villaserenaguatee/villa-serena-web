@@ -1,6 +1,5 @@
 ﻿'use client';
 import {useCallback,useEffect,useMemo,useState} from 'react';
-import Link from 'next/link';
 import {Monitor,Smartphone,ExternalLink,ArrowLeft,LayoutTemplate,Building2} from 'lucide-react';
 import {usePublicCatalog,usePublicHotel} from '@/lib/usePublicCatalog';
 import type {components} from '@/lib/api/schema';
@@ -72,6 +71,5 @@ export function HotelWebsiteEditor({controller,editorial,onBack}:{controller:Hot
  {!element?.editorialId&&element?.field&&element.field!=='fotos'&&labels[element.field]&&<div className={c.controls}>{field(element.field as 'nombre'|'descripcion'|'direccion'|'telefono'|'correo',labels[element.field],element.field==='descripcion'?'textarea':element.field==='correo'?'email':element.field==='telefono'?'tel':'text')}</div>}
  {showPhotos&&<><div className={c.controls}><AdminPhotoGallery management friendly title="Galería del hotel" value={photos} onChange={controller.setPhotos} onError={controller.setPhotoError} disabled={!ready||busy||!controller.gallerySupported}/></div>{!controller.gallerySupported&&<p className={c.note}>La galería no admite cambios en la versión del servicio disponible.</p>}{photoError&&<p role="alert" className={c.note+' '+c.error}>{photoError}</p>}</>}
  {element&&!element.field&&!element.editorialId&&<div className={c.controls}>{element.label==='Fotografía'?<img src={element.value} alt="Fotografía seleccionada" style={{width:'100%',maxHeight:160,objectFit:'cover',borderRadius:6}}/>:<p className={c.existing}>{element.value}</p>}<p className={c.note}>Este contenido todavía no admite cambios guardados.</p></div>}
- {selected==='habitaciones'&&<div className={c.controls}><Link className={c.button} href="/admin">Gestionar habitaciones y categorías</Link></div>}
  </aside></div></div>;
 }

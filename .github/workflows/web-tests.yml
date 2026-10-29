@@ -2,7 +2,7 @@ name: Web tests
 
 on:
   pull_request:
-    branches: [develop, main, fix/solo-espanol-publicado]
+    branches: [develop, main, fix/solo-espanol-publicado, fix/panel-fotografico-compacto]
 
 permissions:
   contents: read
