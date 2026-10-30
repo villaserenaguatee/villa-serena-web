@@ -1,5 +1,5 @@
 /** Generado desde villa-serena-docs/openapi.yaml. No editar.
- * Contrato SHA-256: 26b24f22fd8d9ff32635480a08489a69e7aab78f8591d6a54096f04733192756
+ * Contrato SHA-256: ad3171d23b0c085980d90e7d35ae476fe0e7633b378aa4fb884f9dbd97dd368f
  */
 export interface paths {
     "/api/v1/auth/login": {
@@ -2848,10 +2848,443 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/experiencias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * experienciasAdmin
+         * @description Requiere ADMIN. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        get: operations["experienciasAdmin"];
+        put?: never;
+        /**
+         * crearExperiencia
+         * @description Requiere ADMIN. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        post: operations["crearExperiencia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/experiencias/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * editarExperiencia
+         * @description Requiere ADMIN. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        put: operations["editarExperiencia"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/experiencias/{id}/horarios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * horariosExperienciaAdmin
+         * @description Requiere ADMIN. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        get: operations["horariosExperienciaAdmin"];
+        put?: never;
+        /**
+         * crearHorarioExperiencia
+         * @description Requiere ADMIN. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        post: operations["crearHorarioExperiencia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/experiencias/{id}/horarios/{horarioId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * editarHorarioExperiencia
+         * @description Requiere ADMIN. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        put: operations["editarHorarioExperiencia"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/app/reservas/{codigo}/experiencias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * experienciasHuesped
+         * @description Requiere HUESPED. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        get: operations["experienciasHuesped"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/app/reservas/{codigo}/experiencias/{id}/disponibilidad": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * disponibilidadExperiencia
+         * @description Requiere HUESPED. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        get: operations["disponibilidadExperiencia"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/app/reservas/{codigo}/experiencias/reservas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * misReservasExperiencias
+         * @description Requiere HUESPED. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        get: operations["misReservasExperiencias"];
+        put?: never;
+        /**
+         * reservarExperiencia
+         * @description Requiere HUESPED. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        post: operations["reservarExperiencia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/app/reservas/{codigo}/experiencias/reservas/{id}/cancelar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * cancelarExperiencia
+         * @description Requiere HUESPED. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        post: operations["cancelarExperiencia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/app/reservas/{codigo}/experiencias/{id}/consultas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * consultarExperiencia
+         * @description Requiere HUESPED. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        post: operations["consultarExperiencia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/app/reservas/{codigo}/experiencias/consultas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * misConsultasExperiencias
+         * @description Requiere HUESPED. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        get: operations["misConsultasExperiencias"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/experiencias/reservas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * reservasExperienciasRecepcion
+         * @description Requiere RECEPCION. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        get: operations["reservasExperienciasRecepcion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/experiencias/reservas/{id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * decidirReservaExperiencia
+         * @description Requiere RECEPCION. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        post: operations["decidirReservaExperiencia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/experiencias/consultas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * consultasExperienciasRecepcion
+         * @description Requiere RECEPCION. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        get: operations["consultasExperienciasRecepcion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/experiencias/consultas/{id}/respuesta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * responderConsultaExperiencia
+         * @description Requiere RECEPCION. Las reservas ajenas responden 404; conflictos de revisión, cupo, política, estado o clave reutilizada responden 409.
+         */
+        post: operations["responderConsultaExperiencia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Extensión 1:1 de una amenidad existente: nombre, descripción, fotografía y estado provienen de hotel_amenities. Precio y políticas son configuración explícita; no hay valores comerciales de ejemplo. ANTICIPADO solo permite consultas, nunca confirma sin pago. */
+        Experiencia: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            amenidadId: number;
+            nombre: string;
+            descripcion: string;
+            categoria: string;
+            fotoUrl?: string;
+            activa: boolean;
+            /** @enum {string} */
+            modalidad: "INMEDIATA" | "APROBACION" | "COORDINACION";
+            /** @enum {string} */
+            tarifa: "GRATUITA" | "POR_PERSONA" | "POR_RESERVA";
+            precio: number;
+            /** @enum {string} */
+            cobro: "SIN_CARGO" | "CUENTA" | "ANTICIPADO";
+            duracionMinutos: number;
+            requiereEstadia: boolean;
+            cancelable: boolean;
+            antelacionCancelacionMinutos: number;
+            /** Format: int64 */
+            version: number;
+        };
+        ConfigExperiencia: {
+            /** Format: int64 */
+            amenidadId: number;
+            categoria: string;
+            activa: boolean;
+            /** @enum {string} */
+            modalidad: "INMEDIATA" | "APROBACION" | "COORDINACION";
+            /** @enum {string} */
+            tarifa: "GRATUITA" | "POR_PERSONA" | "POR_RESERVA";
+            precio: number;
+            /** @enum {string} */
+            cobro: "SIN_CARGO" | "CUENTA" | "ANTICIPADO";
+            duracionMinutos: number;
+            requiereEstadia: boolean;
+            cancelable: boolean;
+            antelacionCancelacionMinutos: number;
+            /** Format: int64 */
+            version: number;
+        };
+        HorarioExperiencia: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            experienciaId: number;
+            /** Format: date-time */
+            inicio: string;
+            /** Format: date-time */
+            fin: string;
+            capacidad: number;
+            disponibles: number;
+            activo: boolean;
+            /** Format: int64 */
+            version: number;
+        };
+        ConfigHorarioExperiencia: {
+            /** Format: date-time */
+            inicio: string;
+            capacidad: number;
+            activo: boolean;
+            /** Format: int64 */
+            version: number;
+        };
+        /** @description Reserva persistente distinta del alojamiento. PENDIENTE y CONFIRMADA consumen cupos. Precio y política de cancelación se fijan al crearla. Cargo único solo al confirmar con cobro CUENTA, reserva EN_ESTADIA y cuenta abierta; cancelación permitida anula el mismo cargo en la misma transacción. Nunca borra archivos. Los campos del huésped/habitación se incluyen solo para Recepción. */
+        ReservaExperiencia: {
+            /** Format: int64 */
+            id: number;
+            referencia: string;
+            codigoReserva: string;
+            /** Format: int64 */
+            experienciaId: number;
+            nombre: string;
+            categoria: string;
+            fotoUrl?: string;
+            /** Format: int64 */
+            horarioId: number;
+            /** Format: date-time */
+            inicio: string;
+            /** Format: date-time */
+            fin: string;
+            personas: number;
+            total: number;
+            /** @enum {string} */
+            moneda: "GTQ";
+            /** @enum {string} */
+            estado: "PENDIENTE" | "CONFIRMADA" | "RECHAZADA" | "CANCELADA";
+            motivo?: string;
+            /** Format: int64 */
+            version: number;
+            /** Format: int64 */
+            cargoId?: number;
+            nombreHuesped?: string;
+            habitacion?: string;
+            cancelable: boolean;
+        };
+        CrearReservaExperiencia: {
+            /** Format: uuid */
+            clave: string;
+            /** Format: int64 */
+            horarioId: number;
+            personas: number;
+        };
+        DecisionExperiencia: {
+            /** Format: int64 */
+            version: number;
+            /** @enum {string} */
+            accion: "APROBAR" | "RECHAZAR";
+            motivo?: string;
+        };
+        CancelarExperiencia: {
+            /** Format: int64 */
+            version: number;
+            motivo: string;
+        };
+        ConsultaExperiencia: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            experienciaId: number;
+            nombre: string;
+            codigoReserva: string;
+            comentario: string;
+            respuesta?: string;
+            /** @enum {string} */
+            estado: "ABIERTA" | "RESPONDIDA";
+            /** Format: date-time */
+            creadaEn: string;
+            nombreHuesped?: string;
+        };
+        CrearConsultaExperiencia: {
+            /** Format: uuid */
+            clave: string;
+            comentario: string;
+        };
+        ResponderConsultaExperiencia: {
+            respuesta: string;
+        };
         /** @description Texto plano. Títulos, subtítulos y botones hasta 200 caracteres; otros textos hasta 4000. Imagen admite fotoClave o fotoClaves; botón exige texto y destino; los demás exigen texto. Prohibidos HTML, controles y campos ajenos al tipo. */
         ElementoEditorial: {
             /** @enum {string} */
@@ -13617,6 +14050,1013 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+        };
+    };
+    experienciasAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Experiencia"][];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    crearExperiencia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigExperiencia"];
+            };
+        };
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Experiencia"];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    editarExperiencia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigExperiencia"];
+            };
+        };
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Experiencia"];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    horariosExperienciaAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HorarioExperiencia"][];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    crearHorarioExperiencia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigHorarioExperiencia"];
+            };
+        };
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HorarioExperiencia"];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    editarHorarioExperiencia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                horarioId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigHorarioExperiencia"];
+            };
+        };
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HorarioExperiencia"];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    experienciasHuesped: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                codigo: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Experiencia"][];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    disponibilidadExperiencia: {
+        parameters: {
+            query?: {
+                fecha?: string;
+            };
+            header?: never;
+            path: {
+                codigo: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HorarioExperiencia"][];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    misReservasExperiencias: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                codigo: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaExperiencia"][];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reservarExperiencia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                codigo: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrearReservaExperiencia"];
+            };
+        };
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaExperiencia"];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    cancelarExperiencia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                codigo: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelarExperiencia"];
+            };
+        };
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaExperiencia"];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    consultarExperiencia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                codigo: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrearConsultaExperiencia"];
+            };
+        };
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultaExperiencia"];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    misConsultasExperiencias: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                codigo: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultaExperiencia"][];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reservasExperienciasRecepcion: {
+        parameters: {
+            query?: {
+                fecha?: string;
+                experienciaId?: number;
+                estado?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaExperiencia"][];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    decidirReservaExperiencia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionExperiencia"];
+            };
+        };
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaExperiencia"];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    consultasExperienciasRecepcion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultaExperiencia"][];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    responderConsultaExperiencia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResponderConsultaExperiencia"];
+            };
+        };
+        responses: {
+            /** @description Operación completada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultaExperiencia"];
+                };
+            };
+            /** @description Datos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sin sesión */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol no permitido */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Recurso no encontrado o ajeno */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflicto de cupos, estado, revisión o política */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

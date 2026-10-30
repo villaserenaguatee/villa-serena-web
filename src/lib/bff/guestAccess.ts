@@ -1,3 +1,4 @@
+import {isExperienceGuestRoute} from './experienceRoutes';
 import 'server-only';
 import {readLimitedBody} from '@/lib/bff/readLimitedBody';
 import { createHash, randomBytes, randomInt, randomUUID } from 'node:crypto';
@@ -52,6 +53,7 @@ async function springGuestRoute(request: NextRequest, segments: string[]) {
   const verify = request.method === 'POST' && path === 'acceso/verificar-codigo';
   const logout = request.method === 'POST' && path === 'cerrar-sesion';
   const resume = request.method === 'GET' && path === 'sesion';
+  const experiences=isExperienceGuestRoute(request.method,segments);
   const hotelInfo=request.method==='GET'&&segments.length===1&&['amenidades','wifi'].includes(segments[0]);
   const profile = request.method === 'GET' && path === 'perfil';
   const query = request.method === 'GET' && segments[0] === 'reservas' && segments.length <= 2;
@@ -70,7 +72,7 @@ async function springGuestRoute(request: NextRequest, segments: string[]) {
   const canonicalCleaning=request.method==='POST'&&segments.length===4&&segments[0]==='reservas'&&/^VS-[A-Z0-9]{6}$/.test(segments[1])&&segments[2]==='solicitudes'&&segments[3]==='limpieza';
   const menu = request.method==='GET' && segments.length===3 && segments[0]==='reservas' && /^VS-[A-Z0-9]{6}$/.test(segments[1]) && segments[2]==='menu';
   const orders = segments.length===3 && segments[0]==='reservas' && /^VS-[A-Z0-9]{6}$/.test(segments[1]) && segments[2]==='pedidos' && ['GET','POST'].includes(request.method);
-  if (!requestCode && !verify && !logout && !query && !resume && !account && !checkout && !payment && !balanceState && !profile && !menu && !orders && !cleaning && !communication && !editMessage && !articles && !invoice && !requests && !cancelRequest && !canonicalArticle && !canonicalCleaning && !hotelInfo) throw new AuthError('RUTA_NO_PERMITIDA', 403, 'Esta operación no está disponible.');
+  if (!experiences && !requestCode && !verify && !logout && !query && !resume && !account && !checkout && !payment && !balanceState && !profile && !menu && !orders && !cleaning && !communication && !editMessage && !articles && !invoice && !requests && !cancelRequest && !canonicalArticle && !canonicalCleaning && !hotelInfo) throw new AuthError('RUTA_NO_PERMITIDA', 403, 'Esta operación no está disponible.');
   if (!process.env.API_URL) throw new AuthError('CONFIGURACION_INVALIDA', 503, 'Revisa la configuración del API.');
   let access = request.cookies.get(GUEST_COOKIE)?.value ?? '';
   let refresh = request.cookies.get(REFRESH_COOKIE)?.value ?? '';
@@ -99,6 +101,9 @@ async function springGuestRoute(request: NextRequest, segments: string[]) {
     const raw=await readLimitedBody(request,segments[2]==='documentos'?7100000:16384);if(raw.length>16384)throw new AuthError('DATOS_INVALIDOS',400,'El pedido es demasiado largo.');
     try{input=JSON.parse(raw);}catch{throw new AuthError('DATOS_INVALIDOS',400,'Revisa el pedido.');}
   }
+  if(experiences&&request.method==='POST'){const raw=await readLimitedBody(request,16384);try{input=JSON.parse(raw);}catch{throw new AuthError('DATOS_INVALIDOS',400,'Revise su solicitud.');}}
+  const experienceDate=experiences&&segments.at(-1)==='disponibilidad'?request.nextUrl.searchParams.get('fecha'):null;
+  if(experienceDate&&!/^\d{4}-\d{2}-\d{2}$/.test(experienceDate))throw new AuthError('DATOS_INVALIDOS',400,'Revise la fecha.');
   const code = request.nextUrl.searchParams.get('codigo') ?? '';
   const loginPath = `/login?acceso=huesped&codigo=${encodeURIComponent(code)}`;
   const apply = (response: NextResponse) => rotated ? cookies(response, request, { access: rotated.accessToken, refresh: rotated.refreshToken, expiresIn: rotated.expiraEn }) : response;
@@ -106,7 +111,7 @@ async function springGuestRoute(request: NextRequest, segments: string[]) {
     const operation = async () => {
       if(invoice&&segments[3]==='pdf'){const f=await springCall(`app/reservas/${segments[1]}/factura`,'GET',undefined,access);return springCall(`facturas/${f.id}/pdf`,'GET',undefined,access);}
       if(menu)await springCall(`app/reservas/${encodeURIComponent(segments[1])}`,'GET',undefined,access);
-      return springCall(`app/${resume ? 'reservas' : segments.map(encodeURIComponent).join('/')}`, resume ? 'GET' : request.method,
+      return springCall(`app/${resume ? 'reservas' : segments.map(encodeURIComponent).join('/')}${experienceDate?'?fecha='+encodeURIComponent(experienceDate):''}`, resume ? 'GET' : request.method,
       logout ? { refreshToken: refresh } : input, requestCode || verify ? undefined : access,attempt??undefined);
     };
     let value;

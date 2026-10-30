@@ -2,7 +2,7 @@ import SidebarBrand from '@/components/common/SidebarBrand';
 import {ArrowLeft} from "lucide-react";
 import {reservationOptionLabel} from "@/lib/reservationOptionLabel";
 import ConnectedManageStay from './ConnectedManageStay';
-import GuestStaySections from './GuestStaySections';
+import ExperienciasHuespedConectadas from './ExperienciasHuespedConectadas';
 import ConnectedGuestCheckIn from './ConnectedGuestCheckIn';
 import {GuestPage} from './GuestApprovedLayout';
 import { estanciaHabilitaChat } from '@/lib/pms/chatAccess';
@@ -853,7 +853,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
     if(conectado&&seccion==='checkin')return <ConnectedGuestCheckIn key={reserva.codigo} reserva={reserva} huesped={huesped} habitacion={habitacion} blockedReason={blockedDocs}/>;
     if(conectado&&seccion==='servicios')return <LimpiezaHuespedConectada key={reserva.codigo} code={reserva.codigo} blockedReason={blockedStay}/>;
     if(conectado&&seccion==='habitacion')return <MiHabitacion conectado reserva={reserva} habitacion={habitacion} domotica={domotica} turnos={[]} reservasAmenidad={[]} llaveActiva={false} estanciaCerrada={estanciaCerrada} onActualizarDomotica={()=>{}} onActualizarLuz={()=>{}} onConectarWifi={()=>{}} onReservarTurno={()=>{}} onCancelarTurno={()=>{}} onIrCheckin={()=>setSeccion('checkin')}/>;
-    if(conectado&&seccion==='experiencias')return <ReservasExperiencias connected reserva={reserva} huespedId={huesped.id} turnos={[]} reservas={[]} onReservar={()=>{}} onCancelar={()=>{}}/>;
+    if(conectado&&seccion==='experiencias')return <ExperienciasHuespedConectadas reserva={reserva}/>;
     if(conectado&&seccion==='reservar')return <ConnectedManageStay reserva={reserva} habitacion={habitacion}/>;
     switch (seccion) {
       case "inicio":
