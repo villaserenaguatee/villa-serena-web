@@ -1,0 +1,13 @@
+'use client';
+import {useEffect,useState,type ReactNode} from 'react';
+import {operacion} from '@/lib/api/operaciones';
+import type {components} from '@/lib/api/schema';
+import AdminRefreshButton from './AdminRefreshButton';
+import RoomCatalogManager from './RoomCatalogManager';
+import {readOffers,type Offer} from './roomOffersClient';
+type RoomType=components['schemas']['TipoHabitacionAdmin'];
+export default function OfertasAdmin({navigation}:{navigation?:ReactNode}){
+ const [types,setTypes]=useState<RoomType[]>([]),[offers,setOffers]=useState<Offer[]>([]),[selected,setSelected]=useState<RoomType>(),[loading,setLoading]=useState(true),[error,setError]=useState(''),[reload,setReload]=useState(0);
+ useEffect(()=>{const abort=new AbortController();setLoading(true);setError('');Promise.all([operacion<RoomType[]>('admin/tipos-habitacion','GET',undefined,abort.signal),readOffers(abort.signal)]).then(([types,offers])=>{if(!Array.isArray(types)||!Array.isArray(offers))throw Error('No se pudieron consultar las ofertas.');if(!abort.signal.aborted){setTypes(types);setOffers(offers);}}).catch(error=>{if(!abort.signal.aborted)setError(error instanceof Error?error.message:'No se pudieron consultar las ofertas.');}).finally(()=>{if(!abort.signal.aborted)setLoading(false);});return()=>abort.abort();},[reload]);
+ return <main className="min-h-0 min-w-0 flex-1 overflow-auto bg-[#F8F6F0] p-4 text-[#18345C] sm:p-6"><header className="mb-5 flex flex-wrap items-start justify-between gap-3"><h1 className="font-serif text-[32px] leading-tight text-[#102747]">Ofertas</h1><AdminRefreshButton loading={loading} disabled={loading} onClick={()=>setReload(value=>value+1)}/></header>{navigation}{error&&<p role="alert" className="mb-3 text-red-800">{error}</p>}{loading?<p role="status">Consultando ofertas…</p>:!error&&<div className="grid min-w-0 gap-3 md:grid-cols-2">{types.map(type=><section key={type.id} className="min-w-0 rounded-xl border bg-white p-4"><h2 className="break-words font-semibold">{type.nombre}</h2><ul className="my-3 grid gap-2">{offers.filter(offer=>offer.tipoHabitacionId===type.id).map(offer=><li key={offer.slug} className="break-words text-sm">{offer.nombre} · Q{offer.precioPorNoche} · {offer.publicada?'Publicada':'Sin publicar'}</li>)}</ul><button type="button" className="rounded-md border px-3 py-2" onClick={()=>setSelected(type)}>Administrar ofertas de {type.nombre}</button></section>)}</div>}{selected&&<RoomCatalogManager typeId={selected.id} name={selected.nombre} maxCapacity={selected.capacidad} onClose={()=>{setSelected(undefined);setReload(value=>value+1);}}/>}</main>;
+}
