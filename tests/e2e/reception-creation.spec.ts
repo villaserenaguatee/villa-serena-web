@@ -89,6 +89,8 @@ for (const { name, viewport } of viewports) {
       const dialog = await openDetail(page, lost!.codigo); await expect(dialog).toContainText('Prueba Persistencia Issue48');
       expect(await (await context.request.get(`/api/reservas/${lost!.codigo}`)).json()).toEqual(lost);
       const region = await calendar(page, hotelDate(15));
+      await expectCalendarReservation(region, lost!);
+      await region.getByRole('button', { name: 'Habitaciones', exact: true }).click();
       await expect(region.locator(`[data-reservation-code="${lost!.codigo}"]`)).toHaveCount(0);
     });
 
