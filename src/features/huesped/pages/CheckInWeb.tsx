@@ -2,7 +2,7 @@ import type {ReactNode} from 'react';
 import { UiText, useUiText } from "@/i18n/UiText";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { useState } from "react";
-import { CheckCircle2, ShieldCheck, ClipboardCheck, IdCard, Trash2, FileText } from "lucide-react";
+import { CheckCircle2, ShieldCheck, ClipboardCheck, IdCard, Trash2, RefreshCw, FileText } from "lucide-react";
 import type { Huesped, Reserva, HabitacionHotel, CheckInWeb as CheckInWebEstado, DocumentoCargado, FormatoDocumento, Acompanante, } from "@/lib/pms/types";
 import { formatoFechaHora, nochesEntre, FOTO_STANDARD, FOTO_SUPERIOR, FOTO_DELUXE, FOTO_SUITE, TERMINOS_ESTANCIA, } from "@/data/pms";
 import { Chip, Campo, INPUT_CLS, Cabecera, Tarjeta, Aviso, BotonPrimario, BotonSecundario, CodigoQR, correoValido, telefonoValido, CheckIcon, UploadIcon, KeyIcon, AlertIcon, MailIcon, } from "@/features/huesped/pages/huespedUtils";
@@ -597,7 +597,7 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
                   onChange={e => recibirArchivo(e.target.files, lado as "frente" | "reverso" | "unico")} />
               </label>
               {doc && <div className="mt-2 flex items-center gap-2">
-                <CheckIcon size={16} />
+                <RefreshCw size={16} aria-hidden="true" className="text-[#18345C]" />
                 <span className="min-w-0 flex-1 truncate text-xs text-[#166534]">
                   {doc.nombre}
                 </span>
