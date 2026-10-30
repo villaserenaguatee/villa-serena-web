@@ -26,7 +26,7 @@ for(const {name,viewport} of [...viewports,{name:'320px',viewport:{width:320,hei
   }));for(const value of contrast)expect(value).toBeGreaterThanOrEqual(4.5);
   const recover=(await page.getByRole('button',{name:'¿Olvidaste tu contraseña?'}).boundingBox())!,input=(await credential.boundingBox())!,submit=(await page.getByRole('button',{name:'Iniciar sesión',exact:true}).boundingBox())!,guest=(await page.getByRole('button',{name:guestAction}).boundingBox())!;
   expect(recover.y).toBeGreaterThanOrEqual(input.y+input.height);expect(submit.y).toBeGreaterThanOrEqual(recover.y+recover.height);expect(guest.y).toBeGreaterThanOrEqual(submit.y+submit.height);
-  const parent=(await page.locator('.floating-login-card form').boundingBox())!;expect(Math.abs(recover.x+recover.width-parent.x-parent.width)).toBeLessThanOrEqual(2);
+  const preferences=(await page.locator('.guest-login-preferences').boundingBox())!;const remember=(await page.getByRole('checkbox',{name:'Recordarme'}).boundingBox())!;expect(recover.x).toBeGreaterThanOrEqual(preferences.x-2);expect(recover.x+recover.width).toBeLessThanOrEqual(preferences.x+preferences.width+2);expect(remember.x).toBeGreaterThanOrEqual(preferences.x-2);expect(remember.x+remember.width).toBeLessThanOrEqual(preferences.x+preferences.width+2);
   await page.getByRole('button',{name:'Ocultar credencial'}).click();await expectNoOverflow(page);await page.screenshot({path:info.outputPath('login.png'),fullPage:true});
   await page.getByRole('button',{name:'Iniciar sesión',exact:true}).click();await expect(page.locator('.login-error')).toContainText('No se pudo iniciar sesión');await expect(email).toHaveValue('navigation@example.test');
   expect(posts).toHaveLength(1);
