@@ -1,7 +1,7 @@
 import {operacion} from '@/lib/api/operaciones';
 import {validarFoto} from '@/lib/incidenciaValidation';
 import type {components} from '@/lib/api/schema';
-export type PhotoUse='HOTEL'|'TIPO_HABITACION'|'MENU';
+export type PhotoUse='HOTEL'|'TIPO_HABITACION'|'HABITACION'|'MENU';
 export type CatalogPhotoDraft={clave?:string;url?:string;file?:File;principal:boolean};
 export async function uploadCatalogPhoto(file:File,uso:PhotoUse):Promise<string>{
  const error=validarFoto(file);if(error)throw Error(error);
