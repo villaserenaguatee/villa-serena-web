@@ -1,8 +1,8 @@
 import RoomInformationDialog from './RoomInformationDialog';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import type { HabitacionHotel, Reserva, Huesped, EstadoHabHotel } from '@/lib/pms/types';
 import { formatoFecha } from '@/data/pms';
-import { Chip, HAB_META, RESERVA_META, } from '@/features/recepcion/pages/recUtils';
+import { Chip, HAB_META, } from '@/features/recepcion/pages/recUtils';
 import { BedIcon } from '@/features/admin/pages/adminUtils';
 import { publicRoomForHotelType } from '@/data/publicRooms';
 interface Props {
@@ -20,21 +20,11 @@ interface Props {
 }
 const ESTADOS: EstadoHabHotel[] = ['disponible', 'reservada', 'ocupada', 'en-limpieza', 'mantenimiento'];
 export default function PanelHabitaciones({ navigation, habitaciones, reservas, huespedes, onCambiarEstadoHab, onEditarHabitacion, detalles, conectado=false, fotos, condiciones, estadosCatalogo, }: Props) {
-  const [ahora, setAhora] = useState<Date | null>(null);
   const [piso, setPiso] = useState<'todos' | 1 | 2 | 3>('todos');
   const [filtro, setFiltro] = useState<EstadoHabHotel | 'todas'>('todas');
   const [editando,setEditando]=useState(false);
   const [seleccionada, setSeleccionada] = useState<HabitacionHotel | null>(null);
-  useEffect(() => {
-    setAhora(new Date());
-    const t = setInterval(() => setAhora(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
   const huespedDe = useMemo(() => new Map(huespedes.map(h => [h.id, h])), [huespedes]);
-  const conteo = (e: EstadoHabHotel) => habitaciones.filter(h => h.estado === e).length;
-  const ocupacionPct = habitaciones.length
-    ? Math.round((conteo('ocupada') / habitaciones.length) * 100)
-    : 0;
   const visibles = habitaciones
     .filter(h => (piso === 'todos' || h.piso === piso) && (filtro === 'todas' || h.estado === filtro))
     .sort((a, b) => a.numero.localeCompare(b.numero));
@@ -78,30 +68,12 @@ export default function PanelHabitaciones({ navigation, habitaciones, reservas, 
       </div>
     </button>;
   };
-  return (<div className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
+  return (<div className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-[#F8F6F0] p-4 sm:p-6" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
 
-    <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Mapa de habitaciones</h1>
-          <p className="text-[14px] text-[#AEBCC1] mt-1">
-            {conectado?'Datos del hotel':'Datos de este navegador'} · actualizado {ahora ? ahora.toLocaleTimeString() : '—'}
-          </p>
-        </div>
-        <span className="flex items-center gap-2 text-[13px] text-[#166534] bg-[#F0FAF4] border border-[#86EFAC] rounded-md px-3 py-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
-          {conectado?'Hotel':'Local'}
-        </span>
-      </div>
+    <header className="mb-5 flex flex-wrap items-start justify-between gap-3"><div><h1 className="font-serif text-[32px] leading-tight text-[#102747]">Mapa de habitaciones</h1></div></header>
+    {navigation}
 
-      {navigation&&<div className="mt-4">{navigation}</div>}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
-        {ESTADOS.map(e => (<Kpi key={e} valor={conectado&&e==='reservada'?'—':conteo(e)} label={conectado&&e==='disponible'?'Libres':HAB_META[e].label} color={HAB_META[e].dot} />))}
-        <Kpi valor={`${ocupacionPct}%`} label="Ocupación" color="#18345C" />
-      </div>
-    </div>
-
-    <div className="flex flex-wrap items-end gap-3 px-4 pt-5 sm:px-6">
+    <div className="flex flex-wrap items-end gap-3">
       <label className="min-w-0 flex-1 text-sm sm:max-w-48">Piso
         <select value={piso} onChange={event=>setPiso(event.target.value==='todos'?'todos':Number(event.target.value) as 1|2|3)} className="mt-1 block w-full rounded-md border border-[#D8DFE5] bg-white px-3 py-2 text-[#18345C]">
           <option value="todos">Todos los pisos</option>{([1,2,3] as const).map(value=><option key={value} value={value}>Piso {value}</option>)}
@@ -114,7 +86,7 @@ export default function PanelHabitaciones({ navigation, habitaciones, reservas, 
       </label>
     </div>
 
-    <div className="px-4 sm:px-6 py-5 space-y-7">
+    <div className="pt-5 space-y-7">
       {([1, 2, 3] as const).filter(p => piso === 'todos' || piso === p).map(p => {
         const delPiso = visibles.filter(h => h.piso === p);
         if (!delPiso.length)
