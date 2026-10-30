@@ -15,3 +15,7 @@ Crear una categoría no publica ni guarda ofertas. Una nueva oferta se guarda si
 No se necesitan PR de API o Docs: se reutiliza el contrato canónico y el API integrado. Integrar primero #116 y luego esta PR, cambiando su base a main y volviendo a revisar el diff/checks después del squash de #116. No integrar ni desplegar sin autorización. La rama tiene despliegue Vercel deshabilitado.
 
 Las pruebas de componentes y navegador usan datos locales de prueba y respuestas del contrato, sin consultar ni modificar producción.
+
+## Resultado de pruebas
+
+TypeScript y ESLint aprobados. 37 pruebas de componentes (categorías, temporadas, ofertas y fotografías), 2 unitarias de validaciones y 1 del BFF aprobadas. E2E: 3 recorridos completos aprobados en 1440, 390 y 320 px, con creación/edición/recuperación de categorías, errores, características, fotografías, oferta nueva sin publicar y publicación explícita. Capturas verificadas visualmente y sin desbordamiento horizontal. El primer recorrido agotó los 120 s durante la carga inicial de Next; la ejecución final completa con 240 s por recorrido aprobó los tres casos.
