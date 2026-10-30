@@ -13,7 +13,6 @@ export default function AdminRoomsManagement() {
           role="tab" aria-selected={view === key} className={`whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors ${view === key ? 'border-[#C7A957] text-[#102747]' : 'border-transparent text-[#536579] hover:text-[#102747]'}`}>{label}</button>)}
     </nav>;
   return <div className="flex min-h-0 min-w-0 flex-1 flex-col text-[#18345C]">
-    {view==='mapa'&&navigation}
-    {view === 'mapa' ? <ApprovedRoomMapConnected onEdit={id=>{setEditRoom(Number(id));setView('habitaciones');}} /> : <CatalogosAdmin initialEditId={view==='habitaciones'?editRoom:undefined} onInitialEditHandled={()=>setEditRoom(undefined)} key={view} initial={view} resources={[view]} navigation={navigation} roomManagement onBusyChange={setBusy} />}
+    {view === 'mapa' ? <ApprovedRoomMapConnected navigation={navigation} onEdit={id=>{setEditRoom(Number(id));setView('habitaciones');}} /> : <CatalogosAdmin initialEditId={view==='habitaciones'?editRoom:undefined} onInitialEditHandled={()=>setEditRoom(undefined)} key={view} initial={view} resources={[view]} navigation={navigation} roomManagement onBusyChange={setBusy} />}
   </div>;
 }

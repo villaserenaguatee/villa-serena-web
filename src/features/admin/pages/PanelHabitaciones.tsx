@@ -1,11 +1,12 @@
 import RoomInformationDialog from './RoomInformationDialog';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { HabitacionHotel, Reserva, Huesped, EstadoHabHotel } from '@/lib/pms/types';
 import { formatoFecha } from '@/data/pms';
 import { Chip, HAB_META, RESERVA_META, } from '@/features/recepcion/pages/recUtils';
 import { BedIcon } from '@/features/admin/pages/adminUtils';
 import { publicRoomForHotelType } from '@/data/publicRooms';
 interface Props {
+  navigation?:ReactNode;
   conectado?: boolean;
   onEditarHabitacion?: (id:string)=>void;
   detalles?:Record<string,{descripcion?:string;fotos?:string[];servicios?:string[]}>;
@@ -18,7 +19,7 @@ interface Props {
   onCambiarEstadoHab?: (id: string, estado: EstadoHabHotel) => void;
 }
 const ESTADOS: EstadoHabHotel[] = ['disponible', 'reservada', 'ocupada', 'en-limpieza', 'mantenimiento'];
-export default function PanelHabitaciones({ habitaciones, reservas, huespedes, onCambiarEstadoHab, onEditarHabitacion, detalles, conectado=false, fotos, condiciones, estadosCatalogo, }: Props) {
+export default function PanelHabitaciones({ navigation, habitaciones, reservas, huespedes, onCambiarEstadoHab, onEditarHabitacion, detalles, conectado=false, fotos, condiciones, estadosCatalogo, }: Props) {
   const [ahora, setAhora] = useState<Date | null>(null);
   const [piso, setPiso] = useState<'todos' | 1 | 2 | 3>('todos');
   const [filtro, setFiltro] = useState<EstadoHabHotel | 'todas'>('todas');
@@ -77,7 +78,7 @@ export default function PanelHabitaciones({ habitaciones, reservas, huespedes, o
       </div>
     </button>;
   };
-  return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
+  return (<div className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
 
     <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -93,21 +94,24 @@ export default function PanelHabitaciones({ habitaciones, reservas, huespedes, o
         </span>
       </div>
 
+      {navigation&&<div className="mt-4">{navigation}</div>}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
         {ESTADOS.map(e => (<Kpi key={e} valor={conectado&&e==='reservada'?'—':conteo(e)} label={conectado&&e==='disponible'?'Libres':HAB_META[e].label} color={HAB_META[e].dot} />))}
         <Kpi valor={`${ocupacionPct}%`} label="Ocupación" color="#18345C" />
       </div>
     </div>
 
-    <div className="px-4 sm:px-6 pt-5 flex gap-2 flex-wrap">
-      {(['todos', 1, 2, 3] as const).map(p => (<BotonFiltro key={String(p)} activo={piso === p} onClick={() => setPiso(p)}>
-        {p === 'todos' ? 'Todos los pisos' : `Piso ${p}`}
-      </BotonFiltro>))}
-      <span className="w-px bg-[#E5E0D8] mx-1" />
-      <BotonFiltro activo={filtro === 'todas'} onClick={() => setFiltro('todas')}>Todos</BotonFiltro>
-      {ESTADOS.filter(e=>!conectado||e!=='reservada').map(e => (<BotonFiltro key={e} activo={filtro === e} onClick={() => setFiltro(e)}>
-        {conectado&&e==='disponible'?'Libres':HAB_META[e].label}
-      </BotonFiltro>))}
+    <div className="flex flex-wrap items-end gap-3 px-4 pt-5 sm:px-6">
+      <label className="min-w-0 flex-1 text-sm sm:max-w-48">Piso
+        <select value={piso} onChange={event=>setPiso(event.target.value==='todos'?'todos':Number(event.target.value) as 1|2|3)} className="mt-1 block w-full rounded-md border border-[#D8DFE5] bg-white px-3 py-2 text-[#18345C]">
+          <option value="todos">Todos los pisos</option>{([1,2,3] as const).map(value=><option key={value} value={value}>Piso {value}</option>)}
+        </select>
+      </label>
+      <label className="min-w-0 flex-1 text-sm sm:max-w-48">Estado
+        <select value={filtro} onChange={event=>setFiltro(event.target.value as EstadoHabHotel|'todas')} className="mt-1 block w-full rounded-md border border-[#D8DFE5] bg-white px-3 py-2 text-[#18345C]">
+          <option value="todas">Todos</option><option value="disponible">Libres</option><option value="ocupada">Ocupadas</option><option value="en-limpieza">En limpieza</option><option value="mantenimiento">En mantenimiento</option>
+        </select>
+      </label>
     </div>
 
     <div className="px-4 sm:px-6 py-5 space-y-7">
@@ -186,15 +190,4 @@ function Kpi({ valor, label, color }: {
       {label}
     </p>
   </div>);
-}
-function BotonFiltro({ activo, onClick, children, }: {
-  activo: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (<button
-    onClick={onClick}
-    className={`text-[13px] font-medium px-3 py-1.5 rounded-md border transition-colors ${activo ? 'bg-[#18345C] text-white border-[#18345C]' : 'bg-white text-[#6B7280] border-[#E5E0D8] hover:bg-[#F8F6F0]'}`}>
-    {children}
-  </button>);
-}
+}

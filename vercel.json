@@ -8,7 +8,8 @@
       "fix/solo-espanol-publicado": false,
       "feat/editor-fotografico": false,
       "fix/panel-fotografico-compacto": false,
-      "fix/fotografias-actuales-editor": false
+      "fix/fotografias-actuales-editor": false,
+      "fix/panel-habitaciones-layout": false
     }
   }
 }
