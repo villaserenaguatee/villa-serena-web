@@ -107,7 +107,7 @@ test('invalid fields retain values, focus the first error, and do not submit', a
   const number = within(dialog).getByLabelText('Número de habitación');
   expect(number).toHaveValue('   ');
   expect(number).toHaveAttribute('aria-invalid', 'true');
-  await waitFor(() => expect(number).toHaveFocus());
+  await waitFor(() => expect(within(dialog).getByLabelText('Piso')).toHaveFocus());
   expect(posts()).toHaveLength(0);
 });
 
@@ -172,7 +172,7 @@ test('load failure blocks creation without demo fallback; rejected update keeps 
   expect(screen.getByRole('button', { name: '+ Nueva habitación' })).toBeDisabled();
   expect(screen.queryByText('101')).toBeNull();
   view.unmount();
-  call.mockImplementation(async (path, method) => { if (method === 'POST') throw new OperationError('La habitación tiene reservas activas.', 409); return path.endsWith('/tipos') ? [type] : rooms; });
+  call.mockImplementation(async (path, method) => { if (method === 'PATCH') throw new OperationError('La habitación tiene reservas activas.', 409); return path.endsWith('/tipos') ? [type] : rooms; });
   render(<CatalogosAdmin initial="habitaciones" resources={['habitaciones']} roomManagement />);
   await screen.findByText('101');
   await userEvent.click(within(screen.getByText('101').closest('tr')!).getByRole('button', { name: 'Editar' }));
