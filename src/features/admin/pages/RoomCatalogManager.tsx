@@ -1,0 +1,27 @@
+﻿'use client';
+import {useEffect,useRef,useState} from 'react';
+import ReceptionActionDialog from '@/features/recepcion/pages/ReceptionActionDialog';
+import c from './RoomCatalogContent.module.css';
+import AdminRoomPhotos from './AdminRoomPhotos';
+import RoomOfferEditor from './RoomOfferEditor';
+import RoomFeaturesEditor from './RoomFeaturesEditor';
+import {readOffers,readCatalogRooms,saveOffer,publishOffer,type CatalogRoom,type Offer,type OfferInput} from './roomOffersClient';
+export default function RoomCatalogManager({typeId,name,maxCapacity,onClose}:{typeId:number;name:string;maxCapacity:number;onClose:()=>void}){
+ const [offers,setOffers]=useState<Offer[]>([]),[rooms,setRooms]=useState<CatalogRoom[]>([]),[loading,setLoading]=useState(true),[ready,setReady]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[photoBusy,setPhotoBusy]=useState(false),[reload,setReload]=useState(0),[selected,setSelected]=useState<Offer|null>(),[roomId,setRoomId]=useState(''),[confirmation,setConfirmation]=useState<Offer>();const lock=useRef(false),blocked=busy||photoBusy;
+ useEffect(()=>{const abort=new AbortController();setLoading(true);setReady(false);setError('');Promise.all([readOffers(abort.signal),readCatalogRooms(abort.signal)]).then(([offers,rooms])=>{if(!Array.isArray(offers)||!Array.isArray(rooms))throw Error('No se pudo consultar el catálogo.');if(!abort.signal.aborted){setOffers(offers.filter(offer=>offer.tipoHabitacionId===typeId));setRooms(rooms.filter(room=>room.tipoHabitacionId===typeId));setReady(true);}}).catch(error=>{if(!abort.signal.aborted)setError(error.message);}).finally(()=>{if(!abort.signal.aborted)setLoading(false);});return()=>abort.abort();},[typeId,reload]);
+ async function run(action:()=>Promise<Offer>,message:string){if(lock.current||blocked||!ready)return;lock.current=true;setBusy(true);setError('');setNotice('');try{const saved=await action();setOffers(current=>current.some(offer=>offer.slug===saved.slug)?current.map(offer=>offer.slug===saved.slug?saved:offer):[...current,saved]);setSelected(undefined);setConfirmation(undefined);setNotice(message);}catch(error){setError(error instanceof Error?error.message:'No se pudo guardar.');}finally{lock.current=false;setBusy(false);}}
+ function save(slug:string,input:OfferInput,create:boolean){void run(()=>saveOffer(slug,input,create),'Oferta guardada.');}
+ const room=rooms.find(room=>String(room.id)===roomId);
+ return <ReceptionActionDialog title={'Catálogo público · '+name} busy={blocked} onClose={()=>{if(!blocked)onClose();}}><div className={c.content}>
+  {loading&&<p role="status">Consultando catálogo…</p>}{error&&<p role="alert" className="mb-3 text-sm text-red-800">{error}</p>}{notice&&<p role="status" className="mb-3 text-sm">{notice}</p>}
+  {!ready&&!loading&&<button type="button" className="rounded-md border px-3 py-2" onClick={()=>setReload(value=>value+1)}>Volver a consultar</button>}
+  <fieldset disabled={!ready||blocked} className="grid min-w-0 gap-5">
+   <AdminRoomPhotos typeId={typeId} onBusyChange={setPhotoBusy}/>
+   <section><h3 className="mb-3 font-semibold">Características de las habitaciones</h3><label>Habitación<select value={roomId} onChange={event=>setRoomId(event.target.value)}><option value="">Seleccionar habitación</option>{rooms.map(room=><option key={room.id} value={room.id}>Habitación {room.numero}</option>)}</select></label>{room&&<div className="mt-3"><RoomFeaturesEditor key={room.id} room={room} maxCapacity={maxCapacity} onBusyChange={setBusy}/></div>}</section>
+   <section><header className="mb-3 flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">Ofertas públicas</h3><button type="button" className="rounded-md border px-3 py-2" onClick={()=>{setSelected(null);setError('');setNotice('');}}>Nueva oferta</button></header>
+    {selected!==undefined?<RoomOfferEditor key={selected?.slug??'new'} offer={selected??undefined} typeId={typeId} maxCapacity={maxCapacity} rooms={rooms} onSave={save} onCancel={()=>setSelected(undefined)}/>:<div className="grid gap-3">{offers.map(offer=><article key={offer.slug} className="min-w-0 rounded-lg border p-3"><h4 className="break-words font-semibold">{offer.nombre}</h4><p className="text-sm">{offer.publicada?'Publicada':'Sin publicar'} · Q{offer.precioPorNoche} · {offer.cantidadHabitaciones} habitaciones</p><div className="mt-2 flex flex-wrap gap-2"><button type="button" className="rounded-md border px-3 py-2" onClick={()=>{setSelected(offer);setError('');setNotice('');}}>Editar oferta {offer.nombre}</button><button type="button" className="rounded-md border px-3 py-2" onClick={()=>setConfirmation(offer)}>{offer.publicada?'Despublicar':'Publicar'} oferta {offer.nombre}</button></div></article>)}</div>}
+   </section>
+   {confirmation&&<section aria-label="Confirmar publicación" className="rounded-lg border p-3"><p>¿Deseas {confirmation.publicada?'despublicar':'publicar'} esta oferta?</p><div className="mt-2 flex flex-wrap justify-end gap-2"><button type="button" className="rounded-md border px-3 py-2" onClick={()=>setConfirmation(undefined)}>Cancelar</button><button type="button" className="rounded-md bg-[#18345C] px-3 py-2 text-white" onClick={()=>void run(()=>publishOffer(confirmation.slug,!confirmation.publicada),'Publicación actualizada.')}>Confirmar</button></div></section>}
+  </fieldset>
+ </div></ReceptionActionDialog>;
+}

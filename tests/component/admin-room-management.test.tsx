@@ -26,8 +26,8 @@ beforeEach(() => {
 const posts = () => call.mock.calls.filter(([, method]) => method === 'POST');
 async function openNew(resource = 'habitaciones') {
   render(<CatalogosAdmin initial={resource} resources={[resource]} roomManagement />);
-  await waitFor(() => expect(screen.getByRole('button', { name: resource === 'habitaciones' ? '+ Nueva habitación' : 'Nuevo registro' })).toBeEnabled());
-  await userEvent.click(screen.getByRole('button', { name: resource === 'habitaciones' ? '+ Nueva habitación' : 'Nuevo registro' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: resource === 'habitaciones' ? '+ Nueva habitación' : 'Nueva categoría' })).toBeEnabled());
+  await userEvent.click(screen.getByRole('button', { name: resource === 'habitaciones' ? '+ Nueva habitación' : 'Nueva categoría' }));
   return screen.getByRole('dialog');
 }
 
@@ -107,12 +107,12 @@ test('invalid fields retain values, focus the first error, and do not submit', a
   expect(posts()).toHaveLength(0);
 });
 
-test('offer fields stay disabled and photos require a saved category without entering its basic request', async () => {
+test('category creation contains only basic fields and never publishes or changes photographs', async () => {
   const dialog = await openNew('tipos');
-  expect(within(dialog).getByText('Primero guarda la categoría para asociar sus fotografías.')).toBeVisible();
+  expect(within(dialog).getByRole('heading',{name:'Nueva categoría'})).toBeVisible();
   expect(within(dialog).queryByLabelText('Agregar fotografía')).toBeNull();
-  expect(within(dialog).getByLabelText('Superficie (m²)')).toBeDisabled();
-  expect(within(dialog).getByLabelText('Publicación de la oferta')).toBeDisabled();
+  expect(within(dialog).queryByLabelText('Superficie (m²)')).toBeNull();
+  expect(within(dialog).queryByLabelText('Publicación de la oferta')).toBeNull();
   await userEvent.type(within(dialog).getByLabelText('Nombre'), ' Nueva categoría ');
   await userEvent.type(within(dialog).getByLabelText('Descripción'), ' Descripción manual ');
   await userEvent.type(within(dialog).getByLabelText('Precio base (Q)'), '420');
@@ -144,7 +144,7 @@ test('editing a category shows its registered price and consistent category nami
   await userEvent.click(screen.getByRole('tab', { name: 'Categorías de habitación' }));
   await userEvent.click(await screen.findByRole('button', { name: 'Editar' }));
   const dialog = screen.getByRole('dialog');
-  expect(within(dialog).getByRole('heading', { name: 'Editar · Categorías de habitación' })).toBeVisible();
+  expect(within(dialog).getByRole('heading', { name: 'Editar categoría' })).toBeVisible();
   expect(within(dialog).getByLabelText('Precio base (Q)')).toHaveValue(420);
   expect(screen.queryByText('Tipos de habitación')).toBeNull();
   expect(screen.queryByText('Categorías y contenido')).toBeNull();
@@ -156,7 +156,7 @@ test('inventory count failure does not block category editing or pretend there a
   call.mockImplementation(async path => { if (path === 'admin/catalogos/tipos') return [type]; throw new OperationError('Sin conexión', 502); });
   render(<CatalogosAdmin initial="tipos" resources={['tipos']} roomManagement />);
   expect(await screen.findByText('No disponible')).toBeVisible();
-  expect(screen.getByRole('button', { name: 'Nuevo registro' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Nueva categoría' })).toBeEnabled();
 });
 
 test('load failure blocks creation without demo fallback; rejected update keeps the form and error', async () => {
