@@ -15,7 +15,7 @@ const ROOM_FEATURES=['Wi-Fi','Televisión','Aire acondicionado','Baño privado',
 export default function RoomOfferFields({value,onChange,maxCapacity}:{value:FeatureDraft;onChange:(value:FeatureDraft)=>void;maxCapacity:number}){
  const selected=lines(value.caracteristicas);
  const other=selected.filter(item=>!ROOM_FEATURES.includes(item));
- const updateOther=(text:string)=>onChange({...value,caracteristicas:[...ROOM_FEATURES.filter(item=>selected.includes(item)),...lines(text)].join('\\n')});
+ const updateOther=(text:string)=>onChange({...value,caracteristicas:[...ROOM_FEATURES.filter(item=>selected.includes(item)),...lines(text)].join('\n')});
  return <div className="grid min-w-0 gap-3 sm:grid-cols-2">
   <label>Capacidad<input required type="number" min="1" max={maxCapacity} step="1" value={value.capacidad} onChange={event=>onChange({...value,capacidad:event.target.value})}/></label>
   <label>Superficie (m²)<input required type="number" min="0.01" step="0.01" value={value.superficieM2} onChange={event=>onChange({...value,superficieM2:event.target.value})}/></label>
@@ -30,8 +30,8 @@ export default function RoomOfferFields({value,onChange,maxCapacity}:{value:Feat
    <button type="button" className="mt-3 rounded-md border border-[#18345C] px-3 py-2 text-sm font-semibold text-[#18345C]" disabled={value.camas.length>=20} onClick={()=>onChange({...value,camas:[...value.camas,{tipo:'',cantidad:'1'}]})}>+ Agregar otro tipo de cama</button>
   </fieldset>
   <fieldset className="min-w-0 sm:col-span-2"><legend className="mb-2 font-semibold">Características de la habitación</legend>
-   <div className="grid gap-2 sm:grid-cols-2">{ROOM_FEATURES.map(feature=><label key={feature} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selected.includes(feature)} onChange={event=>onChange({...value,caracteristicas:(event.target.checked?[...selected,feature]:selected.filter(item=>item!==feature)).join('\\n')})}/>{feature}</label>)}</div>
-   <label className="mt-3 block text-sm">Otras características (una por línea)<textarea rows={2} className="mt-1 w-full rounded-md border p-2" value={other.join('\\n')} onChange={event=>updateOther(event.target.value)}/></label>
+   <div className="grid gap-2 sm:grid-cols-2">{ROOM_FEATURES.map(feature=><label key={feature} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selected.includes(feature)} onChange={event=>onChange({...value,caracteristicas:(event.target.checked?[...selected,feature]:selected.filter(item=>item!==feature)).join('\n')})}/>{feature}</label>)}</div>
+   <label className="mt-3 block text-sm">Otras características (una por línea)<textarea rows={2} className="mt-1 w-full rounded-md border p-2" value={other.join('\n')} onChange={event=>updateOther(event.target.value)}/></label>
   </fieldset>
  </div>;
 }
