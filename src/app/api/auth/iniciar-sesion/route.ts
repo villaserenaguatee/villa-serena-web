@@ -8,7 +8,9 @@ import {staffHome} from '@/lib/auth/staff-contract';
 export const runtime='nodejs';
 export async function POST(request:NextRequest){
  try{
-  sameOrigin(request);const input=await readAuthJson(request,['correo','credencial']);const key=request.headers.get('Idempotency-Key');
+  sameOrigin(request);const input=await readAuthJson(request,['correo','credencial']);const rememberHeader=request.headers.get('X-Guest-Remember');
+  if(rememberHeader!==null && !['true','false'].includes(rememberHeader))throw new AuthError('DATOS_INVALIDOS',400,'Opción de sesión inválida.');
+  const remember=rememberHeader==='true';const key=request.headers.get('Idempotency-Key');
   if(!key||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key))throw new AuthError('DATOS_INVALIDOS',400,'Revisa los datos de acceso.');
   if(process.env.STAFF_AUTH_MODE==='demo' && process.env.GUEST_AUTH_MODE==='demo'){
    if(/^\d{6}$/.test(input.credencial)){
@@ -16,6 +18,8 @@ export async function POST(request:NextRequest){
     if(!verified.ok)return verified;
     const response=writeCookies(NextResponse.json({destino:'/portal'}),request);
     for(const cookie of verified.cookies.getAll())response.cookies.set(cookie);
+    if(!remember){for(const name of ['vs_guest_access','vs_guest_refresh']){const cookie=response.cookies.get(name);if(cookie)response.cookies.set(name,cookie.value,{httpOnly:true,sameSite:'lax',secure:request.nextUrl.protocol==='https:',path:'/'});}response.cookies.delete('vs_guest_remember');}
+    else response.cookies.set('vs_guest_remember','1',{httpOnly:true,sameSite:'lax',secure:request.nextUrl.protocol==='https:',path:'/',maxAge:7*86400});
     return response;
    }
    const session=await authProvider().login({correo:input.correo,contrasena:input.credencial});
@@ -27,6 +31,6 @@ export async function POST(request:NextRequest){
   if(!upstream.ok)throw new AuthError('ACCESO_INVALIDO',upstream.status>=500?502:401,'No se pudo iniciar sesión. Revisa tus datos o solicita un nuevo código.');
   const value=await upstream.json(),tokens=serverTokens(value);
   if(value.empleado){const employee=publicEmployee(value.empleado);return writeGuestCookies(writeCookies(NextResponse.json({destino:employee.debeCambiarContrasena?'/panel/cambiar-contrasena':staffHome(employee)}),request,tokens),request);}
-  return writeGuestCookies(writeCookies(NextResponse.json({destino:'/portal'}),request),request,{access:tokens.accessToken,refresh:tokens.refreshToken,expiresIn:tokens.expiraEn});
+  return writeGuestCookies(writeCookies(NextResponse.json({destino:'/portal'}),request),request,{access:tokens.accessToken,refresh:tokens.refreshToken,expiresIn:tokens.expiraEn},remember);
  }catch(error){return authError(error);}
 }
