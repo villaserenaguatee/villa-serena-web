@@ -60,9 +60,9 @@ test('search and status filter change displayed records without changing the phy
 
 test('room creation uses the existing endpoint and only permitted fields', async () => {
   const dialog = await openNew();
-  await userEvent.type(within(dialog).getByLabelText('Número de habitación'), ' 103 ');
+  fireEvent.change(within(dialog).getByLabelText('Número de habitación'), {target:{value:' 103 '}});
   await userEvent.selectOptions(within(dialog).getByLabelText('Categoría de habitación'), '3');
-  await userEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+  fireEvent.submit(dialog);
   await waitFor(() => expect(posts()).toHaveLength(1));
   const [path, , body] = posts()[0];
   expect(path).toBe('admin/catalogos/habitaciones');
@@ -172,7 +172,7 @@ test('load failure blocks creation without demo fallback; rejected update keeps 
   expect(screen.getByRole('button', { name: '+ Nueva habitación' })).toBeDisabled();
   expect(screen.queryByText('101')).toBeNull();
   view.unmount();
-  call.mockImplementation(async (path, method) => { if (method === 'PATCH') throw new OperationError('La habitación tiene reservas activas.', 409); return path.endsWith('/tipos') ? [type] : rooms; });
+  call.mockImplementation(async (path, method) => { if (method === 'POST') throw new OperationError('La habitación tiene reservas activas.', 409); return path.endsWith('/tipos') ? [type] : rooms; });
   render(<CatalogosAdmin initial="habitaciones" resources={['habitaciones']} roomManagement />);
   await screen.findByText('101');
   await userEvent.click(within(screen.getByText('101').closest('tr')!).getByRole('button', { name: 'Editar' }));
