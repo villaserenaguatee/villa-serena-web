@@ -190,4 +190,4 @@ function Kpi({ valor, label, color }: {
       {label}
     </p>
   </div>);
-}
+}
