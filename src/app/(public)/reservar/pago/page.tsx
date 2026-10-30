@@ -3,6 +3,7 @@ import PreviousBookingRequest from '@/components/public/PreviousBookingRequest';
 import BookingTermsContent from '@/components/common/BookingTermsContent';
 import PrivacyPolicyContent from '@/components/common/PrivacyPolicyContent';
 import BookingSummaryCard from '@/components/public/BookingSummaryCard';
+import { money } from '@/data/publicRooms';
 import { UiText, useUiText } from "@/i18n/UiText";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -111,15 +112,16 @@ export default function Pago() {
         {draftChecked && !draft && <p className="payment-draft-error" role="alert">{en ? "Your details are unavailable or expired. Return to the guest form." : "Tus datos no están disponibles o vencieron. Vuelve al formulario de huésped."}</p>}
         {quoteResult.error && !canRecover && <p role="alert">{quoteResult.error}</p>}
         {quoteResult.loading && <p role="status">{en ? "Checking price..." : "Consultando precio..."}</p>}
-        <section className="payment-cancellation" aria-labelledby="payment-cancellation-title">
+        <section className="payment-cancellation rounded-lg border border-[#E5E0D8] bg-[#FAF9F6] p-4 sm:p-5" aria-labelledby="payment-cancellation-title">
           <h2 id="payment-cancellation-title">{en?'Cancellations and refunds':'Cancelaciones y reembolsos'}</h2>
           <p>{en?'To cancel a confirmed booking, contact Reception.':'Para cancelar una reserva confirmada, contacta a Recepción.'}</p>
-          <dl>
+          <dl className="grid gap-3 sm:grid-cols-2">
             <div><dt>{en?'Full refund':'Reembolso total'}</dt><dd>{en?'When Reception cancels at least 48 hours before 3:00 p.m. on your arrival date.':'Cuando Recepción cancela al menos 48 horas antes de las 15:00 del día de llegada.'}</dd></div>
             <div><dt>{en?'No refund':'Sin reembolso'}</dt><dd>{en?'When cancellation takes place less than 48 hours before that time.':'Cuando la cancelación se realiza con menos de 48 horas de anticipación.'}</dd></div>
           </dl>
           <p className="payment-cancellation-note">{en?'Guatemala local time. Sending a request before the deadline does not guarantee a refund.':'Hora de Guatemala. Enviar una solicitud dentro del plazo no garantiza el reembolso.'}</p>
         </section>
+        {quote && !quoteResult.loading && <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#D9E1EB] bg-[#F8FAFC] p-4" aria-label={en ? "Payment amount" : "Importe del pago"}><div><p className="font-semibold text-[#18345C]">{en ? "Total to pay" : "Total a pagar"}</p><p className="text-sm text-[#64748B]">{en ? "Secure payment processed by Recurrente" : "Pago seguro procesado por Recurrente"}</p></div><strong className="text-2xl font-semibold text-[#102747]">{money(total)}</strong></div>}
         <label className="terms-check">
           <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
           <span>
