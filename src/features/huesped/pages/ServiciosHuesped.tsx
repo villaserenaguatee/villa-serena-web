@@ -566,8 +566,9 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
               descripcion={ui(s.id === "sv-agua" ? `${s.descripcion} ${Math.max(0, 3 - aguaUsada)} disponibles hoy.` : s.descripcion)}
               precio={s.precio}
               etiqueta={ui(s.categoria)}
+              compacto
               disponible={!estanciaCerrada}
-              motivoNoDisponible="Estancia finalizada"
+              motivoNoDisponible="No disponible"
               cantidad={carritoServicios[s.id] ?? 0}
               textoPrecio={esTransporteConTarifa(s.id) ? (s.id === 'sv-taxi' ? ui('Tarifa según destino') : s.id === 'sv-reserva-transporte' ? ui('Tarifa según servicio') : ui('Tarifa según recorrido')) : s.precio === 0 ? ui('Incluido') : undefined}
               onAbrir={() => {
@@ -1311,7 +1312,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
     </div>}
   </div>);
 }
-export function FilaCatalogo({ nombre, descripcion, precio, foto, etiqueta, disponible, motivoNoDisponible, cantidad, onCambiar, onAbrir, textoPrecio, textoAccion, cuadrado = false, }: {
+export function FilaCatalogo({ nombre, descripcion, precio, foto, etiqueta, disponible, motivoNoDisponible, cantidad, onCambiar, onAbrir, textoPrecio, textoAccion, cuadrado = false, compacto = false, }: {
   nombre: string;
   descripcion: string;
   precio: number;
@@ -1325,9 +1326,10 @@ export function FilaCatalogo({ nombre, descripcion, precio, foto, etiqueta, disp
   textoPrecio?: string;
   textoAccion?: string;
   cuadrado?: boolean;
+  compacto?: boolean;
 }) {
   const ui = useUiText();
-  return (<div className={`${onAbrir ? "bg-white border rounded-xl overflow-hidden px-4 py-3.5" : "bg-white border rounded-xl px-4 py-3"} ${cuadrado ? "" : ""} ${cantidad > 0 ? "border-[#18345C]" : "border-[#E5E0D8]"}`}>
+  return (<div className={`${onAbrir ? "bg-white border rounded-xl overflow-hidden px-3 py-2.5" : "bg-white border rounded-xl px-3 py-2.5"} ${cuadrado ? "" : ""} ${cantidad > 0 ? "border-[#18345C]" : "border-[#E5E0D8]"}`}>
     <div className={`flex gap-2.5 h-full ${cuadrado ? "flex-col items-stretch" : "flex-col items-stretch"}`}>
       {foto && (<img src={foto} alt={nombre} className={cuadrado ? "w-full h-24 rounded-lg object-cover shrink-0" : "w-32 h-28 rounded-lg object-cover shrink-0"} />)}
       <div className="flex-1 min-w-0 py-1.5 pr-1">
@@ -1338,16 +1340,16 @@ export function FilaCatalogo({ nombre, descripcion, precio, foto, etiqueta, disp
           <Chip cls="bg-[#F8F6F0] text-[#6B7280] border-[#E5E0D8]">
             {etiqueta}
           </Chip>
-          {!disponible && (<Chip cls="bg-[#FEF2F2] text-[#991B1B] border-[#FCA5A5]">
+          {!disponible && (<Chip cls="bg-[#F8F6F0] text-[#71839B] border-[#E5E0D8]">
             {ui(motivoNoDisponible)}
           </Chip>)}
         </div>
         <p className="text-[12px] leading-4 text-[#6B7280] mt-1 line-clamp-2">
           {ui(descripcion)}
         </p>
-        <p className="text-[14px] font-semibold text-[#18345C] mt-1.5">
+        {!compacto && <p className="text-[14px] font-semibold text-[#18345C] mt-1.5">
           {textoPrecio ?? (precio === 0 ? "Incluido en tu estancia" : dinero(precio))}
-        </p>
+        </p>}
       </div>
 
       <div className="shrink-0 flex items-center justify-end pt-1">
