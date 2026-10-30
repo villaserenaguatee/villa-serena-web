@@ -33,7 +33,7 @@ Las operaciones ya existen en el contrato fijado en `api-contract.json` y en el 
 
 ## Dependencia y validación
 
-La PR web parte de la limpieza visual #114: conserva textos retirados, mapa, pestañas y filtros. Integrar primero #114 y actualizar esta base a `main`, verificando diff y CI antes de integrar. Ninguna integración o publicación está autorizada en este trabajo.
+La limpieza visual #114 ya se integró externamente en main mientras se preparaba este trabajo. Esta PR usa main como base y conserva textos retirados, mapa, pestañas y filtros. No hay dependencia de API pendiente. Ninguna integración o publicación está autorizada en este trabajo.
 
 Las pruebas web usan respuestas del contrato y archivos de prueba locales, no producción. Incluyen categorías, ofertas, fotografías, recuperación, rechazo por reservas activas, validaciones y permisos.
 
