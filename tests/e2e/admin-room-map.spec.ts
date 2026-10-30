@@ -8,7 +8,7 @@ for(const width of [1440,390,320])test('panel de habitaciones: layout y filtros 
  expect((await context.request.post('/api/auth/login',{headers:{Origin:baseURL!},data:{correo:'admin@villaserena.gt',contrasena:'VillaSerena26'},timeout:60000})).status()).toBe(200);
  await page.goto('/admin');await expect(page.getByRole('heading',{name:'Habitaciones físicas',exact:true})).toBeVisible({timeout:60000});
  await expect(page.getByText('Registre cada habitación por su número y categoría. La cantidad se calcula a partir de estos registros, sin cupos manuales.')).toHaveCount(0);
- await expect(page.getByText('Habitación 101',{exact:true})).toBeVisible();await expectNoOverflow(page);await page.screenshot({path:info.outputPath('habitaciones-'+width+'.png'),fullPage:true});
+ await expect(page.getByRole('cell',{name:'101',exact:true})).toBeVisible();await expectNoOverflow(page);await page.screenshot({path:info.outputPath('habitaciones-'+width+'.png'),fullPage:true});
  await page.getByRole('tab',{name:'Categorías de habitación',exact:true}).click();await expect(page.getByRole('heading',{name:'Categorías de habitación',exact:true})).toBeVisible();
  await expect(page.getByText('Edite los datos de la categoría. El contenido de las ofertas públicas se administra por separado.')).toHaveCount(0);
  await expect(page.getByText('Estándar',{exact:true})).toBeVisible();await expectNoOverflow(page);await page.screenshot({path:info.outputPath('categorias-'+width+'.png'),fullPage:true});

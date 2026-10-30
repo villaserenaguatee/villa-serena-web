@@ -33,11 +33,15 @@ async function openNew(resource = 'habitaciones') {
 
 test('rooms, categories and existing map are accessible without mixing personnel or seasons', async () => {
   render(<AdminRoomsManagement />);
-  await screen.findByText('Habitación 101');
+  await screen.findByText('101');
   expect(screen.getByText(/2 de 2 habitaciones físicas registradas/)).toHaveTextContent('1 activas');
+  expect(screen.getAllByRole('columnheader',{name:'Habitación'})).toHaveLength(1);
+  expect(screen.queryByRole('columnheader',{name:'Número de habitación'})).toBeNull();
   await userEvent.click(screen.getByRole('tab', { name: 'Categorías de habitación' }));
   await screen.findByText('Estándar');
   expect(await screen.findByText('2 · 1 activas')).toBeVisible();
+  expect(screen.queryByRole('columnheader',{name:'Catálogo público'})).toBeNull();
+  expect(screen.queryByRole('button',{name:/Administrar catálogo de/})).toBeNull();
   expect(screen.queryByRole('button', { name: 'Personal' })).toBeNull();
   await userEvent.click(screen.getByRole('tab', { name: 'Mapa de habitaciones' }));
   expect(screen.getByText('Mapa existente')).toBeVisible();
@@ -45,12 +49,12 @@ test('rooms, categories and existing map are accessible without mixing personnel
 
 test('search and status filter change displayed records without changing the physical total', async () => {
   render(<CatalogosAdmin initial="habitaciones" resources={['habitaciones']} roomManagement />);
-  await screen.findByText('Habitación 101');
+  await screen.findByText('101');
   await userEvent.type(screen.getByRole('searchbox'), '102');
-  expect(screen.queryByText('Habitación 101')).toBeNull();
+  expect(screen.queryByText('101')).toBeNull();
   expect(screen.getByText(/1 de 2 habitaciones/)).toBeVisible();
   await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Estado' }), 'ACTIVO');
-  expect(screen.queryByText('Habitación 102')).toBeNull();
+  expect(screen.queryByText('102')).toBeNull();
   expect(screen.getByText(/0 de 2 habitaciones/)).toBeVisible();
 });
 
@@ -67,7 +71,7 @@ test('room creation uses the existing endpoint and only permitted fields', async
 
 test('room update preserves identifier and version and never sends occupancy or manual capacity', async () => {
   render(<CatalogosAdmin initial="habitaciones" resources={['habitaciones']} roomManagement />);
-  const card = (await screen.findByText('Habitación 101')).closest('tr')!;
+  const card = (await screen.findByText('101')).closest('tr')!;
   await userEvent.click(within(card).getByRole('button', { name: 'Editar' }));
   const dialog = screen.getByRole('dialog');
   fireEvent.change(within(dialog).getByLabelText('Piso'), { target: { value: '2' } });
@@ -84,8 +88,8 @@ test('repeated submissions share one in-flight write and navigation is disabled 
     return path.endsWith('/tipos') ? [type] : rooms;
   });
   render(<AdminRoomsManagement />);
-  await screen.findByText('Habitación 101');
-  await userEvent.click(within(screen.getByText('Habitación 101').closest('tr')!).getByRole('button', { name: 'Editar' }));
+  await screen.findByText('101');
+  await userEvent.click(within(screen.getByText('101').closest('tr')!).getByRole('button', { name: 'Editar' }));
   const dialog = screen.getByRole('dialog');
   fireEvent.submit(dialog); fireEvent.submit(dialog);
   await waitFor(() => expect(posts()).toHaveLength(1));
@@ -140,12 +144,14 @@ test('new category price starts empty and rejects empty, zero and negative value
 
 test('editing a category shows its registered price and consistent category naming', async () => {
   render(<AdminRoomsManagement />);
-  await screen.findByText('Habitación 101');
+  await screen.findByText('101');
   await userEvent.click(screen.getByRole('tab', { name: 'Categorías de habitación' }));
   await userEvent.click(await screen.findByRole('button', { name: 'Editar' }));
   const dialog = screen.getByRole('dialog');
   expect(within(dialog).getByRole('heading', { name: 'Editar categoría' })).toBeVisible();
   expect(within(dialog).getByLabelText('Precio base (Q)')).toHaveValue(420);
+  expect(within(dialog).getByRole('button',{name:'Editar catálogo'})).toBeVisible();
+  expect(screen.queryByRole('columnheader',{name:'Catálogo público'})).toBeNull();
   expect(screen.queryByText('Tipos de habitación')).toBeNull();
   expect(screen.queryByText('Categorías y contenido')).toBeNull();
   await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
@@ -164,12 +170,12 @@ test('load failure blocks creation without demo fallback; rejected update keeps 
   const view = render(<CatalogosAdmin initial="habitaciones" resources={['habitaciones']} roomManagement />);
   await screen.findByRole('alert');
   expect(screen.getByRole('button', { name: '+ Nueva habitación' })).toBeDisabled();
-  expect(screen.queryByText('Habitación 101')).toBeNull();
+  expect(screen.queryByText('101')).toBeNull();
   view.unmount();
   call.mockImplementation(async (path, method) => { if (method === 'POST') throw new OperationError('La habitación tiene reservas activas.', 409); return path.endsWith('/tipos') ? [type] : rooms; });
   render(<CatalogosAdmin initial="habitaciones" resources={['habitaciones']} roomManagement />);
-  await screen.findByText('Habitación 101');
-  await userEvent.click(within(screen.getByText('Habitación 101').closest('tr')!).getByRole('button', { name: 'Editar' }));
+  await screen.findByText('101');
+  await userEvent.click(within(screen.getByText('101').closest('tr')!).getByRole('button', { name: 'Editar' }));
   await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Guardar' }));
   expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent('reservas activas');
   expect(screen.getByRole('dialog')).toBeVisible();

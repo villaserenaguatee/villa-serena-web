@@ -9,7 +9,7 @@ export default function BookingSummaryCard(p: Props) {
   <h2>{en?'Your booking':ui('Tu reserva')}</h2>
   {p.image&&<img src={p.image} alt={ui(p.name)}/>}
   <h3>{ui(p.name)}</h3>
-  {p.category&&<p>{ui(p.category)}</p>}
+  {p.category&&p.category.trim().toLocaleLowerCase()!==p.name.trim().toLocaleLowerCase()&&<p>{ui(p.category)}</p>}
   {p.note&&<p role="note">{p.note}</p>}
   <div className="summary-dates">
    {[[en?'Arrival':'Llegada',p.arrival],[en?'Departure':'Salida',p.departure],[en?'Adults':'Adultos',p.adults],[en?'Children':'Niños',p.childCount],[en?'Nights':'Noches',p.nights],[en?'Price per night':'Precio por noche',p.nightlyPrice===undefined?'—':money(p.nightlyPrice)]].map(([label,value])=><span key={label}><small>{label}</small><b>{value}</b></span>)}
