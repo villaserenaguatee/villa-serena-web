@@ -5,7 +5,7 @@ import { UiText, useUiText } from "@/i18n/UiText";
 import { useState } from "react";
 import type { Reserva, HabitacionHotel, Domotica, TurnoAmenidad, ReservaAmenidad, } from "@/lib/pms/types";
 import { WIFI_RED, WIFI_PASSWORD, formatoFecha, formatoFechaHora } from "@/data/pms";
-import { Chip, Cabecera, Tarjeta, Aviso, BotonFiltro, BotonPrimario, CodigoQR, plazasLibres, turnoLleno, KeyIcon, DoorIcon, ThermoIcon, LightIcon, CurtainIcon, WifiIcon, CheckIcon, SparkIcon, } from "@/features/huesped/pages/huespedUtils";
+import { Chip, Cabecera, Tarjeta, Aviso, BotonFiltro, BotonPrimario, CodigoQR, plazasLibres, turnoLleno, KeyIcon, ThermoIcon, LightIcon, CurtainIcon, WifiIcon, CheckIcon, SparkIcon, } from "@/features/huesped/pages/huespedUtils";
 const TEMP_MIN = 16;
 const TEMP_MAX = 30;
 interface Props {
@@ -34,7 +34,6 @@ interface Props {
 export default function MiHabitacion({ conectado=false, reserva, onCompartirExperiencia, onReservarEstancia, onVerCuentaFinal, habitacion, domotica, turnos, reservasAmenidad, llaveActiva, codigoLlave, estanciaCerrada, onActualizarDomotica, onActualizarLuz, onConectarWifi, onReservarTurno, onCancelarTurno, onIrCheckin, }: Props) {
   const ui = useUiText();
   const { en } = usePublicLanguage();
-  const [puerta, setPuerta] = useState<"cerrada" | "abriendo" | "abierta">("cerrada");
   const [verQR, setVerQR] = useState(false);
   const [verWifi, setVerWifi] = useState(false);
   const bloqueado = conectado || !llaveActiva;
@@ -43,13 +42,6 @@ export default function MiHabitacion({ conectado=false, reserva, onCompartirExpe
   const offline=en?'Not connected':'Sin conexión';
   if(conectado){onActualizarDomotica=()=>{};onActualizarLuz=()=>{};onConectarWifi=()=>{};onReservarTurno=()=>{};onCancelarTurno=()=>{};}
 
-  function abrirPuerta() {
-    if (bloqueado || puerta !== "cerrada")
-      return;
-    setPuerta("abriendo");
-    window.setTimeout(() => setPuerta("abierta"), 1200);
-    window.setTimeout(() => setPuerta("cerrada"), 5000);
-  }
   if (!conectado && reserva?.estado === 'finalizada') return <div className="flex-1 overflow-y-auto bg-[#F8F6F0]">
     <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
       <header className="space-y-2">
