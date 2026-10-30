@@ -1,5 +1,5 @@
 /** Generado desde villa-serena-docs/openapi.yaml. No editar.
- * Contrato SHA-256: 921ae765e14302c3fed5fa646cc50806e4dc703773fb7286f3bd8b23debc15ff
+ * Contrato SHA-256: 532d0a4611e2161c087c46ca7a195374e159f0c7b638c9ca48cb25be2f643665
  */
 export interface paths {
     "/api/v1/auth/login": {
@@ -2862,7 +2862,7 @@ export interface components {
             /** @description Lista ordenada de claves HOTEL existentes en almacenamiento. No se asocian a la galeria publica al guardar. Maximo 30 para listas y una para posiciones individuales. Lista vacia retira imagenes al publicar, salvo el logo. No combinar con fotoClave, texto ni destino. Nunca elimina archivos. */
             fotoClaves?: string[];
             /** @enum {string} */
-            destino?: "/catalogo" | "/nosotros" | "/reservar/habitaciones" | "/#habitaciones" | "/#servicios" | "/#contacto";
+            destino?: "/catalogo" | "/nosotros" | "/reservar/habitaciones" | "/#habitaciones" | "/#servicios" | "/#contacto" | "/#buscar";
         };
         GuardarEditorialPeticion: {
             /** Format: int64 */

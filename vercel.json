@@ -13,6 +13,7 @@
       "feat/catalogo-habitaciones-conectado": false,
       "fix/tarifas-ofertas-conectadas": false,
       "fix/menu-productos-fotografias": false,
+      "fix/editor-elementos-navegacion": false,
       "fix/tablas-habitaciones-catalogo-20261029": false
     }
   }
