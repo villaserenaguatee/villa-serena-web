@@ -21,6 +21,7 @@ for(const width of [1440,390,320])test('tarifas, temporadas y ofertas '+width,as
   if(path==='/api/admin/catalogos/habitaciones')return route.fulfill({json:rooms});
   if(path==='/api/admin/tipos-habitacion')return route.fulfill({json:types.map(type=>({...type,fotos:type.id===9?photos:[]}))});
   if(path==='/api/admin/tipos-habitacion/9/fotos'){photos=body.fotos.map((photo:{clave:string;orden:number;principal:boolean})=>({...photo,url:'https://images.example.invalid/'+photo.clave.split('/').at(-1)}));return route.fulfill({json:{...types[0],fotos:photos}});}
+  if(path==='/api/admin/habitaciones/11/fotos')return route.fulfill({json:{habitacionId:11,fotos:[]}});
   if(path==='/api/admin/habitaciones/11/caracteristicas'){if(method==='PUT'){if(rejectFeatures)return route.fulfill({status:409,json:{mensaje:'La habitación tiene reservas activas.'}});features=body;}return route.fulfill({json:features});}
   if(path==='/api/admin/ofertas')return route.fulfill({json:offers});
   if(path.startsWith('/api/admin/ofertas/')){const slug=path.split('/')[4];if(method==='PATCH')offers=offers.map(offer=>offer.slug===slug?{...offer,publicada:body.publicada}:offer);else{const input=body as OfferInput;offers=offers.filter(offer=>offer.slug!==slug).concat({...input,slug,fotos:photos,cantidadHabitaciones:input.habitacionIds.length,cantidadHabitacionesTipo:1});}return route.fulfill({json:offers.find(offer=>offer.slug===slug)});}
