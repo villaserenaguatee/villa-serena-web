@@ -47,10 +47,10 @@ const SECCIONES: {
 }[] = [
     { id: "inicio", label: "Mi estancia", corto: "Estancia" },
     { id: "checkin", label: "Check-in", corto: "Check-in" },
+    { id: "habitacion", label: "Mi habitación", corto: "Habitación" },
     { id: "restaurante", label: "Menú", corto: "Menú" },
     { id: "servicios", label: "Servicios", corto: "Servicios" },
     { id: "chat", label: "Chat con recepción", corto: "Chat" },
-    { id: "habitacion", label: "Mi habitación", corto: "Habitación" },
     { id: "experiencias", label: "Reservas y experiencias", corto: "Reservas" },
     { id: "cuenta", label: "Cuenta y check-out", corto: "Cuenta" },
     { id: "reservar", label: "Gestionar estancia", corto: "Gestionar" },
