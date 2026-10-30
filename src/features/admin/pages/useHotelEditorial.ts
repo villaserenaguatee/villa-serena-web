@@ -5,6 +5,7 @@ import {readEditorialDraft,saveEditorialDraft,publishEditorial} from '@/lib/edit
 import {EDITORIAL_DESTINATIONS,type EditorialDocument,type EditorialElement,type EditorialId} from '@/lib/editorial/catalog';
 import {uploadCatalogPhoto,type CatalogPhotoDraft} from './catalogPhotoClient';
 import {validarFoto} from '@/lib/incidenciaValidation';
+import {stayValidation} from '@/lib/editorial/stays';
 import {adminServiceError} from './adminServiceError';
 
 type State={base?:EditorialDocument;elements:EditorialElement[];error:string;notice:string;conflict:boolean;remote?:EditorialDocument};
@@ -12,6 +13,7 @@ const empty=():State=>({elements:[],error:'',notice:'',conflict:false});
 export function editorialValidation(elements:EditorialElement[]):string{
  if(!elements.length)return 'Selecciona y modifica al menos un elemento.';
  for(const element of elements){
+  const stayError=stayValidation(element);if(stayError)return stayError;
   if(element.id.endsWith('.imagen')||element.id.endsWith('.imagenes')){if(element.fotoClaves){if(element.fotoClaves.length>(element.id.endsWith('.imagenes')?30:1)||new Set(element.fotoClaves).size!==element.fotoClaves.length||element.id==='identidad.logo.imagen'&&!element.fotoClaves.length)return 'Revisa las fotografias de la seccion.';}else if(!element.fotoClave)return 'Selecciona una fotografía guardada en la galería del hotel.';}
   else{const max=/\.(titulo|subtitulo|boton)$/.test(element.id)?200:4000;if(!element.texto?.trim()||element.texto.length>max||/[<>\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(element.texto))return `Introduce texto válido de hasta ${max} caracteres, sin etiquetas.`;if(element.id.endsWith('.boton')&&!EDITORIAL_DESTINATIONS.some(path=>path===element.destino))return 'Selecciona el destino del botón.';}
  }return '';
