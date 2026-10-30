@@ -17,10 +17,10 @@ const season={id:4,nombre:'Temporada existente',inicio:'2026-12-01',fin:'2026-12
 const hotel={nombre:'Hotel existente',descripcion:'Descripción',direccion:'Dirección existente',telefono:'55551234',correo:'hotel@example.invalid',nombreComercial:'Hotel existente',razonSocial:'Razón social',nit:'1234567-9',direccionFiscal:'Dirección fiscal',fotos:[],horaCheckIn:'15:00',horaCheckOut:'12:00',politicaCancelacion:'Política del servicio'};
 beforeEach(()=>{
  vi.stubGlobal('URL',class extends NativeURL{static createObjectURL=vi.fn(()=> 'blob:isolated-photo');static revokeObjectURL=vi.fn();});
- call.mockReset().mockImplementation(async(path,method)=>{
+ call.mockReset().mockImplementation(async(path,method,body)=>{
   if(path==='archivos/imagenes')return {clave:'uploaded/photo.png'};
   if(path==='admin/menu/categorias')return method==='POST'?category:[category];
-  if(path==='admin/menu/items')return method==='POST'?item:[item];
+  if(path==='admin/menu/items')return method==='POST'?{...item,...body as object}:[item];
   if(path.startsWith('admin/menu/'))return item;
   if(path==='admin/tipos-habitacion')return [type];
   if(path==='admin/temporadas')return method==='POST'?season:[season];
@@ -49,8 +49,8 @@ test('menu editing and category registration preserve their separate official co
  await userEvent.click(screen.getByRole('tab',{name:'Categorías'}));await userEvent.click(screen.getByRole('button',{name:'Nueva categoría'}));dialog=screen.getByRole('dialog');fireEvent.change(within(dialog).getByLabelText('Nombre'),{target:{value:' Desayunos '}});await userEvent.click(within(dialog).getByRole('button',{name:'Guardar'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());expect(writes().at(-1)?.slice(0,3)).toEqual(['admin/menu/categorias','POST',{nombre:'Desayunos'}]);
 });
 test('availability reset and deactivation require confirmation; cancellation performs no write',async()=>{
- render(<MenuAdmin/>);await userEvent.click(await screen.findByRole('button',{name:'Reactivar disponibilidad'}));let dialog=screen.getByRole('dialog');await userEvent.click(within(dialog).getByRole('button',{name:'Cancelar'}));expect(writes()).toHaveLength(0);
- await userEvent.click(screen.getByRole('button',{name:'Reactivar disponibilidad'}));dialog=screen.getByRole('dialog');await userEvent.click(within(dialog).getByRole('button',{name:'Confirmar'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());expect(writes()[0].slice(0,3)).toEqual(['admin/menu/items/7/reactivar','POST',undefined]);
+ render(<MenuAdmin/>);await userEvent.click(await screen.findByRole('button',{name:'Editar producto'}));await userEvent.click(screen.getByRole('button',{name:'Reactivar disponibilidad'}));let dialog=screen.getByRole('dialog');await userEvent.click(within(dialog).getByRole('button',{name:'Cancelar'}));expect(writes()).toHaveLength(0);
+ await userEvent.click(screen.getByRole('button',{name:'Reactivar disponibilidad'}));dialog=screen.getByRole('dialog');await userEvent.click(within(dialog).getByRole('button',{name:'Confirmar'}));await waitFor(()=>expect(screen.getByRole('dialog',{name:'Editar producto'})).toBeVisible());expect(writes()[0].slice(0,3)).toEqual(['admin/menu/items/7/reactivar','POST',undefined]);await userEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Cancelar'}));
  await userEvent.click(screen.getByRole('button',{name:'Desactivar'}));await userEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Confirmar'}));await waitFor(()=>expect(writes()).toHaveLength(2));expect(writes()[1].slice(0,3)).toEqual(['admin/menu/items/7/estado','PATCH',{estado:'INACTIVO'}]);
 });
 test('menu read errors do not substitute demo records or permit pretend writes',async()=>{

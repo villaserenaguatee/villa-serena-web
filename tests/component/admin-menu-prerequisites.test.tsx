@@ -19,7 +19,7 @@ test('empty official categories explain the disabled action and open the real ca
  });
  render(<MenuAdmin/>);const newProduct=screen.getByRole('button',{name:'Nuevo producto'});await screen.findByText('Para crear un producto, primero registra una categoría del menú.');
  expect(newProduct).toBeDisabled();expect(newProduct).toHaveAccessibleDescription(/primero registra una categoría/);expect(writes()).toHaveLength(0);
- await userEvent.click(screen.getByRole('button',{name:'Crear categoría'}));const form=screen.getByRole('dialog',{name:'Categoría del menú'});expect(within(form).getByLabelText('Nombre')).toHaveAttribute('placeholder','Ej. Bebidas');fireEvent.change(within(form).getByLabelText('Nombre'),{target:{value:'Bebidas'}});await userEvent.click(within(form).getByRole('button',{name:'Guardar'}));
+ await userEvent.click(screen.getByRole('button',{name:'Crear categoría'}));const form=screen.getByRole('dialog',{name:'Nueva categoría'});expect(within(form).getByLabelText('Nombre')).toHaveAttribute('placeholder','Ej. Bebidas');fireEvent.change(within(form).getByLabelText('Nombre'),{target:{value:'Bebidas'}});await userEvent.click(within(form).getByRole('button',{name:'Guardar'}));
  await waitFor(()=>expect(newProduct).toBeEnabled());expect(screen.queryByText(/primero registra una categoría/)).toBeNull();await userEvent.click(newProduct);
  expect(within(screen.getByRole('dialog')).getByRole('option',{name:'Bebidas'})).toHaveValue('3');expect(writes()).toHaveLength(1);
 });
@@ -35,7 +35,7 @@ test('a rejected save preserves entered fields without permanently blocking anot
  call.mockImplementation(async(path,method)=>method==='POST'?Promise.reject(new OperationError('Nombre duplicado',409)):path==='admin/menu/categorias'?[category]:[item]);render(<MenuAdmin/>);
  const newProduct=screen.getByRole('button',{name:'Nuevo producto'});await waitFor(()=>expect(newProduct).toBeEnabled());await userEvent.click(newProduct);const form=screen.getByRole('dialog');
  for(const [label,value] of [['Nombre','Otro café'],['Categoría','3'],['Precio (Q)','25'],['Descripción','Café preparado']])fireEvent.change(within(form).getByLabelText(label),{target:{value}});
- expect(within(form).getByText(/El producto se crea activo y disponible/)).toBeVisible();await userEvent.click(within(form).getByRole('button',{name:'Guardar'}));expect(await within(form).findByRole('alert')).toHaveTextContent('Nombre duplicado');expect(within(form).getByLabelText('Nombre')).toHaveValue('Otro café');
+ expect(within(form).queryByText(/El producto se crea activo y disponible/)).toBeNull();await userEvent.click(within(form).getByRole('button',{name:'Guardar'}));expect(await within(form).findByRole('alert')).toHaveTextContent('Nombre duplicado');expect(within(form).getByLabelText('Nombre')).toHaveValue('Otro café');
  await userEvent.click(within(form).getByRole('button',{name:'Cancelar'}));expect(newProduct).toBeEnabled();expect(screen.getByText(/Café existente ·/)).toBeVisible();expect(writes()).toHaveLength(1);
  await userEvent.click(newProduct);expect(screen.getByRole('dialog')).toBeVisible();expect(writes()[0][2]).not.toHaveProperty('disponibilidad');expect(writes()[0][2]).not.toHaveProperty('estado');
 });
