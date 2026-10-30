@@ -1,11 +1,12 @@
 "use client";
 import {usePublicLanguage} from "@/components/common/PublicLanguageToggle";
-import {EditorialContentProvider,EditorialText,EditorialLink,EditorialImage,useEditorialPhotos} from './EditorialContent';
+import {EditorialContentProvider,EditorialText,EditorialLink,EditorialImage,useEditorialPhotos,useEditorialStay,useEditorialStayNames} from './EditorialContent';
+import {STAY_SLOTS,type StayId} from '@/lib/editorial/stays';
 import type {EditorialDocument,EditorialId} from '@/lib/editorial/catalog';
 
 import ContactForm from '@/components/public/ContactForm';
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, CalendarDays, KeyRound, MessageCircle, ShieldCheck, Wifi, Smartphone, Mail, MapPin, Phone, Clock3, Search, BookOpen, HelpCircle, Users, Minus, Plus, ChevronDown, ChevronLeft, ChevronRight, } from "lucide-react";
 import VillaSerenaLogo from "@/components/common/VillaSerenaLogo";
 import { UiText, useUiText } from "@/i18n/UiText";
@@ -32,13 +33,6 @@ const slides = [
     "Momentos para disfrutar.",
   ],
 ];
-const preferences = [
-  "Romántica",
-  "Descanso",
-  "Familiar",
-  "Negocios",
-  "Bienestar",
-];
 const restaurantCategories = [
   ["Desayuno", "Breakfast"],
   ["Almuerzo", "Lunch"],
@@ -48,13 +42,6 @@ const restaurantCategories = [
   ["Bebidas sin alcohol", "Non-alcoholic drinks"],
   ["Bebidas con alcohol", "Alcoholic drinks"],
 ] as const;
-const prefTextES: Record<string, string> = {
-  Romántica: "Ambientes íntimos para disfrutar una estancia especial en pareja.",
-  Descanso: "Opciones serenas y cómodas para desconectarte y descansar.",
-  Familiar: "Habitaciones con capacidad y comodidad para compartir en familia.",
-  Negocios: "Espacios prácticos y tranquilos para combinar descanso y trabajo.",
-  Bienestar: "Habitaciones con ambientes tranquilos, terrazas o vistas que acompañan una visita de descanso.",
-};
 type PublicReview = { id?: string; name: string; country: string; countryEn: string; date: string; dateEn: string; rating: number; text: string; textEn: string; sample?: boolean };
 type SavedPublicReview = { id?: string; reservaId?: string; creadaEn: string; nombre?: string; pais?: string; estrellas: number; experiencia?: string; experienciaEn?: string; autorizaPublicar: boolean; verificada: boolean };
 const samplePublicReviews = [
@@ -94,14 +81,7 @@ const samplePublicReviews = [
     sample: true
   },
 ];
-const prefTextEN: Record<string, string> = {
-  Romántica: "Intimate spaces for a special stay as a couple.",
-  Descanso: "Peaceful and comfortable options to disconnect and rest.",
-  Familiar: "Rooms with the space and comfort needed to enjoy time with family.",
-  Negocios: "Practical and quiet spaces to combine rest and work.",
-  Bienestar: "Rooms with peaceful settings, terraces or views designed for a relaxing stay.",
-};
-export type PublicHomePreview={hotel:ReturnType<typeof usePublicHotel>;rooms:ReturnType<typeof usePublicCatalog>['rooms'];loading:boolean;error:string;mobile:boolean};
+export type PublicHomePreview={hotel:ReturnType<typeof usePublicHotel>;rooms:ReturnType<typeof usePublicCatalog>['rooms'];loading:boolean;error:string;mobile:boolean;stayId?:StayId};
 export default function PublicHome({preview,editorial,loadPublished=true}:{preview?:PublicHomePreview;editorial?:EditorialDocument;loadPublished?:boolean}) {
   return (<ScopedI18nProvider>
     <EditorialContentProvider loadPublished={loadPublished} preview={Boolean(preview)} document={editorial}><HomeContent preview={preview}/></EditorialContentProvider>
@@ -118,7 +98,7 @@ function HomeContent({preview}:{preview?:PublicHomePreview}) {
   const photoCount=hotelPhotos.length;
   const ui = useUiText();
   const [slide, setSlide] = useState(0),
-    [preference, setPreference] = useState("Descanso"),
+    [preference, setPreference] = useState<StayId>('descanso'),
     [serviceOpen, setServiceOpen] = useState<string | null>(null),
     [helpOpen, setHelpOpen] = useState<string | null>(null),
     [guestOpen, setGuestOpen] = useState(false),
@@ -179,7 +159,9 @@ function HomeContent({preview}:{preview?:PublicHomePreview}) {
     const t = setInterval(() => setSlide((s) => (s + 1) % photoCount), 6500);
     return () => clearInterval(t);
   }, [photoCount]);
-  const recommended = useMemo(() => publicRooms.filter((r) => r.preferences.includes(preference)).slice(0, 3), [preference, publicRooms]);
+  const stay=useEditorialStay(preference,publicRooms),recommended=stay.recommended;
+  const stayNames=useEditorialStayNames(publicRooms);const resolveStayLabel=(id:StayId)=>stayNames[id];
+  useEffect(()=>{if(preview?.stayId)setPreference(preview.stayId);},[preview?.stayId]);
   const featured = publicRooms.filter((r) => ["deluxe-jardin", "suite-serena", "familiar-premium"].includes(r.slug));
   const searchHref = "/reservar/habitaciones?" +
     new URLSearchParams({
@@ -423,26 +405,14 @@ function HomeContent({preview}:{preview?:PublicHomePreview}) {
             : "Elige lo que quieres disfrutar y descubre habitaciones que se adapten a tu visita."}
         </EditorialText>
         <div className="preference-row">
-          {preferences.map((p) => (<button key={p} className={preference === p ? "active" : ""} onClick={() => setPreference(p)}>
-            {en
-              ? ({
-                Romántica: "Romantic",
-                Descanso: "Rest",
-                Familiar: "Family",
-                Negocios: "Business",
-                Bienestar: "Wellness",
-              } as Record<string, string>)[p]
-              : p}
-          </button>))}
+          {STAY_SLOTS.map(slot=><button key={slot.id} data-stay-id={slot.id} aria-pressed={preference===slot.id} className={preference===slot.id?'active':''} onClick={()=>setPreference(slot.id)}>{resolveStayLabel(slot.id)}</button>)}
         </div>
-        <EditorialText editorialId={({Romántica:'estancias.romantica',Descanso:'estancias.descanso',Familiar:'estancias.familiar',Negocios:'estancias.negocios',Bienestar:'estancias.bienestar'} as Record<string,EditorialId>)[preference]} as="p" className="preference-explain">
-          {(en ? prefTextEN : prefTextES)[preference]}
-        </EditorialText>
-        <div className="recommend-grid">
+        <EditorialText editorialId={stay.editorialId} as="p" className="preference-explain">{stay.description}</EditorialText>
+        <div className="recommend-grid" data-stay-id={preference}>
           {recommended.map((r,
             i) => (<article className="recommend-mini" key={r.slug}>
               <Link href={`/habitaciones/${r.slug}`}>
-                {r.image?<EditorialImage editorialId={({Romántica:'estancias.romantica.imagen',Descanso:'estancias.descanso.imagen',Familiar:'estancias.familiar.imagen',Negocios:'estancias.negocios.imagen',Bienestar:'estancias.bienestar.imagen'} as Record<string,EditorialId>)[preference]} src={r.image} alt={ui(r.name)} />:<div className="rounded-lg bg-[#F8F6F0] p-6 text-[#536579]">{en?'No photograph available':'Sin fotografía disponible'}</div>}{r.illustrativePhotos&&<small className="block text-xs text-[#536579]">{en?'Illustrative photograph':'Fotografía ilustrativa'}</small>}
+                {r.image?(stay.configured?<img src={r.image} alt={ui(r.name)}/>:<EditorialImage editorialId={('estancias.'+preference+'.imagen') as EditorialId} src={r.image} alt={ui(r.name)} />):<div className="rounded-lg bg-[#F8F6F0] p-6 text-[#536579]">{en?'No photograph available':'Sin fotografía disponible'}</div>}{r.illustrativePhotos&&<small className="block text-xs text-[#536579]">{en?'Illustrative photograph':'Fotografía ilustrativa'}</small>}
                 {i === 0 && (<span className="recommend-photo-badge">
                   {en ? "Recommended for you" : "Recomendada para ti"}
                 </span>)}

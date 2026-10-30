@@ -1,4 +1,7 @@
 'use client';
+import StayEditorialPanel from './StayEditorialPanel';
+import {staySlot} from '@/lib/editorial/stays';
+import type {CatalogRoom} from '@/lib/usePublicCatalog';
 import EditorialPhotoPanel from './EditorialPhotoPanel';
 import type {HotelEditorial} from './useHotelEditorial';
 import type {SelectedSiteElement} from './PublicWebsitePreview';
@@ -15,8 +18,9 @@ export function EditorialMessages({editorial}:{editorial:HotelEditorial}){
  {editorial.confirmPublish&&<ReceptionActionDialog title="Publicar cambios" busy={editorial.busy} onClose={()=>{if(!editorial.busy)editorial.setConfirmPublish(false);}}><p>¿Deseas publicar estos cambios?</p>{editorial.state.error&&<p role="alert" className="mt-3 text-sm text-red-800">{editorial.state.error}</p>}<footer className="mt-4 flex flex-wrap justify-end gap-3"><button type="button" className={c.button} disabled={editorial.busy} onClick={()=>editorial.setConfirmPublish(false)}>Cancelar</button><button type="button" className={c.button+' '+c.save} disabled={editorial.busy} onClick={()=>void editorial.publish()}>{editorial.busy?'Publicando…':'Confirmar publicación'}</button></footer></ReceptionActionDialog>}
  {editorial.state.remote&&<ReceptionActionDialog title="Revisar borrador actual" onClose={editorial.closeReview}><p>¿Descartar tus cambios y cargar el borrador actual?</p><footer className="mt-4 flex flex-wrap justify-end gap-3"><button type="button" className={c.button} onClick={editorial.closeReview}>Conservar mis cambios</button><button type="button" className={c.button+' '+c.save} onClick={editorial.loadRemote}>Cargar borrador actual</button></footer></ReceptionActionDialog>}</>;
 }
-export default function HotelEditorialPanel({editorial,element,photos,disabled}:{editorial:HotelEditorial;element:SelectedSiteElement;photos:CatalogPhotoDraft[];disabled:boolean}){
+export default function HotelEditorialPanel({editorial,element,photos,disabled,rooms=[],catalogLoading=false,catalogError=''}:{editorial:HotelEditorial;element:SelectedSiteElement;photos:CatalogPhotoDraft[];disabled:boolean;rooms?:CatalogRoom[];catalogLoading?:boolean;catalogError?:string}){
  const id=element.editorialId;if(!id)return null;
+ if(staySlot(id))return <StayEditorialPanel id={id} editorial={editorial} rooms={rooms} disabled={disabled} catalogLoading={catalogLoading} catalogError={catalogError}/>;
  if(id.endsWith('.imagen')||id.endsWith('.imagenes'))return <EditorialPhotoPanel editorial={editorial} element={element} photos={photos} disabled={disabled}/>;
  const current=editorial.state.elements.find(item=>item.id===id),image=id.endsWith('.imagen'),button=id.endsWith('.boton');
  const fieldId='editorial-'+id.replaceAll('.','-'),value=current?.texto??element.value;
