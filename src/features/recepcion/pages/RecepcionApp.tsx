@@ -1,3 +1,4 @@
+import ExperienciasRecepcion from './ExperienciasRecepcion';
 import SidebarBrand from '@/components/common/SidebarBrand';
 import StaffSidebarIdentity from '@/components/common/StaffSidebarIdentity';
 import ReceptionCloseButton from './ReceptionCloseButton';
@@ -56,6 +57,7 @@ const SECCIONES: {
     { id: 'incidencias', label: 'Incidencias', corto: 'Incid.' },
     { id: 'objetos', label: 'Objetos olvidados', corto: 'Objetos' },
     { id: 'chat', label: 'Chat con huéspedes', corto: 'Chat' },
+    { id: 'experiencias', label: 'Experiencias', corto: 'Experiencias' },
   ];
 function seccionDesdeRuta(pathname: string): SeccionRecepcion {
   const section = pathname.split('/')[2];
@@ -590,6 +592,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
       if (seccion === "habitaciones") return <HabitacionesRecepcion conectado habitaciones={EMPTY_ROOMS} reservas={EMPTY_RESERVATIONS} huespedes={EMPTY_GUESTS} onCambiarEstado={() => {}} onVerReserva={() => {}} onVerReservaBff={setBffCode} />;
       if (seccion === "incidencias") return <IncidenciasRecepcion />;
       if (seccion === 'disponibilidad') return <Disponibilidad conectado habitaciones={EMPTY_ROOMS} reservas={EMPTY_RESERVATIONS} onReservar={preset => setNuevaReserva({ open: true, preset })} />;
+      if (seccion === 'experiencias') return <ExperienciasRecepcion/>;
       if (seccion === 'chat') return <ConnectedReceptionChat />;
       if (seccion === 'objetos') return <ObjetosEncontradosConectados />;
     }

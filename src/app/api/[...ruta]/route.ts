@@ -5,7 +5,7 @@ import { withoutSessionTokens } from '@/lib/bff/publicPayload';
 import { readLimitedBody } from '@/lib/bff/readLimitedBody';
 export const runtime = 'nodejs';
 // El webhook, el canal externo, el acceso móvil y las rutas auth nunca pasan por el proxy.
-const permittedRoots = new Set(['publico', 'huespedes', 'reservas', 'habitaciones', 'room-service', 'limpieza', 'incidencias', 'cuentas', 'checkout', 'facturas', 'archivos', 'admin', 'objetos', 'estancias', 'gestion','laboral']);
+const permittedRoots = new Set(['publico', 'huespedes', 'reservas', 'habitaciones', 'room-service', 'limpieza', 'incidencias', 'cuentas', 'checkout', 'facturas', 'archivos', 'admin', 'objetos', 'estancias', 'gestion','laboral','experiencias']);
 async function proxy(request: NextRequest, context: { params: Promise<{ ruta: string[] }> }) {
   try {
     if (request.method !== 'GET') sameOrigin(request);
@@ -43,6 +43,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ ruta: st
       if(ruta[0]==='gestion'&&employee.rol!=='ADMIN'&&!(employee.rol==='MANTENIMIENTO_LIMPIEZA'&&['MANTENIMIENTO','AMBAS'].includes(employee.area??'')))throw new AuthError('ACCESO_DENEGADO',403,'Acceso denegado');
       if(ruta[0]==='estancias'&&employee.rol!=='RECEPCION')throw new AuthError('ACCESO_DENEGADO',403,'Acceso denegado');
       if (ruta[0] === 'admin' && employee.rol !== 'ADMIN') throw new AuthError('ACCESO_DENEGADO',403,'Acceso denegado');
+      if (ruta[0] === 'experiencias' && employee.rol !== 'RECEPCION') throw new AuthError('ACCESO_DENEGADO',403,'Acceso denegado');
       if (ruta[0] === 'objetos' && employee.rol !== 'RECEPCION') throw new AuthError('ACCESO_DENEGADO', 403, 'Acceso denegado');
       if (['cuentas', 'checkout', 'facturas'].includes(ruta[0]) && employee.rol !== 'RECEPCION') throw new AuthError('ACCESO_DENEGADO', 403, 'Acceso denegado');
       if (ruta[0] === 'room-service' && employee.rol !== 'ROOM_SERVICE') throw new AuthError('ACCESO_DENEGADO', 403, 'Acceso denegado');
