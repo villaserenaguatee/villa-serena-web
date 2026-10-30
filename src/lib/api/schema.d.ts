@@ -1,5 +1,5 @@
 /** Generado desde villa-serena-docs/openapi.yaml. No editar.
- * Contrato SHA-256: d080cc29fa2a2d047ab4224e99229afae04b89b550e37319c44c28ec28cefdea
+ * Contrato SHA-256: 26b24f22fd8d9ff32635480a08489a69e7aab78f8591d6a54096f04733192756
  */
 export interface paths {
     "/api/v1/auth/login": {
@@ -5000,6 +5000,8 @@ export interface components {
             categoriaId: components["schemas"]["Id"];
             precio: components["schemas"]["Monto"];
             fotoClave: string | null;
+            /** @description URL pública de la fotografía MENU configurada por el API; nula si no hay fotografía. Campo adicional compatible con consumidores anteriores. No concede acceso a archivos privados. */
+            fotoUrl?: string | null;
             disponibilidad: components["schemas"]["DisponibilidadMenu"];
             estado: components["schemas"]["EstadoCatalogo"];
         };
