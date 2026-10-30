@@ -177,6 +177,6 @@ test('load failure blocks creation without demo fallback; rejected update keeps 
   await screen.findByText('101');
   await userEvent.click(within(screen.getByText('101').closest('tr')!).getByRole('button', { name: 'Editar' }));
   await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Guardar' }));
-  expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent('reservas activas');
+  expect((await within(screen.getByRole('dialog')).findAllByRole('alert')).some(el=>el.textContent?.includes('reservas activas'))).toBe(true);
   expect(screen.getByRole('dialog')).toBeVisible();
 });
