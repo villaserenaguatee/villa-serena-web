@@ -133,7 +133,7 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
         </Tarjeta>
 
         <Tarjeta titulo="Llave digital">
-          {conectado ? <div className="flex flex-wrap items-center gap-3 py-1"><div className="w-10 h-10 rounded-full bg-[#F8F6F0] flex items-center justify-center text-[#7890B0]"><KeyIcon size={22}/></div><div className="flex-1 min-w-[150px]"><p className="text-[14px] font-medium text-[#18345C]">{en?'Digital key unavailable':'Llave digital no disponible'}</p><p className="text-[13px] text-[#6B7280]">{en?'Request your key at Reception.':'Solicita tu llave en Recepción.'}</p></div><button disabled className="px-3 py-2 min-h-[40px] text-[13px] font-semibold border border-[#E5E0D8] text-[#71839B] rounded-md opacity-60"><LockKeyhole size={14} className="inline mr-2"/>{en?'Open door':'Abrir la puerta'}</button></div> : llaveActiva && checkin.codigoLlave ? (<div className="flex flex-col items-start gap-4 sm:flex-row">
+          {conectado ? <div className="flex flex-wrap items-center gap-3 py-1"><div className="w-10 h-10 rounded-full bg-[#F8F6F0] flex items-center justify-center text-[#7890B0]"><KeyIcon size={22}/></div><div className="flex-1 min-w-[150px]"><p className="text-[14px] font-medium text-[#18345C]">{en?'Digital key unavailable':'Llave digital no disponible'}</p><p className="text-[13px] text-[#6B7280]">{checkin.estado === 'disponible' ? (en?'Complete your check-in process to prepare your room access.':'Realiza tu check-in para preparar el acceso a tu habitación.') : (en?'Digital door access is not enabled online yet.':'La apertura digital de puertas todavía no está habilitada en línea.')}</p></div><button disabled className="px-3 py-2 min-h-[40px] text-[13px] font-semibold border border-[#E5E0D8] text-[#71839B] rounded-md opacity-60"><LockKeyhole size={14} className="inline mr-2"/>{en?'Open door':'Abrir la puerta'}</button></div> : llaveActiva && checkin.codigoLlave ? (<div className="flex flex-col items-start gap-4 sm:flex-row">
             <CodigoQR texto={checkin.codigoLlave} tamano={140} />
             <div className="flex-1 min-w-0">
               <p className="text-[15px] font-semibold text-[#166534] flex items-center gap-1.5">
@@ -294,7 +294,7 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
           extra={<button onClick={() => onIr("experiencias")} className="text-[13px] font-semibold text-[#18345C] hover:underline">
             <UiText text="Ver experiencias" />
           </button>}>
-          {conectado ? <p className="text-[13px] text-[#71839B] py-1">{en?'Online activity bookings are not available. Contact Reception.':'Las reservas de actividades no están disponibles en línea. Contacta a Recepción.'}</p> : reservasAmenidad.length === 0 ? (<p className="text-[14px] text-[#AEBCC1] py-4 text-center">
+          {conectado ? <p className="text-[13px] text-[#71839B] py-1">{en?'Explore the available experiences. To book, contact Reception.':'Explora las experiencias disponibles. Para reservar, consulta en Recepción.'}</p> : reservasAmenidad.length === 0 ? (<p className="text-[14px] text-[#AEBCC1] py-4 text-center">
             <UiText text="Todavía no tienes actividades reservadas. Tus reservas de spa y restaurante aparecerán aquí." />
           </p>) : (<div className="space-y-2">
             {reservasAmenidad.map((r) => (<div key={r.id} className="flex items-center gap-3 bg-[#F8F6F0] border border-[#E5E0D8] rounded-lg px-3 py-2.5">
