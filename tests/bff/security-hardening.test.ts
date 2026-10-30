@@ -9,7 +9,10 @@ test('cookies privadas persistentes y Secure fuera de localhost',()=>{
  for(const origin of ['http://localhost:3054','https://hotel.example','http://192.0.2.1']){
   const req=new NextRequest(origin+'/login');
   const r=writeGuestCookies(new NextResponse(),req,{access:'unit-access',refresh:'unit-refresh',expiresIn:900});
-  for(const cookie of r.cookies.getAll()){assert.equal(cookie.httpOnly,true);assert.equal(cookie.sameSite,'lax');assert.equal(cookie.secure,origin!=='http://localhost:3054');assert.ok(cookie.maxAge!>0)}
+  for(const cookie of r.cookies.getAll()){assert.equal(cookie.httpOnly,true);assert.equal(cookie.sameSite,'lax');assert.equal(cookie.secure,origin!=='http://localhost:3054');if(cookie.name==='vs_guest_remember')assert.equal(cookie.maxAge,0);else assert.equal(cookie.maxAge,undefined)}
+  const remembered=writeGuestCookies(new NextResponse(),req,{access:'unit-access',refresh:'unit-refresh',expiresIn:900},true);
+  assert.equal(remembered.cookies.get('vs_guest_refresh')?.maxAge,604800);
+  assert.equal(remembered.cookies.get('vs_guest_remember')?.value,'1');
   const staff=writeCookies(new NextResponse(),req,{accessToken:'unit-access',refreshToken:'unit-refresh',tipoToken:'Bearer',expiraEn:900});assert.equal(staff.cookies.get('vs_staff_refresh')?.maxAge,604800);
   const clear=writeGuestCookies(new NextResponse(),req);assert.ok(clear.cookies.getAll().every(c=>c.maxAge===0));
  }

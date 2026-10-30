@@ -62,7 +62,8 @@ test('guest Spring: concurrent expired access renews once, persists cookies and 
       assert.equal(response.status, 200);
       assert.equal(response.cookies.get('vs_guest_access')?.value, 'new-access');
       assert.equal(response.cookies.get('vs_guest_refresh')?.value, 'new-refresh');
-      assert.match(response.headers.get('set-cookie')!, /Max-Age=604800/);
+      assert.equal(response.cookies.get('vs_guest_refresh')?.maxAge, undefined);
+      assert.equal(response.cookies.get('vs_guest_remember')?.maxAge, 0);
       assert.match(response.headers.get('set-cookie')!, /HttpOnly/);
       assert.match(response.headers.get('set-cookie')!, /SameSite=lax/i);
       assert.equal(JSON.stringify(await response.json()).includes('new-refresh'), false);
