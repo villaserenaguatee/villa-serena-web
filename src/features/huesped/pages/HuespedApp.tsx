@@ -884,7 +884,8 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
               <p className="mt-2 text-base text-[#6B7280]">
                 <UiText text="Elige qué deseas hacer con tu alojamiento." />
               </p>
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {reservasAutorizadas && reservasAutorizadas.filter(r=>r.huespedId===huesped.id).length>1 && <div data-vs-reservation-picker className="mt-5 rounded-xl border border-[#E5E0D8] bg-white p-4"><label htmlFor="guest-reservation-switch" className="mb-2 block text-sm font-semibold text-[#18345C]">{en?'Switch reservation':'Cambiar de reserva'}</label><select id="guest-reservation-switch" aria-label={en?'My reservations':'Mis reservas'} className="w-full rounded-lg border border-[#D6DCE6] bg-white px-3 py-2 text-[#18345C]" value={reserva.codigo} onChange={e=>window.location.assign(`/portal?codigo=${encodeURIComponent(e.target.value)}&seccion=reservar`)}>{reservasAutorizadas.filter(r=>r.huespedId===huesped.id).map(r=><option key={r.codigo} value={r.codigo}>{en?'Reservation':'Reserva'} {r.codigo}</option>)}</select></div>}
+               <div className="mt-6 grid gap-4 md:grid-cols-2">
                 <article data-vs-card="huesped" className="flex flex-col rounded-xl border border-[#E5E0D8] bg-white p-5 shadow-sm sm:p-6">
                   <span className="grid h-12 w-12 place-items-center rounded-full border border-[#D3AE55] text-[#A77E20]">
                     <GestionIcon tipo="calendario" />
@@ -1273,7 +1274,7 @@ export function HuespedPortal({ onCambiarModulo, huesped, reservaInicial, reserv
           <p className="text-[#AEBCC1] text-xs font-medium truncate flex-1">
             {ui(SECCIONES.find((s) => s.id === seccion)?.label ?? "")}
           </p>
-          {reservasAutorizadas && reservasAutorizadas.filter(r=>r.huespedId===huesped.id).length>1 && <div data-vs-reservation-picker><select aria-label={en?'My reservations':'Mis reservas'} className="min-w-0 rounded border border-white/40 bg-[#102747] px-2 py-1 text-sm text-white" value={reserva.codigo} onChange={e=>window.location.assign(`/portal?codigo=${encodeURIComponent(e.target.value)}`)}>{reservasAutorizadas.filter(r=>r.huespedId===huesped.id).map(r=><option key={r.codigo} value={r.codigo}>{en?'Reservation':'Reserva'} {r.codigo}</option>)}</select><p>{reservationOptionLabel(reserva,en).split(' · ').slice(1).join(' · ')}</p></div>}
+          
           <div className="lg:hidden flex gap-1.5">
             {reservasAutorizadas && <button type="button" className="text-white text-xs px-2" aria-label={ui("Abrir perfil")} onClick={() => setPerfilAbierto(true)}>Perfil</button>}
             <ModuloSwitcher actual="huesped" onCambiar={onCambiarModulo} variant="inline" />
