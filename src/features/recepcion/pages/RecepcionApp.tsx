@@ -657,7 +657,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
         <div className="shrink-0 border-b px-[22px] pb-5 pt-6" style={{borderColor:'#1d3a5f'}}><SidebarBrand module="Recepción"/></div>
 
         <div className="vs-scroll-clean flex-1 py-3 overflow-y-auto">
-          {SECCIONES.map(s => {
+          {SECCIONES.filter(s => conectado || s.id !== 'experiencias').map(s => {
             const active = seccion === s.id;
             const badge = s.id === 'dia' ? badgeDia : s.id === 'solicitudes' ? badgeSolicitudes : s.id === 'objetos' ? objetos.filter(o => o.estado !== 'devuelto').length : 0;
             return (<button data-vs-active={active}
@@ -701,7 +701,7 @@ export default function RecepcionApp({ onCambiarModulo, conectado = false }: Pro
         </div>
 
         <div data-vs-mobile-nav="recepcion" className="lg:hidden flex shrink-0 border-t overflow-x-auto" style={{ backgroundColor: '#102747', borderColor: '#1d3a5f' }}>
-          {SECCIONES.map(s => {
+          {SECCIONES.filter(s => conectado || s.id !== 'experiencias').map(s => {
             const active = seccion === s.id;
             const badge = s.id === 'dia' ? badgeDia : s.id === 'solicitudes' ? badgeSolicitudes : s.id === 'objetos' ? objetos.filter(o => o.estado !== 'devuelto').length : 0;
             return (<button data-vs-active={active}
