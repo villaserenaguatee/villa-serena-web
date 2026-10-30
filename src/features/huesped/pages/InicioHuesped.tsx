@@ -46,11 +46,7 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
         <Chip cls={rm.chip}>
           {ui(rm.label)}
         </Chip>
-        <span className="text-[14px] text-[#6B7280]">
-          {ui(estanciaCerrada
-            ? "Tu estancia finalizó. Gracias por hospedarte con nosotros."
-            : `Habitación ${(habitacion?.numero ?? pending)} · ${(habitacion?.tipo ?? reserva.tipoHabitacion)} · salida el ${formatoFecha(reserva.fechaSalida)}`)}
-        </span>
+        {estanciaCerrada && <span className="text-[14px] text-[#6B7280]">{ui("Tu estancia finalizó. Gracias por hospedarte con nosotros.")}</span>}
       </div>
     </div>
 
@@ -58,10 +54,10 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
 
       {!estanciaCerrada && checkin.estado === "disponible" && (<div className="bg-[#FFFBEF] border border-[#F3D98B] rounded-xl px-4 py-3">
         <p className="text-[15px] font-semibold text-[#78450A]">
-          {conectado ? (en?'Check-in documents':'Documentos del check-in') : <UiText text="Completa tu check-in" />}
+          {conectado ? (en?'Start your check-in':'Realiza tu check-in') : <UiText text="Completa tu check-in" />}
         </p>
         <p className="text-[14px] text-[#78450A] mt-1">
-          {conectado ? (['confirmada','en-curso'].includes(reserva.estado) ? (en?'You can upload your documents for Reception to review. This does not complete check-in.':'Puedes enviar tus documentos para que Recepción los revise. Esto no realiza el check-in.') : (en?'Your reservation must be confirmed before you can upload documents.':'Tu reserva debe estar confirmada antes de enviar documentos.')) : <UiText text="Verifica tus datos, acepta las condiciones de privacidad y envía la información a Recepción." />}
+          {conectado ? (['confirmada','en-curso'].includes(reserva.estado) ? (en?'Send your identification documents to start your check-in process and make registration at Reception easier.':'Envía tus documentos de identificación para iniciar tu proceso de check-in y facilitar tu registro en Recepción.') : (en?'Your reservation must be confirmed before you can upload documents.':'Tu reserva debe estar confirmada antes de enviar documentos.')) : <UiText text="Verifica tus datos, acepta las condiciones de privacidad y envía la información a Recepción." />}
         </p>
         <button
           disabled={conectado && !['confirmada','en-curso'].includes(reserva.estado)}
@@ -80,15 +76,15 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
         <UiText text=".           " />
       </Aviso>)}
 
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-2 items-start">
 
         <Tarjeta
           titulo="Tu estancia"
           extra={<span className="text-[13px] font-semibold text-[#18345C]">
             {reserva.codigo}
           </span>}>
-          <div className="flex flex-col items-start gap-4 sm:flex-row">
-            {conectado && <img src="/images/demo-standard.jpg" alt={en?'Villa Serena room catalogue photograph':'Fotografía del catálogo de habitaciones de Villa Serena'} className="h-36 w-full shrink-0 rounded-lg object-cover sm:h-24 sm:w-36"/>}
+          <div className="flex flex-col items-start gap-3 sm:flex-row">
+            {conectado && <img src="/images/demo-standard.jpg" alt={en?'Villa Serena room catalogue photograph':'Fotografía del catálogo de habitaciones de Villa Serena'} className="h-36 w-full shrink-0 rounded-lg object-cover sm:h-28 sm:w-40"/>}
             {habitacion && !conectado && <img
               src={(habitacion?.tipo ?? reserva.tipoHabitacion) === "Standard"
                 ? "/images/demo-standard.jpg"
@@ -98,7 +94,7 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
                     ? "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=600&h=380&fit=crop&auto=format"
                     : "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&h=380&fit=crop&auto=format"}
               alt={`Habitación ${(habitacion?.numero ?? pending)}`}
-              className="h-36 w-full shrink-0 rounded-lg object-cover sm:h-24 sm:w-36" />}
+              className="h-36 w-full shrink-0 rounded-lg object-cover sm:h-28 sm:w-40" />}
 
             <div className="flex-1 min-w-0">
               <p data-testid="guest-stay-room" className="text-[20px] font-semibold text-[#18345C] leading-none">
@@ -137,7 +133,7 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
         </Tarjeta>
 
         <Tarjeta titulo="Llave digital">
-          {conectado ? <div className="text-center py-3.5"><div className="w-10 h-10 rounded-full bg-[#F8F6F0] flex items-center justify-center mx-auto text-[#AEBCC1]"><KeyIcon size={22}/></div><p className="text-[14px] font-medium text-[#18345C] mt-2">{en?'Digital key unavailable':'Llave digital no disponible'}</p><p className="text-[13px] text-[#AEBCC1] mt-1">{en?'Request your key at Reception.':'Solicita tu llave en Recepción.'}</p><button disabled className="mt-3 px-4 py-2.5 min-h-[44px] text-[14px] font-semibold border border-[#18345C] text-[#18345C] rounded-md opacity-40"><LockKeyhole size={14} className="inline mr-2"/>{en?'Open door':'Abrir la puerta'}</button></div> : llaveActiva && checkin.codigoLlave ? (<div className="flex flex-col items-start gap-4 sm:flex-row">
+          {conectado ? <div className="flex flex-wrap items-center gap-3 py-1"><div className="w-10 h-10 rounded-full bg-[#F8F6F0] flex items-center justify-center text-[#7890B0]"><KeyIcon size={22}/></div><div className="flex-1 min-w-[150px]"><p className="text-[14px] font-medium text-[#18345C]">{en?'Digital key unavailable':'Llave digital no disponible'}</p><p className="text-[13px] text-[#6B7280]">{en?'Request your key at Reception.':'Solicita tu llave en Recepción.'}</p></div><button disabled className="px-3 py-2 min-h-[40px] text-[13px] font-semibold border border-[#E5E0D8] text-[#71839B] rounded-md opacity-60"><LockKeyhole size={14} className="inline mr-2"/>{en?'Open door':'Abrir la puerta'}</button></div> : llaveActiva && checkin.codigoLlave ? (<div className="flex flex-col items-start gap-4 sm:flex-row">
             <CodigoQR texto={checkin.codigoLlave} tamano={140} />
             <div className="flex-1 min-w-0">
               <p className="text-[15px] font-semibold text-[#166534] flex items-center gap-1.5">
@@ -156,7 +152,7 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
                 <UiText text="                     Abrir la puerta                   " />
               </button>
             </div>
-          </div>) : (<div className="text-center py-3.5">
+          </div>) : (<div className="text-center py-1">
             <div className="w-10 h-10 rounded-full bg-[#F8F6F0] flex items-center justify-center mx-auto text-[#AEBCC1]">
               <KeyIcon size={22} />
             </div>
@@ -231,7 +227,7 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
           extra={<button onClick={() => onIr(conectado ? 'restaurante' : "servicios")} className="text-[13px] font-semibold text-[#18345C] hover:underline">
             <UiText text="                 Pedir algo               " />
           </button>}>
-          {conectado ? <div className="space-y-3">{ordersError?<p role="alert" className="text-sm text-red-800">{en?'Could not load orders. Open Menu to try again.':'No se pudieron consultar los pedidos. Abre Menú para reintentar.'}</p>:remoteOrders===null?<p>{en?'Loading orders…':'Consultando pedidos…'}</p>:activeOrders.length===0?<div className="text-center py-3.5"><div className="w-10 h-10 rounded-full bg-[#F8F6F0] flex items-center justify-center mx-auto text-[#AEBCC1]"><CartIcon size={22}/></div><p className="text-[14px] text-[#AEBCC1] mt-3">{en?'You have no orders in progress.':'No tienes pedidos en curso.'}</p></div>:activeOrders.map(o=><button key={o.id} onClick={()=>onIr('restaurante')} className="w-full text-left bg-[#F8F6F0] border border-[#E5E0D8] rounded-lg px-3 py-3 hover:border-[#18345C]"><p className="text-[15px] font-semibold text-[#18345C]">{en?'Order':'Pedido'} #{o.id}</p><p className="text-[14px] text-[#6B7280] mt-1 truncate">{o.items.map(i=>i.cantidad+'× '+i.nombre).join(', ')}</p><p className="text-[12px] text-[#AEBCC1] mt-1">{formatoHoraISO(o.creadoEn)} · {dinero(o.total)}</p></button>)}</div> : activos.length === 0 ? (<div className="text-center py-3.5">
+          {conectado ? <div className="space-y-3">{ordersError?<p role="alert" className="text-sm text-red-800">{en?'Could not load orders. Open Menu to try again.':'No se pudieron consultar los pedidos. Abre Menú para reintentar.'}</p>:remoteOrders===null?<p>{en?'Loading orders…':'Consultando pedidos…'}</p>:activeOrders.length===0?<div className="text-center py-1"><div className="w-10 h-10 rounded-full bg-[#F8F6F0] flex items-center justify-center mx-auto text-[#AEBCC1]"><CartIcon size={22}/></div><p className="text-[14px] text-[#AEBCC1] mt-3">{en?'You have no orders in progress.':'No tienes pedidos en curso.'}</p></div>:activeOrders.map(o=><button key={o.id} onClick={()=>onIr('restaurante')} className="w-full text-left bg-[#F8F6F0] border border-[#E5E0D8] rounded-lg px-3 py-3 hover:border-[#18345C]"><p className="text-[15px] font-semibold text-[#18345C]">{en?'Order':'Pedido'} #{o.id}</p><p className="text-[14px] text-[#6B7280] mt-1 truncate">{o.items.map(i=>i.cantidad+'× '+i.nombre).join(', ')}</p><p className="text-[12px] text-[#AEBCC1] mt-1">{formatoHoraISO(o.creadoEn)} · {dinero(o.total)}</p></button>)}</div> : activos.length === 0 ? (<div className="text-center py-3.5">
             <div className="w-10 h-10 rounded-full bg-[#F8F6F0] flex items-center justify-center mx-auto text-[#AEBCC1]">
               <CartIcon size={22} />
             </div>
@@ -274,7 +270,7 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
           extra={<button onClick={() => onIr("habitacion")} className="text-[13px] font-semibold text-[#18345C] hover:underline">
             <UiText text="                 Controlar               " />
           </button>}>
-          {conectado ? <><div className="grid grid-cols-2 sm:grid-cols-4 gap-3"><Mini icono={<ThermoIcon size={15}/>} valor="—" label="Temperatura"/><Mini icono={<SparkIcon size={15}/>} valor="—" label="Luces encendidas"/><Mini icono={<BedIcon size={15}/>} valor="—" label="Cortinas abiertas"/><Mini icono={<WifiIcon size={15}/>} valor="—" label="Wi-Fi"/></div><p className="mt-3 flex items-center gap-2 text-[13px] text-[#7890B0]"><LockKeyhole size={14}/>{en?'Room controls are unavailable online.':'Controles de habitación no disponibles en línea.'}</p></> : <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {conectado ? <><div className="grid grid-cols-2 sm:grid-cols-4 gap-2"><Mini icono={<ThermoIcon size={15}/>} valor="—" label="Temperatura"/><Mini icono={<SparkIcon size={15}/>} valor="—" label="Luces encendidas"/><Mini icono={<BedIcon size={15}/>} valor="—" label="Cortinas abiertas"/><Mini icono={<WifiIcon size={15}/>} valor="—" label="Wi-Fi"/></div><p className="mt-3 flex items-center gap-2 text-[13px] text-[#7890B0]"><LockKeyhole size={14}/>{en?'Room controls are unavailable online.':'Controles de habitación no disponibles en línea.'}</p></> : <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <Mini icono={<ThermoIcon size={15} />} valor={`${domotica.temperatura}°`} label={domotica.climaEncendido ? "Clima activo" : "Clima apagado"} />
             <Mini icono={<SparkIcon size={15} />} valor={`${domotica.luces.filter((l) => l.encendida).length}/${domotica.luces.length}`} label="Luces encendidas" />
             <Mini icono={<BedIcon size={15} />} valor={`${domotica.cortinas}%`} label="Cortinas abiertas" />
@@ -298,7 +294,7 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
           extra={<button onClick={() => onIr("experiencias")} className="text-[13px] font-semibold text-[#18345C] hover:underline">
             <UiText text="Ver experiencias" />
           </button>}>
-          {conectado ? <LockedGuestButton label={en?'Book an experience':'Reservar experiencia'} reason={en?'Online activity reservations are not available. Contact Reception.':'Las reservas de actividades no están disponibles en línea. Contacta a Recepción.'}/> : reservasAmenidad.length === 0 ? (<p className="text-[14px] text-[#AEBCC1] py-4 text-center">
+          {conectado ? <p className="text-[13px] text-[#71839B] py-1">{en?'Online activity bookings are not available. Contact Reception.':'Las reservas de actividades no están disponibles en línea. Contacta a Recepción.'}</p> : reservasAmenidad.length === 0 ? (<p className="text-[14px] text-[#AEBCC1] py-4 text-center">
             <UiText text="Todavía no tienes actividades reservadas. Tus reservas de spa y restaurante aparecerán aquí." />
           </p>) : (<div className="space-y-2">
             {reservasAmenidad.map((r) => (<div key={r.id} className="flex items-center gap-3 bg-[#F8F6F0] border border-[#E5E0D8] rounded-lg px-3 py-2.5">
@@ -324,7 +320,7 @@ export default function InicioHuesped({ accountReady=true, conectado=false, hues
         </Tarjeta>
 
         <Tarjeta titulo="Contactos del hotel">
-          <div className="space-y-3">
+          <div className="space-y-2">
             <ContactoHotel nombre="Recepción" detalle="Disponible 24 horas" extension="100" />
             <ContactoHotel nombre="Room Service" detalle="6:00 a. m. – 11:00 p. m." extension="120" />
             <ContactoHotel nombre="Emergencias" detalle="" extension="110" urgente />
@@ -351,8 +347,8 @@ function ContactoHotel({ nombre, detalle, extension, urgente = false }: {
   urgente?: boolean;
 }) {
   const ui = useUiText();
-  return <div className="flex items-center gap-3 rounded-lg border border-[#E5E0D8] bg-[#F8F6F0] p-3">
-    <span className={`grid h-10 w-10 place-items-center rounded-full text-lg ${urgente ? 'bg-[#FEF2F2] text-[#991B1B]' : 'bg-white text-[#18345C]'}`}>☎</span>
+  return <div className="flex items-center gap-2.5 rounded-lg border border-[#E5E0D8] bg-[#F8F6F0] px-3 py-2">
+    <span className={`grid h-8 w-8 place-items-center rounded-full text-lg ${urgente ? 'bg-[#FEF2F2] text-[#991B1B]' : 'bg-white text-[#18345C]'}`}>☎</span>
     <div className="min-w-0 flex-1">
       <p className="font-semibold text-[#18345C]">
         {ui(nombre)}
@@ -365,7 +361,7 @@ function ContactoHotel({ nombre, detalle, extension, urgente = false }: {
       <small className="block text-[10px] uppercase tracking-widest text-[#71839B]">
         {ui('Extensión')}
       </small>
-      <b className="text-2xl text-[#18345C]">
+      <b className="text-lg text-[#18345C]">
         {extension}
       </b>
     </div>
@@ -377,7 +373,7 @@ function Dato({ icono, label, valor, }: {
   valor: string;
 }) {
   const ui = useUiText();
-  return (<div className="bg-[#F8F6F0] border border-[#E5E0D8] rounded-lg px-3 py-2.5">
+  return (<div className="bg-[#F8F6F0] border border-[#E5E0D8] rounded-lg px-3 py-2">
     <p className="text-[10px] text-[#AEBCC1] uppercase tracking-widest flex items-center gap-1">
       {icono}
       {ui(label)}
@@ -393,7 +389,7 @@ function Mini({ icono, valor, label, }: {
   label: string;
 }) {
   const ui = useUiText();
-  return (<div className="bg-[#F8F6F0] border border-[#E5E0D8] rounded-lg px-3 py-2.5">
+  return (<div className="bg-[#F8F6F0] border border-[#E5E0D8] rounded-lg px-2.5 py-2">
     <span className="text-[#18345C]">
       {icono}
     </span>
