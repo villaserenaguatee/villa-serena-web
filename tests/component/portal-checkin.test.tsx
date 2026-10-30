@@ -20,10 +20,11 @@ describe.each(['Pasaporte', 'DPI'] as const)('check-in web con %s', tipoDocument
   async function next(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByRole('button', { name: /^Continuar$/ }));
   }
+  async function goDocuments(user: ReturnType<typeof userEvent.setup>) { await next(user); expect(screen.getByRole('button', {name:'Continuar'})).toBeDisabled(); await user.click(screen.getByRole('checkbox')); await next(user); }
   function uploads(container: HTMLElement) { return Array.from(container.querySelectorAll<HTMLInputElement>('input[type="file"]')); }
   test('archivos reales, ambos lados de DPI y términos habilitan envío persistente y recarga', async () => {
     const onCompletar = vi.fn(data => enviarCheckInPortal(stay.id, guest.id, data));
-    const view = mount(onCompletar); await next(view.user);
+    const view = mount(onCompletar); await goDocuments(view.user);
     const inputs = uploads(view.container); expect(inputs).toHaveLength(tipoDocumento === 'DPI' ? 2 : 1);
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
     for (const [index, input] of inputs.entries()) {
@@ -31,9 +32,8 @@ describe.each(['Pasaporte', 'DPI'] as const)('check-in web con %s', tipoDocument
       await screen.findByText(`${index}.png`);
       if (tipoDocumento === 'DPI' && index === 0) expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
     }
-    await next(view.user); expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
-    await view.user.click(screen.getByRole('checkbox')); await next(view.user);
-    await view.user.click(screen.getByRole('button', { name: 'Guardar' }));
+    await next(view.user);
+    await view.user.click(screen.getByRole('button', { name: 'Finalizar envío' }));
     expect(onCompletar).toHaveBeenCalledOnce();
     const data = onCompletar.mock.calls[0][0];
     expect(data.documentos).toHaveLength(inputs.length); expect(data.documento).toEqual(data.documentos[0]);
@@ -47,19 +47,19 @@ describe.each(['Pasaporte', 'DPI'] as const)('check-in web con %s', tipoDocument
       checkin={persisted} estanciaCerrada={false} onCompletar={onCompletar} onGuardarOcupantes={vi.fn()}
       onIrHabitacion={vi.fn()} onContactarRecepcion={vi.fn()} />);
     expect(screen.getByRole('heading', { name: 'Documentos guardados en este navegador' })).toBeVisible();
-    expect(screen.queryByRole('button', { name: 'Guardar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Finalizar envío' })).not.toBeInTheDocument();
   });
 
   test('error de almacenamiento mantiene el formulario y permite reintentar sin anunciar éxito', async () => {
     const callback = vi.fn(data => enviarCheckInPortal(stay.id, guest.id, data)); const view = mount(callback);
-    await next(view.user);
+    await goDocuments(view.user);
     for (const [index, input] of uploads(view.container).entries()) {
       await view.user.upload(input, new File(['hello'], `${index}.png`, { type: 'image/png' })); await screen.findByText(`${index}.png`);
     }
-    await next(view.user); await view.user.click(screen.getByRole('checkbox')); await next(view.user);
+    await next(view.user);
     const before = localStorage.getItem('vs-reservas');
     const storage = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('QuotaExceededError', 'QuotaExceededError'); });
-    const submit = screen.getByRole('button', { name: 'Guardar' }); await view.user.click(submit);
+    const submit = screen.getByRole('button', { name: 'Finalizar envío' }); await view.user.click(submit);
     expect(screen.getByText(/No se pudieron guardar los documentos/)).toBeVisible();
     expect(screen.queryByRole('heading', { name: 'Documentos guardados en este navegador' })).not.toBeInTheDocument(); expect(submit).toBeEnabled();
     expect(localStorage.getItem('vs-reservas')).toBe(before);
@@ -68,7 +68,7 @@ describe.each(['Pasaporte', 'DPI'] as const)('check-in web con %s', tipoDocument
   });
 
   test('extensión y tamaño inválidos dejan el siguiente paso bloqueado', async () => {
-    const view = mount(); await next(view.user); const input = uploads(view.container)[0];
+    const view = mount(); await goDocuments(view.user); const input = uploads(view.container)[0];
     const user = userEvent.setup({ applyAccept: false });
     await user.upload(input, new File(['hello'], 'documento.exe', { type: 'application/octet-stream' }));
     expect(screen.getByText(/Solo aceptamos imágenes/)).toBeVisible();
