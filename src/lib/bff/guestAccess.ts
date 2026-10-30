@@ -156,6 +156,7 @@ const state = globalThis as typeof globalThis & { vsGuestAccessV1?: {
 const demo = () => state.vsGuestAccessV1 ??= { codes: new Map(), sessions: new Map(), refresh: new Map() };
 export const GUEST_COOKIE = 'vs_guest_access';
 export const REFRESH_COOKIE = 'vs_guest_refresh';
+export const REMEMBER_COOKIE = 'vs_guest_remember';
 export const DEMO_GUEST_EMAIL = 'ana.morales@correo.com';
 export async function connectedGuestPortalData(access: string, code?: string) {
   const request = new NextRequest('http://localhost/api/app/reservas', { headers: { Cookie: `${GUEST_COOKIE}=${encodeURIComponent(access)}` } });
@@ -220,11 +221,15 @@ function issue(correo: string) {
   store.refresh.set(hash(refresh), { correo, family, expires: Date.now() + 7 * 86400000 });
   return { access, refresh };
 }
-function cookies(response: NextResponse, request: NextRequest, tokens?: { access: string; refresh: string; expiresIn?: number }) {
+function cookies(response: NextResponse, request: NextRequest, tokens?: { access: string; refresh: string; expiresIn?: number }, remember?: boolean) {
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(request.nextUrl.hostname);
   const options = { httpOnly: true, sameSite: 'lax' as const, secure: !local || request.nextUrl.protocol === 'https:', path: '/' };
-  response.cookies.set(GUEST_COOKIE, tokens?.access ?? '', { ...options, maxAge: tokens ? tokens.expiresIn ?? 900 : 0 });
-  response.cookies.set(REFRESH_COOKIE, tokens?.refresh ?? '', { ...options, maxAge: tokens ? 7 * 86400 : 0 });
+  const persistent = remember ?? request.cookies.get(REMEMBER_COOKIE)?.value === '1';
+  const accessOptions = tokens && !persistent ? options : { ...options, maxAge: tokens ? tokens.expiresIn ?? 900 : 0 };
+  const refreshOptions = tokens && !persistent ? options : { ...options, maxAge: tokens ? 7 * 86400 : 0 };
+  response.cookies.set(GUEST_COOKIE, tokens?.access ?? '', accessOptions);
+  response.cookies.set(REFRESH_COOKIE, tokens?.refresh ?? '', refreshOptions);
+  response.cookies.set(REMEMBER_COOKIE, tokens && persistent ? '1' : '', { ...options, maxAge: tokens && persistent ? 7 * 86400 : 0 });
   response.headers.set('Cache-Control', 'no-store'); return response;
 }
 // Fixture explícita del resultado confirmado, sin cambiar sus estados ni las reservas de Recepción.
