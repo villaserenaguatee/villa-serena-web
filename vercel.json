@@ -11,6 +11,7 @@
       "fix/fotografias-actuales-editor": false,
       "fix/panel-habitaciones-layout": false,
       "feat/catalogo-habitaciones-conectado": false,
+      "fix/tarifas-ofertas-conectadas": false,
       "fix/menu-productos-fotografias": false
     }
   }
