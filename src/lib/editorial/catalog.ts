@@ -83,8 +83,13 @@ export const EDITORIAL_IDS=[
  "estancia-digital.imagen",
  "identidad.logo.imagen"
 ] as const satisfies readonly EditorialId[];
-export const EDITORIAL_DESTINATIONS=['/catalogo','/nosotros','/reservar/habitaciones','/#habitaciones','/#servicios','/#contacto'] as const;
+export const EDITORIAL_DESTINATIONS=['/catalogo','/nosotros','/reservar/habitaciones','/#habitaciones','/#servicios','/#contacto','/#buscar'] as const;
 export function editorialLabel(id:EditorialId){
- const photos:Partial<Record<EditorialId,string>>={'inicio.imagenes':'Fotografias del carrusel','galeria-hotel.imagenes':'Fotografias de la galeria','identidad.logo.imagen':'Logotipo','estancia-digital.imagen':'Fotografia de estancia digital'};
+ const photos:Partial<Record<EditorialId,string>>={'inicio.imagenes':'Fotografías del carrusel','galeria-hotel.imagenes':'Fotografías de la galería','identidad.logo.imagen':'Logotipo','estancia-digital.imagen':'Fotografía de estancia digital'};
  if(photos[id])return photos[id]!;
-const last=id.split('.').at(-1)??'';return ({titulo:'Título',subtitulo:'Subtítulo',descripcion:'Descripción',boton:'Botón',imagenes:'Fotografias de la seccion',imagen:'Fotografía',romantica:'Estancia romántica',descanso:'Descanso',familiar:'Estancia familiar',negocios:'Negocios',bienestar:'Bienestar'} as Record<string,string>)[last]??last;}
+const last=id.split('.').at(-1)??'';return ({titulo:'Título',subtitulo:'Subtítulo',descripcion:'Descripción',boton:'Botón',imagenes:'Fotografías de la sección',imagen:'Fotografía',romantica:'Estancia romántica',descanso:'Descanso',familiar:'Estancia familiar',negocios:'Negocios',bienestar:'Bienestar'} as Record<string,string>)[last]??last;}
+
+export const EDITORIAL_DESTINATION_LABELS:Record<typeof EDITORIAL_DESTINATIONS[number],string>={'/catalogo':'Catálogo de habitaciones','/nosotros':'Acerca de nosotros','/reservar/habitaciones':'Buscar habitaciones','/#habitaciones':'Habitaciones del inicio','/#servicios':'Servicios','/#contacto':'Contacto','/#buscar':'Buscar disponibilidad en Inicio'};
+export const EDITORIAL_DEFAULT_DESTINATIONS:Partial<Record<EditorialId,typeof EDITORIAL_DESTINATIONS[number]>>={'inicio.boton':'/#buscar','habitaciones.boton':'/catalogo','nosotros.boton':'/nosotros','nosotros-page.cierre.boton':'/catalogo'};
+export function sectionEditorialIds(section:string){return EDITORIAL_IDS.filter(id=>id.startsWith(section+'.')||section==='pie'&&id==='identidad.logo.imagen'||section==='por-que'&&id==='estancia-digital.imagen');}
+export function sectionElementLabel(id:EditorialId){return id.split('.').slice(1,-1).map(part=>({mision:'Misión',vision:'Visión',cierre:'Cierre',spa:'Spa',gimnasio:'Gimnasio',piscina:'Piscina',restaurante:'Restaurante',romantica:'Romántica',descanso:'Descanso',familiar:'Familiar',negocios:'Negocios',bienestar:'Bienestar'} as Record<string,string>)[part]??part.replace('item','Elemento ')).concat(editorialLabel(id)).join(' · ');}

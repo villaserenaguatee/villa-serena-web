@@ -10,7 +10,8 @@
       "fix/panel-fotografico-compacto": false,
       "fix/fotografias-actuales-editor": false,
       "fix/panel-habitaciones-layout": false,
-      "feat/catalogo-habitaciones-conectado": false
+      "feat/catalogo-habitaciones-conectado": false,
+      "fix/editor-elementos-navegacion": false
     }
   }
 }
