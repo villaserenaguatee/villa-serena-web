@@ -162,7 +162,7 @@ function HomeContent({preview}:{preview?:PublicHomePreview}) {
   const stay=useEditorialStay(preference,publicRooms),recommended=stay.recommended;
   const stayNames=useEditorialStayNames(publicRooms);const resolveStayLabel=(id:StayId)=>stayNames[id];
   useEffect(()=>{if(preview?.stayId)setPreference(preview.stayId);},[preview?.stayId]);
-  const featured = publicRooms.filter((r) => ["deluxe-jardin", "suite-serena", "familiar-premium"].includes(r.slug));
+  const featured = publicRooms.slice(0, 3);
   const searchHref = "/reservar/habitaciones?" +
     new URLSearchParams({
       llegada: arrival,
