@@ -5,14 +5,16 @@ import type {Habitacion} from '@/lib/pms/types';
 export default function ApprovedCleaningDetail({hab,onClose,children}:{hab:Habitacion;onClose:()=>void;children:ReactNode}){
  const cfg=hab.condicionReal==='LIMPIA'?{text:'#15803D',bg:'#ECFDF3',border:'#86EFAC',label:'Limpia'}:hab.condicionReal==='EN_LIMPIEZA'?{text:'#1D4ED8',bg:'#EFF6FF',border:'#93C5FD',label:'En limpieza'}:hab.condicionReal==='FUERA_DE_SERVICIO'?{text:'#991B1B',bg:'#FEF2F2',border:'#FCA5A5',label:'Fuera de servicio'}:{text:'#9A6700',bg:'#FFF9E8',border:'#F3D98B',label:'Pendiente'};
  const obtenerTipoHabitacion=(tipo:string)=>tipo;
- return (<div className="absolute inset-0 z-20 flex items-stretch justify-end">
+ return (<div className="absolute inset-0 z-20 flex items-start justify-end sm:items-center sm:pr-4">
     <div className="absolute inset-0 bg-black/25" onClick={onClose} />
 
     <div data-vs-ui="compact" data-vs-drawer="compact" className="
           relative
           z-10
           w-full
-          sm:max-w-lg
+          sm:max-w-md
+          max-h-[min(85dvh,540px)]
+          sm:rounded-xl
           bg-[#F8F6F0]
           shadow-2xl
           flex
@@ -20,7 +22,7 @@ export default function ApprovedCleaningDetail({hab,onClose,children}:{hab:Habit
           overflow-hidden
         ">
 
-      <div className="relative h-36 sm:h-40 shrink-0 overflow-hidden">
+      <div className="relative h-28 sm:h-32 shrink-0 overflow-hidden">
         {hab.foto&&<img src={hab.foto} alt={`Habitación ${hab.numero}`} className="w-full h-full object-cover"/>}
 
         <div className="absolute inset-0 bg-gradient-to-t from-[#102747]/90 via-[#18345C]/20 to-transparent" />

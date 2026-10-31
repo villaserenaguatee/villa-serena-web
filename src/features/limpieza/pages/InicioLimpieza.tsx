@@ -155,9 +155,9 @@ export default function Inicio({
 
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div data-vs-metric="limpieza"><p>{conectado ? habitacionesConectadas.length : misHabitaciones.length}</p><p>Habitaciones de la vista</p></div>
+        <div data-vs-metric="limpieza"><p>{conectado ? habitacionesConectadas.filter(h=>h.condicion==='SUCIA').length : pendientes}</p><p>Habitaciones por limpiar</p></div>
         <div data-vs-metric="limpieza"><p>{conectado ? habitacionesConectadas.filter(h=>h.condicion==='EN_LIMPIEZA').length : enLimpieza}</p><p>En limpieza</p></div>
-        <div data-vs-metric="limpieza" className="col-span-2 sm:col-span-1"><p>{conectado ? solicitudesConectadas.length : misSolicitudes.length}</p><p>Solicitudes de la vista</p></div>
+        <div data-vs-metric="limpieza" className="col-span-2 sm:col-span-1"><p>{conectado ? solicitudesConectadas.filter(s=>s.estado==='PENDIENTE').length : solicitudesActivas.length}</p><p>Solicitudes pendientes</p></div>
       </div>
     </div>
 

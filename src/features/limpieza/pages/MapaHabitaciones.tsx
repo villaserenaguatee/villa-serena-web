@@ -60,18 +60,19 @@ function TarjetaHabitacion({ hab, onClick }: {
   return (<button
     type="button"
     onClick={onClick}
+    disabled={!onClick}
     className="
         text-left min-w-0 w-full rounded-xl
         border
         border-[#E5E0D8]
         bg-white
-        p-4
-        min-h-[130px]
+        p-3
+        min-h-[110px]
         flex
         flex-col
         justify-center
       ">
-    {hab.foto && <img src={hab.foto} alt={`Habitación ${hab.numero}`} className="w-full h-24 object-cover rounded-lg mb-3" />}
+    {hab.foto && <img src={hab.foto} alt={`Habitación ${hab.numero}`} className="w-full h-20 object-cover rounded-lg mb-2" />}
     <div className="flex flex-wrap items-start justify-between gap-2">
       <div>
         <div className="flex items-center gap-2">
@@ -94,7 +95,7 @@ function TarjetaHabitacion({ hab, onClick }: {
             </svg>
           </span>
 
-          <p className="text-[28px] font-semibold text-[#18345C] leading-none">
+          <p className="text-[24px] font-semibold text-[#18345C] leading-none">
             {hab.numero}
           </p>
         </div>
@@ -617,7 +618,7 @@ export default function Mapa({ habitaciones, solicitudes, onComenzarLimpieza, on
                     2xl:grid-cols-4
                     gap-3
                   ">
-            {habsPiso.map((h) => (<TarjetaHabitacion key={h.id} hab={h} onClick={() => setHabitacionSeleccionada(h)} />))}
+            {habsPiso.map((h) => (<TarjetaHabitacion key={h.id} hab={h} onClick={h.estado === "pendiente" || h.estado === "en-limpieza" ? () => setHabitacionSeleccionada(h) : undefined} />))}
           </div>
         </div>);
       })}
