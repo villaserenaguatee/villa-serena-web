@@ -109,4 +109,5 @@
 }
 @media(max-width:767px){
  [data-reception-chat]>section>aside{max-height:min(300px,45dvh)}
+ [data-reception-chat][data-reception-connected]>section>aside{max-height:min(440px,55dvh)}
 }
