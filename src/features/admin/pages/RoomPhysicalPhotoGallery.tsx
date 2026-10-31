@@ -31,7 +31,7 @@ export default function RoomPhysicalPhotoGallery({roomId}:{roomId?:number}) {
   finally{setBusy(false);}
  }
  return <section className="mt-4 min-w-0 border-t pt-4" aria-label="Galería fotográfica">
-  {!roomId?<p className="text-sm text-[#536579]">Primero guarda la habitación para agregar fotografías.</p>:
+  {!roomId?null:
    <><AdminPhotoGallery management principal title="Galería fotográfica" value={photos} disabled={!ready||busy} onChange={next=>{setPhotos(next);setNotice('');}} onError={setPhotoError}/>
     {error&&<p role="alert" className="mt-2 text-sm text-red-800">{error}</p>}
     {notice&&<p role="status" className="mt-2 text-sm text-green-800">{notice}</p>}
