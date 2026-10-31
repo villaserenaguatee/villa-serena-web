@@ -1,5 +1,5 @@
 /** Generado desde villa-serena-docs/openapi.yaml. No editar.
- * Contrato SHA-256: ad3171d23b0c085980d90e7d35ae476fe0e7633b378aa4fb884f9dbd97dd368f
+ * Contrato SHA-256: 790c3c93a1400fbacee624833f225816f1ea0927187a4c3e40e613e6afcab018
  */
 export interface paths {
     "/api/v1/auth/login": {
@@ -2736,6 +2736,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/habitaciones/{id}/fotos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        /** Consultar fotografías de una habitación física */
+        get: operations["consultarFotosHabitacionAdmin"];
+        /**
+         * Sustituir la galería de una habitación física
+         * @description Las fotografías son independientes de las de su categoría. Entre 1 y 30 fotografías JPG/PNG cargadas con uso HABITACION; exactamente una principal. La operación es transaccional.
+         */
+        put: operations["actualizarFotosHabitacionAdmin"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/habitaciones/{id}/caracteristicas": {
         parameters: {
             query?: never;
@@ -5315,6 +5338,10 @@ export interface components {
             principal: boolean;
             orden: number;
         };
+        FotosHabitacionRespuesta: {
+            habitacionId: components["schemas"]["Id"];
+            fotos: components["schemas"]["FotoCatalogo"][];
+        };
         /**
          * @description Lista completa de fotos del tipo, exactamente una principal; claves creadas por carga de imágenes autorizada.
          * @example {
@@ -5704,7 +5731,7 @@ export interface components {
             /** Format: binary */
             archivo: string;
             /** @enum {string} */
-            uso: "HOTEL" | "TIPO_HABITACION" | "MENU" | "AMENIDAD" | "INCIDENCIA";
+            uso: "HOTEL" | "TIPO_HABITACION" | "HABITACION" | "MENU" | "AMENIDAD" | "INCIDENCIA";
         };
         /**
          * @example {
@@ -13799,6 +13826,61 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    consultarFotosHabitacionAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Galería individual de la habitación. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FotosHabitacionRespuesta"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    actualizarFotosHabitacionAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FotosTipoPeticion"];
+            };
+        };
+        responses: {
+            /** @description Galería individual actualizada. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FotosHabitacionRespuesta"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     consultarCaracteristicasHabitacionAdmin: {
