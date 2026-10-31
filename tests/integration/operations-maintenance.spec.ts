@@ -14,7 +14,7 @@ for (const { name, viewport } of viewports) {
       await expect(card.getByRole('button', { name: 'Resolver', exact: true })).toHaveCount(0);
       expect((await mock.state()).calls.filter(call => call.path.endsWith('/resolver'))).toHaveLength(0);
       await mock.configure({ technicianId: 5 });
-      await page.getByRole('button', { name: 'Actualizar', exact: true }).click();
+      await page.getByRole('button', { name: 'Actualizar incidencias', exact: true }).click();
       await card.getByRole('button', { name: 'Resolver', exact: true }).click();
       await page.getByLabel('Solución', { exact: true }).fill('Daño reparado en prueba');
       await page.getByRole('button', { name: 'Guardar solución', exact: true }).click();
