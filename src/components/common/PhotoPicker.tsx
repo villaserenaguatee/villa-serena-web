@@ -7,7 +7,7 @@ import { usePublicLanguage } from './PublicLanguageToggle';
 /** Presentation only: callers retain file validation, permissions and storage. */
 export default function PhotoPicker({ label, accept, preview, disabled = false, compact = false, removable = Boolean(preview), actionStyle = 'links', onSelect, onRemove }: {
   label: string; accept: string; preview?: string | null; disabled?: boolean; compact?: boolean;
-  removable?: boolean; actionStyle?: 'links' | 'buttons'; onSelect: (file: File) => void; onRemove?: () => void;
+  removable?: boolean; actionStyle?: 'links' | 'buttons' | 'icons'; onSelect: (file: File) => void; onRemove?: () => void;
 }) {
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
@@ -27,7 +27,10 @@ export default function PhotoPicker({ label, accept, preview, disabled = false, 
         <span className="absolute -bottom-1 -right-2 grid h-4 w-4 place-items-center rounded-full bg-[#F3D98B] text-[#18345C]"><Plus size={12} strokeWidth={2.5} /></span>
       </span>}
     </label>
-    {removable && onRemove && <div className="mt-1.5 flex flex-wrap gap-3 text-sm text-[#18345C]">
+    {removable && onRemove && actionStyle === 'icons' ? <div className="mt-2 flex justify-end gap-2">
+      {preview && <button type="button" aria-label={en?'Replace photo':'Reemplazar imagen'} title={en?'Replace photo':'Reemplazar imagen'} disabled={disabled} onClick={()=>input.current?.click()} className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-[#D8DFE5] bg-white text-[#18345C] hover:bg-[#F8F6F0]"><ImagePlus size={19} aria-hidden="true"/></button>}
+      <button type="button" aria-label={en?'Remove photo':'Quitar imagen'} title={en?'Remove photo':'Quitar imagen'} disabled={disabled} onClick={onRemove} className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-[#D8DFE5] bg-white text-red-700 hover:bg-red-50"><Trash2 size={19} aria-hidden="true"/></button>
+    </div> : removable && onRemove && <div className="mt-1.5 flex flex-wrap gap-3 text-sm text-[#18345C]">
       {preview && <button type="button" disabled={disabled} onClick={() => input.current?.click()} className={actionClass}>{actionStyle === 'buttons' && <ImagePlus size={16} aria-hidden="true"/>}{en ? 'Replace photo' : 'Reemplazar imagen'}</button>}
       <button type="button" disabled={disabled} onClick={onRemove} className={actionClass}>{actionStyle === 'buttons' && <Trash2 size={16} aria-hidden="true"/>}{en ? 'Remove photo' : 'Quitar imagen'}</button>
     </div>}
