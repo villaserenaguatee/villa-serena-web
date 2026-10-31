@@ -79,21 +79,24 @@ export default function CatalogosAdmin({initial='tipos',resources,roomManagement
    if(featuresInput.capacidad>maxCapacity)throw Error('La capacidad supera la de la categoría.');
    if(newRoomPhotos.length&&newRoomPhotos.filter(p=>p.principal).length!==1)throw Error('Selecciona exactamente una fotografía principal.');
   }
-  await operacion(`admin/catalogos/${resource}`,'POST',{clave:key.current,id:draft.id??null,version:draft.version??0,datos:data});
+  const result=await operacion<{id?:number;version?:number}>(`admin/catalogos/${resource}`,'POST',{clave:key.current,id:draft.id??null,version:draft.version??0,datos:data});
   if(creatingRoom){
-   // The catalog write is complete: never repeat the POST if saving extras fails.
-   const rooms=await readCatalogRooms();
-   const created=rooms.find(room=>String(room.numero).trim().toLowerCase()===String(draft.numero).trim().toLowerCase());
-   if(!created)throw Error('La habitación se guardó, pero no se pudo identificar para guardar sus características. Actualiza y edítala.');
-   setDraft({...draft,id:created.id});
-   setRows(rooms.map(room=>({...room,version:0})) as Row[]);
+   // Keep the server identifier immediately, so a later failure cannot create a duplicate.
+   const createdId=Number(result?.id);
+   if(!Number.isSafeInteger(createdId)||createdId<=0){
+    key.current=null;
+    setRoomExtrasError('La habitación se envió al servidor, pero no se confirmó su identificador. Actualiza el catálogo antes de volver a intentar; no guardes otra vez.');
+    setReload(n=>n+1);
+    return;
+   }
+   setDraft({...draft,id:createdId,version:result?.version??0});
    key.current=null;
    setReload(n=>n+1);
    try{
-    await saveFeatures(created.id,featuresInput!);
+    await saveFeatures(createdId,featuresInput!);
     if(newRoomPhotos.length){
      const fotos=await resolveCatalogPhotos(newRoomPhotos,'HABITACION',photoUploadCache.current);
-     await operacion(`admin/habitaciones/${created.id}/fotos`,'PUT',{fotos});
+     await operacion(`admin/habitaciones/${createdId}/fotos`,'PUT',{fotos});
     }
     setRoomExtrasNotice('Habitación, camas, características y fotografías guardadas.');
     setRoomExtrasError('');
