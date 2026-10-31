@@ -1,6 +1,6 @@
 'use client';
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import {RefreshCw} from 'lucide-react';
 import {usePublicLanguage} from '@/components/common/PublicLanguageToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { operacion, OperationError, type IncidenciaAPI } from '@/lib/api/operaciones';
@@ -39,10 +39,10 @@ export default function IncidenciasConectadas({ soloReportar = false, onCrearOrd
   }
   if (employee && !soloReportar && !allowed) return <h1 data-vs-page-title="mantenimiento" className="p-6">Acceso denegado</h1>;
   return <main className="min-h-screen bg-[#F8F6F0] p-4 sm:p-6 text-[#18345C]">
-    <header className="flex flex-wrap justify-between gap-3"><h1 data-vs-page-title="mantenimiento" className="text-[32px] font-semibold">Incidencias</h1><div className="flex gap-3"><Link href="/panel" className="rounded-md border px-4 py-2">Mi panel</Link><button onClick={() => setReload(n => n + 1)} disabled={loading || busy} className="rounded-md border px-4 py-2">Actualizar</button><button disabled={loading || !rooms.length} onClick={() => setReportar(true)} className="rounded-md bg-[#18345C] text-white px-4 py-2">Reportar daño</button></div></header>
+    <header className="flex flex-wrap items-start justify-between gap-3"><h1 data-vs-page-title="mantenimiento" className="text-[32px] font-semibold">Incidencias</h1><button aria-label="Actualizar incidencias" title="Actualizar" onClick={() => setReload(n => n + 1)} disabled={loading || busy} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-[#D9DDE2] bg-white hover:bg-[#F8F6F0] disabled:opacity-50"><RefreshCw aria-hidden="true" size={19}/></button></header>
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p className="text-sm">Selecciona una habitación del catálogo del hotel para reportar un daño.</p><button disabled={loading || !rooms.length} onClick={() => setReportar(true)} className="rounded-md bg-[#18345C] px-4 py-2 text-white disabled:opacity-50">Reportar daño</button></div>
     {error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-red-800">{error}</p>}{loading && <p role="status" className="mt-4">Consultando incidencias…</p>}
     {notice && <p role="status" className="mt-3 rounded-lg bg-amber-50 p-3">{notice}</p>}
-    {!loading && <p className="mt-3 text-sm">Selecciona una habitación del catálogo del hotel para reportar un daño.</p>}
     {!soloReportar && !loading && !error && !incidencias.length && <p className="mt-4">No hay incidencias pendientes.</p>}
     <div className="mt-5 grid gap-4 md:grid-cols-2">{incidencias.filter(i => ['REPORTADA', 'EN_PROCESO'].includes(i.estado)).sort((a, b) => Date.parse(a.reportadaEn) - Date.parse(b.reportadaEn)).map(item => <article data-vs-card="mantenimiento" key={item.id} className="rounded-xl border border-[#E5E0D8] bg-white p-4 space-y-2">
       <h2 className="text-xl font-semibold">Habitación {item.habitacion.numero} · Piso {item.habitacion.piso}</h2><p>{item.descripcion}</p>
