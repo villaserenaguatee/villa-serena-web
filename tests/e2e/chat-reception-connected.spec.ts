@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {expectNoOverflow} from './public-fixtures';
 for(const width of [1440,390,320])test.describe('Chat conectado '+width,()=>{
- test.use({viewport:{width,height:1000},actionTimeout:60000,navigationTimeout:90000});
+ test.use({viewport:{width,height:width===1440?1000:width===390?844:568},actionTimeout:60000,navigationTimeout:90000});
  test('lista paginada, filtros, permisos, edición y eliminación persisten tras recargar',async({page,context,request,baseURL},info)=>{
   test.setTimeout(240000);await request.post('http://127.0.0.1:3049/__test/reset');
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
