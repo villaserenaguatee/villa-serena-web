@@ -2,13 +2,14 @@ import type {ReactNode} from 'react';
 import { UiText, useUiText } from "@/i18n/UiText";
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { useState } from "react";
+import { CheckCircle2, ShieldCheck, ClipboardCheck, IdCard, Trash2, RefreshCw, FileText } from "lucide-react";
 import type { Huesped, Reserva, HabitacionHotel, CheckInWeb as CheckInWebEstado, DocumentoCargado, FormatoDocumento, Acompanante, } from "@/lib/pms/types";
 import { formatoFechaHora, nochesEntre, FOTO_STANDARD, FOTO_SUPERIOR, FOTO_DELUXE, FOTO_SUITE, TERMINOS_ESTANCIA, } from "@/data/pms";
 import { Chip, Campo, INPUT_CLS, Cabecera, Tarjeta, Aviso, BotonPrimario, BotonSecundario, CodigoQR, correoValido, telefonoValido, CheckIcon, UploadIcon, KeyIcon, AlertIcon, MailIcon, } from "@/features/huesped/pages/huespedUtils";
 const PASOS = [
   { id: 1, label: "Tus datos" },
-  { id: 2, label: "Documento" },
-  { id: 3, label: "Términos" },
+  { id: 2, label: "Términos" },
+  { id: 3, label: "Documentos" },
   { id: 4, label: "Resumen" },
 ];
 const FORMATOS: Record<string, FormatoDocumento> = {
@@ -42,7 +43,7 @@ const PAISES_TELEFONO = [
   ["🇯🇵", "+81", "Japón"],
 ];
 interface Props {
-  connectedDocuments?:ReactNode;
+  connectedDocuments?: (onReadyChange:(ready:boolean)=>void)=>ReactNode;
   huesped: Huesped;
   reserva: Reserva;
   habitacion?: HabitacionHotel;
@@ -70,8 +71,8 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
   const [nombre, setNombre] = useState(huesped.nombre);
   const [tipoDocumento, setTipoDocumento] = useState<"DPI" | "Pasaporte">(huesped.tipoDocumento);
   const [documento, setDocumento] = useState(huesped.documento);
-  const [telefono, setTelefono] = useState(huesped.telefono);
-  const [correo, setCorreo] = useState(huesped.correo);
+  const [telefono] = useState(huesped.telefono);
+  const [correo] = useState(huesped.correo);
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [adultos, setAdultos] = useState(reserva.adultos ?? reserva.personas);
   const [ninos, setNinos] = useState(reserva.ninos ?? 0);
@@ -94,6 +95,7 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
   const [documentoUnico, setDocumentoUnico] = useState<DocumentoCargado | null>(tipoDocumento === 'Pasaporte' ? documentosGuardados[0] ?? null : null);
   const [errorArchivo, setErrorArchivo] = useState("");
   const [aceptado, setAceptado] = useState(false);
+  const [connectedReady,setConnectedReady] = useState(false);
   const completado = checkin.estado === "aprobado";
   const pendiente = checkin.estado === "pendiente";
   function validarDatos(): boolean {
@@ -298,7 +300,7 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
       subtitulo={`${reserva.codigo} · ${en ? "Arrival" : "Llegada"} ${fechaUI(reserva.fechaEntrada)} · ${en ? "Room" : "Habitación"} ${(habitacion?.numero??(en?'Pending assignment':'Pendiente de asignación'))}`} />
 
     <div className="checkin-layout px-4 sm:px-6 py-5">
-      <div className="checkin-main space-y-5">
+      <div className="checkin-main space-y-3">
         <Aviso tono="info">
           <span className="flex items-start gap-2">
             <MailIcon />
@@ -340,7 +342,7 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
         </div>
 
         {paso === 1 && (<Tarjeta titulo="Verifica tus datos">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-2 sm:grid-cols-2">
             <Campo label="Nombre completo" error={errores.nombre}>
               <input value={nombre} readOnly className={`${INPUT_CLS} bg-[#F8F6F0]`} />
             </Campo>
@@ -357,10 +359,10 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
               </div>
             </Campo>
             <Campo label="Teléfono" error={errores.telefono}>
-              <input value={telefono} onChange={(e) => setTelefono(e.target.value.replace(/\D/g, "").slice(0, 8))} maxLength={8} className={INPUT_CLS} />
+              <input value={telefono} readOnly className={`${INPUT_CLS} bg-[#F8F6F0]`} />
             </Campo>
             <Campo label="Correo electrónico" error={errores.correo}>
-              <input value={correo} onChange={(e) => setCorreo(e.target.value)} className={INPUT_CLS} />
+              <input value={correo} readOnly className={`${INPUT_CLS} bg-[#F8F6F0]`} />
             </Campo>
           </div>
           <button type="button" onClick={onContactarRecepcion} className="mt-3 text-[13px] font-semibold text-[#18345C] hover:underline">
@@ -406,7 +408,7 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
             </div>
           </div>
 
-          <div className="mt-4 rounded-xl border border-[#E5E0D8] p-4">
+          <div className="mt-3 rounded-xl border border-[#E5E0D8] p-3">
             <h3 className="font-semibold text-[#18345C]">
               <UiText text="Huéspedes que se alojarán en la habitación" />
             </h3>
@@ -414,25 +416,7 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
               <UiText text="La cantidad de huéspedes corresponde a tu reserva y no puede modificarse desde el check-in." />
             </p>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border border-[#E5E0D8] bg-[#F8F6F0] px-4 py-3">
-                <span className="block text-[10px] uppercase tracking-widest text-[#AEBCC1]">
-                  <UiText text="Adultos" />
-                </span>
-                <strong className="mt-1 block text-lg text-[#18345C]">
-                  {connected && reserva.adultos === undefined ? '—' : adultos}
-                </strong>
-              </div>
-              <div className="rounded-lg border border-[#E5E0D8] bg-[#F8F6F0] px-4 py-3">
-                <span className="block text-[10px] uppercase tracking-widest text-[#AEBCC1]">
-                  <UiText text="Niños" />
-                </span>
-                <strong className="mt-1 block text-lg text-[#18345C]">
-                  {connected && reserva.ninos === undefined ? '—' : ninos}
-                </strong>
-              </div>
-            </div>
-
+            <div className="mt-2 flex flex-wrap gap-2 text-sm text-[#18345C]"><span className="rounded-lg bg-[#F8F6F0] px-3 py-2">Huéspedes reservados: <b>{reserva.personas}</b></span><span className="rounded-lg bg-[#F8F6F0] px-3 py-2">Registrados: <b>{1+acompanantes.length}</b></span></div><div className="mt-2 rounded-lg bg-[#F8F6F0] px-3 py-2 text-sm"><b>{nombre}</b> · Titular de la reserva</div>
             <div className="mt-4 space-y-2">
               {acompanantes.map((a,
                 i) => (<div key={`${a.nombre}-${i}`} className="flex items-center gap-3 rounded-lg bg-[#F8F6F0] px-3 py-2">
@@ -582,23 +566,24 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
           </div>
         </Tarjeta>)}
 
-        {paso===2&&connected?<div className="space-y-5">{connectedDocuments}<div data-vs-actions="compact" className="flex gap-2"><BotonSecundario ancho onClick={()=>setPaso(1)}>Volver</BotonSecundario><BotonPrimario ancho onClick={()=>setPaso(3)}>Continuar</BotonPrimario></div></div>:null}
-        {paso === 2 && !connected && (<Tarjeta titulo="Documento de identidad">
+        {paso === 2 && <Tarjeta titulo="Términos y condiciones"><p className="mb-3 text-sm text-[#52677F]">Antes de continuar con su check-in, tenga en cuenta lo siguiente:</p><div className="space-y-3 rounded-xl bg-[#F8F6F0] p-4 text-sm text-[#18345C]"><div className="flex gap-2"><IdCard className="shrink-0" size={18}/>Deberá enviar fotografías claras de su documento de identificación para verificar su identidad y continuar con el proceso de check-in.</div><div className="flex gap-2"><ShieldCheck className="shrink-0" size={18}/>Sus datos personales y documentos serán utilizados para verificar su identidad y gestionar su registro en Villa Serena.</div><div className="flex gap-2"><ClipboardCheck className="shrink-0" size={18}/>Recepción verificará la información enviada como parte del proceso de check-in.</div></div><p className="mt-3 text-sm text-[#52677F]">Para obtener más información, consulte los <a className="font-semibold underline text-[#18345C]" href="/terminos" target="_blank" rel="noopener noreferrer">Términos y condiciones</a> y la <a className="font-semibold underline text-[#18345C]" href="/privacidad" target="_blank" rel="noopener noreferrer">Política de privacidad del hotel</a>.</p><label className="mt-4 flex items-start gap-3"><input type="checkbox" checked={aceptado} onChange={e=>setAceptado(e.target.checked)} className="mt-1 h-4 w-4 accent-[#18345C]"/><span className="text-sm">He leído y acepto los términos y condiciones y la política de privacidad de Villa Serena.</span></label><div data-vs-actions="compact" className="mt-4 flex gap-2"><BotonSecundario ancho onClick={()=>setPaso(1)}>Volver</BotonSecundario><BotonPrimario ancho disabled={!aceptado} onClick={()=>{if(aceptado)setPaso(3);}}>Continuar</BotonPrimario></div></Tarjeta>}
+        {paso===3&&connected?<div className="space-y-3">{connectedDocuments?.(setConnectedReady)}<div data-vs-actions="compact" className="flex gap-2"><BotonSecundario ancho onClick={()=>setPaso(2)}>Volver</BotonSecundario><BotonPrimario ancho disabled={!connectedReady} onClick={()=>setPaso(4)}>Continuar</BotonPrimario></div></div>:null}
+        {paso === 3 && !connected && (<Tarjeta titulo="Documento de identidad">
           <p className="text-[14px] text-[#6B7280]">
             {ui("Sube una foto legible de tu documento y asegúrate de que todos los datos sean visibles.")}
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {(tipoDocumento === "DPI" ? [
               { lado: "frente" as const, doc: documentoFrente, titulo: "Frente del DPI" },
-              { lado: "reverso" as const, doc: documentoReverso, titulo: "Reversa del DPI" },
+              { lado: "reverso" as const, doc: documentoReverso, titulo: "Reverso del DPI" },
             ] : [
               { lado: "unico" as const, doc: documentoUnico, titulo: "Pasaporte" },
             ]).map(({ lado, doc, titulo }) => (<div key={lado} className="rounded-xl border border-[#E5E0D8] bg-[#FCFBF8] p-4">
               <p className="text-sm font-semibold text-[#18345C]">
                 {ui(titulo)}
               </p>
-              <label className="mt-3 flex min-h-44 flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dashed border-[#E5E0D8] bg-white px-3 py-4 cursor-pointer text-center hover:border-[#18345C]">
-                {doc?.previewUrl && doc.formato !== "PDF" ? <img src={doc.previewUrl} alt={ui(titulo)} className="h-36 w-full object-contain rounded-lg" /> : doc?.previewUrl && doc.formato === "PDF" ? <iframe src={doc.previewUrl} title={ui(titulo)} className="h-36 w-full rounded-lg border" /> : <><span className="text-[#18345C]">
+              <label className="mt-3 flex min-h-28 flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dashed border-[#E5E0D8] bg-white px-3 py-4 cursor-pointer text-center hover:border-[#18345C]">
+                {doc?.previewUrl && doc.formato !== "PDF" ? <img src={doc.previewUrl} alt={ui(titulo)} className="h-28 w-full object-contain rounded-lg" /> : doc?.previewUrl && doc.formato === "PDF" ? <iframe src={doc.previewUrl} title={ui(titulo)} className="h-28 w-full rounded-lg border" /> : <><span className="text-[#18345C]">
                   <UploadIcon size={22} />
                 </span><span className="text-[15px] font-medium text-[#18345C]">
                     {ui("Seleccionar archivo")}
@@ -612,15 +597,15 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
                   onChange={e => recibirArchivo(e.target.files, lado as "frente" | "reverso" | "unico")} />
               </label>
               {doc && <div className="mt-2 flex items-center gap-2">
-                <CheckIcon size={16} />
+                <RefreshCw size={16} aria-hidden="true" className="text-[#18345C]" />
                 <span className="min-w-0 flex-1 truncate text-xs text-[#166534]">
                   {doc.nombre}
                 </span>
                 <button
                   type="button"
                   onClick={() => lado === "frente" ? setDocumentoFrente(null) : lado === "reverso" ? setDocumentoReverso(null) : setDocumentoUnico(null)}
-                  className="text-xs font-semibold text-[#991B1B]">
-                  {ui("Quitar")}
+                  title="Eliminar fotografía" aria-label={`Eliminar ${titulo}`} className="rounded-md p-1 text-[#991B1B]">
+                  <Trash2 size={17} aria-hidden="true" />
                 </button>
               </div>}
             </div>))}
@@ -634,92 +619,22 @@ export default function CheckInWebScreen({ connectedDocuments, huesped, reserva,
             </Aviso>
           </div>}
           <div data-vs-actions="compact" className="flex gap-2 mt-5">
-            <BotonSecundario onClick={() => setPaso(1)} ancho>
+            <BotonSecundario onClick={() => setPaso(2)} ancho>
               <UiText text="Volver" />
             </BotonSecundario>
-            <BotonPrimario ancho disabled={tipoDocumento === "DPI" ? !documentoFrente || !documentoReverso : !documentoUnico} onClick={() => setPaso(3)}>
+            <BotonPrimario ancho disabled={tipoDocumento === "DPI" ? !documentoFrente || !documentoReverso : !documentoUnico} onClick={() => setPaso(4)}>
               <UiText text="Continuar" />
             </BotonPrimario>
           </div>
         </Tarjeta>)}
 
-        {paso === 3 && (<Tarjeta titulo="Términos de la estancia">
-          <ul className="space-y-2">
-            {TERMINOS_ESTANCIA.map((t) => (<li key={t} className="flex items-start gap-2 text-[14px] text-[#6B7280]">
-              <span className="text-[#D8B94E] mt-0.5 shrink-0">
-                <UiText text="•" />
-              </span>
-              <span>
-                {ui(t)}
-              </span>
-            </li>))}
-          </ul>
-
-          <label className="mt-4 flex items-start gap-3 cursor-pointer">
-            <input type="checkbox" disabled={connected} checked={aceptado} onChange={(e) => setAceptado(e.target.checked)} className="mt-1 w-4 h-4 accent-[#18345C]" />
-
-            <span className="text-[14px] text-[#1F2933]">
-              <UiText text="He leído y acepto los términos y condiciones de la estancia." />
-            </span>
-          </label>
-
-          <div data-vs-actions="compact" className="flex gap-2 mt-5">
-            <BotonSecundario onClick={() => setPaso(2)} ancho>
-              <UiText text="Volver" />
-            </BotonSecundario>
-            <BotonPrimario ancho disabled={!connected&&!aceptado} onClick={() => setPaso(4)}>
-              <UiText text="                 Continuar               " />
-            </BotonPrimario>
-          </div>
-        </Tarjeta>)}
-
-        {paso === 4 && (<Tarjeta titulo="Revisa tu check-in">
-          {errorArchivo && <Aviso tono="error">{ui(errorArchivo)}</Aviso>}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <ResumenDato label="Huésped" valor={nombre} />
-            <ResumenDato label="Documento" valor={`${tipoDocumento} · ${documento}`} />
-            <ResumenDato label="Contacto" valor={`${telefono} · ${correo}`} />
-            {connected ? <div className="sm:col-span-2">{connectedDocuments}</div> : <>
-            <div className="rounded-lg border border-[#E5E0D8] bg-[#F8F6F0] p-4 sm:col-span-2">
-              <p className="text-[11px] uppercase tracking-widest text-[#AEBCC1]">Documento cargado</p>
-              {tipoDocumento === "DPI" ? (<div className="mt-3 grid gap-4 sm:grid-cols-2">
-                {[
-                  { doc: documentoFrente, titulo: "Frente del DPI" },
-                  { doc: documentoReverso, titulo: "Reversa del DPI" },
-                ].map(({ doc, titulo }) => doc && (<div key={titulo} className="rounded-lg border border-[#E5E0D8] bg-white p-3">
-                  <p className="mb-2 text-xs font-semibold text-[#18345C]">
-                    {ui(titulo as string)}
-                  </p>
-                  {doc.previewUrl && doc.formato !== "PDF" ? <img src={doc.previewUrl} alt={ui(titulo as string)} className="h-40 w-full rounded-md border border-[#E5E0D8] object-contain bg-[#FCFBF8]" /> : <iframe src={doc.previewUrl} title={ui(titulo as string)} className="h-40 w-full rounded-md border border-[#E5E0D8]" />}
-                  <p className="mt-2 min-w-0 break-all text-xs font-semibold text-[#18345C]">
-                    {doc.nombre}
-                  </p>
-                </div>))}
-              </div>) : (<div className="mt-3 rounded-lg border border-[#E5E0D8] bg-white p-3">
-                {documentoUnico?.previewUrl && documentoUnico.formato !== "PDF" ? <img src={documentoUnico.previewUrl} alt="Pasaporte" className="h-40 w-full rounded-md border border-[#E5E0D8] object-contain bg-[#FCFBF8]" /> : documentoUnico?.previewUrl ? <iframe src={documentoUnico.previewUrl} title="Pasaporte" className="h-40 w-full rounded-md border border-[#E5E0D8]" /> : null}
-                <p className="mt-2 min-w-0 break-all text-xs font-semibold text-[#18345C]">
-                  {documentoUnico?.nombre ?? "Pendiente"}
-                </p>
-              </div>)}
-            </div>
-            </>}
-          </div>
-          <div className="mt-4">
-            <Aviso tono="info">
-              <UiText text="Recepción revisará la información antes de activar tu llave digital." />
-            </Aviso>
-          </div>
-          <div data-vs-actions="compact" className="flex gap-2 mt-5">
-            <BotonSecundario onClick={() => setPaso(3)} ancho>Volver</BotonSecundario>
-            <BotonPrimario ancho disabled={connected} onClick={finalizar}>{en ? 'Save' : 'Guardar'}</BotonPrimario>
-          </div>
-        </Tarjeta>)}
+        {paso===4&&<Tarjeta titulo="Revise su check-in">{errorArchivo && <div role="alert" className="mb-3"><Aviso tono="error">{ui(errorArchivo)}</Aviso></div>}<p className="mb-3 text-sm text-[#71839B]">Compruebe la información antes de finalizar el envío a Recepción.</p><div className="space-y-2"><div className="flex gap-3 rounded-xl bg-[#F8F6F0] p-3"><CheckCircle2 size={18} className="text-green-700"/><div><b className="block text-sm">Datos personales</b><span className="text-xs">{nombre} · {tipoDocumento}</span></div></div><div className="flex gap-3 rounded-xl bg-[#F8F6F0] p-3"><CheckCircle2 size={18} className="text-green-700"/><div><b className="block text-sm">Términos y condiciones</b><span className="text-xs">{aceptado?"Aceptados":"Pendientes"}</span></div></div><div className="rounded-xl bg-[#F8F6F0] p-3"><b className="block text-sm">Documentos de identificación</b>{connected?<p className="mt-1 text-xs text-[#71839B]">Frente y reverso enviados para su revisión en Recepción.</p>:<div className="mt-2 flex gap-2">{(tipoDocumento==="DPI"?[{d:documentoFrente,t:"Frente"},{d:documentoReverso,t:"Reverso"}]:[{d:documentoUnico,t:"Pasaporte"}]).map(({d,t})=><div key={t} className="min-w-0 flex-1 rounded-lg border bg-white p-2 text-center text-xs">{d?.previewUrl&&d.formato!=="PDF"?<img src={d.previewUrl} alt={t} className="mx-auto h-20 max-w-full object-contain"/>:<FileText size={20} className="mx-auto mb-1"/>}{t} · {d?"Listo":"Pendiente"}</div>)}</div>}</div></div><div data-vs-actions="compact" className="mt-4 flex gap-2"><BotonSecundario ancho onClick={()=>setPaso(3)}>Volver</BotonSecundario>{connected?<BotonPrimario ancho onClick={onIrHabitacion}>Finalizar</BotonPrimario>:<BotonPrimario ancho disabled={!aceptado} onClick={finalizar}>Finalizar envío</BotonPrimario>}</div></Tarjeta>}
       </div>
       <aside className="checkin-booking">
         <Tarjeta titulo="Tu reserva">
-          <img src={connected ? '/images/demo-standard.jpg' : fotoHabitacion((habitacion?.tipo??reserva.tipoHabitacion))} alt={connected ? (en ? 'Illustrative room catalogue photograph' : 'Fotografía ilustrativa del catálogo de habitaciones') : ui("Habitación reservada")} className="checkin-booking-photo" />
+          <img src={connected ? '/images/demo-standard.jpg' : fotoHabitacion((habitacion?.tipo??reserva.tipoHabitacion))} alt={connected ? (en ? 'Illustrative room catalogue photograph' : 'Fotografía ilustrativa del catálogo de habitaciones') : ui("Habitación reservada")} className="checkin-booking-photo !h-32 sm:!h-36" />
           <h3 className="mt-3 text-lg font-semibold text-[#18345C]">
-            {ui("Habitación")}
+            {ui("Habitación")}{" "}
             {(habitacion?.numero??(en?'Pending assignment':'Pendiente de asignación'))}
           </h3>
           <p className="text-sm text-[#71839B]">

@@ -434,28 +434,13 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
     setPestana("pedidos");
   }
   return (<div className="flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
-    <Cabecera
-      titulo={modo === "restaurante" ? "Menú" : "Servicios"}
-      subtitulo={modo === "restaurante" ? `Habitación ${habitacion.numero} · Ordena alimentos y bebidas durante tu estancia.` : `Habitación ${habitacion.numero} · Solicita atención y servicios para tu estancia.`}>
-      <button
-        onClick={onIrCuenta}
-        className="px-4 py-2.5 min-h-[44px] text-[14px] font-semibold border border-[#18345C] text-[#18345C] rounded-md hover:bg-[#18345C] hover:text-white transition-colors">
-        <UiText text="           Ver mi cuenta         " />
-      </button>
+    <Cabecera titulo={modo === "restaurante" ? "Menú" : pestana === "pedidos" ? "Mis solicitudes" : "Servicios"} subtitulo={reserva.codigo}>
+      <div className="flex flex-col gap-2">
+        <button onClick={onIrCuenta} className="rounded-md border border-[#18345C] px-3 py-2 text-sm font-semibold text-[#18345C]">Ver mi cuenta</button>
+        <button onClick={() => setPestana(pestana==="pedidos"?"servicios":"pedidos")} className="rounded-md border border-[#18345C] px-3 py-2 text-sm font-semibold text-[#18345C]">{pestana==="pedidos"?"Volver a servicios":"Mis solicitudes"}</button>
+      </div>
     </Cabecera>
-
-    <div className="px-4 sm:px-6 pt-5 flex gap-2 flex-wrap">
-      {PESTANAS.filter(p => p.id === modo || p.id === "pedidos").map((p) => (<BotonFiltro key={p.id} activo={pestana === p.id} onClick={() => setPestana(p.id)}>
-        {ui(p.id === "pedidos" && modo === "servicios" ? "Mis solicitudes" : p.label)}
-        {p.id === "pedidos" && activos.length > 0 && (<span className="ml-1.5 text-[11px] font-bold">
-          <UiText text="(" />
-          {activos.length}
-          <UiText text=")" />
-        </span>)}
-      </BotonFiltro>))}
-    </div>
-
-    <div className="px-4 sm:px-6 py-5 space-y-5">
+    <div className="px-4 sm:px-6 py-3 space-y-4">
       {estanciaCerrada && (<Aviso tono="alerta">
         <UiText text="             Tu estancia finalizó, por lo que ya no es posible hacer pedidos a la habitación.           " />
       </Aviso>)}
@@ -552,14 +537,14 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
         <div className="space-y-4">
           {(() => {
             const p = PRESENTACION_SERVICIO[catServicio];
-            return <div className="relative min-h-[205px] overflow-hidden rounded-xl border border-[#E5E0D8] bg-[#18345C]">
+            return <div className="relative min-h-[132px] overflow-hidden rounded-xl border border-[#E5E0D8] bg-[#18345C]">
               <img src={p.foto} alt={ui(catServicio === "todas" ? "Servicios" : catServicio)} className="absolute inset-0 h-full w-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-r from-[#102747]/92 via-[#102747]/55 to-transparent" />
-              <div className="relative z-10 max-w-2xl p-7 sm:p-9 text-white">
+              <div className="relative z-10 max-w-2xl p-4 sm:p-6 text-white">
                 <p className="text-[11px] uppercase tracking-[0.32em] text-white/80">
                   {ui(catServicio === "todas" ? "Servicios" : catServicio)}
                 </p>
-                <h2 className="mt-2 text-3xl sm:text-4xl font-semibold leading-tight">
+                <h2 className="mt-2 text-xl sm:text-2xl font-semibold leading-tight">
                   {ui(p.frase)}
                 </h2>
               </div>
@@ -581,8 +566,9 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
               descripcion={ui(s.id === "sv-agua" ? `${s.descripcion} ${Math.max(0, 3 - aguaUsada)} disponibles hoy.` : s.descripcion)}
               precio={s.precio}
               etiqueta={ui(s.categoria)}
+              compacto
               disponible={!estanciaCerrada}
-              motivoNoDisponible="Estancia finalizada"
+              motivoNoDisponible="No disponible"
               cantidad={carritoServicios[s.id] ?? 0}
               textoPrecio={esTransporteConTarifa(s.id) ? (s.id === 'sv-taxi' ? ui('Tarifa según destino') : s.id === 'sv-reserva-transporte' ? ui('Tarifa según servicio') : ui('Tarifa según recorrido')) : s.precio === 0 ? ui('Incluido') : undefined}
               onAbrir={() => {
@@ -1326,7 +1312,7 @@ export default function ServiciosHuesped({ menu, servicios, pedidos, mensajes, e
     </div>}
   </div>);
 }
-export function FilaCatalogo({ nombre, descripcion, precio, foto, etiqueta, disponible, motivoNoDisponible, cantidad, onCambiar, onAbrir, textoPrecio, textoAccion, cuadrado = false, }: {
+export function FilaCatalogo({ nombre, descripcion, precio, foto, etiqueta, disponible, motivoNoDisponible, cantidad, onCambiar, onAbrir, textoPrecio, textoAccion, cuadrado = false, compacto = false, }: {
   nombre: string;
   descripcion: string;
   precio: number;
@@ -1340,9 +1326,10 @@ export function FilaCatalogo({ nombre, descripcion, precio, foto, etiqueta, disp
   textoPrecio?: string;
   textoAccion?: string;
   cuadrado?: boolean;
+  compacto?: boolean;
 }) {
   const ui = useUiText();
-  return (<div className={`${onAbrir ? "bg-white border rounded-xl overflow-hidden px-4 py-3.5" : "bg-white border rounded-xl px-4 py-3"} ${cuadrado ? "" : ""} ${cantidad > 0 ? "border-[#18345C]" : "border-[#E5E0D8]"}`}>
+  return (<div className={`${onAbrir ? "bg-white border rounded-xl overflow-hidden px-3 py-2.5" : "bg-white border rounded-xl px-3 py-2.5"} ${cuadrado ? "" : ""} ${cantidad > 0 ? "border-[#18345C]" : "border-[#E5E0D8]"}`}>
     <div className={`flex gap-2.5 h-full ${cuadrado ? "flex-col items-stretch" : "flex-col items-stretch"}`}>
       {foto && (<img src={foto} alt={nombre} className={cuadrado ? "w-full h-24 rounded-lg object-cover shrink-0" : "w-32 h-28 rounded-lg object-cover shrink-0"} />)}
       <div className="flex-1 min-w-0 py-1.5 pr-1">
@@ -1353,16 +1340,16 @@ export function FilaCatalogo({ nombre, descripcion, precio, foto, etiqueta, disp
           <Chip cls="bg-[#F8F6F0] text-[#6B7280] border-[#E5E0D8]">
             {etiqueta}
           </Chip>
-          {!disponible && (<Chip cls="bg-[#FEF2F2] text-[#991B1B] border-[#FCA5A5]">
+          {!disponible && (<Chip cls="bg-[#F8F6F0] text-[#71839B] border-[#E5E0D8]">
             {ui(motivoNoDisponible)}
           </Chip>)}
         </div>
         <p className="text-[12px] leading-4 text-[#6B7280] mt-1 line-clamp-2">
           {ui(descripcion)}
         </p>
-        <p className="text-[14px] font-semibold text-[#18345C] mt-1.5">
+        {!compacto && <p className="text-[14px] font-semibold text-[#18345C] mt-1.5">
           {textoPrecio ?? (precio === 0 ? "Incluido en tu estancia" : dinero(precio))}
-        </p>
+        </p>}
       </div>
 
       <div className="shrink-0 flex items-center justify-end pt-1">

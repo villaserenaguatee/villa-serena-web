@@ -1,4 +1,3 @@
-import GuestHotelFacilities from './GuestHotelFacilities';
 import {GuestRestriction} from './GuestRestriction';
 import { usePublicLanguage } from "@/components/common/PublicLanguageToggle";
 import { fotoHabitacion } from "@/store/roomStore";
@@ -6,7 +5,7 @@ import { UiText, useUiText } from "@/i18n/UiText";
 import { useState } from "react";
 import type { Reserva, HabitacionHotel, Domotica, TurnoAmenidad, ReservaAmenidad, } from "@/lib/pms/types";
 import { WIFI_RED, WIFI_PASSWORD, formatoFecha, formatoFechaHora } from "@/data/pms";
-import { Chip, Cabecera, Tarjeta, Aviso, BotonFiltro, BotonPrimario, CodigoQR, plazasLibres, turnoLleno, KeyIcon, DoorIcon, ThermoIcon, LightIcon, CurtainIcon, WifiIcon, CheckIcon, SparkIcon, } from "@/features/huesped/pages/huespedUtils";
+import { Chip, Cabecera, Tarjeta, Aviso, BotonFiltro, BotonPrimario, CodigoQR, plazasLibres, turnoLleno, KeyIcon, ThermoIcon, LightIcon, CurtainIcon, WifiIcon, CheckIcon, SparkIcon, } from "@/features/huesped/pages/huespedUtils";
 const TEMP_MIN = 16;
 const TEMP_MAX = 30;
 interface Props {
@@ -35,22 +34,14 @@ interface Props {
 export default function MiHabitacion({ conectado=false, reserva, onCompartirExperiencia, onReservarEstancia, onVerCuentaFinal, habitacion, domotica, turnos, reservasAmenidad, llaveActiva, codigoLlave, estanciaCerrada, onActualizarDomotica, onActualizarLuz, onConectarWifi, onReservarTurno, onCancelarTurno, onIrCheckin, }: Props) {
   const ui = useUiText();
   const { en } = usePublicLanguage();
-  const [puerta, setPuerta] = useState<"cerrada" | "abriendo" | "abierta">("cerrada");
   const [verQR, setVerQR] = useState(false);
   const [verWifi, setVerWifi] = useState(false);
   const bloqueado = conectado || !llaveActiva;
   const pending=en?'Pending assignment':'Pendiente de asignación';
-  const unavailable=en?'Room controls are not connected. Contact Reception.':'Los controles de habitación no están conectados. Contacta a Recepción.';
+  const unavailable=en?'Digital room controls are not connected. Contact Reception.':'Los controles digitales no están conectados. Contacte a Recepción.';
   const offline=en?'Not connected':'Sin conexión';
   if(conectado){onActualizarDomotica=()=>{};onActualizarLuz=()=>{};onConectarWifi=()=>{};onReservarTurno=()=>{};onCancelarTurno=()=>{};}
 
-  function abrirPuerta() {
-    if (bloqueado || puerta !== "cerrada")
-      return;
-    setPuerta("abriendo");
-    window.setTimeout(() => setPuerta("abierta"), 1200);
-    window.setTimeout(() => setPuerta("cerrada"), 5000);
-  }
   if (!conectado && reserva?.estado === 'finalizada') return <div className="flex-1 overflow-y-auto bg-[#F8F6F0]">
     <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
       <header className="space-y-2">
@@ -113,7 +104,7 @@ export default function MiHabitacion({ conectado=false, reserva, onCompartirExpe
       <section data-vs-card="huesped" className="overflow-hidden rounded-xl border border-[#E5E0D8] bg-white">
         <div className="grid md:grid-cols-[220px_1fr]">
           <img
-            src="/images/demo-standard.jpg"
+            src={habitacion?.numero ? fotoHabitacion(habitacion.numero) : "/images/demo-standard.jpg"}
             alt={ui(`Habitación ${(habitacion?.numero??pending)}`)}
             className="h-36 w-full object-cover md:h-full" />
           <div className="p-3.5">
@@ -132,108 +123,34 @@ export default function MiHabitacion({ conectado=false, reserva, onCompartirExpe
             <p className="mt-2 text-sm leading-relaxed text-[#6B7280]">
               {conectado?unavailable:ui('Controla la puerta, temperatura, luces, cortinas y avisos de limpieza desde esta pantalla.')}
             </p>
-            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-lg bg-[#F8F6F0] px-2 py-2">
-                <p className="font-semibold text-[#18345C]">{conectado?'—':domotica.temperatura+'°'}</p>
-                <p className="text-[11px] text-[#6B7280]">{ui("Temperatura")}</p>
-              </div>
-              <div className="rounded-lg bg-[#F8F6F0] px-2 py-2">
-                <p className="font-semibold text-[#18345C]">{conectado?'—':domotica.luces.filter((l) => l.encendida).length+'/'+domotica.luces.length}</p>
-                <p className="text-[11px] text-[#6B7280]">{ui("Luces")}</p>
-              </div>
-              <div className="rounded-lg bg-[#F8F6F0] px-2 py-2">
-                <p className="font-semibold text-[#18345C]">{conectado?'—':domotica.cortinas+'%'}</p>
-                <p className="text-[11px] text-[#6B7280]">{ui("Cortinas")}</p>
-              </div>
-            </div>
+
           </div>
         </div>
       </section>
 
-      {conectado&&<GuestHotelFacilities/>}
+
       <fieldset disabled={conectado} className="min-w-0 space-y-3 border-0 p-0">
-      <Tarjeta titulo="Acceso a la habitación">
-        {bloqueado && !conectado ? (<div className="text-center py-3.5">
-          <div className="w-10 h-10 rounded-full bg-[#F8F6F0] flex items-center justify-center mx-auto text-[#AEBCC1]">
-            <KeyIcon size={22} />
+      {conectado && <div className="grid gap-3 lg:grid-cols-2">
+        <Tarjeta titulo="Wi-Fi del hotel">
+          <p className="text-sm text-[#52677F]">{en?'Network':'Red'}: <span className="font-semibold text-[#18345C]">{WIFI_RED}</span></p>
+          <div className="mt-3 rounded-lg border border-[#E5E0D8] bg-[#F8F6F0] p-3 text-sm text-[#52677F]">
+            {reserva?.estado === 'en-curso'
+              ? (en?'Wi-Fi credentials and connection QR have not been configured for secure delivery in this portal. Contact Reception.':'La contraseña y el QR de conexión aún no están configurados para su entrega segura en el portal. Consulte en Recepción.')
+              : (en?'The Wi-Fi password and QR will be available only after check-in is approved, once secure access is configured.':'La contraseña y el QR estarán disponibles únicamente después del check-in autorizado, cuando se configure el acceso seguro.')}
           </div>
-          <p className="text-[15px] font-medium text-[#18345C] mt-3">
-            {estanciaCerrada
-              ? "Llave desactivada"
-              : "Todavía no tienes llave digital"}
-          </p>
-          <p className="text-[14px] text-[#AEBCC1] mt-1 max-w-md mx-auto">
-            {estanciaCerrada
-              ? "Se desactivó al procesar el pago del check-out, como medida de seguridad."
-              : "Completa el check-in. Al aprobarlo, recepción activará la llave en este mismo teléfono."}
-          </p>
-          {!estanciaCerrada && (<div className="mt-4">
-            <BotonPrimario onClick={onIrCheckin}>
-              <UiText text="Ir al check-in" />
-            </BotonPrimario>
-          </div>)}
-        </div>) : (<div className="grid gap-3 sm:grid-cols-2 items-start">
-          <div className="text-center">
-            <button
-              disabled={bloqueado}
-              onClick={abrirPuerta}
-              className="w-28 h-28 rounded-full mx-auto flex flex-col items-center justify-center gap-1 transition-colors"
-              style={{
-                backgroundColor: puerta === "abierta" ? "#F0FAF4" : "#18345C",
-                color: puerta === "abierta" ? "#166534" : "#FFFFFF",
-                border: puerta === "abierta"
-                  ? "2px solid #86EFAC"
-                  : "2px solid #18345C",
-              }}>
-              {puerta === "abierta" ? (<CheckIcon size={30} />) : (<DoorIcon size={30} />)}
-              <span className="text-[14px] font-semibold mt-1">
-                {ui(puerta === "cerrada"
-                  ? "Abrir puerta"
-                  : puerta === "abriendo"
-                    ? "Conectando…"
-                    : "¡Abierta!")}
-              </span>
-            </button>
-            <p className="text-[13px] text-[#6B7280] mt-3">
-              {ui(puerta === "abierta"
-                ? "La cerradura se abrió. Volverá a bloquearse sola."
-                : "Acerca el teléfono a la cerradura y pulsa el botón.")}
-            </p>
-            <div className="flex justify-center gap-1.5 mt-2 flex-wrap">
-              <Chip cls="bg-[#EFF6FF] text-[#1E40AF] border-[#93C5FD]">
-                <UiText text="NFC" />
-              </Chip>
-              <Chip cls="bg-[#EFF6FF] text-[#1E40AF] border-[#93C5FD]">
-                <UiText text="Bluetooth" />
-              </Chip>
-              <Chip cls="bg-[#EFF6FF] text-[#1E40AF] border-[#93C5FD]">
-                <UiText text="QR" />
-              </Chip>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-[15px] font-semibold text-[#18345C] flex items-center gap-2">
-              <KeyIcon size={16} />
-              {conectado?(en?'Digital key unavailable':'Llave digital no disponible'):<UiText text=" Llave digital activa                 "/>}
-            </p>
-            <p className="text-[14px] text-[#6B7280] mt-1">
-              {conectado?unavailable:<UiText text="                   Si la cerradura no responde por Bluetooth, muestra el código QR en el lector.                 "/>}
-            </p>
-
-            {verQR && codigoLlave ? (<div className="mt-3 flex flex-col items-center gap-2">
-              <CodigoQR texto={codigoLlave} tamano={150} />
-              <button onClick={() => setVerQR(false)} className="text-[13px] font-semibold text-[#6B7280] hover:text-[#18345C]">
-                <UiText text="                       Ocultar código                     " />
-              </button>
-            </div>) : (<button
-              onClick={() => setVerQR(true)}
-              className="mt-3 px-4 py-2.5 min-h-[44px] text-[14px] font-semibold border border-[#18345C] text-[#18345C] rounded-md hover:bg-[#18345C] hover:text-white transition-colors">
-              <UiText text="                     Mostrar código QR                   " />
-            </button>)}
-          </div>
-        </div>)}
-      </Tarjeta>
+        </Tarjeta>
+        <Tarjeta titulo="Acceso a la habitación">
+          <p className="text-sm font-semibold text-[#18345C]">{en?'Digital key unavailable':'Llave digital no disponible'}</p>
+          <p className="mt-2 text-sm text-[#52677F]">{en?'Digital door opening is not connected to this portal. For assistance, contact Reception.':'La apertura digital de puertas no está conectada a este portal. Para obtener asistencia, contacte a Recepción.'}</p>
+        </Tarjeta>
+      </div>}
+      {!conectado && <Tarjeta titulo="Acceso a la habitación">
+        <div className="text-sm text-[#52677F]">{en?'Local demonstration only; this does not operate a real lock.':'Demostración local únicamente; no controla una cerradura real.'}</div>
+      </Tarjeta>}
+      {conectado && <div className="rounded-xl border border-[#E5E0D8] bg-white p-4">
+        <p className="font-semibold text-[#18345C]">{en?'Room features':'Características de la habitación'}</p>
+        <p className="mt-1 text-sm text-[#52677F]">{en?'Room features will appear when linked to the real room catalogue.':'Las características se mostrarán cuando estén vinculadas al catálogo real de habitaciones.'}</p>
+      </div>}
 
       <div className="grid gap-3 lg:grid-cols-2">
 
@@ -371,7 +288,7 @@ export default function MiHabitacion({ conectado=false, reserva, onCompartirExpe
           </div>
         </Tarjeta>
 
-        <Tarjeta titulo="Avisos y conexión">
+        <Tarjeta titulo="Preferencias de habitación">
           <div className="space-y-3">
             <div className="flex items-center gap-3 bg-[#F8F6F0] border border-[#E5E0D8] rounded-lg px-3 py-3">
               <span className="text-[#991B1B]">
@@ -402,10 +319,10 @@ export default function MiHabitacion({ conectado=false, reserva, onCompartirExpe
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-[15px] font-medium text-[#18345C]">
-                  <UiText text="Hacer la habitación" />
+                  <UiText text="Solicitar limpieza" />
                 </p>
                 <p className="text-[12px] text-[#AEBCC1]">
-                  <UiText text="Avisa a limpieza que puede pasar." />
+                  <UiText text="Solicite la limpieza de su habitación." />
                 </p>
               </div>
               <Interruptor

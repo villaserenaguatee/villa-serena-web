@@ -16,6 +16,7 @@
       "fix/menu-productos-fotografias": false,
       "fix/editor-elementos-navegacion": false,
       "feat/estancias-editor": false,
+      "feat/reservas-experiencias": false,
       "fix/tablas-habitaciones-catalogo-20261029": false
     }
   }
