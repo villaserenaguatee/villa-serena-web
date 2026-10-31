@@ -64,7 +64,7 @@ test('room creation uses the existing endpoint and only permitted fields', async
   await userEvent.selectOptions(within(dialog).getByLabelText('Categoría de habitación'), '3');
   fireEvent.change(within(dialog).getByLabelText('Capacidad'), {target:{value:'2'}});
   fireEvent.change(within(dialog).getByLabelText('Superficie (m²)'), {target:{value:'25'}});
-  await userEvent.click(within(dialog).getByRole('button', {name:/Agregar tipo de cama/i}));
+  await userEvent.click(within(dialog).getByRole('button', {name:/Agregar otro tipo de cama/i}));
   await userEvent.selectOptions(within(dialog).getByLabelText('Tipo de cama 1'), 'Matrimonial');
   fireEvent.change(within(dialog).getByLabelText('Cantidad de camas 1'), {target:{value:'1'}});
   fireEvent.submit(dialog);
