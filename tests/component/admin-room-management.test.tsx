@@ -62,6 +62,11 @@ test('room creation uses the existing endpoint and only permitted fields', async
   const dialog = await openNew();
   fireEvent.change(within(dialog).getByLabelText('Número de habitación'), {target:{value:' 103 '}});
   await userEvent.selectOptions(within(dialog).getByLabelText('Categoría de habitación'), '3');
+  fireEvent.change(within(dialog).getByLabelText('Capacidad'), {target:{value:'2'}});
+  fireEvent.change(within(dialog).getByLabelText('Superficie (m²)'), {target:{value:'25'}});
+  await userEvent.click(within(dialog).getByRole('button', {name:/Agregar otro tipo de cama/i}));
+  await userEvent.selectOptions(within(dialog).getByLabelText('Tipo de cama 1'), 'Matrimonial');
+  fireEvent.change(within(dialog).getByLabelText('Cantidad de camas 1'), {target:{value:'1'}});
   fireEvent.submit(dialog);
   await waitFor(() => expect(posts()).toHaveLength(1));
   const [path, , body] = posts()[0];
