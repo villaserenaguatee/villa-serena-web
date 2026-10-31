@@ -54,11 +54,10 @@ export default function CatalogosAdmin({initial='tipos',resources,roomManagement
  const [newRoomPhotos,setNewRoomPhotos]=useState<CatalogPhotoDraft[]>([]);
  const [roomExtrasError,setRoomExtrasError]=useState('');
  const [roomExtrasNotice,setRoomExtrasNotice]=useState('');
- const [roomCreated,setRoomCreated]=useState(false);
  const photoUploadCache=useRef(new Map<File,string>());
  const dialogOpen=Boolean(draft);
  useEffect(()=>{if(!dialogOpen||resetOpen||temporaryPassword)return;const previous=document.activeElement as HTMLElement|null;const panel=document.querySelector<HTMLElement>('form[role="dialog"]');const frame=requestAnimationFrame(()=>panel?.querySelector<HTMLElement>('input:not([readonly]):not(:disabled),select:not(:disabled),button:not(:disabled)')?.focus());const keyboard=(event:KeyboardEvent)=>{if(event.key==='Escape'&&!lock.current){event.preventDefault();setDraft(null);}if(event.key==='Tab'){const controls=Array.from(panel?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled)')??[]),first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}};document.addEventListener('keydown',keyboard);return()=>{cancelAnimationFrame(frame);document.removeEventListener('keydown',keyboard);if(previous?.isConnected)previous.focus();};},[dialogOpen,resetOpen,temporaryPassword]);
- const open=(row?:Row)=>{setResetOpen(false);if(unavailable||uncertain||(roomManagement&&loadFailed))return;key.current=null;setError('');setFieldErrors({});setNewRoomFeatures(featureDraft());setNewRoomPhotos([]);setRoomExtrasError('');setRoomExtrasNotice('');setRoomCreated(false);photoUploadCache.current.clear();setDraft(row?JSON.parse(JSON.stringify(row)):{estado:'ACTIVO',capacidad:1,precioBase:resource==='tipos'?'':1,ajusteFinSemanaPct:0,piso:1,rol:'RECEPCION',area:'',perfil:{},activa:true,aplicaATodos:true,tipos:[]});};
+ const open=(row?:Row)=>{setResetOpen(false);if(unavailable||uncertain||(roomManagement&&loadFailed))return;key.current=null;setError('');setFieldErrors({});setNewRoomFeatures(featureDraft());setNewRoomPhotos([]);setRoomExtrasError('');setRoomExtrasNotice('');photoUploadCache.current.clear();setDraft(row?JSON.parse(JSON.stringify(row)):{estado:'ACTIVO',capacidad:1,precioBase:resource==='tipos'?'':1,ajusteFinSemanaPct:0,piso:1,rol:'RECEPCION',area:'',perfil:{},activa:true,aplicaATodos:true,tipos:[]});};
  useEffect(()=>{if(initialEditId==null||loading||loadFailed||unavailable)return;const row=rows.find(row=>row.id===initialEditId);if(row){key.current=null;setFieldErrors({});setDraft(JSON.parse(JSON.stringify(row)));onInitialEditHandled?.();}},[initialEditId,loading,loadFailed,unavailable,rows,onInitialEditHandled]);
  async function save(){if(lock.current||busy||!draft||unavailable||uncertain)return;
  if(roomManagement){const problems=validateRoomCatalog(resource,draft,types.filter(t=>t.estado==='ACTIVO').map(t=>t.id));setFieldErrors(problems);if(Object.keys(problems).length){requestAnimationFrame(()=>document.querySelector<HTMLElement>('[role="dialog"] [aria-invalid="true"]')?.focus());return;}}
@@ -83,12 +82,11 @@ export default function CatalogosAdmin({initial='tipos',resources,roomManagement
   await operacion(`admin/catalogos/${resource}`,'POST',{clave:key.current,id:draft.id??null,version:draft.version??0,datos:data});
   if(creatingRoom){
    // The catalog write is complete: never repeat the POST if saving extras fails.
-   setRoomCreated(true);
    const rooms=await readCatalogRooms();
    const created=rooms.find(room=>String(room.numero).trim().toLowerCase()===String(draft.numero).trim().toLowerCase());
    if(!created)throw Error('La habitación se guardó, pero no se pudo identificar para guardar sus características. Actualiza y edítala.');
    setDraft({...draft,id:created.id});
-   setRows(rooms as Row[]);
+   setRows(rooms.map(room=>({...room,version:0})) as Row[]);
    key.current=null;
    setReload(n=>n+1);
    try{
