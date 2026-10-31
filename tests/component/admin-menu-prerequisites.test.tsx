@@ -12,7 +12,7 @@ beforeEach(()=>{call.mockReset();});
 const writes=()=>call.mock.calls.filter(([,method])=>method&&method!=='GET');
 test('empty official categories explain the disabled action and open the real category form; refreshed categories enable products',async()=>{
  let registered=false;call.mockImplementation(async(path,method,body)=>{
-  if(path==='admin/menu/categorias'&&method==='POST'){expect(body).toEqual({nombre:'Bebidas'});registered=true;return category;}
+  if(path==='admin/menu/categorias'&&method==='POST'){expect(body).toEqual({nombre:'Bebidas',franja:'OTROS',horaInicio:null,horaFin:null});registered=true;return category;}
   if(path==='admin/menu/categorias')return registered?[category]:[];
   if(path==='admin/menu/items')return [];
   throw Error('Unexpected request');
