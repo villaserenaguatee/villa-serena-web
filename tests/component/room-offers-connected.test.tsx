@@ -22,11 +22,8 @@ beforeEach(()=>{
 });
 const writes=()=>call.mock.calls.filter(([,method])=>method&&method!=='GET');
 async function open(){render(<RoomCatalogContent typeId={9} name="Estándar" maxCapacity={4} onClose={vi.fn()}/>);await waitFor(()=>expect(screen.getByRole('button',{name:'Nueva oferta'})).toBeEnabled());}
-test('carga fotografías y ofertas existentes sin guardados ni controles falsos',async()=>{
- await open();expect(await screen.findByRole('img',{name:'Fotografía 1'})).toHaveAttribute('src',photo.url);expect(screen.getByText('Oferta existente',{exact:true})).toBeVisible();expect(screen.queryByText(/Pendiente de conexión|API #83|77225a1/)).toBeNull();expect(writes()).toHaveLength(0);
-});
-test('cerrar la fotografía ampliada no cierra el catálogo ni cambia sus datos',async()=>{
- const close=vi.fn();render(<RoomCatalogContent typeId={9} name="Estándar" maxCapacity={4} onClose={close}/>);await waitFor(()=>expect(screen.getByRole('button',{name:'Nueva oferta'})).toBeEnabled());await userEvent.click(screen.getByRole('button',{name:'Ampliar fotografía 1'}));expect(screen.getByRole('dialog',{name:'Vista de fotografía'})).toBeVisible();fireEvent.keyDown(document,{key:'Escape'});expect(screen.queryByRole('dialog',{name:'Vista de fotografía'})).toBeNull();expect(close).not.toHaveBeenCalled();const catalog=screen.getByRole('dialog',{name:'Ofertas y galería · Estándar'});await userEvent.click(within(catalog).getByRole('button',{name:'Cerrar'}));expect(close).toHaveBeenCalledTimes(1);expect(writes()).toHaveLength(0);
+test('presenta las ofertas sin mostrar galería ni características de habitaciones',async()=>{
+ await open();expect(screen.getByText('Oferta existente',{exact:true})).toBeVisible();expect(screen.queryByRole('img',{name:'Fotografía 1'})).toBeNull();expect(screen.queryByText('Galería de la categoría')).toBeNull();expect(screen.queryByText('Características de las habitaciones')).toBeNull();expect(writes()).toHaveLength(0);
 });
 test('editar, recuperar y publicar una oferta usan operaciones distintas y conservan vínculos y fotografías',async()=>{
  await open();await userEvent.click(screen.getByRole('button',{name:'Editar oferta Oferta existente'}));const form=screen.getByRole('region',{name:'Editar oferta'});
@@ -47,12 +44,6 @@ test('un error de escritura conserva la edición y no muestra éxito',async()=>{
 });
 test('una respuesta incompleta no se presenta como un guardado confirmado',async()=>{
  await open();await userEvent.click(screen.getByRole('button',{name:'Editar oferta Oferta existente'}));call.mockResolvedValueOnce({});await userEvent.click(screen.getByRole('button',{name:'Guardar oferta'}));expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo confirmar la oferta');expect(screen.getByLabelText('Nombre de la oferta')).toHaveValue('Oferta existente');expect(screen.queryByText('Oferta guardada.')).toBeNull();
-});
-test('las características guardan en la habitación y respetan el rechazo por reservas activas',async()=>{
- await open();await userEvent.selectOptions(screen.getByLabelText('Habitación',{exact:true}),'11');await waitFor(()=>expect(screen.getByRole('button',{name:'Guardar características'})).toBeEnabled());expect(screen.getByLabelText('Superficie (m²)')).toHaveValue(24);
- fireEvent.change(screen.getByLabelText('Superficie (m²)'),{target:{value:'26'}});call.mockRejectedValueOnce(new OperationError('No se pueden cambiar características comprometidas en reservas activas.',409));await userEvent.click(screen.getByRole('button',{name:'Guardar características'}));expect(await screen.findByRole('alert')).toHaveTextContent('reservas activas');expect(screen.getByLabelText('Superficie (m²)')).toHaveValue(26);expect(screen.queryByText('Características guardadas.')).toBeNull();
- await userEvent.click(screen.getByRole('button',{name:'Guardar características'}));await screen.findByText('Características guardadas.');expect(writes().at(-1)).toEqual(['admin/habitaciones/11/caracteristicas','PUT',{...features,superficieM2:26}]);expect(writes().some(([path])=>path.startsWith('admin/ofertas'))).toBe(false);
- await userEvent.click(screen.getByRole('button',{name:'Actualizar características'}));await waitFor(()=>expect(screen.getByLabelText('Superficie (m²)')).toHaveValue(26));
 });
 for(const status of [401,403,404,503])test('consulta rechazada '+status+' no habilita escrituras',async()=>{
  call.mockRejectedValue(new OperationError('Consulta no disponible',status));render(<RoomCatalogContent typeId={9} name="Estándar" maxCapacity={4} onClose={vi.fn()}/>);await screen.findAllByRole('alert');expect(screen.getByRole('button',{name:'Nueva oferta'})).toBeDisabled();await userEvent.click(screen.getByRole('button',{name:'Nueva oferta'}));expect(writes()).toHaveLength(0);
