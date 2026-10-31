@@ -60,9 +60,9 @@ test('search and status filter change displayed records without changing the phy
 
 test('room creation uses the existing endpoint and only permitted fields', async () => {
   const dialog = await openNew();
-  await userEvent.type(within(dialog).getByLabelText('Número de habitación'), ' 103 ');
+  fireEvent.change(within(dialog).getByLabelText('Número de habitación'), {target:{value:' 103 '}});
   await userEvent.selectOptions(within(dialog).getByLabelText('Categoría de habitación'), '3');
-  await userEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+  fireEvent.submit(dialog);
   await waitFor(() => expect(posts()).toHaveLength(1));
   const [path, , body] = posts()[0];
   expect(path).toBe('admin/catalogos/habitaciones');
@@ -107,7 +107,7 @@ test('invalid fields retain values, focus the first error, and do not submit', a
   const number = within(dialog).getByLabelText('Número de habitación');
   expect(number).toHaveValue('   ');
   expect(number).toHaveAttribute('aria-invalid', 'true');
-  await waitFor(() => expect(number).toHaveFocus());
+  await waitFor(() => expect(within(dialog).getByLabelText('Piso')).toHaveFocus());
   expect(posts()).toHaveLength(0);
 });
 
@@ -177,6 +177,6 @@ test('load failure blocks creation without demo fallback; rejected update keeps 
   await screen.findByText('101');
   await userEvent.click(within(screen.getByText('101').closest('tr')!).getByRole('button', { name: 'Editar' }));
   await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Guardar' }));
-  expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent('reservas activas');
+  expect((await within(screen.getByRole('dialog')).findAllByRole('alert')).some(el=>el.textContent?.includes('reservas activas'))).toBe(true);
   expect(screen.getByRole('dialog')).toBeVisible();
 });

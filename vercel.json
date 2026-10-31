@@ -5,6 +5,7 @@
   "installCommand": "corepack pnpm install --frozen-lockfile",
   "git": {
     "deploymentEnabled": {
+      "feat/admin-room-form-order-uniqueness-20261030": false,
       "fix/reception-chat-layout-20261030": false,
       "fix/solo-espanol-publicado": false,
       "feat/editor-fotografico": false,

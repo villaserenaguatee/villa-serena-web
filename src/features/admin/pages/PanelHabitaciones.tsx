@@ -80,28 +80,18 @@ export default function PanelHabitaciones({ navigation, habitaciones, reservas, 
   };
   return (<div className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-[#F8F6F0]" style={{ fontFamily: '"Afacad", "Segoe UI", Arial, sans-serif' }}>
 
-    <div className="px-4 sm:px-6 py-5 bg-white border-b border-[#E5E0D8]">
+    <div className="px-4 sm:px-6 py-3 bg-white border-b border-[#E5E0D8]">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-[32px] font-semibold text-[#18345C] leading-tight">Mapa de habitaciones</h1>
-          <p className="text-[14px] text-[#AEBCC1] mt-1">
-            {conectado?'Datos del hotel':'Datos de este navegador'} · actualizado {ahora ? ahora.toLocaleTimeString() : '—'}
-          </p>
         </div>
-        <span className="flex items-center gap-2 text-[13px] text-[#166534] bg-[#F0FAF4] border border-[#86EFAC] rounded-md px-3 py-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
-          {conectado?'Hotel':'Local'}
-        </span>
       </div>
 
-      {navigation&&<div className="mt-4">{navigation}</div>}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
-        {ESTADOS.map(e => (<Kpi key={e} valor={conectado&&e==='reservada'?'—':conteo(e)} label={conectado&&e==='disponible'?'Libres':HAB_META[e].label} color={HAB_META[e].dot} />))}
-        <Kpi valor={`${ocupacionPct}%`} label="Ocupación" color="#18345C" />
-      </div>
+      {navigation&&<div className="mt-2">{navigation}</div>}
+
     </div>
 
-    <div className="flex flex-wrap items-end gap-3 px-4 pt-5 sm:px-6">
+    <div className="flex flex-wrap items-end gap-3 px-4 pt-3 sm:px-6">
       <label className="min-w-0 flex-1 text-sm sm:max-w-48">Piso
         <select value={piso} onChange={event=>setPiso(event.target.value==='todos'?'todos':Number(event.target.value) as 1|2|3)} className="mt-1 block w-full rounded-md border border-[#D8DFE5] bg-white px-3 py-2 text-[#18345C]">
           <option value="todos">Todos los pisos</option>{([1,2,3] as const).map(value=><option key={value} value={value}>Piso {value}</option>)}

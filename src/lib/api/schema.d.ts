@@ -1,5 +1,5 @@
 /** Generado desde villa-serena-docs/openapi.yaml. No editar.
- * Contrato SHA-256: 56c25df8eef3b5c1957a74456485e8841be9fd2b21b587ed2e85c05edcc28c4c
+ * Contrato SHA-256: 790c3c93a1400fbacee624833f225816f1ea0927187a4c3e40e613e6afcab018
  */
 export interface paths {
     "/api/v1/auth/login": {
@@ -2736,6 +2736,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/habitaciones/{id}/fotos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        /** Consultar fotografías de una habitación física */
+        get: operations["consultarFotosHabitacionAdmin"];
+        /**
+         * Sustituir la galería de una habitación física
+         * @description Las fotografías son independientes de las de su categoría. Entre 1 y 30 fotografías JPG/PNG cargadas con uso HABITACION; exactamente una principal. La operación es transaccional.
+         */
+        put: operations["actualizarFotosHabitacionAdmin"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/habitaciones/{id}/caracteristicas": {
         parameters: {
             query?: never;
@@ -3140,153 +3163,10 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/estancias/{codigo}/chat": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                codigo: string;
-            };
-            cookie?: never;
-        };
-        /**
-         * mensajesChatRecepcion
-         * @description Requiere RECEPCION. Solo sus propios mensajes no eliminados y de una estancia EN_ESTADIA admiten modificación. Nunca se confía en permisos enviados por el cliente.
-         */
-        get: operations["mensajesChatRecepcion"];
-        put?: never;
-        /**
-         * enviarMensajeChatRecepcion
-         * @description Requiere RECEPCION. Solo sus propios mensajes no eliminados y de una estancia EN_ESTADIA admiten modificación. Nunca se confía en permisos enviados por el cliente.
-         */
-        post: operations["enviarMensajeChatRecepcion"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/estancias/{codigo}/chat/{mensajeId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                codigo: string;
-                mensajeId: number;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * editarMensajeChatRecepcion
-         * @description Requiere RECEPCION. Solo sus propios mensajes no eliminados y de una estancia EN_ESTADIA admiten modificación. Nunca se confía en permisos enviados por el cliente.
-         */
-        put: operations["editarMensajeChatRecepcion"];
-        post?: never;
-        /**
-         * eliminarMensajeChatRecepcion
-         * @description Requiere RECEPCION. Solo sus propios mensajes no eliminados y de una estancia EN_ESTADIA admiten modificación. Nunca se confía en permisos enviados por el cliente.
-         */
-        delete: operations["eliminarMensajeChatRecepcion"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/estancias/chat-preferencias": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * preferenciasChatRecepcion
-         * @description Preferencias privadas del empleado autenticado. No se aceptan IDs de empleado del cliente. Eliminar una conversación solo la retira de su lista, sin borrar mensajes ni afectar al huésped u otro empleado.
-         */
-        get: operations["preferenciasChatRecepcion"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/estancias/{codigo}/chat-preferencias": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                codigo: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * guardarPreferenciasChatRecepcion
-         * @description Preferencias privadas del empleado autenticado. No se aceptan IDs de empleado del cliente. Eliminar una conversación solo la retira de su lista, sin borrar mensajes ni afectar al huésped u otro empleado.
-         */
-        post: operations["guardarPreferenciasChatRecepcion"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        PreferenciaChatRecepcion: {
-            codigo: string;
-            favorita: boolean;
-            archivada: boolean;
-            eliminada: boolean;
-            /** Format: int64 */
-            ultimoId: number;
-            /** Format: int64 */
-            noLeidos: number;
-        };
-        /** @description favorita y archivada requieren valor. leido requiere hasta; nunca se adelanta más allá del último mensaje existente. El marcador no retrocede. eliminar no borra mensajes. */
-        CambiarPreferenciaChatRecepcion: {
-            /** @enum {string} */
-            accion: "favorita" | "archivada" | "eliminar" | "leido";
-            valor?: boolean;
-            /** Format: int64 */
-            hasta?: number;
-        };
-        /** @description puedeModificar depende de autor RECEPCION, author_id del JWT, estancia EN_ESTADIA y ausencia de eliminación. No expone author_id. Tras eliminar, texto es vacío, eliminado=true y puedeModificar=false; se conserva el registro privado. */
-        MensajeChatRecepcion: {
-            /** Format: int64 */
-            id: number;
-            /** @enum {string} */
-            autor: "HUESPED" | "RECEPCION";
-            texto: string;
-            /** Format: date-time */
-            creadoEn: string;
-            /** Format: int64 */
-            version: number;
-            puedeModificar: boolean;
-            eliminado: boolean;
-            /** Format: date-time */
-            editadoEn?: string;
-        };
-        EnviarMensajeChatRecepcion: {
-            /** Format: uuid */
-            clave: string;
-            texto: string;
-        };
-        EditarMensajeChatRecepcion: {
-            texto: string;
-            /** Format: int64 */
-            version: number;
-        };
-        EliminarMensajeChatRecepcion: {
-            /** Format: int64 */
-            version: number;
-        };
         /** @description Extensión 1:1 de una amenidad existente: nombre, descripción, fotografía y estado provienen de hotel_amenities. Precio y políticas son configuración explícita; no hay valores comerciales de ejemplo. ANTICIPADO solo permite consultas, nunca confirma sin pago. */
         Experiencia: {
             /** Format: int64 */
@@ -5458,6 +5338,10 @@ export interface components {
             principal: boolean;
             orden: number;
         };
+        FotosHabitacionRespuesta: {
+            habitacionId: components["schemas"]["Id"];
+            fotos: components["schemas"]["FotoCatalogo"][];
+        };
         /**
          * @description Lista completa de fotos del tipo, exactamente una principal; claves creadas por carga de imágenes autorizada.
          * @example {
@@ -5847,7 +5731,7 @@ export interface components {
             /** Format: binary */
             archivo: string;
             /** @enum {string} */
-            uso: "HOTEL" | "TIPO_HABITACION" | "MENU" | "AMENIDAD" | "INCIDENCIA";
+            uso: "HOTEL" | "TIPO_HABITACION" | "HABITACION" | "MENU" | "AMENIDAD" | "INCIDENCIA";
         };
         /**
          * @example {
@@ -13944,6 +13828,61 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    consultarFotosHabitacionAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Galería individual de la habitación. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FotosHabitacionRespuesta"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    actualizarFotosHabitacionAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FotosTipoPeticion"];
+            };
+        };
+        responses: {
+            /** @description Galería individual actualizada. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FotosHabitacionRespuesta"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     consultarCaracteristicasHabitacionAdmin: {
         parameters: {
             query?: never;
@@ -15200,429 +15139,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-        };
-    };
-    mensajesChatRecepcion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                codigo: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Operación completada */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MensajeChatRecepcion"][];
-                };
-            };
-            /** @description Datos inválidos */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Sin sesión */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rol no permitido o mensaje de otro autor */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Reserva o mensaje no encontrado en esa conversación */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Estancia cerrada, mensaje eliminado o revisión obsoleta */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    enviarMensajeChatRecepcion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                codigo: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EnviarMensajeChatRecepcion"];
-            };
-        };
-        responses: {
-            /** @description Operación completada */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** Format: int64 */
-                        id: number;
-                    };
-                };
-            };
-            /** @description Datos inválidos */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Sin sesión */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rol no permitido o mensaje de otro autor */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Reserva o mensaje no encontrado en esa conversación */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Estancia cerrada, mensaje eliminado o revisión obsoleta */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    editarMensajeChatRecepcion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                codigo: string;
-                mensajeId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EditarMensajeChatRecepcion"];
-            };
-        };
-        responses: {
-            /** @description Operación completada */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MensajeChatRecepcion"];
-                };
-            };
-            /** @description Datos inválidos */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Sin sesión */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rol no permitido o mensaje de otro autor */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Reserva o mensaje no encontrado en esa conversación */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Estancia cerrada, mensaje eliminado o revisión obsoleta */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    eliminarMensajeChatRecepcion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                codigo: string;
-                mensajeId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["EliminarMensajeChatRecepcion"];
-            };
-        };
-        responses: {
-            /** @description Operación completada */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MensajeChatRecepcion"];
-                };
-            };
-            /** @description Datos inválidos */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Sin sesión */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Rol no permitido o mensaje de otro autor */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Reserva o mensaje no encontrado en esa conversación */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Estancia cerrada, mensaje eliminado o revisión obsoleta */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    preferenciasChatRecepcion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Operación completada */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PreferenciaChatRecepcion"][];
-                };
-            };
-            /** @description Datos inválidos */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Sin sesión */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Requiere RECEPCION */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Reserva no encontrada */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Estancia no iniciada */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    guardarPreferenciasChatRecepcion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                codigo: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CambiarPreferenciaChatRecepcion"];
-            };
-        };
-        responses: {
-            /** @description Operación completada */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        codigo: string;
-                    };
-                };
-            };
-            /** @description Datos inválidos */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Sin sesión */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Requiere RECEPCION */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Reserva no encontrada */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Estancia no iniciada */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
             };
         };
     };
