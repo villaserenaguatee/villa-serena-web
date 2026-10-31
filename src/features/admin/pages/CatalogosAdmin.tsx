@@ -15,6 +15,10 @@ import {operacion,OperationError} from '@/lib/api/operaciones';
 import RoomCatalogManager from './RoomCatalogManager';
 import RoomPhysicalPhotoGallery from './RoomPhysicalPhotoGallery';
 import RoomFeaturesEditor from './RoomFeaturesEditor';
+import RoomOfferFields,{featureDraft,featureInput} from './RoomOfferFields';
+import AdminPhotoGallery from './AdminPhotoGallery';
+import {resolveCatalogPhotos,type CatalogPhotoDraft} from './catalogPhotoClient';
+import {readCatalogRooms,saveFeatures} from './roomOffersClient';
 import {validateRoomCatalog} from './roomCatalogValidation';
 import EmployeeFormSections from './EmployeeFormSections';
 import ReceptionActionDialog from '@/features/recepcion/pages/ReceptionActionDialog';
@@ -46,9 +50,15 @@ export default function CatalogosAdmin({initial='tipos',resources,roomManagement
  const [catalogType,setCatalogType]=useState<Row>();
  const catalogDraftSnapshot=useRef<Record<string,unknown>|null>(null);
  const [resetOpen,setResetOpen]=useState(false);
+ const [newRoomFeatures,setNewRoomFeatures]=useState(featureDraft());
+ const [newRoomPhotos,setNewRoomPhotos]=useState<CatalogPhotoDraft[]>([]);
+ const [roomExtrasError,setRoomExtrasError]=useState('');
+ const [roomExtrasNotice,setRoomExtrasNotice]=useState('');
+ const [roomCreated,setRoomCreated]=useState(false);
+ const photoUploadCache=useRef(new Map<File,string>());
  const dialogOpen=Boolean(draft);
  useEffect(()=>{if(!dialogOpen||resetOpen||temporaryPassword)return;const previous=document.activeElement as HTMLElement|null;const panel=document.querySelector<HTMLElement>('form[role="dialog"]');const frame=requestAnimationFrame(()=>panel?.querySelector<HTMLElement>('input:not([readonly]):not(:disabled),select:not(:disabled),button:not(:disabled)')?.focus());const keyboard=(event:KeyboardEvent)=>{if(event.key==='Escape'&&!lock.current){event.preventDefault();setDraft(null);}if(event.key==='Tab'){const controls=Array.from(panel?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled)')??[]),first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}};document.addEventListener('keydown',keyboard);return()=>{cancelAnimationFrame(frame);document.removeEventListener('keydown',keyboard);if(previous?.isConnected)previous.focus();};},[dialogOpen,resetOpen,temporaryPassword]);
- const open=(row?:Row)=>{setResetOpen(false);if(unavailable||uncertain||(roomManagement&&loadFailed))return;key.current=null;setError('');setFieldErrors({});setDraft(row?JSON.parse(JSON.stringify(row)):{estado:'ACTIVO',capacidad:1,precioBase:resource==='tipos'?'':1,ajusteFinSemanaPct:0,piso:1,rol:'RECEPCION',area:'',perfil:{},activa:true,aplicaATodos:true,tipos:[]});};
+ const open=(row?:Row)=>{setResetOpen(false);if(unavailable||uncertain||(roomManagement&&loadFailed))return;key.current=null;setError('');setFieldErrors({});setNewRoomFeatures(featureDraft());setNewRoomPhotos([]);setRoomExtrasError('');setRoomExtrasNotice('');setRoomCreated(false);photoUploadCache.current.clear();setDraft(row?JSON.parse(JSON.stringify(row)):{estado:'ACTIVO',capacidad:1,precioBase:resource==='tipos'?'':1,ajusteFinSemanaPct:0,piso:1,rol:'RECEPCION',area:'',perfil:{},activa:true,aplicaATodos:true,tipos:[]});};
  useEffect(()=>{if(initialEditId==null||loading||loadFailed||unavailable)return;const row=rows.find(row=>row.id===initialEditId);if(row){key.current=null;setFieldErrors({});setDraft(JSON.parse(JSON.stringify(row)));onInitialEditHandled?.();}},[initialEditId,loading,loadFailed,unavailable,rows,onInitialEditHandled]);
  async function save(){if(lock.current||busy||!draft||unavailable||uncertain)return;
  if(roomManagement){const problems=validateRoomCatalog(resource,draft,types.filter(t=>t.estado==='ACTIVO').map(t=>t.id));setFieldErrors(problems);if(Object.keys(problems).length){requestAnimationFrame(()=>document.querySelector<HTMLElement>('[role="dialog"] [aria-invalid="true"]')?.focus());return;}}
@@ -61,7 +71,41 @@ export default function CatalogosAdmin({initial='tipos',resources,roomManagement
  if(lockIdentityFields){const original=rows.find(row=>row.id===draft.id);if(!original)throw Error('Actualiza la lista antes de editar este empleado.');data.rol=original.rol;data.estado=original.estado;}
  if(data.rol!=='MANTENIMIENTO_LIMPIEZA')data.area=null;
  const profile={...data.perfil as Record<string,unknown>};for(const name of ['salarioBase','bonosExtras','descuentosNomina'])if(profile[name]!==undefined&&profile[name]!==null&&profile[name]!=='')profile[name]=Number(profile[name]);if(draft.id)data.perfil=profile;
- }if(resource==='personal'){await saveEmployee(data,(id,password)=>{setDraft(current=>current?{...current,id}:current);setTemporaryPassword(password);},rows.find(row=>row.id===draft.id)?.perfil);}else await operacion(`admin/catalogos/${resource}`,'POST',{clave:key.current,id:draft.id??null,version:draft.version??0,datos:data});setDraft(null);setFieldErrors({});key.current=null;setReload(n=>n+1);}catch(e){
+ }if(resource==='personal'){await saveEmployee(data,(id,password)=>{setDraft(current=>current?{...current,id}:current);setTemporaryPassword(password);},rows.find(row=>row.id===draft.id)?.perfil);}else {
+  const creatingRoom=roomManagement&&resource==='habitaciones'&&!draft.id;
+  let featuresInput:ReturnType<typeof featureInput>|undefined;
+  if(creatingRoom){
+   featuresInput=featureInput(newRoomFeatures);
+   const maxCapacity=Number(types.find(t=>Number(t.id)===Number(draft.tipoHabitacionId))?.capacidad??1);
+   if(featuresInput.capacidad>maxCapacity)throw Error('La capacidad supera la de la categoría.');
+   if(newRoomPhotos.length&&newRoomPhotos.filter(p=>p.principal).length!==1)throw Error('Selecciona exactamente una fotografía principal.');
+  }
+  await operacion(`admin/catalogos/${resource}`,'POST',{clave:key.current,id:draft.id??null,version:draft.version??0,datos:data});
+  if(creatingRoom){
+   // The catalog write is complete: never repeat the POST if saving extras fails.
+   setRoomCreated(true);
+   const rooms=await readCatalogRooms();
+   const created=rooms.find(room=>String(room.numero).trim().toLowerCase()===String(draft.numero).trim().toLowerCase());
+   if(!created)throw Error('La habitación se guardó, pero no se pudo identificar para guardar sus características. Actualiza y edítala.');
+   setDraft({...draft,id:created.id});
+   setRows(rooms as Row[]);
+   key.current=null;
+   setReload(n=>n+1);
+   try{
+    await saveFeatures(created.id,featuresInput!);
+    if(newRoomPhotos.length){
+     const fotos=await resolveCatalogPhotos(newRoomPhotos,'HABITACION',photoUploadCache.current);
+     await operacion(`admin/habitaciones/${created.id}/fotos`,'PUT',{fotos});
+    }
+    setRoomExtrasNotice('Habitación, camas, características y fotografías guardadas.');
+    setRoomExtrasError('');
+   }catch(extrasError){
+    setRoomExtrasError(extrasError instanceof Error?extrasError.message:'La habitación se creó, pero no se pudieron guardar todos los detalles. Revisa la sección correspondiente antes de cerrar.');
+   }
+   return;
+  }
+ }
+ setDraft(null);setFieldErrors({});key.current=null;setReload(n=>n+1);}catch(e){
  const fields:PersonalErrors={};if(resource==='personal'&&e instanceof OperationError){const payload=e.data as {codigo?:string;detalles?:{campo?:string;mensaje?:string}[]}|undefined;
  if(payload?.codigo==='CORREO_EXISTENTE')fields.correo='El correo ya está asociado a otra cuenta.';
  if(Array.isArray(payload?.detalles))for(const item of payload.detalles){const name=item.campo?.replace(/^datos\./,'').replace(/^nombreCompleto$/,'nombre');if(name&&item.mensaje&&['nombre','correo','correoPersonal','telefono','rol','area','estado','accesoInicial','perfil.fechaContratacion','perfil.turno','perfil.asistencia','perfil.salarioBase','perfil.bonosExtras','perfil.descuentosNomina'].includes(name))fields[name]=item.mensaje;}}
@@ -92,5 +136,5 @@ export default function CatalogosAdmin({initial='tipos',resources,roomManagement
  </label>;
  })}
  {resource==='temporadas'&&!value('aplicaATodos')&&<fieldset className="sm:col-span-2"><legend>Tipos incluidos</legend>{types.map(t=><label key={t.id} className="block"><input type="checkbox" disabled={!!draft.id} checked={((draft.tipos??[]) as number[]).includes(t.id)} onChange={e=>set('tipos',e.target.checked?[...((draft.tipos??[]) as number[]),t.id]:((draft.tipos??[]) as number[]).filter(id=>id!==t.id))}/> {String(t.nombre)}</label>)}</fieldset>}
- </div>{roomManagement&&resource==='tipos'&&Boolean(draft.id)&&<div className="mt-4"><button type="button" disabled={busy} onClick={()=>{const saved=rows.find(row=>row.id===draft.id);if(saved){catalogDraftSnapshot.current={...draft};setCatalogType(saved);}}} className="rounded-md border border-[#18345C] px-4 py-2 text-[#18345C]">Editar catálogo</button></div>} {roomManagement&&resource==='habitaciones'&&Boolean(draft.id)&&(()=>{const category=types.find(type=>Number(type.id)===Number(draft.tipoHabitacionId));return <div className="mt-4 border-t pt-4"><h3 className="mb-3 font-semibold">Camas y características de la habitación</h3><RoomFeaturesEditor key={String(draft.id)} room={{id:Number(draft.id),numero:String(draft.numero??''),piso:Number(draft.piso??1),tipoHabitacionId:Number(draft.tipoHabitacionId),estado:String(draft.estado??'ACTIVO')}} maxCapacity={Number(category?.capacidad??1)} onBusyChange={setBusy}/></div>;})()} {roomManagement&&resource==='habitaciones'&&<RoomPhysicalPhotoGallery key={String(draft.id??'new')} roomId={draft.id?Number(draft.id):undefined}/>} {uncertain&&<p role="status" className="mt-3 text-sm">No se pudo confirmar el resultado. Conservamos el formulario; cancela y actualiza la lista antes de repetir para evitar duplicados.</p>}{error&&<p role="alert" className="my-3 text-red-800">{error}</p>}</div><footer style={roomManagement||resource==='personal'?{flexShrink:0,position:'static'}:undefined} data-vs-actions="compact" className="mt-5 flex justify-end gap-3"><button type="button" disabled={busy} onClick={()=>{setDraft(null);key.current=null;}} className="rounded-md border px-4 py-2">Cancelar</button><button disabled={busy||uncertain||duplicateNumber} className="rounded-md bg-[#18345C] px-4 py-2 text-white">{resource==='personal'&&draft.id?'Guardar cambios':'Guardar'}</button></footer></form></div>}{resetOpen&&draft&&<ReceptionActionDialog title="Restablecer contraseña" busy={busy} onClose={()=>{if(!lock.current){setResetOpen(false);setError('');}}}><p className="break-words text-sm">¿Deseas restablecer la contraseña de {String(draft.nombre)}?</p>{error&&<p role="alert" className="mt-3 text-sm text-red-800">{error}</p>}<footer className="mt-4 flex flex-wrap justify-end gap-3"><button type="button" disabled={busy} onClick={()=>{setResetOpen(false);setError('');}} className="min-h-11 rounded-md border px-3 py-2 text-sm">Cancelar</button><button type="button" disabled={busy} onClick={async()=>{if(lock.current)return;lock.current=true;setBusy(true);setError('');try{setTemporaryPassword(await resetEmployeePassword(Number(draft.id)));setResetOpen(false);setDraft(null);}catch(e){setError(e instanceof Error?e.message:'No se pudo restablecer la contraseña.');}finally{lock.current=false;setBusy(false);}}} className="min-h-11 rounded-md bg-[#18345C] px-3 py-2 text-sm text-white disabled:opacity-50">{busy?'Restableciendo…':'Restablecer contraseña'}</button></footer></ReceptionActionDialog>}</main>;
+ </div>{roomManagement&&resource==='tipos'&&Boolean(draft.id)&&<div className="mt-4"><button type="button" disabled={busy} onClick={()=>{const saved=rows.find(row=>row.id===draft.id);if(saved){catalogDraftSnapshot.current={...draft};setCatalogType(saved);}}} className="rounded-md border border-[#18345C] px-4 py-2 text-[#18345C]">Editar catálogo</button></div>} {roomManagement&&resource==='habitaciones'&&!draft.id&&<section className="mt-4 border-t pt-4" aria-label="Camas, características y galería de nueva habitación"><h3 className="mb-3 font-semibold">Camas y características de la habitación</h3><RoomOfferFields value={newRoomFeatures} onChange={setNewRoomFeatures} maxCapacity={Number(types.find(type=>Number(type.id)===Number(draft.tipoHabitacionId))?.capacidad??1)}/><div className="mt-4 border-t pt-4"><AdminPhotoGallery management principal title="Galería fotográfica" value={newRoomPhotos} onChange={setNewRoomPhotos} onError={setRoomExtrasError}/></div><p className="mt-2 text-sm text-[#536579]">Al pulsar Guardar se registrará la habitación y después sus camas, características y fotografías.</p></section>} {roomExtrasNotice&&<p role="status" className="mt-2 text-sm text-green-800">{roomExtrasNotice}</p>}{roomExtrasError&&<p role="alert" className="mt-2 text-sm text-red-800">{roomExtrasError}</p>} {roomManagement&&resource==='habitaciones'&&Boolean(draft.id)&&(()=>{const category=types.find(type=>Number(type.id)===Number(draft.tipoHabitacionId));return <div className="mt-4 border-t pt-4"><h3 className="mb-3 font-semibold">Camas y características de la habitación</h3><RoomFeaturesEditor key={String(draft.id)} room={{id:Number(draft.id),numero:String(draft.numero??''),piso:Number(draft.piso??1),tipoHabitacionId:Number(draft.tipoHabitacionId),estado:String(draft.estado??'ACTIVO')}} maxCapacity={Number(category?.capacidad??1)} onBusyChange={setBusy}/></div>;})()} {roomManagement&&resource==='habitaciones'&&<RoomPhysicalPhotoGallery key={String(draft.id??'new')} roomId={draft.id?Number(draft.id):undefined}/>} {uncertain&&<p role="status" className="mt-3 text-sm">No se pudo confirmar el resultado. Conservamos el formulario; cancela y actualiza la lista antes de repetir para evitar duplicados.</p>}{error&&<p role="alert" className="my-3 text-red-800">{error}</p>}</div><footer style={roomManagement||resource==='personal'?{flexShrink:0,position:'static'}:undefined} data-vs-actions="compact" className="mt-5 flex justify-end gap-3"><button type="button" disabled={busy} onClick={()=>{setDraft(null);key.current=null;}} className="rounded-md border px-4 py-2">Cancelar</button><button disabled={busy||uncertain||duplicateNumber} className="rounded-md bg-[#18345C] px-4 py-2 text-white">{resource==='personal'&&draft.id?'Guardar cambios':'Guardar'}</button></footer></form></div>}{resetOpen&&draft&&<ReceptionActionDialog title="Restablecer contraseña" busy={busy} onClose={()=>{if(!lock.current){setResetOpen(false);setError('');}}}><p className="break-words text-sm">¿Deseas restablecer la contraseña de {String(draft.nombre)}?</p>{error&&<p role="alert" className="mt-3 text-sm text-red-800">{error}</p>}<footer className="mt-4 flex flex-wrap justify-end gap-3"><button type="button" disabled={busy} onClick={()=>{setResetOpen(false);setError('');}} className="min-h-11 rounded-md border px-3 py-2 text-sm">Cancelar</button><button type="button" disabled={busy} onClick={async()=>{if(lock.current)return;lock.current=true;setBusy(true);setError('');try{setTemporaryPassword(await resetEmployeePassword(Number(draft.id)));setResetOpen(false);setDraft(null);}catch(e){setError(e instanceof Error?e.message:'No se pudo restablecer la contraseña.');}finally{lock.current=false;setBusy(false);}}} className="min-h-11 rounded-md bg-[#18345C] px-3 py-2 text-sm text-white disabled:opacity-50">{busy?'Restableciendo…':'Restablecer contraseña'}</button></footer></ReceptionActionDialog>}</main>;
 }
