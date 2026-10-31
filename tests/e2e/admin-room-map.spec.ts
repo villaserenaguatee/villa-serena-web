@@ -6,7 +6,7 @@ for(const width of [1440,390,320])test('panel de habitaciones: layout y filtros 
  const rooms=Array.from({length:24},(_,index)=>({id:index+1,version:0,numero:String((Math.floor(index/8)+1)*100+index%8+1),piso:Math.floor(index/8)+1,tipoHabitacionId:9,estado:'ACTIVO',ocupacion:index%4===1?'OCUPADA':'LIBRE',condicion:index%4===2?'EN_LIMPIEZA':index%4===3?'FUERA_DE_SERVICIO':'LIMPIA'}));
  await page.route('**/api/admin/catalogos/**',route=>{if(route.request().method()!=='GET'){writes++;return route.fulfill({status:403,json:{}});}return route.fulfill({json:new URL(route.request().url()).pathname.endsWith('/tipos')?types:rooms});});
  expect((await context.request.post('/api/auth/login',{headers:{Origin:baseURL!},data:{correo:'admin@villaserena.gt',contrasena:'VillaSerena26'},timeout:60000})).status()).toBe(200);
- await page.goto('/admin');await expect(page.getByRole('heading',{name:'Habitaciones físicas',exact:true})).toBeVisible({timeout:60000});
+ await page.goto('/admin');await expect(page.getByRole('heading',{name:'Habitaciones',exact:true})).toBeVisible({timeout:60000});
  await expect(page.getByText('Registre cada habitación por su número y categoría. La cantidad se calcula a partir de estos registros, sin cupos manuales.')).toHaveCount(0);
  await expect(page.getByRole('cell',{name:'101',exact:true})).toBeVisible();await expectNoOverflow(page);await page.screenshot({path:info.outputPath('habitaciones-'+width+'.png'),fullPage:true});
  await page.getByRole('tab',{name:'Categorías de habitación',exact:true}).click();await expect(page.getByRole('heading',{name:'Categorías de habitación',exact:true})).toBeVisible();
