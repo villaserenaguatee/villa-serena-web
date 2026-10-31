@@ -25,7 +25,7 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
   const [fijados, setFijados] = useState<string[]>([]);
   const [chatMenu, setChatMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [eliminarChat, setEliminarChat] = useState<string | null>(null);
-  const [mostrarTodos, setMostrarTodos] = useState(false);
+  const [mostrarTodos, setMostrarTodos] = useState(true);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const [texto, setTexto] = useState('');
   const [menuId, setMenuId] = useState<string | null>(null);
@@ -142,14 +142,14 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
             <Users size={16} aria-hidden="true" />
             {mostrarTodos ? 'Conversaciones recientes' : 'Todos los huéspedes'}
           </button>
-          <div className="mt-2 flex items-center gap-1">
+          <div className="mt-2 grid grid-cols-2 gap-1 sm:grid-cols-4 md:grid-cols-2 xl:grid-cols-4">
             {([['todos', 'Todos'], ['no-leidos', 'No leídos'], ['favoritos', 'Favoritos'], ['archivados', 'Archivados']] as [
               Filtro,
               string
             ][]).map(([id, label]) => <button
               key={id}
               onClick={() => setFiltro(id)}
-              className={`shrink-0 whitespace-nowrap rounded-full border px-1.5 py-1 text-xs ${filtro === id ? 'border-[#18345C] bg-[#18345C] text-white' : 'border-[#AEBCC1] bg-white text-[#52677F]'}`}>
+              className={`min-w-0 rounded-full border px-1.5 py-1 text-[11px] ${filtro === id ? 'border-[#18345C] bg-[#18345C] text-white' : 'border-[#AEBCC1] bg-white text-[#52677F]'}`}>
               {label}
             </button>)}
           </div>
@@ -161,7 +161,7 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
             className="relative"
             onContextMenu={e => { if (!mensajes.some(m => m.huespedId === c.h.id)) return; e.preventDefault(); setChatMenu({ id: c.h.id, x: e.clientX, y: e.clientY }); }}>
             <button
-            onClick={() => { setSeleccionado(c.h.id); setTexto(''); setMenuId(null); setEditandoId(null); setMostrarTodos(false); setBuscar(''); }}
+            onClick={() => { setSeleccionado(c.h.id); setTexto(''); setMenuId(null); setEditandoId(null); setBuscar(''); }}
             className={`flex w-full items-center gap-3 border-b border-[#E8EDF0] pl-4 pr-11 py-2.5 text-left hover:bg-[#F2F4F5] ${seleccionado === c.h.id ? 'bg-[#EEF4FA]' : favoritos.includes(c.h.id) ? 'bg-[#F3D98B]/20' : archivados.includes(c.h.id) ? 'bg-[#AEBCC1]/15' : ''}`}>
             <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-[#DDEAF7] text-sm font-semibold text-[#18345C]">
               {c.h.foto ? <img src={c.h.foto} alt="" className="h-full w-full object-cover" /> : iniciales(c.h.nombre)}
@@ -174,7 +174,7 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
               <p className="truncate text-xs text-[#536579]">{c.habitacion ? `Hab. ${c.habitacion.numero}` : 'Sin asignar'} · {c.r?.codigo || 'Sin reserva'}</p>
             </div>
           </button>
-          {mensajes.some(m => m.huespedId === c.h.id) && <button aria-label={`Opciones del chat de ${c.h.nombre}`} onClick={e => { const rect = e.currentTarget.getBoundingClientRect(); setChatMenu({ id: c.h.id, x: rect.right, y: rect.bottom }); }} className="absolute right-1 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full text-[#52677F] hover:bg-[#F2F4F5]"><MoreHorizontal size={18} /></button>}
+          {mensajes.some(m => m.huespedId === c.h.id) && <button aria-label={`Opciones del chat de ${c.h.nombre}`} onClick={e => { const rect = e.currentTarget.getBoundingClientRect(); setChatMenu({ id: c.h.id, x: rect.right, y: rect.bottom }); }} className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-[#52677F] hover:bg-[#F2F4F5]"><MoreHorizontal size={18} /></button>}
           </div>)}
         </div>
       </aside>
@@ -219,7 +219,7 @@ export default function ChatRecepcion({ huespedes, reservas, habitaciones, conec
                   {!m.eliminadoParaTodos && <button
                     aria-label="Opciones del mensaje"
                     onClick={() => setMenuId(menuId === m.id ? null : m.id)}
-                    className={`absolute -right-2 -top-3 rounded-full border bg-white px-2 py-0.5 text-[#52677F] shadow-sm ${menuId === m.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>⋯</button>}
+                    className={`absolute right-1 top-1 rounded-full border bg-white px-2 py-0.5 text-[#52677F] shadow-sm ${menuId === m.id ? 'opacity-100' : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100'}`}>⋯</button>}
                   {menuId === m.id && !m.eliminadoParaTodos && <div data-vs-card="recepcion" className="absolute right-0 top-7 z-20 w-40 overflow-hidden rounded-xl border bg-white text-sm text-[#18345C] shadow-xl">
                     <button
                       disabled={!rec}

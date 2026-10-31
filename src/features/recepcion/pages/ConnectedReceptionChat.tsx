@@ -28,7 +28,7 @@ export default function ConnectedReceptionChat() {
     const controller = new AbortController();
     async function load() {
       try {
-        const groups = await Promise.all(['EN_ESTADIA', 'FINALIZADA'].map(async estado => {
+        const groups = await Promise.allSettled(['EN_ESTADIA', 'FINALIZADA'].map(async estado => {
           const rows = [];
           for (let page = 0; ; page++) {
             const result = await searchReservations(new URLSearchParams({ estado, page: String(page), size: '100' }), controller.signal);
@@ -37,27 +37,32 @@ export default function ConnectedReceptionChat() {
           }
           return rows;
         }));
-        const summaries = groups.flat();
-        const details = await Promise.all(summaries.map(r => getReservation(r.codigo, controller.signal)));
+        const summaries = groups.flatMap(result => result.status === 'fulfilled' ? result.value : []);
+        const results = await Promise.allSettled([...new Set(summaries.map(r=>r.codigo))].map(async code=>{
+          const detail=await getReservation(code,controller.signal);
+          if(detail.estado==='FINALIZADA'){
+            const response=await fetch(`/api/estancias/${detail.codigo}/chat`,{cache:'no-store',signal:controller.signal});
+            if(!response.ok)throw Error('No se pudo consultar el historial de mensajes.');
+            const history:unknown=await response.json();
+            if(!Array.isArray(history))throw Error('No se pudo consultar el historial de mensajes.');
+            if(!history.length)return null;
+          }
+          return detail;
+        }));
+        const details=results.flatMap(result=>result.status==='fulfilled'&&result.value?[result.value]:[]);
+        const incomplete=groups.some(result=>result.status==='rejected')||results.some(result=>result.status==='rejected');
         const huespedes: Huesped[] = [], reservas: Reserva[] = [], habitaciones: { id: string; numero: string }[] = [];
         for (const d of details) {
           const checkInEn = d.historial.filter(h => h.estadoNuevo === 'EN_ESTADIA').at(-1)?.fechaHora;
           const checkOutEn = d.historial.find(h => h.estadoNuevo === 'FINALIZADA')?.fechaHora;
           if (!['EN_ESTADIA', 'FINALIZADA'].includes(d.estado) || !d.habitacion || !checkInEn) continue;
-          if (d.estado === 'FINALIZADA') {
-            const response = await fetch(`/api/estancias/${d.codigo}/chat`, { cache: 'no-store', signal: controller.signal });
-            if (!response.ok) throw new Error('No se pudo consultar el historial de mensajes.');
-            const history: unknown = await response.json();
-            if (!Array.isArray(history)) throw new Error('No se pudo consultar el historial de mensajes.');
-            if (!history.length) continue;
-          }
           const guestId = `bff-guest-${d.huesped.id}`, roomId = `bff-room-${d.habitacion.id}`;
           if (!huespedes.some(h => h.id === guestId)) huespedes.push({ id: guestId, nombre: d.huesped.nombreCompleto, correo: d.huesped.correo, telefono: d.huesped.telefono, nacionalidad: d.huesped.nacionalidad ?? '', documento: d.huesped.numeroDocumento, tipoDocumento: d.huesped.tipoDocumento === 'DPI' ? 'DPI' : 'Pasaporte', creadoEn: d.creadaEn });
           if (!habitaciones.some(h => h.id === roomId)) habitaciones.push({ id: roomId, numero: d.habitacion.numero });
           reservas.push({ id: `bff-reservation-${d.codigo}`, codigo: d.codigo, codigoBff: d.codigo, huespedId: guestId, habitacionId: roomId, tipoHabitacion: d.tipoHabitacion.nombre as TipoHabitacion, fechaEntrada: d.entrada, fechaSalida: d.salida, personas: d.numeroHuespedes, estado: d.estado === 'FINALIZADA' ? 'finalizada' : 'en-curso', checkInEn, checkOutEn, acompanantes: [], servicios: [], pagos: [], descuento: 0, creadoEn: d.creadaEn });
         }
         if (!controller.signal.aborted) {
-          setData({ huespedes, reservas, habitaciones }); setError('');
+          setData({ huespedes, reservas, habitaciones }); setError(incomplete?'No se pudieron cargar algunas conversaciones. Vuelve a consultar.':'');
           const requested = new URL(window.location.href).searchParams.get('reserva');
           setSelected(current => reservas.some(r => r.codigo === current) ? current : reservas.some(r => r.codigo === requested) ? requested! : '');
         }
@@ -68,6 +73,6 @@ export default function ConnectedReceptionChat() {
     window.addEventListener('focus', load);
     return () => { controller.abort(); window.removeEventListener('focus', load); };
   }, []);
-  const conversations=data.reservas.filter(r=>!preferencesAvailable||preferences.some(p=>p.codigo===r.codigo)).map(r=>({code:r.codigo,name:data.huespedes.find(h=>h.id===r.huespedId)?.nombre??'',room:data.habitaciones.find(h=>h.id===r.habitacionId)?.numero??'',closed:r.estado==='finalizada',favorite:preferencesAvailable?preferences.find(p=>p.codigo===r.codigo)?.favorita:undefined,archived:preferencesAvailable?preferences.find(p=>p.codigo===r.codigo)?.archivada:undefined,deleted:preferencesAvailable?preferences.find(p=>p.codigo===r.codigo)?.eliminada:undefined,unread:preferencesAvailable?preferences.find(p=>p.codigo===r.codigo)?.noLeidos:undefined}));
+  const conversations=data.reservas.map(r=>({code:r.codigo,name:data.huespedes.find(h=>h.id===r.huespedId)?.nombre??'',room:data.habitaciones.find(h=>h.id===r.habitacionId)?.numero??'',closed:r.estado==='finalizada',favorite:preferencesAvailable?preferences.find(p=>p.codigo===r.codigo)?.favorita:undefined,archived:preferencesAvailable?preferences.find(p=>p.codigo===r.codigo)?.archivada:undefined,deleted:preferencesAvailable?preferences.find(p=>p.codigo===r.codigo)?.eliminada:undefined,unread:preferencesAvailable?preferences.find(p=>p.codigo===r.codigo)?.noLeidos:undefined}));
   return <ApprovedReceptionChatFrame foldersAvailable={preferencesAvailable} foldersMessage={preferencesError} onAction={action} conversations={conversations} selected={selected} onSelect={selectConversation} loading={loading} error={error}>{selected&&conversations.some(c=>c.code===selected)?<EstanciaChat approved staff guestName={conversations.find(c=>c.code===selected)?.name??''} key={selected} code={selected} blockedReason={data.reservas.find(r=>r.codigo===selected)?.estado==='finalizada'?(en?'This stay has ended. You can read the history, but cannot send new messages.':'La estancia terminó. Puedes consultar el historial, pero no enviar nuevos mensajes.'):''} protectedTerms={data.huespedes.filter(h=>h.id===data.reservas.find(r=>r.codigo===selected)?.huespedId).map(h=>h.nombre)}/>:<main className="grid min-h-0 flex-1 place-items-center bg-[#F8F6F0] p-5 text-sm text-[#71839B]">{en?'Select a stay to chat.':'Selecciona una estancia para conversar.'}</main>}</ApprovedReceptionChatFrame>;
 }
