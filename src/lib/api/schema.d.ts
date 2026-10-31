@@ -1,5 +1,5 @@
 /** Generado desde villa-serena-docs/openapi.yaml. No editar.
- * Contrato SHA-256: 99b84905576ea521e547eaf26fda8417518585e7929d3ae34a4baf7ba0405832
+ * Contrato SHA-256: 56c25df8eef3b5c1957a74456485e8841be9fd2b21b587ed2e85c05edcc28c4c
  */
 export interface paths {
     "/api/v1/auth/login": {
@@ -15426,7 +15426,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["EliminarMensajeChatRecepcion"];
             };
